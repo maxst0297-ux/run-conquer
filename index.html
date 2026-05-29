@@ -239,6 +239,11 @@ body{
 /* misc */
 .muted{color:var(--muted)}
 .landmark-icon{font-size:16px!important;border:none!important;background:none!important}
+/* ── Level XP bar ── */
+.xp-bar-wrap{background:rgba(255,255,255,.07);border-radius:6px;height:4px;overflow:hidden;margin-top:4px}
+.xp-bar{height:100%;background:var(--primary);border-radius:6px;transition:width .8s ease}
+/* ── Territory strength bar in popup ── */
+.leaflet-popup-content{font-family:'Poppins',sans-serif;font-size:.82rem;color:#f0f0f8;min-width:160px}
 </style>
 </head>
 <body>
@@ -263,7 +268,7 @@ body{
 
   <header class="hdr">
     <span class="hdr-logo">R&amp;C</span>
-    <span class="hdr-badge" id="userBadge"><span id="hdrAvatar">🏃</span><span id="hdrName">Läufer</span></span>
+    <span class="hdr-badge" id="userBadge"><span id="hdrAvatar">🏃</span><span id="hdrName">Läufer</span><span id="hdrLevel" style="font-size:.6rem;color:var(--primary);margin-left:2px">Lv.1</span></span>
     <div class="hdr-actions">
       <button class="icon-btn" id="shareBtn"><i class="fas fa-share-alt"></i></button>
       <button class="icon-btn" id="themeBtn"><i class="fas fa-sun"></i></button>
@@ -354,6 +359,11 @@ body{
         <div class="pv-avatar" id="pvAvatar">🏃</div>
         <div class="pv-name" id="pvName">Läufer</div>
         <div class="pv-since" id="pvSince">Noch kein Lauf</div>
+        <div style="margin-top:12px;width:100%;max-width:260px;margin-left:auto;margin-right:auto">
+          <div style="display:flex;justify-content:space-between;font-size:.65rem;margin-bottom:4px"><span id="pvLvLabel" style="color:var(--primary);font-family:'Bebas Neue',sans-serif;font-size:.85rem;letter-spacing:1px">Level 1 · Neuling</span></div>
+          <div style="background:rgba(255,255,255,.07);border-radius:6px;height:5px;overflow:hidden"><div id="pvLvBar" style="height:100%;background:var(--primary);border-radius:6px;width:0%;transition:width .8s ease"></div></div>
+          <div id="pvLvXpTxt" style="font-size:.6rem;color:var(--muted);margin-top:3px;text-align:center">0 XP</div>
+        </div>
       </div>
       <div class="pv-stats">
         <div class="pv-stat"><div class="pv-sv" id="ps-km">0</div><div class="pv-sl">km</div></div>
@@ -361,6 +371,10 @@ body{
         <div class="pv-stat"><div class="pv-sv" id="ps-streak">0🔥</div><div class="pv-sl">Streak</div></div>
         <div class="pv-stat"><div class="pv-sv" id="ps-terr">0</div><div class="pv-sl">Gebiete</div></div>
         <div class="pv-stat"><div class="pv-sv" id="ps-pts">0</div><div class="pv-sl">Punkte</div></div>
+      </div>
+      <div class="section-card">
+        <div class="section-title"><i class="fas fa-layer-group"></i> Spielsystem</div>
+        <div id="lvlBreakdown"></div>
       </div>
       <div class="section-card">
         <div class="section-title"><i class="fas fa-medal"></i> Persönliche Bestleistungen</div>
@@ -452,10 +466,28 @@ body{
 const CFG={
   MIN_DIST:150,TOL_PCT:.1,MIN_TOL:60,MAX_TOL:300,BUF_M:25,
   PREC_MAX:1.5,LM_DEF_BONUS:1.3,LM_PTS:300,
-  WEAK_THR:.7,WEAK_MUL:1.2,OVL_THR:800,OVL_FACTOR:.5,
   CRIT_CHANCE:.15,CRIT_MUL:2,COMBO_H:24,
-  MAX_DEF:1200,DEF_M2:.02,DEF_DIST:.5,
-  ATK_MUL:.8,DECAY_H:.04,MAX_AGE_H:96,
+  // Stärke-System (0–100)
+  MAX_DEF:100,
+  STR_INIT_MIN:40,STR_INIT_MAX:80,
+  STR_DMG_PER_KM:15,
+  STR_REP_PER_KM:10,
+  DECAY_PER_DAY:5,
+  MAX_AGE_H:120,
+  // Punkte-System
+  XP_PER_KM:10,
+  XP_NEUTRAL:50,
+  XP_CONQUER_MIN:100,
+  XP_CONQUER_MAX:300,
+  XP_DEFEND:75,
+  XP_7DAY:200,
+  STREAK_MUL:1.1,
+  // Level
+  LVL_XP:[0,500,1500,4000,10000,25000],
+  LVL_NAMES:['Neuling','Läufer','Entdecker','Gebietsherr','Stadtlegende','Herrscher'],
+  ATK_BONUS_LVL:.05,
+  DEF_REGEN_LVL:.03,
+  // Sonstiges
   ENERGY_MAX:3,ENERGY_REGEN_H:8,
   HR_BASE:70,STEP_THR:12,STEP_INTERVAL:250
 };
@@ -463,6 +495,11 @@ const COLORS=['#e8ff47','#ff4d6d','#00d4ff','#9b5de5','#ff9f1c'];
 const AVATARS=['🏃','🚴','🏋️','🤸','⚡'];
 const RIVAL_COLORS=['#ff4d6d','#00d4ff','#9b5de5','#ff9f1c','#e67e22'];
 const WEEKLY_GOAL=30;
+
+/* LEVEL */
+function getLevel(pts){for(let i=CFG.LVL_XP.length-1;i>=0;i--)if(pts>=CFG.LVL_XP[i])return i+1;return 1}
+function getLvlName(pts){return CFG.LVL_NAMES[Math.min(getLevel(pts)-1,CFG.LVL_NAMES.length-1)]}
+function getLvlProg(pts){const lv=getLevel(pts),cur=CFG.LVL_XP[lv-1]||0,nx=CFG.LVL_XP[lv]||CFG.LVL_XP[CFG.LVL_XP.length-1]+1;return{lv,name:getLvlName(pts),pct:Math.min(100,Math.round((pts-cur)/(nx-cur)*100)),xpLeft:Math.max(0,nx-pts)}}
 
 /* STATE */
 let mapL,userMarker,pathLayer,terrLayer,heatLayer,landmarkLayer;
@@ -525,8 +562,9 @@ function genRivals(){
   const c=mapL.getCenter();
   [[.008,.012,180],[-.01,.005,200],[.005,-.015,160],[-.012,-.008,220],[.015,-.005,140]].forEach((o,i)=>{
     const poly=mkCircle(c.lat+o[0],c.lng+o[1],o[2]);
-    const area=turf.area(poly),def=Math.min(CFG.MAX_DEF,Math.floor(area*CFG.DEF_M2+700*CFG.DEF_DIST));
-    territories.push({id:'rival_'+Date.now()+i,owner:'rival_'+i,color:RIVAL_COLORS[i%RIVAL_COLORS.length],polygon:poly,defense:def,maxDefense:def,createdAt:Date.now()-3600000*(5+i*2),lastDefended:Date.now()-3600000*(3+i),area,customName:'Rivale '+(i+1),attackHistory:{}});
+    const area=turf.area(poly);
+    const str=CFG.STR_INIT_MIN+Math.floor(Math.random()*(CFG.STR_INIT_MAX-CFG.STR_INIT_MIN));
+    territories.push({id:'rival_'+Date.now()+i,owner:'rival_'+i,color:RIVAL_COLORS[i%RIVAL_COLORS.length],polygon:poly,defense:str,maxDefense:CFG.MAX_DEF,createdAt:Date.now()-3600000*(5+i*2),lastDefended:Date.now()-3600000*(3+i),area,customName:'Rivale '+(i+1),attackHistory:{},_lastDecayTs:Date.now()});
   });
 }
 function mkCircle(lat,lng,r){return turf.circle([lng,lat],r,{steps:20,units:'meters'}).geometry}
@@ -577,9 +615,20 @@ function renderTerr(){
   if(!terrLayer)return;
   terrLayer.clearLayers();
   territories.forEach(t=>{
-    const age=(Date.now()-t.lastDefended)/3600000,own=t.owner===userId,col=own?userColor:t.color;
-    L.geoJSON(t.polygon,{style:{fillColor:col,color:own?'#fff':'#333',weight:own?2:1,fillOpacity:Math.max(.1,.5-age/96*.4)}})
-      .bindPopup(()=>{let h=`<b>${own?'Dein Gebiet':'Fremdes Gebiet'}</b><br>`;if(t.customName)h+=`📛 ${t.customName}<br>`;h+=`🛡️ ${Math.round(t.defense)}/${t.maxDefense}<br>📐 ${Math.round(t.area)} m²`;if(own)h+=`<br><button onclick="window.openRename('${t.id}')" style="margin-top:8px;background:var(--primary);color:#09090f;border:none;border-radius:8px;padding:4px 12px;cursor:pointer">✏️ Umbenennen</button>`;return h;})
+    const own=t.owner===userId,col=own?userColor:t.color;
+    const strPct=Math.min(1,t.defense/CFG.MAX_DEF);
+    L.geoJSON(t.polygon,{style:{fillColor:col,color:own?'#fff':col,weight:own?2:1.5,fillOpacity:Math.max(.08,strPct*.55),opacity:Math.max(.4,strPct)}})
+      .bindPopup(()=>{
+        const barW=Math.round(strPct*100);
+        const barCol=strPct>.6?'#10b981':strPct>.3?'#ff9f1c':'#ff4d6d';
+        let h=`<b style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:1px">${own?'⚔️ Dein Gebiet':'🏴 Fremdes Gebiet'}</b>`;
+        if(t.customName)h+=`<br><span style="font-size:.75rem;color:#6b6b82">📛 ${t.customName}</span>`;
+        h+=`<div style="margin:7px 0 5px"><div style="display:flex;justify-content:space-between;font-size:.72rem;margin-bottom:3px"><span>🛡️ Stärke</span><span style="color:${barCol};font-weight:700">${Math.round(t.defense)}/100</span></div>`;
+        h+=`<div style="background:#1a1a26;border-radius:4px;height:6px;overflow:hidden"><div style="background:${barCol};height:100%;width:${barW}%;border-radius:4px"></div></div></div>`;
+        h+=`<span style="font-size:.68rem;color:#6b6b82">📐 ${Math.round(t.area)} m²</span>`;
+        if(own)h+=`<br><button onclick="window.openRename('${t.id}')" style="margin-top:8px;background:#e8ff47;color:#09090f;border:none;border-radius:8px;padding:4px 12px;cursor:pointer;font-size:.72rem">✏️ Umbenennen</button>`;
+        return h;
+      })
       .addTo(terrLayer);
   });
   updateStatsUI();
@@ -590,6 +639,7 @@ function updateStatsUI(){
   $('ptsVal').textContent=points;
   $('areaVal').textContent=area>9999?Math.round(area/1000)+'k':Math.round(area);
   $('defVal').textContent=Math.round(mine.length?mine.reduce((s,t)=>s+t.defense,0)/mine.length:0);
+  const lvEl=$('hdrLevel');if(lvEl)lvEl.textContent='Lv.'+getLevel(points);
 }
 
 /* STEPS */
@@ -669,9 +719,11 @@ function stopRun(){
   const pd=mkPoly();if(!pd)return;
   const{polyGeom,gap}=pd,area=turf.area(polyGeom);
   energy=Math.max(0,energy-1);
-  const pr=Math.max(0,1-gap/dist),pf=1+(pr*(CFG.PREC_MAX-1)),am=CFG.ATK_MUL*pf;
-  const res=processConquest(polyGeom,area,dist,am,gap,dist);
-  points+=res.pts;
+  const res=processConquest(polyGeom,area,dist);
+  const streakMul=streakDays>0?Math.min(2,1+(streakDays-1)*0.1):1;
+  const kmXP=Math.round((dist/1000)*CFG.XP_PER_KM*streakMul);
+  points+=res.pts+kmXP;
+  if(streakDays>1)toast(`🔥 Streak ×${streakMul.toFixed(1)} · +${kmXP} km-XP`);
   const kcal=calcKcal(dist,elapsed);
   const rec={date:Date.now(),distance:dist,area,pts:res.pts,path:path.filter((_,i)=>i%3===0),conquered:res.conquered,defended:res.defended,duration:elapsed,gap,kcal,avgHR:heartRate,splits:[...kmSplits]};
   history.push(rec);if(history.length>30)history.shift();
@@ -692,32 +744,69 @@ function mkPoly(){
 }
 
 /* CONQUEST */
-function processConquest(np,area,d,am,gap,td){
+function processConquest(np,area,d){
   const now=Date.now();let pts=0,conquered=false,defended=false;
+  const lv=getLevel(points);
+  const atkBonus=1+(lv-1)*CFG.ATK_BONUS_LVL;
+  const defBonus=1+(lv-1)*CFG.DEF_REGEN_LVL;
+
   const ovl=territories.filter(t=>{try{return turf.booleanIntersects(turf.feature(t.polygon),turf.feature(np));}catch(e){return false}});
   if(!ovl.length){
-    const def=Math.min(CFG.MAX_DEF,Math.floor(area*CFG.DEF_M2+d*CFG.DEF_DIST));
+    // Neutral → sofortige Einnahme
     const lms=lmsInPoly(np.geometry);
-    const t={id:'u_'+Date.now(),owner:userId,color:userColor,polygon:np.geometry,defense:def,maxDefense:def,createdAt:now,lastDefended:now,area,landmarkIds:lms,attackHistory:{}};
-    if(lms.length){t.defense=Math.floor(t.defense*CFG.LM_DEF_BONUS);t.maxDefense=t.defense;pts+=CFG.LM_PTS;toast('🏛️ Wahrzeichen! +'+CFG.LM_PTS);}
-    territories.push(t);pts+=Math.floor(area/12)+Math.floor(d*.4);toast('🗺️ Neues Gebiet!');
+    const initStr=Math.min(CFG.MAX_DEF,30+Math.floor(d/200));
+    const t={id:'u_'+Date.now(),owner:userId,color:userColor,polygon:np.geometry,
+      defense:initStr,maxDefense:CFG.MAX_DEF,createdAt:now,lastDefended:now,
+      area,landmarkIds:lms,attackHistory:{},_lastDecayTs:now,_lastBonus:0};
+    if(lms.length){t.defense=Math.min(CFG.MAX_DEF,Math.floor(t.defense*CFG.LM_DEF_BONUS));pts+=CFG.LM_PTS;toast('🏛️ Wahrzeichen! +'+CFG.LM_PTS);}
+    territories.push(t);
+    const gainXP=CFG.XP_NEUTRAL+Math.min(CFG.XP_CONQUER_MAX-CFG.XP_NEUTRAL,Math.floor(area/500));
+    pts+=gainXP;toast('🗺️ Neues Gebiet! +'+gainXP+' XP');
   }else{
     ovl.forEach(t=>{
-      let ov=0;try{const i=turf.intersect(turf.featureCollection([turf.feature(t.polygon),turf.feature(np)]));if(i)ov=turf.area(i);}catch(e){}
-      if(t.owner===userId){const b=Math.floor(ov*.05+d*.2);t.defense=Math.min(t.maxDefense,t.defense+b);t.lastDefended=now;pts+=10;defended=true;toast('🛡️ Verteidigt! +'+b);}
-      else{
-        const pr=Math.max(0,1-gap/td);let pw=d*am*(1+(pr*(CFG.PREC_MAX-1)));
-        if(t.defense>CFG.OVL_THR)pw*=(1+(t.defense-CFG.OVL_THR)/100*CFG.OVL_FACTOR);
-        if(pr>.95&&Math.random()<CFG.CRIT_CHANCE){pw*=CFG.CRIT_MUL;toast('✨ Kritischer Treffer!');beep(880,.15);vib(200);}
-        const dmg=Math.min(t.defense,pw*(ov/area));t.defense-=dmg;
-        const last=t.attackHistory?.[userId]||0;if(now-last<CFG.COMBO_H*3600000){pts+=25;toast('🔥 Combo +25');}
-        t.attackHistory=t.attackHistory||{};t.attackHistory[userId]=now;pts+=Math.floor(dmg*2)+15;
-        if(t.defense<=0){t.owner=userId;t.color=userColor;t.defense=Math.min(CFG.MAX_DEF,Math.floor(ov*CFG.DEF_M2+60));t.maxDefense=t.defense;t.lastDefended=now;pts+=200;conquered=true;[660,880,1100].forEach((f,i)=>setTimeout(()=>beep(f,.1),i*80));toast('🔥 GEBIET EROBERT! +200');vib([100,50,100]);}
-        else{t.lastDefended=now;toast('⚔️ Angriff! -'+Math.round(dmg)+' Def.');}
+      let ov=0;try{const inter=turf.intersect(turf.featureCollection([turf.feature(t.polygon),turf.feature(np)]));if(inter)ov=turf.area(inter);}catch(e){}
+      const overlapFrac=Math.min(1,ov/Math.max(area,1));
+      const kmThrough=(d/1000)*overlapFrac;
+
+      if(t.owner===userId){
+        // Eigenes Gebiet → Reparatur
+        const rep=Math.min(CFG.MAX_DEF-t.defense,kmThrough*CFG.STR_REP_PER_KM*defBonus);
+        if(rep>0.1){t.defense=Math.min(CFG.MAX_DEF,t.defense+rep);}
+        t.lastDefended=now;t._lastDecayTs=now;pts+=CFG.XP_DEFEND;defended=true;
+        toast('🛡️ Gebiet verteidigt! Stärke: '+Math.round(t.defense)+'/100');
+        // 7-Tage-Halte-Bonus
+        const dayHeld=(now-t.createdAt)/86400000;
+        const lastBonus=t._lastBonus||0;
+        if(dayHeld>=7&&(now-lastBonus)>=7*86400000){pts+=CFG.XP_7DAY;t._lastBonus=now;beep(880,.1);toast('🏆 7-Tage-Halte-Bonus! +'+CFG.XP_7DAY+' XP');}
+      }else{
+        // Feindgebiet → Angriff
+        let dmg=kmThrough*CFG.STR_DMG_PER_KM*atkBonus;
+        // Kritischer Treffer
+        if(Math.random()<CFG.CRIT_CHANCE){dmg*=CFG.CRIT_MUL;toast('✨ Kritischer Treffer! ×'+CFG.CRIT_MUL);beep(880,.15);vib(200);}
+        dmg=Math.min(t.defense,dmg);
+        t.defense=Math.max(0,t.defense-dmg);
+        // Combo-Bonus
+        const last=t.attackHistory?.[userId]||0;
+        if(now-last<CFG.COMBO_H*3600000&&last>0){pts+=25;toast('🔥 Combo! +25 XP');}
+        t.attackHistory=t.attackHistory||{};t.attackHistory[userId]=now;
+        pts+=Math.floor(dmg*2)+15;
+
+        if(t.defense<=0){
+          // Gebiet erobert!
+          const conquestXP=Math.min(CFG.XP_CONQUER_MAX,CFG.XP_CONQUER_MIN+Math.floor((t.area||0)/500));
+          pts+=conquestXP;conquered=true;
+          t.owner=userId;t.color=userColor;t.defense=20;t.maxDefense=CFG.MAX_DEF;
+          t.lastDefended=now;t._lastDecayTs=now;t.createdAt=now;t._lastBonus=0;
+          [660,880,1100].forEach((f,i)=>setTimeout(()=>beep(f,.1),i*80));
+          toast('🔥 GEBIET EROBERT! +'+conquestXP+' XP');vib([100,50,100]);
+        }else{
+          t.lastDefended=now;
+          toast('⚔️ Angriff! Stärke: '+Math.round(t.defense)+'/100 (-'+Math.round(dmg)+')');
+        }
       }
     });
   }
-  territories=territories.filter(t=>t.defense>0||(Date.now()-t.lastDefended)<CFG.MAX_AGE_H*3600000);
+  territories=territories.filter(t=>t.defense>0||t.owner===userId||(now-t.lastDefended)<CFG.MAX_AGE_H*3600000);
   return{pts,conquered,defended};
 }
 
@@ -793,7 +882,12 @@ function updateProfile(){
   $('pvAvatar').textContent=userAvatar;$('pvName').textContent=playerName;
   const banner=$('pvBanner');banner.style.background=`linear-gradient(135deg,${userColor}44,${userColor}11,var(--bg2))`;banner.style.borderColor=userColor+'55';
   if(history.length){const d=new Date(history[0].date);$('pvSince').textContent='Aktiv seit '+d.toLocaleDateString('de',{month:'long',year:'numeric'});}
+  const lvD=getLvlProg(points);
+  $('pvLvLabel').textContent='Level '+lvD.lv+' · '+lvD.name;
+  $('pvLvBar').style.width=lvD.pct+'%';
+  $('pvLvXpTxt').textContent=points+' XP · noch '+lvD.xpLeft+' bis Lv.'+(lvD.lv<CFG.LVL_NAMES.length?lvD.lv+1:'MAX');
   $('ps-km').textContent=totalKm.toFixed(1);$('ps-runs').textContent=history.length;$('ps-streak').textContent=streakDays+'🔥';$('ps-terr').textContent=territories.filter(t=>t.owner===userId).length;$('ps-pts').textContent=points;
+  $('lvlBreakdown').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:.72rem">${[['⚔️ Angriff-Bonus','+'+Math.round((1+(lvD.lv-1)*CFG.ATK_BONUS_LVL-1)*100)+'%'],['🛡️ Verteidigungs-Bonus','+'+Math.round((1+(lvD.lv-1)*CFG.DEF_REGEN_LVL-1)*100)+'%'],['🔥 Streak',streakDays>0?streakDays+' Tage ×'+Math.min(2,1+(streakDays-1)*0.1).toFixed(1):'Inaktiv'],['⚡ Energie',energy+'/'+CFG.ENERGY_MAX]].map(([l,v])=>`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:8px;text-align:center"><div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary)">${v}</div><div style="color:var(--muted);font-size:.6rem;margin-top:2px">${l}</div></div>`).join('')}</div>`;
   const bm=history.filter(r=>r.distance>=500).reduce((b,r)=>{const p=r.duration/60/(r.distance/1000);return p<b?p:b},Infinity);
   const bd=Math.max(0,...history.map(r=>r.distance)),ba=Math.max(0,...territories.filter(t=>t.owner===userId).map(t=>t.area||0));
   $('pvPRs').innerHTML=[['⚡','Beste Pace',bm===Infinity?'--':Math.floor(bm)+':'+pad(Math.round((bm%1)*60))+'/km'],['📏','Längster Lauf',fmtDist(bd)],['🗺️','Größtes Gebiet',Math.round(ba)+' m²'],['🔥','kcal gesamt',history.reduce((s,r)=>s+(r.kcal||0),0)+' kcal'],['🏆','Punkte',points],['⚔️','Gebiete erobert',totalConquered]].map(([i,l,v])=>`<div class="pr-row"><span class="pr-icon">${i}</span><span class="pr-label">${l}</span><span class="pr-val">${v}</span></div>`).join('');
@@ -838,16 +932,26 @@ function setView(view){
 function updateUI(){updateStatsUI();renderTerr();if(currentView==='dash')updateDash();if(currentView==='community')updateCommunity();if(currentView==='profile')updateProfile();if(drawer.classList.contains('open'))renderDrawer()}
 
 /* BACKGROUND */
+function applyDecay(){
+  const now=Date.now();
+  territories=territories.map(t=>{
+    if(t.owner===userId)return t;
+    const dts=t._lastDecayTs||t.lastDefended;
+    const hoursElapsed=(now-dts)/3600000;
+    const decayAmt=hoursElapsed*(CFG.DECAY_PER_DAY/24);
+    if(decayAmt>.01)t.defense=Math.max(0,t.defense-decayAmt);
+    t._lastDecayTs=now;
+    return t;
+  }).filter(t=>t.defense>0||t.owner===userId||(now-t.lastDefended)<CFG.MAX_AGE_H*3600000);
+  renderTerr();
+}
 function setupBg(){
   document.addEventListener('visibilitychange',()=>{
-    if(document.visibilityState==='visible'){
-      territories=territories.map(t=>{if(t.owner===userId)return t;const h=(Date.now()-t.lastDefended)/3600000;if(h>.1)t.defense=Math.max(0,Math.floor(t.defense*(1-h*CFG.DECAY_H)));return t}).filter(t=>t.defense>0||t.owner===userId||(Date.now()-t.lastDefended)<CFG.MAX_AGE_H*3600000);
-      renderTerr();if(currentView==='community')updateCommunity();
-    }
+    if(document.visibilityState==='visible'){applyDecay();if(currentView==='community')updateCommunity();}
   });
   if('wakeLock' in navigator){const aq=async()=>{try{await navigator.wakeLock.request('screen')}catch(e){}};document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&isRunning)aq()});}
   setInterval(()=>{if(energy<CFG.ENERGY_MAX&&(Date.now()-lastEnergyTs)>=CFG.ENERGY_REGEN_H*3600000){energy=Math.min(CFG.ENERGY_MAX,energy+1);lastEnergyTs=Date.now();toast('⚡ Energie aufgeladen!')}},60000);
-  setInterval(()=>{territories=territories.map(t=>{if(t.owner===userId)return t;const h=(Date.now()-t.lastDefended)/3600000;if(h>.1)t.defense=Math.max(0,Math.floor(t.defense*(1-h*CFG.DECAY_H)));return t}).filter(t=>t.defense>0||t.owner===userId||(Date.now()-t.lastDefended)<CFG.MAX_AGE_H*3600000);renderTerr();},60000);
+  setInterval(applyDecay,60000);
   setInterval(()=>{if(hrSource==='sim')simHR()},3000);
 }
 
