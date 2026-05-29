@@ -218,29 +218,147 @@
   #s5.active .unlock-pop{transform:scale(1) rotate(0deg);opacity:1}
 
   /* ═══════════════════════════════════════
-     SCENE 6 – PHONE MOCKUP
+     SCENE 6 – APP SHOWCASE
   ═══════════════════════════════════════ */
-  #s6{background:linear-gradient(160deg,#0d0d18,#09090f)}
-  .phone-wrap{
-    position:relative;
-    transform:translateY(40px) rotate(-3deg);opacity:0;
-    transition:all .8s cubic-bezier(.34,1.2,.64,1);
+  #s6{background:linear-gradient(160deg,#0a0a14,#09090f);padding:0 12px;gap:0}
+  .s6-hd{
+    font-family:'Bebas Neue',sans-serif;font-size:clamp(1.4rem,4vw,2.4rem);
+    letter-spacing:4px;color:#fff;margin-bottom:16px;text-align:center;
+    opacity:0;transition:opacity .5s ease;
   }
-  #s6.active .phone-wrap{transform:translateY(0) rotate(0deg);opacity:1}
-  .phone{
-    width:min(220px,55vw);
-    background:#111118;border-radius:36px;
-    border:2px solid rgba(255,255,255,.12);
-    box-shadow:0 30px 80px rgba(0,0,0,.8),0 0 0 1px rgba(255,255,255,.05),
-               inset 0 1px 0 rgba(255,255,255,.1),
-               0 0 60px rgba(232,255,71,.1);
-    overflow:hidden;padding:10px;
+  #s6.active .s6-hd{opacity:1}
+  .s6-layout{display:flex;align-items:center;gap:clamp(8px,2vw,28px);width:100%;max-width:700px}
+  .s6-side{display:flex;flex-direction:column;gap:10px;flex:1;min-width:0}
+  @media(max-width:480px){.s6-side{display:none}}
+
+  /* Callout bubbles */
+  .s6-cbox{
+    background:rgba(26,26,38,.95);border:1px solid rgba(255,255,255,.07);
+    border-radius:14px;padding:10px 12px;
+    opacity:0;transition:opacity .4s ease,transform .4s ease;pointer-events:none;
+  }
+  .s6-left .s6-cbox{transform:translateX(-20px)}
+  .s6-right .s6-cbox{transform:translateX(20px)}
+  .s6-cbox.on{opacity:1;transform:translateX(0)}
+  .s6-ci{font-size:1.3rem;margin-bottom:3px}
+  .s6-ct{font-weight:700;font-size:.78rem;color:#f0f0f8}
+  .s6-cs{font-size:.62rem;color:#6b6b82;margin-top:2px}
+
+  /* Phone */
+  .s6-phone-col{display:flex;flex-direction:column;align-items:center;flex-shrink:0}
+  .phone2{
+    width:min(185px,44vw);
+    background:#0d0d18;border-radius:34px;
+    border:2px solid rgba(255,255,255,.13);
+    box-shadow:0 24px 70px rgba(0,0,0,.85),
+               0 0 0 1px rgba(255,255,255,.04),
+               0 0 50px rgba(232,255,71,.12),
+               inset 0 1px 0 rgba(255,255,255,.08);
+    overflow:hidden;padding:8px;
     aspect-ratio:9/19;display:flex;flex-direction:column;
+    opacity:0;transform:translateY(28px) scale(.94);
+    transition:all .8s cubic-bezier(.34,1.15,.64,1);
   }
-  .phone-notch{
-    width:70px;height:6px;background:#1a1a26;
-    border-radius:10px;margin:0 auto 8px;
+  #s6.active .phone2{opacity:1;transform:translateY(0) scale(1)}
+  .ph-notch{width:54px;height:5px;background:#1a1a26;border-radius:10px;margin:0 auto 6px}
+  .ph-screen{flex:1;background:#09090f;border-radius:26px;overflow:hidden;position:relative;display:flex;flex-direction:column}
+  .ph-hdr{background:#0d0d18;padding:4px 8px;display:flex;align-items:center;border-bottom:1px solid rgba(255,255,255,.05)}
+  .ph-logo{font-family:'Bebas Neue',sans-serif;font-size:.65rem;letter-spacing:2px;color:#e8ff47}
+  .ph-badge{margin-left:auto;background:#1a1a26;border-radius:10px;padding:2px 7px;font-size:.45rem;color:#f0f0f8}
+  .ph-nav{background:#0d0d18;padding:4px 8px;display:flex;justify-content:space-around;border-top:1px solid rgba(255,255,255,.05)}
+  .ph-ni{font-size:.55rem;text-align:center;color:#6b6b82;line-height:1.3}
+  .ph-ni.on{color:#e8ff47}
+
+  /* Screen carousel */
+  .sc-carousel{flex:1;position:relative;overflow:hidden}
+  .app-sc{position:absolute;inset:0;transform:translateX(110%);opacity:0;transition:transform .55s cubic-bezier(.4,0,.2,1),opacity .4s ease}
+  .app-sc.cur{transform:translateX(0);opacity:1}
+  .app-sc.gone{transform:translateX(-110%);opacity:0}
+
+  /* ── Screen 0: Karte ── */
+  .sc0{background:#111118;position:relative;overflow:hidden}
+  .sc0-road{position:absolute;background:rgba(255,255,255,.06)}
+  .sc0-terr{position:absolute;border-radius:4px;border:1px solid}
+  .sc0-gps{position:absolute;border-top:2px solid #e8ff47;border-right:2px solid #e8ff47;border-radius:0 5px 0 0;filter:drop-shadow(0 0 3px #e8ff47)}
+  .sc0-run{position:absolute;font-size:.75rem;animation:bR .9s ease infinite}
+  @keyframes bR{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+  .sc0-dock{position:absolute;bottom:0;left:0;right:0;background:#0d0d18;border-top:1px solid rgba(255,255,255,.06);padding:5px 7px}
+  .sc0-lg{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:3px}
+  .sc0-lc{background:#1a1a26;border-radius:5px;padding:3px 5px;text-align:center}
+  .sc0-lv{font-family:'Bebas Neue',sans-serif;font-size:.95rem;color:#e8ff47;line-height:1}
+  .sc0-ll{font-size:.42rem;text-transform:uppercase;color:#6b6b82}
+  .sc0-row{display:flex;gap:3px;margin-bottom:3px}
+  .sc0-pill{flex:1;background:#1a1a26;border-radius:20px;padding:3px 6px;display:flex;align-items:center;justify-content:center;gap:3px;font-size:.5rem;color:#f0f0f8}
+  .sc0-pill b{font-family:'Bebas Neue',sans-serif;font-size:.8rem;color:#e8ff47}
+  .sc0-stop{background:#e8ff47;color:#09090f;border:none;border-radius:5px;width:100%;font-family:'Bebas Neue',sans-serif;font-size:.6rem;padding:4px;text-align:center}
+
+  /* ── Screen 1: Aktivität ── */
+  .sc1{background:#09090f;padding:7px;overflow:hidden}
+  .sc1-hero{text-align:center;margin-bottom:6px}
+  .sc1-hv{font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#e8ff47;line-height:1}
+  .sc1-hl{font-size:.42rem;text-transform:uppercase;color:#6b6b82}
+  .sc1-goal{background:#1a1a26;border-radius:7px;padding:5px 7px;margin-bottom:5px}
+  .sc1-grow{display:flex;justify-content:space-between;font-size:.42rem}
+  .sc1-gl{color:#6b6b82}.sc1-gv{color:#e8ff47;font-family:'Bebas Neue';font-size:.55rem}
+  .sc1-gbar{height:3px;background:rgba(255,255,255,.06);border-radius:3px;margin-top:3px;overflow:hidden}
+  .sc1-gfill{height:100%;background:#e8ff47;border-radius:3px;width:47%}
+  .sc1-days{display:flex;justify-content:space-between;margin-top:4px}
+  .sc1-day{flex:1;text-align:center}
+  .sc1-db{height:18px;background:rgba(255,255,255,.05);border-radius:2px;margin:0 1px;display:flex;align-items:flex-end;overflow:hidden}
+  .sc1-df{width:100%;background:#e8ff47;opacity:.6;border-radius:2px}
+  .sc1-dl{font-size:.38rem;color:#6b6b82;margin-top:2px}
+  .sc1-s2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;margin-bottom:5px}
+  .sc1-ms{background:#1a1a26;border-radius:5px;padding:4px;text-align:center}
+  .sc1-mv{font-family:'Bebas Neue',sans-serif;font-size:.75rem;color:#e8ff47}
+  .sc1-ml{font-size:.38rem;text-transform:uppercase;color:#6b6b82}
+  .sc1-card{background:#1a1a26;border-radius:7px;padding:6px 7px;display:flex;gap:6px;align-items:center}
+  .sc1-thumb{width:30px;height:30px;background:#111118;border-radius:5px;flex-shrink:0;position:relative;overflow:hidden}
+  .sc1-route{position:absolute;border-top:1.5px solid #e8ff47;border-right:1.5px solid #e8ff47;border-radius:0 4px 0 0;width:60%;height:50%;top:25%;left:10%}
+  .sc1-ast{display:flex;gap:8px;flex:1}
+  .sc1-as{text-align:center}
+  .sc1-av{font-family:'Bebas Neue',sans-serif;font-size:.75rem;color:#e8ff47}
+  .sc1-al{font-size:.38rem;text-transform:uppercase;color:#6b6b82}
+  .sc1-badge{font-size:.48rem;padding:2px 6px;border-radius:8px;background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3);margin-top:2px}
+
+  /* ── Screen 2: Community ── */
+  .sc2{background:#09090f;padding:7px;overflow:hidden}
+  .sc2-hd{font-family:'Bebas Neue',sans-serif;font-size:.75rem;letter-spacing:2px;color:#e8ff47;margin-bottom:5px;display:flex;align-items:center;gap:4px}
+  .sc2-row{display:flex;align-items:center;gap:4px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:.52rem}
+  .sc2-rank{font-family:'Bebas Neue',sans-serif;font-size:.7rem;width:11px;color:var(--rc)}
+  .sc2-score{margin-left:auto;color:#e8ff47;font-family:'Bebas Neue',sans-serif;font-size:.65rem}
+  .sc2-sub{font-size:.4rem;color:#6b6b82}
+  .sc2-hd2{font-family:'Bebas Neue',sans-serif;font-size:.75rem;letter-spacing:2px;color:#e8ff47;margin:7px 0 4px;display:flex;align-items:center;gap:4px}
+  .sc2-terr{display:flex;align-items:center;gap:4px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:.5rem}
+  .sc2-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+  .sc2-fly{margin-left:auto;background:#e8ff47;color:#09090f;border:none;border-radius:4px;padding:2px 5px;font-size:.42rem}
+
+  /* ── Screen 3: Profil ── */
+  .sc3{background:#09090f;padding:7px;overflow:hidden}
+  .sc3-banner{border-radius:8px;padding:8px;margin-bottom:5px;text-align:center;background:linear-gradient(135deg,rgba(232,255,71,.15),rgba(232,255,71,.05));border:1px solid rgba(232,255,71,.25)}
+  .sc3-av{font-size:1.4rem}
+  .sc3-nm{font-family:'Bebas Neue',sans-serif;font-size:.85rem;letter-spacing:1px}
+  .sc3-since{font-size:.4rem;color:#6b6b82;text-transform:uppercase;letter-spacing:1px}
+  .sc3-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;margin-bottom:5px}
+  .sc3-s{background:#1a1a26;border-radius:5px;padding:4px 3px;text-align:center}
+  .sc3-sv{font-family:'Bebas Neue',sans-serif;font-size:.7rem;color:#e8ff47}
+  .sc3-sl{font-size:.38rem;text-transform:uppercase;color:#6b6b82}
+  .sc3-prt{font-family:'Bebas Neue',sans-serif;font-size:.65rem;letter-spacing:2px;color:#fff;margin-bottom:4px}
+  .sc3-pr{display:flex;align-items:center;gap:4px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:.5rem}
+  .sc3-prv{margin-left:auto;color:#e8ff47;font-family:'Bebas Neue',sans-serif;font-size:.62rem}
+  .sc3-achs{display:flex;gap:3px;flex-wrap:wrap;margin-top:5px}
+  .sc3-a{background:rgba(232,255,71,.1);border:1px solid rgba(232,255,71,.25);border-radius:5px;padding:3px 6px;font-size:.5rem;color:#e8ff47}
+
+  /* Screen dots + label */
+  .s6-dots{display:flex;gap:7px;margin-top:12px}
+  .s6-sdot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.18);transition:all .3s}
+  .s6-sdot.on{background:#e8ff47;transform:scale(1.4)}
+  .s6-slbl{
+    font-family:'Bebas Neue',sans-serif;font-size:clamp(.85rem,2.5vw,1.1rem);
+    letter-spacing:3px;color:rgba(255,255,255,.8);margin-top:8px;
+    opacity:0;transform:translateY(5px);transition:all .3s ease;
   }
+  .s6-slbl.on{opacity:1;transform:translateY(0)}
+
   .phone-screen{flex:1;background:#09090f;border-radius:26px;overflow:hidden;position:relative}
   .ps-header{
     background:#09090f;padding:6px 10px;display:flex;align-items:center;gap:6px;
@@ -540,50 +658,239 @@
     </div>
   </div>
 
-  <!-- SCENE 6 – PHONE MOCKUP -->
+  <!-- SCENE 6 – APP SHOWCASE -->
   <div class="scene" id="s6">
-    <div class="phone-wrap">
-      <div class="phone">
-        <div class="phone-notch"></div>
-        <div class="phone-screen">
-          <div class="ps-header">
-            <div class="ps-logo">RUN&CONQUER</div>
-            <div class="ps-badge">🏃 Max</div>
-          </div>
-          <div class="ps-map" style="flex:1">
-            <!-- Fake road lines -->
-            <div class="map-road-line" style="top:30%;left:0;right:0;height:1px"></div>
-            <div class="map-road-line" style="top:60%;left:0;right:0;height:1px"></div>
-            <div class="map-road-line" style="left:25%;top:0;bottom:0;width:1px"></div>
-            <div class="map-road-line" style="left:65%;top:0;bottom:0;width:1px"></div>
-            <!-- Territories -->
-            <div class="ps-terr" style="top:10%;left:5%;width:22%;height:20%;background:rgba(255,77,109,.15);border-color:rgba(255,77,109,.4)"></div>
-            <div class="ps-terr" style="top:10%;left:35%;width:28%;height:18%;background:rgba(232,255,71,.15);border-color:rgba(232,255,71,.4)"></div>
-            <div class="ps-terr" style="top:40%;left:68%;width:25%;height:22%;background:rgba(155,93,229,.15);border-color:rgba(155,93,229,.4)"></div>
-            <!-- GPS path -->
-            <div class="gps-path"></div>
-            <!-- Runner -->
-            <div class="runner-pin">🏃</div>
-          </div>
-          <div class="ps-controls">
-            <div class="ps-stats">
-              <div class="ps-stat"><div class="ps-sv">2.4</div><div class="ps-sl">km</div></div>
-              <div class="ps-stat"><div class="ps-sv">12:35</div><div class="ps-sl">Zeit</div></div>
-              <div class="ps-stat"><div class="ps-sv">5:14</div><div class="ps-sl">Pace</div></div>
-            </div>
-            <div class="ps-btn">■ &nbsp;STOP</div>
-          </div>
-          <div class="ps-nav">
-            <div class="ps-ni active">🗺️</div>
-            <div class="ps-ni">📊</div>
-            <div class="ps-ni">🌐</div>
-            <div class="ps-ni">👤</div>
-          </div>
+    <div class="s6-hd">So sieht's aus</div>
+
+    <div class="s6-layout">
+
+      <!-- LEFT CALLOUTS -->
+      <div class="s6-side s6-left">
+        <!-- Screen 0 callouts -->
+        <div class="s6-cbox" data-screen="0">
+          <div class="s6-ci">🛰️</div>
+          <div class="s6-ct">Live GPS</div>
+          <div class="s6-cs">Echtzeit-Tracking</div>
+        </div>
+        <div class="s6-cbox" data-screen="0">
+          <div class="s6-ci">⚔️</div>
+          <div class="s6-ct">Gebiete</div>
+          <div class="s6-cs">Lauf & Erobere</div>
+        </div>
+        <!-- Screen 1 callouts -->
+        <div class="s6-cbox" data-screen="1" style="display:none">
+          <div class="s6-ci">📊</div>
+          <div class="s6-ct">Wöchentlich</div>
+          <div class="s6-cs">Ziel im Blick</div>
+        </div>
+        <div class="s6-cbox" data-screen="1" style="display:none">
+          <div class="s6-ci">⚡</div>
+          <div class="s6-ct">Beste Pace</div>
+          <div class="s6-cs">5:12 min/km</div>
+        </div>
+        <!-- Screen 2 callouts -->
+        <div class="s6-cbox" data-screen="2" style="display:none">
+          <div class="s6-ci">🌍</div>
+          <div class="s6-ct">Community</div>
+          <div class="s6-cs">Lokale Rivalen</div>
+        </div>
+        <div class="s6-cbox" data-screen="2" style="display:none">
+          <div class="s6-ci">📍</div>
+          <div class="s6-ct">Gebiete</div>
+          <div class="s6-cs">Direkt anfliegen</div>
+        </div>
+        <!-- Screen 3 callouts -->
+        <div class="s6-cbox" data-screen="3" style="display:none">
+          <div class="s6-ci">🏆</div>
+          <div class="s6-ct">Erfolge</div>
+          <div class="s6-cs">Sammle Trophäen</div>
+        </div>
+        <div class="s6-cbox" data-screen="3" style="display:none">
+          <div class="s6-ci">🔥</div>
+          <div class="s6-ct">12 Tage Streak</div>
+          <div class="s6-cs">Bleib dran!</div>
         </div>
       </div>
-    </div>
-    <div class="s6-tagline">Immer dabei. Immer bereit.</div>
-    <div class="s6-sub">GPS · BLUETOOTH HR · OFFLINE-FÄHIG</div>
+
+      <!-- PHONE -->
+      <div class="s6-phone-col">
+        <div class="phone2">
+          <div class="ph-notch"></div>
+          <div class="ph-screen">
+            <div class="ph-hdr">
+              <div class="ph-logo">RUN&amp;CONQUER</div>
+              <div class="ph-badge">🏃 Max · Lv.7</div>
+            </div>
+            <div class="sc-carousel">
+
+              <!-- Screen 0: Karte -->
+              <div class="app-sc sc0 cur" id="psc0">
+                <!-- Roads -->
+                <div class="sc0-road" style="top:28%;left:0;right:0;height:1px"></div>
+                <div class="sc0-road" style="top:56%;left:0;right:0;height:1px"></div>
+                <div class="sc0-road" style="top:80%;left:0;right:0;height:1px"></div>
+                <div class="sc0-road" style="left:22%;top:0;bottom:0;width:1px"></div>
+                <div class="sc0-road" style="left:60%;top:0;bottom:0;width:1px"></div>
+                <!-- Territories -->
+                <div class="sc0-terr" style="top:6%;left:4%;width:20%;height:22%;background:rgba(255,77,109,.13);border-color:rgba(255,77,109,.5)"></div>
+                <div class="sc0-terr" style="top:5%;left:30%;width:26%;height:20%;background:rgba(232,255,71,.13);border-color:rgba(232,255,71,.5)"></div>
+                <div class="sc0-terr" style="top:35%;left:62%;width:24%;height:22%;background:rgba(155,93,229,.13);border-color:rgba(155,93,229,.5)"></div>
+                <div class="sc0-terr" style="top:60%;left:5%;width:18%;height:18%;background:rgba(0,212,255,.1);border-color:rgba(0,212,255,.4)"></div>
+                <!-- GPS trail -->
+                <div class="sc0-gps" style="bottom:28%;left:18%;width:42%;height:30%"></div>
+                <!-- Runner -->
+                <div class="sc0-run" style="bottom:55%;left:57%">🏃</div>
+                <!-- Live dock -->
+                <div class="sc0-dock">
+                  <div class="sc0-lg">
+                    <div class="sc0-lc"><div class="sc0-lv">2.4</div><div class="sc0-ll">km</div></div>
+                    <div class="sc0-lc"><div class="sc0-lv">12:35</div><div class="sc0-ll">Zeit</div></div>
+                  </div>
+                  <div class="sc0-row">
+                    <div class="sc0-pill"><b>5:14</b> /km</div>
+                    <div class="sc0-pill">❤️ <b>162</b></div>
+                  </div>
+                  <div class="sc0-stop">■ STOP</div>
+                </div>
+              </div>
+
+              <!-- Screen 1: Aktivität -->
+              <div class="app-sc sc1" id="psc1">
+                <div class="sc1-hero">
+                  <div class="sc1-hv">18.4</div>
+                  <div class="sc1-hl">km diese Woche</div>
+                </div>
+                <div class="sc1-goal">
+                  <div class="sc1-grow"><span class="sc1-gl">Wochenziel</span><span class="sc1-gv">18.4 / 40 km</span></div>
+                  <div class="sc1-gbar"><div class="sc1-gfill"></div></div>
+                  <div class="sc1-days">
+                    <div class="sc1-day"><div class="sc1-db"><div class="sc1-df" style="height:80%"></div></div><div class="sc1-dl">Mo</div></div>
+                    <div class="sc1-day"><div class="sc1-db"><div class="sc1-df" style="height:45%"></div></div><div class="sc1-dl">Di</div></div>
+                    <div class="sc1-day"><div class="sc1-db"><div class="sc1-df" style="height:65%"></div></div><div class="sc1-dl">Mi</div></div>
+                    <div class="sc1-day"><div class="sc1-db"><div class="sc1-df" style="height:0%"></div></div><div class="sc1-dl">Do</div></div>
+                    <div class="sc1-day"><div class="sc1-db"><div class="sc1-df" style="height:55%"></div></div><div class="sc1-dl">Fr</div></div>
+                    <div class="sc1-day"><div class="sc1-db"><div class="sc1-df" style="height:30%"></div></div><div class="sc1-dl">Sa</div></div>
+                    <div class="sc1-day"><div class="sc1-db"><div class="sc1-df" style="height:0%"></div></div><div class="sc1-dl">So</div></div>
+                  </div>
+                </div>
+                <div class="sc1-s2">
+                  <div class="sc1-ms"><div class="sc1-mv">142</div><div class="sc1-ml">km total</div></div>
+                  <div class="sc1-ms"><div class="sc1-mv">23</div><div class="sc1-ml">Gebiete</div></div>
+                  <div class="sc1-ms"><div class="sc1-mv">12🔥</div><div class="sc1-ml">Streak</div></div>
+                </div>
+                <div class="sc1-card">
+                  <div class="sc1-thumb"><div class="sc1-route"></div></div>
+                  <div class="sc1-ast">
+                    <div class="sc1-as"><div class="sc1-av">8.2</div><div class="sc1-al">km</div></div>
+                    <div class="sc1-as"><div class="sc1-av">42:17</div><div class="sc1-al">Zeit</div></div>
+                    <div class="sc1-as"><div class="sc1-av">5:09</div><div class="sc1-al">Pace</div></div>
+                  </div>
+                  <div class="sc1-badge">+3 Gebiete</div>
+                </div>
+              </div>
+
+              <!-- Screen 2: Community -->
+              <div class="app-sc sc2" id="psc2">
+                <div class="sc2-hd">🏆 RANGLISTE</div>
+                <div class="sc2-row"><div class="sc2-rank" style="--rc:#e8ff47">1</div><span>⚡</span><div><div>SpeedKing</div><div class="sc2-sub">48k m² · 7🔥</div></div><div class="sc2-score">6.840</div></div>
+                <div class="sc2-row"><div class="sc2-rank" style="--rc:#c0c0c0">2</div><span>🏃</span><div><div>MountainGoat</div><div class="sc2-sub">31k m² · 5🔥</div></div><div class="sc2-score">4.290</div></div>
+                <div class="sc2-row" style="background:rgba(232,255,71,.05);border-radius:5px"><div class="sc2-rank" style="--rc:#e8ff47">5</div><span>🏃</span><div><div style="color:#e8ff47">Du</div><div class="sc2-sub">Tritt an!</div></div><div class="sc2-score">···</div></div>
+                <div class="sc2-hd2">📍 NAHE GEBIETE</div>
+                <div class="sc2-terr"><div class="sc2-dot" style="background:#ff4d6d"></div><div>Marktplatz<br><span style="font-size:.38rem;color:#6b6b82">380m · feindlich</span></div><button class="sc2-fly">→ FLY</button></div>
+                <div class="sc2-terr"><div class="sc2-dot" style="background:#6b6b82"></div><div>Bahnhof Nord<br><span style="font-size:.38rem;color:#6b6b82">610m · neutral</span></div><button class="sc2-fly">→ FLY</button></div>
+                <div class="sc2-terr"><div class="sc2-dot" style="background:#9b5de5"></div><div>Stadtpark<br><span style="font-size:.38rem;color:#6b6b82">850m · rival</span></div><button class="sc2-fly">→ FLY</button></div>
+              </div>
+
+              <!-- Screen 3: Profil -->
+              <div class="app-sc sc3" id="psc3">
+                <div class="sc3-banner">
+                  <div class="sc3-av">🏃</div>
+                  <div class="sc3-nm">MAX_RUNNER</div>
+                  <div class="sc3-since">Läufer seit Jan 2025 · Level 7</div>
+                </div>
+                <div class="sc3-stats">
+                  <div class="sc3-s"><div class="sc3-sv">142</div><div class="sc3-sl">km</div></div>
+                  <div class="sc3-s"><div class="sc3-sv">23</div><div class="sc3-sl">Gebiete</div></div>
+                  <div class="sc3-s"><div class="sc3-sv">4.280</div><div class="sc3-sl">Punkte</div></div>
+                  <div class="sc3-s"><div class="sc3-sv">12🔥</div><div class="sc3-sl">Streak</div></div>
+                </div>
+                <div class="sc3-prt">BESTZEITEN</div>
+                <div class="sc3-pr"><span>🏃 5 km</span><div class="sc3-prv">23:41</div></div>
+                <div class="sc3-pr"><span>🏅 10 km</span><div class="sc3-prv">49:02</div></div>
+                <div class="sc3-achs">
+                  <div class="sc3-a">⚡ Schnellster</div>
+                  <div class="sc3-a">🗺️ Explorer</div>
+                  <div class="sc3-a">🔥 Unstoppable</div>
+                </div>
+              </div>
+
+            </div><!-- /sc-carousel -->
+            <div class="ph-nav">
+              <div class="ph-ni on" id="pnav0">🗺️<br><span style="font-size:.38rem">Karte</span></div>
+              <div class="ph-ni" id="pnav1">📊<br><span style="font-size:.38rem">Aktiv.</span></div>
+              <div class="ph-ni" id="pnav2">🌐<br><span style="font-size:.38rem">Community</span></div>
+              <div class="ph-ni" id="pnav3">👤<br><span style="font-size:.38rem">Profil</span></div>
+            </div>
+          </div><!-- /ph-screen -->
+        </div><!-- /phone2 -->
+        <div class="s6-dots">
+          <div class="s6-sdot on" id="sd0"></div>
+          <div class="s6-sdot" id="sd1"></div>
+          <div class="s6-sdot" id="sd2"></div>
+          <div class="s6-sdot" id="sd3"></div>
+        </div>
+        <div class="s6-slbl on" id="s6-slbl">KARTE</div>
+      </div><!-- /s6-phone-col -->
+
+      <!-- RIGHT CALLOUTS -->
+      <div class="s6-side s6-right">
+        <!-- Screen 0 callouts -->
+        <div class="s6-cbox" data-screen="0">
+          <div class="s6-ci">❤️</div>
+          <div class="s6-ct">Herzrate</div>
+          <div class="s6-cs">Bluetooth HR-Monitor</div>
+        </div>
+        <div class="s6-cbox" data-screen="0">
+          <div class="s6-ci">🏃</div>
+          <div class="s6-ct">Live Pace</div>
+          <div class="s6-cs">5:14 min/km</div>
+        </div>
+        <!-- Screen 1 callouts -->
+        <div class="s6-cbox" data-screen="1" style="display:none">
+          <div class="s6-ci">🏅</div>
+          <div class="s6-ct">Aktivitäten</div>
+          <div class="s6-cs">Alle Läufe gespeichert</div>
+        </div>
+        <div class="s6-cbox" data-screen="1" style="display:none">
+          <div class="s6-ci">📈</div>
+          <div class="s6-ct">Fortschritt</div>
+          <div class="s6-cs">Täglich sichtbar</div>
+        </div>
+        <!-- Screen 2 callouts -->
+        <div class="s6-cbox" data-screen="2" style="display:none">
+          <div class="s6-ci">⚔️</div>
+          <div class="s6-ct">Rangliste</div>
+          <div class="s6-cs">Wer führt die Stadt?</div>
+        </div>
+        <div class="s6-cbox" data-screen="2" style="display:none">
+          <div class="s6-ci">🔔</div>
+          <div class="s6-ct">Live-News</div>
+          <div class="s6-cs">Follower-Erfolge</div>
+        </div>
+        <!-- Screen 3 callouts -->
+        <div class="s6-cbox" data-screen="3" style="display:none">
+          <div class="s6-ci">🎯</div>
+          <div class="s6-ct">Bestzeiten</div>
+          <div class="s6-cs">5 km · 10 km · HM</div>
+        </div>
+        <div class="s6-cbox" data-screen="3" style="display:none">
+          <div class="s6-ci">🛡️</div>
+          <div class="s6-ct">47 Verteidigt</div>
+          <div class="s6-cs">Halte dein Revier</div>
+        </div>
+      </div>
+
+    </div><!-- /s6-layout -->
   </div>
 
   <!-- SCENE 7 – COMMUNITY -->
@@ -669,7 +976,7 @@ const SCENES = [
   { id:'s3', duration:5000 },
   { id:'s4', duration:5500 },
   { id:'s5', duration:5000 },
-  { id:'s6', duration:5500 },
+  { id:'s6', duration:9500 },
   { id:'s7', duration:5000 },
   { id:'s8', duration:0    }   // stays until replay
 ];
@@ -739,6 +1046,41 @@ function onSceneEnter(index) {
         });
       });
     });
+  }
+
+  if (index === 5) {
+    // App showcase – cycle through 4 screens using tick() so clearAll() works
+    const S6_SCREENS = ['KARTE','AKTIVITÄT','COMMUNITY','PROFIL'];
+    const S6_STEP = 2200;
+
+    function s6ShowScreen(n) {
+      for (let i = 0; i < 4; i++) {
+        const sc  = document.getElementById('psc'  + i);
+        const dot = document.getElementById('sd'   + i);
+        const nav = document.getElementById('pnav' + i);
+        if (!sc) continue;
+        const base = sc.className.replace(/\s*(cur|gone)\s*/g,' ').trim();
+        sc.className = base + (i === n ? ' cur' : i < n ? ' gone' : '');
+        if (dot) dot.classList.toggle('on', i === n);
+        if (nav) nav.classList.toggle('on', i === n);
+      }
+      const lbl = document.getElementById('s6-slbl');
+      if (lbl) {
+        lbl.classList.remove('on');
+        tick(180, () => { lbl.textContent = S6_SCREENS[n]; lbl.classList.add('on'); });
+      }
+      document.querySelectorAll('.s6-cbox').forEach(cb => {
+        const ds = parseInt(cb.dataset.screen, 10);
+        cb.style.display = (ds === n) ? '' : 'none';
+        if (ds === n) { cb.classList.remove('on'); tick(250, () => cb.classList.add('on')); }
+      });
+    }
+
+    // Show each screen at staggered times (clearAll cancels all if scene skipped)
+    s6ShowScreen(0);
+    tick(S6_STEP * 1, () => s6ShowScreen(1));
+    tick(S6_STEP * 2, () => s6ShowScreen(2));
+    tick(S6_STEP * 3, () => s6ShowScreen(3));
   }
 
   if (index === 3) {
@@ -818,6 +1160,22 @@ function replay() {
   document.querySelectorAll('.cq-cell').forEach(c => {
     const classes = c.className.replace('cq-flash owned','rival').replace('cq-flash','rival');
     c.className = classes;
+  });
+  // reset s6 carousel to screen 0
+  for (let i = 0; i < 4; i++) {
+    const sc = document.getElementById('psc' + i);
+    if (sc) sc.className = sc.className.replace(/\s*(cur|gone)\s*/g,' ').trim() + (i === 0 ? ' cur' : '');
+    const dot = document.getElementById('sd' + i);
+    if (dot) dot.classList.toggle('on', i === 0);
+    const nav = document.getElementById('pnav' + i);
+    if (nav) nav.classList.toggle('on', i === 0);
+  }
+  const lbl = document.getElementById('s6-slbl');
+  if (lbl) { lbl.textContent = 'KARTE'; lbl.classList.add('on'); }
+  document.querySelectorAll('.s6-cbox').forEach(cb => {
+    const ds = parseInt(cb.dataset.screen, 10);
+    cb.style.display = ds === 0 ? '' : 'none';
+    cb.classList.remove('on');
   });
   showScene(0);
 }
