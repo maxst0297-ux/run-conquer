@@ -36,13 +36,19 @@ body{
 }
 
 /* ═══ SPLASH ═══ */
-#splash{position:fixed;inset:0;background:#09090f;display:flex;align-items:center;justify-content:center;z-index:10000;transition:opacity .5s}
-.splash-logo{font-family:'Bebas Neue',sans-serif;font-size:clamp(2.8rem,10vw,5rem);letter-spacing:6px;color:#e8ff47;text-shadow:0 0 40px rgba(232,255,71,.5);animation:sp 1.2s ease infinite alternate}
-@keyframes sp{from{opacity:.6;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
+#splash{position:fixed;inset:0;background:#06060e;display:flex;align-items:flex-end;justify-content:center;z-index:10000;transition:opacity .7s;overflow:hidden;padding-bottom:12vh}
+#splashCanvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#splashTitle{position:relative;z-index:2;text-align:center;opacity:0;animation:splashIn .9s cubic-bezier(.22,1,.36,1) 2.2s forwards}
+.splash-logo{font-family:'Bebas Neue',sans-serif;font-size:clamp(2.6rem,9vw,4.8rem);letter-spacing:6px;color:#e8ff47;text-shadow:0 0 30px rgba(232,255,71,.7),0 0 80px rgba(232,255,71,.25),0 2px 0 rgba(0,0,0,.5)}
+.splash-sub{font-size:.7rem;text-transform:uppercase;letter-spacing:4px;color:rgba(232,255,71,.55);margin-top:6px}
+.splash-shoe{font-size:2.4rem;display:block;margin-bottom:6px;animation:shoeIn .6s cubic-bezier(.34,1.56,.64,1) 2.1s both}
+@keyframes splashIn{to{opacity:1;transform:translateY(0)}}
+@keyframes shoeIn{from{opacity:0;transform:scale(.4) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}
 
 /* ═══ ONBOARDING ═══ */
 #onboarding{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:2000;padding:20px}
-.ob-card{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:36px 28px;max-width:400px;width:100%;text-align:center}
+.ob-card{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:28px 28px 36px;max-width:400px;width:100%;text-align:center}
+.ob-illus{display:flex;justify-content:center;margin-bottom:12px;background:rgba(232,255,71,.04);border-radius:16px;padding:14px}
 .ob-title{font-family:'Bebas Neue',sans-serif;font-size:3.2rem;letter-spacing:2px;color:var(--primary);line-height:1}
 .ob-sub{color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:3px;margin:4px 0 28px}
 .field{margin-bottom:20px;text-align:left}
@@ -112,9 +118,10 @@ body{
 .btn:disabled{opacity:.35;pointer-events:none}
 
 /* ═══ DASHBOARD ═══ */
-.hero-km{text-align:center;margin-bottom:24px}
+.hero-km{text-align:center;margin-bottom:16px;position:relative}
 .hero-km .sv{font-size:4.8rem;font-weight:800;line-height:1}
 .hero-km .sl{font-size:.7rem;letter-spacing:3px;text-transform:uppercase;color:var(--muted)}
+.dash-hero-bg{width:100%;height:56px;margin-bottom:8px;border-radius:14px;overflow:hidden;border:1px solid var(--border)}
 
 .goal-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px}
 .goal-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
@@ -161,6 +168,9 @@ body{
 .empty-state p{font-size:.85rem}
 
 /* ═══ COMMUNITY ═══ */
+.comm-banner{position:relative;border-radius:var(--radius);overflow:hidden;margin-bottom:16px;height:80px}
+.comm-banner svg{width:100%;height:100%;position:absolute;inset:0}
+.comm-banner-title{position:relative;z-index:1;font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:3px;color:#e8ff47;text-shadow:0 0 20px rgba(232,255,71,.5);display:flex;align-items:center;gap:8px;padding:0 16px;height:100%}
 .comm-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px}
 .comm-card h3{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:2px;color:var(--primary);margin-bottom:14px;display:flex;align-items:center;gap:8px}
 .list-row{padding:10px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;animation:fadeRow .3s ease}
@@ -174,7 +184,9 @@ body{
 .terr-fly{background:var(--primary);color:var(--bg);border:none;border-radius:20px;padding:4px 12px;font-size:.65rem;font-family:'Bebas Neue',sans-serif;letter-spacing:1px;cursor:pointer;flex-shrink:0}
 
 /* ═══ PROFILE ═══ */
-.pv-banner{border-radius:var(--radius);padding:28px 20px 20px;margin-bottom:16px;text-align:center;position:relative;border:1px solid var(--border);transition:background .3s}
+.pv-banner{border-radius:var(--radius);padding:28px 20px 20px;margin-bottom:16px;text-align:center;position:relative;border:1px solid var(--border);transition:background .3s;background:linear-gradient(160deg,#0d1a40 0%,#0e1028 45%,#100d20 100%);overflow:hidden}
+.pv-banner::before{content:'';position:absolute;inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='100' viewBox='0 0 200 100'%3E%3Cpath d='M0 60 L30 55 L50 62 L75 50 L100 57 L130 45 L160 55 L200 48' stroke='rgba(232,255,71,0.15)' stroke-width='2' fill='none' stroke-dasharray='6 4'/%3E%3Crect x='10' y='30' width='15' height='30' fill='rgba(232,255,71,0.07)' rx='1'/%3E%3Crect x='14' y='22' width='8' height='38' fill='rgba(232,255,71,0.09)' rx='1'/%3E%3Crect x='40' y='25' width='12' height='35' fill='rgba(232,255,71,0.07)' rx='1'/%3E%3Crect x='70' y='18' width='16' height='42' fill='rgba(232,255,71,0.10)' rx='1'/%3E%3Crect x='105' y='28' width='10' height='32' fill='rgba(232,255,71,0.07)' rx='1'/%3E%3Crect x='140' y='20' width='14' height='40' fill='rgba(232,255,71,0.09)' rx='1'/%3E%3Crect x='170' y='30' width='12' height='30' fill='rgba(232,255,71,0.07)' rx='1'/%3E%3Cellipse cx='58' cy='66' rx='8' ry='9' fill='rgba(16,185,129,0.15)'/%3E%3Cellipse cx='125' cy='65' rx='7' ry='8' fill='rgba(16,185,129,0.12)'/%3E%3Cellipse cx='185' cy='64' rx='8' ry='9' fill='rgba(16,185,129,0.13)'/%3E%3C/svg%3E");background-size:cover;background-position:center;opacity:.7;pointer-events:none}
+body.light .pv-banner{background:linear-gradient(160deg,#3a1a10 0%,#2a1508 45%,#1e0f04 100%)}
 .pv-avatar{font-size:3.5rem;line-height:1;margin-bottom:6px}
 .pv-name{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:2px}
 .pv-since{font-size:.7rem;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:2px}
@@ -249,11 +261,44 @@ body{
 <body>
 
 <!-- SPLASH -->
-<div id="splash"><div class="splash-logo">RUN &amp; CONQUER</div></div>
+<div id="splash">
+  <canvas id="splashCanvas"></canvas>
+  <div id="splashTitle">
+    <span class="splash-shoe">👟</span>
+    <div class="splash-logo">RUN &amp; CONQUER</div>
+    <div class="splash-sub">Lauf · Erobere · Verteidige</div>
+  </div>
+</div>
 
 <!-- ONBOARDING -->
 <div id="onboarding" style="display:none">
   <div class="ob-card">
+    <div class="ob-illus">
+      <svg width="120" height="60" viewBox="0 0 120 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- buildings silhouette -->
+        <rect x="0" y="30" width="16" height="30" fill="rgba(232,255,71,.18)" rx="1"/>
+        <rect x="3" y="20" width="10" height="40" fill="rgba(232,255,71,.22)" rx="1"/>
+        <rect x="17" y="25" width="14" height="35" fill="rgba(232,255,71,.16)" rx="1"/>
+        <rect x="33" y="15" width="12" height="45" fill="rgba(232,255,71,.24)" rx="1"/>
+        <rect x="47" y="28" width="10" height="32" fill="rgba(232,255,71,.15)" rx="1"/>
+        <rect x="60" y="10" width="18" height="50" fill="rgba(232,255,71,.20)" rx="1"/>
+        <rect x="80" y="22" width="14" height="38" fill="rgba(232,255,71,.18)" rx="1"/>
+        <rect x="96" y="18" width="12" height="42" fill="rgba(232,255,71,.22)" rx="1"/>
+        <rect x="110" y="30" width="10" height="30" fill="rgba(232,255,71,.16)" rx="1"/>
+        <!-- trees -->
+        <ellipse cx="30" cy="52" rx="7" ry="8" fill="rgba(16,185,129,.3)"/>
+        <ellipse cx="56" cy="54" rx="6" ry="7" fill="rgba(16,185,129,.25)"/>
+        <ellipse cx="105" cy="52" rx="7" ry="8" fill="rgba(16,185,129,.28)"/>
+        <!-- animated route path -->
+        <path d="M 0 48 Q 25 44 40 50 Q 55 56 70 46 Q 85 38 120 50" stroke="#e8ff47" stroke-width="2.5" stroke-dasharray="4 3" fill="none" opacity="0.85">
+          <animate attributeName="stroke-dashoffset" from="200" to="0" dur="1.8s" repeatCount="indefinite"/>
+        </path>
+        <!-- runner dot -->
+        <circle r="4" fill="#e8ff47" opacity="0.9">
+          <animateMotion path="M 0 48 Q 25 44 40 50 Q 55 56 70 46 Q 85 38 120 50" dur="1.8s" repeatCount="indefinite"/>
+        </circle>
+      </svg>
+    </div>
     <div class="ob-title">RUN &amp; CONQUER</div>
     <div class="ob-sub">Lauf · Erobere · Verteidige</div>
     <div class="field"><label>Dein Name</label><input type="text" id="nameInput" placeholder="z.B. SpeedRunner" maxlength="20"></div>
@@ -313,6 +358,48 @@ body{
 
     <!-- DASHBOARD -->
     <div id="dashView" class="view">
+      <div class="dash-hero-bg">
+        <svg viewBox="0 0 360 56" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block">
+          <rect width="360" height="56" fill="#07101e"/>
+          <!-- buildings -->
+          <rect x="0" y="20" width="20" height="36" fill="#121228" rx="1"/>
+          <rect x="4" y="12" width="12" height="44" fill="#151530" rx="1"/>
+          <rect x="22" y="18" width="18" height="38" fill="#111126" rx="1"/>
+          <rect x="42" y="8"  width="16" height="48" fill="#141432" rx="1"/>
+          <rect x="60" y="22" width="14" height="34" fill="#121228" rx="1"/>
+          <rect x="80" y="6"  width="22" height="50" fill="#151530" rx="1"/>
+          <rect x="105" y="16" width="18" height="40" fill="#111126" rx="1"/>
+          <rect x="126" y="10" width="20" height="46" fill="#141432" rx="1"/>
+          <rect x="150" y="20" width="16" height="36" fill="#121228" rx="1"/>
+          <rect x="170" y="4"  width="24" height="52" fill="#151530" rx="1"/>
+          <rect x="198" y="14" width="18" height="42" fill="#111126" rx="1"/>
+          <rect x="220" y="18" width="20" height="38" fill="#141432" rx="1"/>
+          <rect x="244" y="8"  width="16" height="48" fill="#121228" rx="1"/>
+          <rect x="263" y="14" width="22" height="42" fill="#151530" rx="1"/>
+          <rect x="288" y="20" width="18" height="36" fill="#111126" rx="1"/>
+          <rect x="310" y="10" width="16" height="46" fill="#141432" rx="1"/>
+          <rect x="330" y="16" width="20" height="40" fill="#121228" rx="1"/>
+          <!-- trees -->
+          <ellipse cx="75" cy="50" rx="7" ry="7" fill="rgba(14,60,24,.9)"/>
+          <ellipse cx="165" cy="51" rx="6" ry="6" fill="rgba(12,55,20,.85)"/>
+          <ellipse cx="260" cy="50" rx="7" ry="7" fill="rgba(14,60,24,.9)"/>
+          <!-- windows -->
+          <rect x="82" y="9"  width="5" height="7" fill="rgba(255,235,140,.3)" rx=".5"/>
+          <rect x="90" y="20" width="5" height="7" fill="rgba(255,235,140,.25)" rx=".5"/>
+          <rect x="130" y="13" width="5" height="7" fill="rgba(255,235,140,.3)" rx=".5"/>
+          <rect x="173" y="8"  width="5" height="7" fill="rgba(255,235,140,.35)" rx=".5"/>
+          <rect x="181" y="22" width="5" height="7" fill="rgba(255,235,140,.25)" rx=".5"/>
+          <!-- ground -->
+          <rect x="0" y="49" width="360" height="7" fill="#0b0b1a"/>
+          <!-- animated route -->
+          <path d="M 0 46 Q 50 42 90 47 Q 140 52 190 42 Q 240 34 290 44 Q 330 50 360 43" stroke="#e8ff47" stroke-width="2" stroke-dasharray="6 5" fill="none" opacity=".85">
+            <animate attributeName="stroke-dashoffset" from="250" to="0" dur="2.5s" repeatCount="indefinite"/>
+          </path>
+          <circle r="4" fill="#e8ff47" opacity=".9">
+            <animateMotion path="M 0 46 Q 50 42 90 47 Q 140 52 190 42 Q 240 34 290 44 Q 330 50 360 43" dur="2.5s" repeatCount="indefinite"/>
+          </circle>
+        </svg>
+      </div>
       <div class="hero-km"><div class="sv" id="heroKm">0.0</div><div class="sl">Gesamtkilometer</div></div>
       <div class="goal-card">
         <div class="goal-top">
@@ -341,6 +428,66 @@ body{
 
     <!-- COMMUNITY -->
     <div id="communityView" class="view">
+      <!-- city banner illustration -->
+      <div class="comm-banner">
+        <svg viewBox="0 0 360 90" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#06060e"/>
+              <stop offset="100%" stop-color="#0d1428"/>
+            </linearGradient>
+          </defs>
+          <rect width="360" height="90" fill="url(#skyGrad)"/>
+          <!-- stars -->
+          <circle cx="30" cy="10" r="1" fill="rgba(255,255,255,.6)"/>
+          <circle cx="70" cy="6" r=".7" fill="rgba(255,255,255,.5)"/>
+          <circle cx="130" cy="12" r="1.2" fill="rgba(255,255,255,.7)"/>
+          <circle cx="200" cy="8" r=".8" fill="rgba(255,255,255,.5)"/>
+          <circle cx="280" cy="5" r="1" fill="rgba(255,255,255,.6)"/>
+          <circle cx="320" cy="14" r=".7" fill="rgba(255,255,255,.4)"/>
+          <!-- moon -->
+          <circle cx="310" cy="16" r="9" fill="rgba(255,255,230,.85)"/>
+          <!-- far buildings -->
+          <rect x="0"   y="55" width="22" height="35" fill="rgba(20,20,40,.9)" rx="1"/>
+          <rect x="24"  y="42" width="18" height="48" fill="rgba(22,22,42,.9)" rx="1"/>
+          <rect x="44"  y="48" width="25" height="42" fill="rgba(18,18,38,.9)" rx="1"/>
+          <rect x="71"  y="35" width="20" height="55" fill="rgba(24,24,44,.9)" rx="1"/>
+          <rect x="93"  y="50" width="15" height="40" fill="rgba(20,20,40,.9)" rx="1"/>
+          <rect x="130" y="30" width="28" height="60" fill="rgba(22,22,42,.9)" rx="1"/>
+          <rect x="160" y="44" width="18" height="46" fill="rgba(18,18,38,.9)" rx="1"/>
+          <rect x="180" y="38" width="22" height="52" fill="rgba(20,20,40,.9)" rx="1"/>
+          <rect x="210" y="25" width="30" height="65" fill="rgba(24,24,44,.9)" rx="1"/>
+          <rect x="242" y="40" width="20" height="50" fill="rgba(22,22,42,.9)" rx="1"/>
+          <rect x="265" y="48" width="16" height="42" fill="rgba(18,18,38,.9)" rx="1"/>
+          <rect x="290" y="35" width="24" height="55" fill="rgba(20,20,40,.9)" rx="1"/>
+          <rect x="316" y="42" width="18" height="48" fill="rgba(22,22,42,.9)" rx="1"/>
+          <rect x="336" y="50" width="24" height="40" fill="rgba(18,18,38,.9)" rx="1"/>
+          <!-- windows (lit) -->
+          <rect x="26" y="46" width="6" height="8" fill="rgba(255,235,140,.35)" rx=".5"/>
+          <rect x="35" y="55" width="6" height="8" fill="rgba(255,235,140,.3)" rx=".5"/>
+          <rect x="73" y="38" width="6" height="8" fill="rgba(255,235,140,.4)" rx=".5"/>
+          <rect x="132" y="34" width="6" height="8" fill="rgba(255,235,140,.35)" rx=".5"/>
+          <rect x="142" y="46" width="6" height="8" fill="rgba(255,235,140,.3)" rx=".5"/>
+          <rect x="213" y="28" width="6" height="8" fill="rgba(255,235,140,.4)" rx=".5"/>
+          <rect x="222" y="42" width="6" height="8" fill="rgba(255,235,140,.3)" rx=".5"/>
+          <rect x="292" y="38" width="6" height="8" fill="rgba(255,235,140,.35)" rx=".5"/>
+          <!-- trees -->
+          <ellipse cx="118" cy="78" rx="9" ry="10" fill="rgba(14,60,28,.85)"/>
+          <ellipse cx="260" cy="79" rx="8" ry="9" fill="rgba(12,55,24,.8)"/>
+          <ellipse cx="355" cy="78" rx="7" ry="9" fill="rgba(14,58,26,.8)"/>
+          <!-- road -->
+          <rect x="0" y="80" width="360" height="10" fill="#0c0c1a"/>
+          <!-- animated route -->
+          <path d="M 0 76 Q 60 72 100 78 Q 150 84 200 72 Q 250 62 300 74 Q 330 80 360 72" stroke="#e8ff47" stroke-width="2" stroke-dasharray="6 5" fill="none" opacity=".8">
+            <animate attributeName="stroke-dashoffset" from="220" to="0" dur="2s" repeatCount="indefinite"/>
+          </path>
+          <!-- runner moving along route -->
+          <circle r="5" fill="#e8ff47" opacity=".9">
+            <animateMotion path="M 0 76 Q 60 72 100 78 Q 150 84 200 72 Q 250 62 300 74 Q 330 80 360 72" dur="2s" repeatCount="indefinite"/>
+          </circle>
+        </svg>
+        <div class="comm-banner-title"><i class="fas fa-globe-europe"></i> Community</div>
+      </div>
       <div class="comm-card"><h3><i class="fas fa-newspaper"></i> Aktuelle News</h3><div id="newsList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-trophy"></i> Deine Rekorde</h3><div id="recordsList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-users"></i> Follower-Aktivität</h3><div id="followerList"></div></div>
@@ -999,6 +1146,306 @@ window.initApp=function(){
   $('pvResetBtn').addEventListener('click',()=>{if(confirm('Alle Daten zurücksetzen?')){localStorage.removeItem('rc_v4');localStorage.removeItem('rc_profile');location.reload()}});
 };
 
+/* ═══ SPLASH CITY ANIMATION ═══ */
+(function initSplash(){
+  const canvas=$('splashCanvas');
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  const DPR=window.devicePixelRatio||1;
+  const W=window.innerWidth,H=window.innerHeight;
+  canvas.width=W*DPR; canvas.height=H*DPR;
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  ctx.scale(DPR,DPR);
+
+  /* seeded pseudo-random for deterministic scene */
+  let seed=42;
+  function rng(){seed=(seed*1664525+1013904223)&0xffffffff;return((seed>>>0)/4294967296)}
+
+  const GND=H*0.60; /* ground / road level */
+
+  /* generate buildings */
+  const bldgs=[];
+  /* far layer */
+  let bx=0;
+  while(bx<W+60){
+    const bw=18+rng()*40, bh=20+rng()*70;
+    bldgs.push({x:bx,w:bw,h:bh,layer:'far'});
+    bx+=bw+1+rng()*10;
+  }
+  /* near layer */
+  bx=-20;
+  const nearBldgs=[];
+  while(bx<W+80){
+    const bw=30+rng()*70, bh=50+rng()*120;
+    const wins=[];
+    for(let wx=bx+8;wx<bx+bw-8;wx+=13){
+      for(let wy=(GND-bh)+8;wy<GND-6;wy+=16){
+        wins.push({x:wx,y:wy,lit:rng()>0.45});
+      }
+    }
+    nearBldgs.push({x:bx,w:bw,h:bh,layer:'near',wins});
+    bldgs.push(nearBldgs[nearBldgs.length-1]);
+    bx+=bw+2+rng()*18;
+  }
+
+  /* trees */
+  const trees=[];
+  for(let i=0;i<18;i++){
+    const tx=rng()*W;
+    const tall=rng()>0.5;
+    trees.push({x:tx,type:tall?'pine':'round',
+      r:tall?0:12+rng()*10,
+      h:tall?28+rng()*20:0,
+      base:GND+4});
+  }
+
+  /* Catmull-Rom smooth route across screen */
+  const routePts=[
+    [-60, GND+rng()*12],
+    [W*.08, GND-8+rng()*14],
+    [W*.18, GND+4+rng()*10],
+    [W*.30, GND-12+rng()*10],
+    [W*.44, GND+2+rng()*10],
+    [W*.56, GND-14+rng()*12],
+    [W*.68, GND+6+rng()*8],
+    [W*.80, GND-8+rng()*10],
+    [W*.90, GND+4+rng()*8],
+    [W+60,  GND-4+rng()*10]
+  ];
+
+  function catmullRomPoint(p0,p1,p2,p3,t){
+    return[
+      .5*((2*p1[0])+(-p0[0]+p2[0])*t+(2*p0[0]-5*p1[0]+4*p2[0]-p3[0])*t*t+(-p0[0]+3*p1[0]-3*p2[0]+p3[0])*t*t*t),
+      .5*((2*p1[1])+(-p0[1]+p2[1])*t+(2*p0[1]-5*p1[1]+4*p2[1]-p3[1])*t*t+(-p0[1]+3*p1[1]-3*p2[1]+p3[1])*t*t*t)
+    ];
+  }
+  const SMOOTH=[];
+  const STEPS=120;
+  for(let i=0;i<routePts.length-1;i++){
+    const p0=routePts[Math.max(0,i-1)],p1=routePts[i],p2=routePts[i+1],p3=routePts[Math.min(routePts.length-1,i+2)];
+    for(let s=0;s<STEPS;s++) SMOOTH.push(catmullRomPoint(p0,p1,p2,p3,s/STEPS));
+  }
+  SMOOTH.push(routePts[routePts.length-1]);
+
+  /* cumulative arc-length table */
+  const arcLen=[0];
+  for(let i=1;i<SMOOTH.length;i++){
+    const dx=SMOOTH[i][0]-SMOOTH[i-1][0],dy=SMOOTH[i][1]-SMOOTH[i-1][1];
+    arcLen.push(arcLen[i-1]+Math.sqrt(dx*dx+dy*dy));
+  }
+  const TOTAL=arcLen[arcLen.length-1];
+  function ptAtFrac(f){
+    const target=f*TOTAL;
+    let lo=0,hi=arcLen.length-1;
+    while(lo<hi-1){const mid=(lo+hi)>>1;if(arcLen[mid]<target)lo=mid;else hi=mid;}
+    const t=(target-arcLen[lo])/(arcLen[hi]-arcLen[lo]||1);
+    return[SMOOTH[lo][0]+(SMOOTH[hi][0]-SMOOTH[lo][0])*t,SMOOTH[lo][1]+(SMOOTH[hi][1]-SMOOTH[lo][1])*t];
+  }
+
+  /* ── draw functions ── */
+  function drawBg(){
+    const g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'#04040f');
+    g.addColorStop(0.45,'#07101e');
+    g.addColorStop(0.72,'#0d1828');
+    g.addColorStop(1,'#09090f');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+
+    /* stars */
+    ctx.fillStyle='rgba(255,255,255,.75)';
+    for(let i=0;i<90;i++){
+      const sx=(i*127+17)%W,sy=(i*89+31)%(H*.42);
+      const sr=i%5===0?1.4:.75;
+      ctx.beginPath();ctx.arc(sx,sy,sr,0,Math.PI*2);ctx.fill();
+    }
+    /* moon */
+    const mx=W*.77,my=H*.11;
+    const mg=ctx.createRadialGradient(mx,my,0,mx,my,28);
+    mg.addColorStop(0,'rgba(255,255,240,.95)');
+    mg.addColorStop(.6,'rgba(245,245,210,.7)');
+    mg.addColorStop(1,'rgba(200,200,180,0)');
+    ctx.fillStyle=mg;ctx.beginPath();ctx.arc(mx,my,28,0,Math.PI*2);ctx.fill();
+    /* moon halo */
+    const mh=ctx.createRadialGradient(mx,my,18,mx,my,70);
+    mh.addColorStop(0,'rgba(220,220,180,.06)');
+    mh.addColorStop(1,'rgba(220,220,180,0)');
+    ctx.fillStyle=mh;ctx.beginPath();ctx.arc(mx,my,70,0,Math.PI*2);ctx.fill();
+  }
+
+  function drawFarBldgs(){
+    bldgs.filter(b=>b.layer==='far').forEach(b=>{
+      ctx.fillStyle='rgba(18,18,36,.9)';
+      ctx.fillRect(b.x,GND-b.h,b.w,b.h);
+    });
+  }
+  function drawNearBldgs(){
+    nearBldgs.forEach(b=>{
+      /* building body */
+      const bg=ctx.createLinearGradient(b.x,GND-b.h,b.x+b.w,GND);
+      bg.addColorStop(0,'#161626');
+      bg.addColorStop(1,'#0f0f1e');
+      ctx.fillStyle=bg;
+      ctx.beginPath();
+      ctx.roundRect?ctx.roundRect(b.x,GND-b.h,b.w,b.h,2):ctx.rect(b.x,GND-b.h,b.w,b.h);
+      ctx.fill();
+      /* rooftop rim */
+      ctx.strokeStyle='rgba(232,255,71,.1)';ctx.lineWidth=1;
+      ctx.strokeRect(b.x,GND-b.h,b.w,b.h);
+      /* antenna on some */
+      if(b.w>50&&b.h>80){
+        ctx.strokeStyle='rgba(150,150,180,.4)';ctx.lineWidth=1.5;
+        ctx.beginPath();ctx.moveTo(b.x+b.w*.5,GND-b.h);ctx.lineTo(b.x+b.w*.5,GND-b.h-18);ctx.stroke();
+        ctx.beginPath();ctx.arc(b.x+b.w*.5,GND-b.h-18,2,0,Math.PI*2);
+        ctx.fillStyle='rgba(255,80,80,.7)';ctx.fill();
+      }
+      /* windows */
+      b.wins.forEach(wn=>{
+        if(wn.lit){
+          ctx.fillStyle='rgba(255,240,160,.45)';
+          ctx.fillRect(wn.x,wn.y,8,10);
+          ctx.fillStyle='rgba(255,240,160,.15)';
+          ctx.fillRect(wn.x-2,wn.y-2,12,14);
+        } else {
+          ctx.fillStyle='rgba(60,65,90,.5)';
+          ctx.fillRect(wn.x,wn.y,8,10);
+        }
+      });
+    });
+  }
+
+  function drawTrees(){
+    trees.forEach(t=>{
+      if(t.type==='round'){
+        const cg=ctx.createRadialGradient(t.x,t.base-t.r*.7,0,t.x,t.base-t.r*.5,t.r*1.2);
+        cg.addColorStop(0,'rgba(22,80,40,.85)');
+        cg.addColorStop(1,'rgba(10,40,18,.55)');
+        ctx.fillStyle=cg;
+        ctx.beginPath();ctx.arc(t.x,t.base-t.r*.5,t.r,0,Math.PI*2);ctx.fill();
+        ctx.strokeStyle='rgba(20,70,30,.4)';ctx.lineWidth=1;ctx.stroke();
+      } else {
+        /* pine tree */
+        ctx.fillStyle='rgba(14,55,24,.85)';
+        ctx.beginPath();
+        ctx.moveTo(t.x,t.base-t.h);
+        ctx.lineTo(t.x-t.h*.45,t.base);
+        ctx.lineTo(t.x+t.h*.45,t.base);
+        ctx.closePath();ctx.fill();
+        ctx.fillStyle='rgba(10,40,18,.6)';
+        ctx.beginPath();
+        ctx.moveTo(t.x,t.base-t.h*.7);
+        ctx.lineTo(t.x-t.h*.35,t.base-t.h*.2);
+        ctx.lineTo(t.x+t.h*.35,t.base-t.h*.2);
+        ctx.closePath();ctx.fill();
+      }
+    });
+  }
+
+  function drawGround(){
+    /* road / pavement */
+    const rg=ctx.createLinearGradient(0,GND,0,H);
+    rg.addColorStop(0,'#0c0c1a');
+    rg.addColorStop(1,'#09090f');
+    ctx.fillStyle=rg;ctx.fillRect(0,GND,W,H-GND);
+    /* road edge line */
+    ctx.strokeStyle='rgba(232,255,71,.08)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(0,GND);ctx.lineTo(W,GND);ctx.stroke();
+    /* center road markings */
+    ctx.strokeStyle='rgba(255,255,255,.07)';ctx.lineWidth=2;ctx.setLineDash([20,16]);
+    ctx.beginPath();ctx.moveTo(0,GND+12);ctx.lineTo(W,GND+12);ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  function drawRoute(frac){
+    if(frac<=0)return;
+    const endIdx=Math.floor(frac*(SMOOTH.length-1));
+    /* outer glow */
+    ctx.shadowColor='#e8ff47';ctx.shadowBlur=18;
+    ctx.strokeStyle='rgba(232,255,71,.18)';ctx.lineWidth=10;
+    ctx.lineCap='round';ctx.lineJoin='round';
+    ctx.beginPath();
+    ctx.moveTo(SMOOTH[0][0],SMOOTH[0][1]);
+    for(let i=1;i<=endIdx;i++)ctx.lineTo(SMOOTH[i][0],SMOOTH[i][1]);
+    ctx.stroke();
+    /* main neon line */
+    ctx.shadowBlur=8;
+    ctx.strokeStyle='#e8ff47';ctx.lineWidth=3;
+    ctx.beginPath();
+    ctx.moveTo(SMOOTH[0][0],SMOOTH[0][1]);
+    for(let i=1;i<=endIdx;i++)ctx.lineTo(SMOOTH[i][0],SMOOTH[i][1]);
+    ctx.stroke();
+    /* dashes on top */
+    ctx.shadowBlur=0;
+    ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=1;ctx.setLineDash([5,8]);
+    ctx.beginPath();
+    ctx.moveTo(SMOOTH[0][0],SMOOTH[0][1]);
+    for(let i=1;i<=endIdx;i++)ctx.lineTo(SMOOTH[i][0],SMOOTH[i][1]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.shadowBlur=0;
+    /* waypoint dots */
+    const dotFracs=[.15,.3,.5,.65,.82];
+    dotFracs.forEach(df=>{
+      if(df<frac){
+        const p=ptAtFrac(df);
+        ctx.fillStyle='rgba(232,255,71,.55)';
+        ctx.beginPath();ctx.arc(p[0],p[1],5,0,Math.PI*2);ctx.fill();
+        ctx.strokeStyle='rgba(232,255,71,.9)';ctx.lineWidth=1.5;ctx.stroke();
+      }
+    });
+  }
+
+  function drawRunner(frac){
+    const pos=ptAtFrac(Math.min(frac,.995));
+    const ahead=ptAtFrac(Math.min(frac+.004,.999));
+    const ang=Math.atan2(ahead[1]-pos[1],ahead[0]-pos[0]);
+    const x=pos[0],y=pos[1];
+    ctx.save();ctx.translate(x,y);ctx.rotate(ang);
+    /* glow */
+    ctx.shadowColor='#e8ff47';ctx.shadowBlur=20;
+    /* body */
+    ctx.fillStyle='#e8ff47';
+    /* torso */
+    ctx.beginPath();ctx.ellipse(0,0,5,8,0,0,Math.PI*2);ctx.fill();
+    /* head */
+    ctx.beginPath();ctx.arc(0,-11,5,0,Math.PI*2);ctx.fill();
+    /* left leg */
+    const legPhase=frac*40;
+    const ll=Math.sin(legPhase)*14;
+    const lr=Math.sin(legPhase+Math.PI)*14;
+    ctx.strokeStyle='#e8ff47';ctx.lineWidth=3;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(-2,6);ctx.lineTo(-4+ll*.2,6+ll*.7);ctx.lineTo(-6+ll*.15,6+ll*.9);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(2,6);ctx.lineTo(4+lr*.2,6+lr*.7);ctx.lineTo(6+lr*.15,6+lr*.9);ctx.stroke();
+    /* arms */
+    const al=Math.sin(legPhase+Math.PI)*10;
+    const ar=Math.sin(legPhase)*10;
+    ctx.beginPath();ctx.moveTo(-3,-2);ctx.lineTo(-8+al*.1,-2+al*.5);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(3,-2);ctx.lineTo(8+ar*.1,-2+ar*.5);ctx.stroke();
+    ctx.shadowBlur=0;
+    ctx.restore();
+    /* halo ring around runner */
+    ctx.beginPath();ctx.arc(x,y,14,0,Math.PI*2);
+    ctx.strokeStyle='rgba(232,255,71,.3)';ctx.lineWidth=2;ctx.stroke();
+  }
+
+  /* ── animation loop ── */
+  const ROUTE_DUR=2400;
+  let t0=null;
+  function frame(ts){
+    if(!t0)t0=ts;
+    const frac=Math.min(1,(ts-t0)/ROUTE_DUR);
+    ctx.clearRect(0,0,W,H);
+    drawBg();
+    drawFarBldgs();
+    drawNearBldgs();
+    drawTrees();
+    drawGround();
+    drawRoute(frac);
+    if(frac>.01)drawRunner(frac);
+    if(frac<1)requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+
 /* BOOT */
 setTimeout(()=>{
   $('splash').style.opacity='0';
@@ -1007,7 +1454,7 @@ setTimeout(()=>{
     if(loadProfile()){$('app').style.display='flex';if(typeof window.initApp==='function')window.initApp();}
     else{$('onboarding').style.display='flex';renderOnboarding();if(typeof window.initApp==='function')window.initApp();}
   },500);
-},2000);
+},3400);
 
 })();
 </script>
