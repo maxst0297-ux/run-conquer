@@ -1481,6 +1481,7 @@ window.initApp=function(){
     playerName=name;userId='u_'+name.replace(/\s/g,'_');saveProfile();
     $('onboarding').style.display='none';$('app').style.display='flex';
     initMap();setTimeout(()=>{load();updateUI();mapL?.invalidateSize()},150);setupBg();initSteps();
+    initSupabase().then(()=>syncProfile());
   });
   if($('app').style.display==='flex'){initMap();setTimeout(()=>{load();updateUI();mapL?.invalidateSize()},150);setupBg();initSteps();}
   startBtn.addEventListener('click',startRun);stopBtn.addEventListener('click',stopRun);
@@ -2183,10 +2184,10 @@ setTimeout(()=>{
 setTimeout(()=>{
   const sp=$('splash');
   if(sp){sp.style.opacity='0';setTimeout(()=>{sp.style.display='none';},600);}
-  setTimeout(()=>{
+  setTimeout(async()=>{
     try{
-      initSupabase();
-      if(loadProfile()){$('app').style.display='flex';if(typeof window.initApp==='function')window.initApp();}
+      await initSupabase();
+      if(loadProfile()){$('app').style.display='flex';if(typeof window.initApp==='function')window.initApp();syncProfile();}
       else{$('onboarding').style.display='flex';renderOnboarding();if(typeof window.initApp==='function')window.initApp();}
     }catch(e){console.error('Boot error:',e);$('app').style.display='flex';}
   },400);
