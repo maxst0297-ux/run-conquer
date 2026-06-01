@@ -73,6 +73,9 @@ body{
 .av-opt.sel{border-color:var(--primary)}
 .btn-start{background:var(--primary);color:var(--bg);border:none;padding:17px;border-radius:14px;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;width:100%;cursor:pointer;margin-top:8px;transition:transform .15s}
 .btn-start:active{transform:scale(.97)}
+.ob-tabs{display:flex;gap:6px;margin-bottom:20px}
+.ob-tab{flex:1;padding:9px;border:1px solid var(--border);background:var(--card);color:var(--muted);border-radius:12px;font-family:'Poppins',sans-serif;font-weight:600;font-size:.8rem;cursor:pointer;transition:all .2s}
+.ob-tab.active{background:var(--primary);color:var(--bg);border-color:var(--primary)}
 
 /* ═══ SHELL ═══ */
 #app{display:none;flex-direction:column;height:100%;position:relative}
@@ -102,8 +105,8 @@ body{
 /* ═══ RUN DOCK ═══ */
 #runDock{position:absolute;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid var(--border);border-radius:22px 22px 0 0;padding:14px 16px 20px;z-index:500;box-shadow:0 -4px 24px rgba(0,0,0,.35);transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1)}
 #runDock.up{transform:translateY(0)}
-#dockToggle{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:var(--primary);color:var(--bg);width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;cursor:pointer;z-index:510;box-shadow:0 4px 16px rgba(0,0,0,.3);transition:bottom .35s cubic-bezier(.4,0,.2,1)}
-#runDock.up~#dockToggle{bottom:calc(100% - 23px)}
+#dockToggle{position:absolute;bottom:14px;right:14px;background:var(--primary);color:var(--bg);width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.3rem;cursor:pointer;z-index:510;box-shadow:0 4px 20px rgba(0,0,0,.45);transition:transform .15s;-webkit-user-select:none;user-select:none}
+#dockToggle:active{transform:scale(.9)}
 #runDock.up~#dockToggle i{transform:rotate(180deg)}
 
 /* Live stats */
@@ -380,10 +383,24 @@ body.light .pv-banner{background:linear-gradient(160deg,#3a1a10 0%,#2a1508 45%,#
     </div>
     <div class="ob-title">RUN &amp; CONQUER</div>
     <div class="ob-sub">Lauf · Erobere · Verteidige</div>
-    <div class="field"><label>Dein Name</label><input type="text" id="nameInput" placeholder="z.B. SpeedRunner" maxlength="20"></div>
-    <div class="field"><label>Farbe</label><div class="color-row" id="colorOpts"></div></div>
-    <div class="field"><label>Avatar</label><div class="avatar-row" id="avatarOpts"></div></div>
-    <button class="btn-start" id="startBtn">LOS GEHT'S →</button>
+    <div class="ob-tabs">
+      <button class="ob-tab active" id="obTabPlayer">🎮 Als Spieler</button>
+      <button class="ob-tab" id="obTabAdmin">🔐 Admin Login</button>
+    </div>
+    <!-- Player form -->
+    <div id="obPlayerForm">
+      <div class="field"><label>Dein Name</label><input type="text" id="nameInput" placeholder="z.B. SpeedRunner" maxlength="20"></div>
+      <div class="field"><label>Farbe</label><div class="color-row" id="colorOpts"></div></div>
+      <div class="field"><label>Avatar</label><div class="avatar-row" id="avatarOpts"></div></div>
+      <button class="btn-start" id="startBtn">LOS GEHT'S →</button>
+    </div>
+    <!-- Admin form -->
+    <div id="obAdminForm" style="display:none">
+      <div class="field"><label>E-Mail</label><input type="email" id="adminEmail" class="modal-input" value="maxst0297@gmail.com"></div>
+      <div class="field"><label>Passwort</label><input type="password" id="adminPwd" class="modal-input" placeholder="Passwort…"></div>
+      <button class="btn-start" id="adminLoginBtn">ADMIN LOGIN →</button>
+      <div id="adminLoginStatus" style="text-align:center;margin-top:10px;font-size:.8rem"></div>
+    </div>
   </div>
 </div>
 
@@ -391,14 +408,8 @@ body.light .pv-banner{background:linear-gradient(160deg,#3a1a10 0%,#2a1508 45%,#
 <div id="app" style="display:none">
 
   <header class="hdr">
-    <span class="hdr-logo">R&amp;C</span>
     <span class="hdr-badge" id="userBadge"><span id="hdrAvatar">🏃</span><span id="hdrName">Läufer</span><span id="hdrLevel" style="font-size:.6rem;color:var(--primary);margin-left:2px">Lv.1</span></span>
-    <div class="hdr-actions">
-      <button class="icon-btn" id="shareBtn"><i class="fas fa-share-alt"></i></button>
-      <button class="icon-btn" id="themeBtn"><i class="fas fa-sun"></i></button>
-      <button class="icon-btn" id="settingsBtn"><i class="fas fa-cog"></i></button>
-      <button class="icon-btn" id="drawerBtn"><i class="fas fa-chart-bar"></i></button>
-    </div>
+    <button class="icon-btn" id="settingsBtn" style="margin-left:auto"><i class="fas fa-cog"></i></button>
   </header>
 
   <div id="screens">
@@ -433,22 +444,9 @@ body.light .pv-banner{background:linear-gradient(160deg,#3a1a10 0%,#2a1508 45%,#
           <button class="btn" id="fitnessQuickBtn"><i class="fas fa-heart"></i></button>
         </div>
       </div>
-      <div id="dockToggle"><i class="fas fa-chevron-up"></i></div>
+      <div id="dockToggle"><i class="fas fa-running"></i></div>
       <button id="locateBtn" aria-label="Mein Standort"><i class="fas fa-location-arrow"></i></button>
       <canvas id="likeCanvas"></canvas>
-      <!-- right-side map control panel -->
-      <button id="mapPanelArrow" aria-label="Kartensteuerung"><i class="fas fa-chevron-left"></i></button>
-      <div id="mapPanel">
-        <div class="map-panel-title">KARTE</div>
-        <button class="map-panel-btn" id="mpLocate"><i class="fas fa-location-arrow"></i><span>Standort</span></button>
-        <button class="map-panel-btn" id="mpZoomIn"><i class="fas fa-plus"></i><span>Vergrößern</span></button>
-        <button class="map-panel-btn" id="mpZoomOut"><i class="fas fa-minus"></i><span>Verkleinern</span></button>
-        <div class="map-panel-sep"></div>
-        <div class="map-panel-title" style="font-size:.6rem">EBENEN</div>
-        <button class="map-panel-btn active" id="mpHeat" data-mpLayer="heat"><i class="fas fa-fire"></i><span>Heatmap</span></button>
-        <button class="map-panel-btn active" id="mpTerr" data-mpLayer="terr"><i class="fas fa-map"></i><span>Gebiete</span></button>
-        <button class="map-panel-btn active" id="mpLandmark" data-mpLayer="landmark"><i class="fas fa-star"></i><span>Orte</span></button>
-      </div>
     </div>
 
     <!-- DASHBOARD -->
@@ -645,6 +643,7 @@ body.light .pv-banner{background:linear-gradient(160deg,#3a1a10 0%,#2a1508 45%,#
     <div class="nav-item" data-view="dash"><div class="nav-indicator"></div><i class="fas fa-chart-pie"></i><span>Aktivität</span></div>
     <div class="nav-item" data-view="community"><div class="nav-indicator"></div><i class="fas fa-globe"></i><span>Community</span></div>
     <div class="nav-item" data-view="profile"><div class="nav-indicator"></div><i class="fas fa-user"></i><span>Profil</span></div>
+    <div class="nav-item" data-view="menu"><div class="nav-indicator"></div><i class="fas fa-bars"></i><span>Menü</span></div>
   </nav>
 
   <div id="drawer">
@@ -714,20 +713,6 @@ body.light .pv-banner{background:linear-gradient(160deg,#3a1a10 0%,#2a1508 45%,#
       <button class="stab-btn" data-stab="support">Support</button>
     </div>
     <div id="settingsBody"></div>
-  </div>
-</div>
-
-<!-- ADMIN LOGIN MODAL -->
-<div id="adminLoginModal" class="modal" style="display:none">
-  <div class="modal-card" style="max-width:320px">
-    <div class="modal-title" style="color:var(--red)">🔐 ADMIN LOGIN</div>
-    <div class="field"><label>E-Mail</label><input type="email" id="adminEmail" class="modal-input" value="maxst0297@gmail.com"></div>
-    <div class="field"><label>Passwort</label><input type="password" id="adminPwd" class="modal-input" placeholder="Passwort…"></div>
-    <div class="modal-actions">
-      <button class="btn btn-p" id="adminLoginBtn">Einloggen</button>
-      <button class="btn" id="closeAdminLoginBtn">✕</button>
-    </div>
-    <div id="adminLoginStatus" style="text-align:center;margin-top:10px;font-size:.8rem"></div>
   </div>
 </div>
 
@@ -916,7 +901,7 @@ function load(){
     const d=JSON.parse(localStorage.getItem('rc_v4'));
     if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;stepsToday=d.stepsToday||0;}
   }catch(e){}
-  if(!territories.length)genRivals();
+  // Rival territories werden nach erstem GPS-Fix generiert (locationfound)
   if(!quests.length)genQuests();
   if(!achievements.length)initAch();
 }
@@ -927,9 +912,9 @@ function loadProfile(){
 }
 
 /* INIT DATA */
-function genRivals(){
+function genRivals(lat,lng){
   if(!mapL)return;
-  const c=mapL.getCenter();
+  const c=lat?{lat,lng}:mapL.getCenter();
   [[.008,.012,180],[-.01,.005,200],[.005,-.015,160],[-.012,-.008,220],[.015,-.005,140]].forEach((o,i)=>{
     const poly=mkCircle(c.lat+o[0],c.lng+o[1],o[2]);
     const area=turf.area(poly);
@@ -941,9 +926,9 @@ function genRivals(){
 function simulateBotRun(){
   if(!mapL||!territories.length)return;
   const bot=BOTS[Math.floor(Math.random()*BOTS.length)];
-  const c=mapL.getCenter();
+  const userPos=userMarker?userMarker.getLatLng():mapL.getCenter();
   const botTerrs=territories.filter(t=>t.owner===bot.id);
-  let baseLat=c.lat,baseLng=c.lng;
+  let baseLat=userPos.lat,baseLng=userPos.lng;
   if(botTerrs.length){try{const rc=turf.centroid(turf.feature(botTerrs[0].polygon)).geometry.coordinates;baseLat=rc[1];baseLng=rc[0];}catch(e){}}
   const lat=baseLat+(Math.random()-.5)*.018;
   const lng=baseLng+(Math.random()-.5)*.018;
@@ -1016,6 +1001,10 @@ function initMap(){
   mapL.on('locationfound',e=>{
     if(!userMarker)userMarker=L.marker(e.latlng,{icon:mkUserIcon()}).addTo(mapL);
     else userMarker.setLatLng(e.latlng);
+    if(territories.filter(t=>t.owner!==userId).length===0){
+      genRivals(e.latlng.lat,e.latlng.lng);
+      save();renderTerr();
+    }
     loadLandmarks();
   });
   mapL.on('moveend',debounce(loadLandmarks,800));
@@ -1489,8 +1478,8 @@ function renderSettingsTab(tab){
   } else if(tab==='theme'){
     const isLight=document.body.classList.contains('light');
     body.innerHTML=`<div style="display:flex;flex-direction:column;gap:10px"><button class="btn ${isLight?'':'btn-p'}" id="setDark">🌙 Dunkel</button><button class="btn ${isLight?'btn-p':''}" id="setLight">☀️ Hell</button></div>`;
-    $('setDark').addEventListener('click',()=>{document.body.classList.remove('light');setTiles();$('themeBtn').querySelector('i').className='fas fa-sun';renderSettingsTab('theme')});
-    $('setLight').addEventListener('click',()=>{document.body.classList.add('light');setTiles();$('themeBtn').querySelector('i').className='fas fa-moon';renderSettingsTab('theme')});
+    $('setDark').addEventListener('click',()=>{document.body.classList.remove('light');setTiles();document.body.classList.remove('light');renderSettingsTab('theme')});
+    $('setLight').addEventListener('click',()=>{document.body.classList.add('light');setTiles();document.body.classList.add('light');renderSettingsTab('theme')});
   } else if(tab==='spiel'){
     body.innerHTML=`<div style="display:flex;flex-direction:column;gap:10px"><div style="font-size:.8rem;color:var(--muted);background:var(--card);padding:12px;border-radius:12px;border:1px solid var(--border)"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>⚡ Energie</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${energy}/${CFG.ENERGY_MAX}</span></div><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>🏆 Punkte</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${points}</span></div><div style="display:flex;justify-content:space-between"><span>📐 Gebiete</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${territories.filter(t=>t.owner===userId).length}</span></div></div><button class="btn btn-p" id="setPulsBtn"><i class="fas fa-heartbeat"></i> Pulsmesser koppeln</button><button class="btn" id="setResetBtn" style="color:var(--red);border-color:rgba(255,77,109,.3)"><i class="fas fa-trash"></i> Daten zurücksetzen</button><div id="setVersionTap" style="text-align:center;color:var(--muted);font-size:.6rem;margin-top:8px;cursor:pointer;-webkit-user-select:none;user-select:none">v1.0.0 · Run &amp; Conquer</div></div>`;
     $('setPulsBtn').addEventListener('click',connectBT);
@@ -1506,7 +1495,11 @@ function renderSettingsTab(tab){
 /* ── ADMIN PANEL ── */
 let adminCharts=[];
 function openAdminLogin(){
-  $('adminLoginModal').style.display='flex';
+  // Admin login is in the onboarding screen
+  $('app').style.display='none';
+  $('onboarding').style.display='flex';
+  $('obTabAdmin')?.classList.add('active');$('obTabPlayer')?.classList.remove('active');
+  $('obAdminForm').style.display='';$('obPlayerForm').style.display='none';
   const s=$('adminLoginStatus');if(s)s.textContent='';
 }
 function openAdminPanel(){
@@ -1569,16 +1562,7 @@ function initAdminCharts(){
   const lc=$('adminLineChart');if(lc)adminCharts.push(new Chart(lc.getContext('2d'),{type:'line',data:{labels:d30Labels,datasets:[{data:d30Data,borderColor:'#00d4ff',backgroundColor:'#00d4ff22',tension:.4,fill:true,pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{display:false},x:{ticks:{color:'#6b6b82',font:{size:8}},grid:{display:false}}}}}));
 }
 
-/* ── MAP PANEL TOGGLE ── */
-let mapPanelOpen=false;
-function toggleMapPanel(){
-  mapPanelOpen=!mapPanelOpen;
-  $('mapPanel').classList.toggle('open',mapPanelOpen);
-  $('mapPanelArrow').querySelector('i').className=mapPanelOpen?'fas fa-chevron-right':'fas fa-chevron-left';
-  if(mapPanelOpen)setTimeout(()=>{if(mapL)mapL.invalidateSize()},360);
-  const openW=mapPanelOpen?175:0;
-  $('mapPanelArrow').style.right=openW+'px';
-}
+/* ── MAP PANEL TOGGLE (deprecated – removed) ── */
 
 /* PROFILE */
 function updateProfile(){
@@ -1670,7 +1654,7 @@ function renderEditAvatars(){
   editAvatar=userAvatar;const ad=$('editAvatarRow');ad.innerHTML='';
   AVATARS.forEach(a=>{const s=document.createElement('span');s.className='av-opt'+(a===editAvatar?' sel':'');s.textContent=a;s.onclick=()=>{document.querySelectorAll('#editAvatarRow .av-opt').forEach(o=>o.classList.remove('sel'));s.classList.add('sel');editAvatar=a};ad.appendChild(s)});
 }
-function toggleTheme(){document.body.classList.toggle('light');$('themeBtn').querySelector('i').className=document.body.classList.contains('light')?'fas fa-moon':'fas fa-sun';setTiles()}
+function toggleTheme(){document.body.classList.toggle('light');setTiles()}
 
 /* INIT */
 window.initApp=function(){
@@ -1686,11 +1670,12 @@ window.initApp=function(){
   startBtn.addEventListener('click',startRun);stopBtn.addEventListener('click',stopRun);
   $('fitnessQuickBtn').addEventListener('click',()=>{openDrawer();currentTab='fitness';document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab==='fitness'));renderDrawer()});
   dockToggle.addEventListener('click',e=>{e.stopPropagation();runDock.classList.toggle('up')});
-  document.querySelectorAll('.nav-item').forEach(n=>n.addEventListener('click',()=>setView(n.dataset.view)));
+  document.querySelectorAll('.nav-item').forEach(n=>n.addEventListener('click',()=>{
+    const v=n.dataset.view;
+    if(v==='menu'){drawer.classList.contains('open')?closeDrawer():openDrawer();}
+    else setView(v);
+  }));
   document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',function(){document.querySelectorAll('.tab-btn').forEach(t=>t.classList.remove('active'));this.classList.add('active');currentTab=this.dataset.tab;renderDrawer()}));
-  $('drawerBtn').addEventListener('click',e=>{e.stopPropagation();drawer.classList.contains('open')?closeDrawer():openDrawer()});
-  $('shareBtn').addEventListener('click',async()=>{try{const c=await html2canvas($('mapView'));const blob=await(await fetch(c.toDataURL())).blob();const file=new File([blob],'run-conquer.png',{type:'image/png'});if(navigator.share)await navigator.share({title:'Run & Conquer',files:[file]});else{const a=document.createElement('a');a.download='map.png';a.href=c.toDataURL();a.click();toast('Screenshot gespeichert')}}catch(e){}});
-  $('themeBtn').addEventListener('click',toggleTheme);
   $('pvEditBtn').addEventListener('click',()=>{$('settingsModal').style.display='flex';renderSettingsTab('profil');document.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.stab==='profil'));});
   $('userBadge').addEventListener('click',()=>{$('settingsModal').style.display='flex';renderSettingsTab('profil');document.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.stab==='profil'));});
   $('saveProfileBtn').addEventListener('click',()=>{playerName=$('editName').value.trim()||playerName;userAvatar=editAvatar;saveProfile();$('profileModal').style.display='none';toast('Profil gespeichert');updateProfile()});
@@ -1704,19 +1689,6 @@ window.initApp=function(){
   $('pvResetBtn').addEventListener('click',()=>{if(confirm('Alle Daten zurücksetzen?')){localStorage.removeItem('rc_v4');localStorage.removeItem('rc_profile');location.reload()}});
   /* Locate-me button */
   $('locateBtn').addEventListener('click',()=>{if(mapL){mapL.locate({setView:true,maxZoom:17,enableHighAccuracy:true});toast('📍 Standort wird ermittelt…');}});
-  /* Map panel */
-  $('mapPanelArrow').addEventListener('click',e=>{e.stopPropagation();toggleMapPanel()});
-  $('mpLocate').addEventListener('click',()=>{if(mapL){mapL.locate({setView:true,maxZoom:17,enableHighAccuracy:true});toast('📍 Standort wird ermittelt…');}});
-  $('mpZoomIn').addEventListener('click',()=>{if(mapL)mapL.zoomIn()});
-  $('mpZoomOut').addEventListener('click',()=>{if(mapL)mapL.zoomOut()});
-  document.querySelectorAll('[data-mpLayer]').forEach(btn=>btn.addEventListener('click',function(){
-    this.classList.toggle('active');
-    const active=this.classList.contains('active'),layer=this.dataset.mpLayer;
-    if(!mapL)return;
-    if(layer==='heat'){active?mapL.addLayer(heatLayer):mapL.removeLayer(heatLayer);}
-    if(layer==='terr'){active?mapL.addLayer(terrLayer):mapL.removeLayer(terrLayer);}
-    if(layer==='landmark'){active?mapL.addLayer(landmarkLayer):mapL.removeLayer(landmarkLayer);}
-  }));
   /* Settings modal */
   $('settingsBtn').addEventListener('click',()=>{$('settingsModal').style.display='flex';renderSettingsTab('profil');document.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.stab==='profil'));});
   $('closeSettingsBtn').addEventListener('click',()=>$('settingsModal').style.display='none');
@@ -1724,8 +1696,18 @@ window.initApp=function(){
   /* Admin modal */
   $('closeAdminBtn').addEventListener('click',()=>$('adminModal').style.display='none');
   $('closeAdminBtn2').addEventListener('click',()=>$('adminModal').style.display='none');
-  /* Admin login modal */
-  $('closeAdminLoginBtn').addEventListener('click',()=>$('adminLoginModal').style.display='none');
+  /* Admin tab buttons in admin panel */
+  document.querySelectorAll('[data-atab]').forEach(b=>b.addEventListener('click',function(){renderAdminTab(this.dataset.atab);}));
+  /* Onboarding: player / admin tab switch */
+  $('obTabPlayer')?.addEventListener('click',()=>{
+    $('obTabPlayer').classList.add('active');$('obTabAdmin').classList.remove('active');
+    $('obPlayerForm').style.display='';$('obAdminForm').style.display='none';
+  });
+  $('obTabAdmin')?.addEventListener('click',()=>{
+    $('obTabAdmin').classList.add('active');$('obTabPlayer').classList.remove('active');
+    $('obAdminForm').style.display='';$('obPlayerForm').style.display='none';
+  });
+  /* Onboarding: admin login */
   $('adminLoginBtn').addEventListener('click',async()=>{
     const email=($('adminEmail')?.value||'').trim();
     const pwd=$('adminPwd')?.value||'';
@@ -1738,19 +1720,18 @@ window.initApp=function(){
       if(error)throw error;
       if(data?.user?.email==='maxst0297@gmail.com'){
         isAdmin=true;sbUserId=data.user.id;
-        $('adminLoginModal').style.display='none';
+        playerName='Admin';userId='u_Admin';saveProfile();
+        $('onboarding').style.display='none';$('app').style.display='flex';
+        if(!mapL){initMap();setTimeout(()=>{load();updateUI();mapL?.invalidateSize()},150);setupBg();initSteps();}
         toast('✅ Admin eingeloggt');
-        openAdminPanel();
       } else {
         await sb.auth.signOut();
         if(statusEl)statusEl.innerHTML='<span style="color:var(--red)">❌ Kein Admin-Zugang für diese E-Mail</span>';
       }
     }catch(e){
-      if(statusEl)statusEl.innerHTML='<span style="color:var(--red)">❌ '+(e.message||'Fehler beim Login')+'</span>';
+      if(statusEl)statusEl.innerHTML='<span style="color:var(--red)">❌ '+(e.message||'Fehler')+'</span>';
     }
   });
-  /* Admin tab buttons */
-  document.querySelectorAll('[data-atab]').forEach(b=>b.addEventListener('click',function(){renderAdminTab(this.dataset.atab);}));
   /* Secret admin: 5 taps on level badge */
   let hdrTaps=0;
   $('hdrLevel').addEventListener('click',()=>{hdrTaps++;if(hdrTaps>=5){hdrTaps=0;openAdminPanel();}});
