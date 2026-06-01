@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Bebas+Neue&display=swap" rel="stylesheet">
 
 <style>
@@ -820,6 +821,41 @@ let selectedTerrId=null,editAvatar=AVATARS[0];
 let kmSplits=[],lastSplitKm=0,lastSplitSecs=0;
 let liveInterval=null;
 
+/* ═══ SUPABASE ═══ */
+const SB_URL='https://mlkpryhacihbqnmtgkcg.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1sa3ByeWhhY2loYnFubXRna2NnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzMTcwMzMsImV4cCI6MjA5NTg5MzAzM30.YEVBlg686Ssj0p8ACz6eur3snBzay_exEedZ3gzqh7g';
+const sb=window.supabase?.createClient(SB_URL,SB_KEY);
+let sbUserId=null;
+
+async function initSupabase(){
+  if(!sb)return;
+  try{
+    const{data:{session}}=await sb.auth.getSession();
+    if(session){sbUserId=session.user.id;}
+    else{const{data,error}=await sb.auth.signInAnonymously();if(data?.user)sbUserId=data.user.id;}
+  }catch(e){console.warn('Supabase auth:',e);}
+}
+async function syncProfile(){
+  if(!sb||!sbUserId||!playerName)return;
+  try{
+    await sb.from('profiles').upsert({
+      id:sbUserId,player_name:playerName,user_avatar:userAvatar,user_color:userColor,
+      points,total_km:totalKm,total_conquered:totalConquered,streak_days:streakDays,
+      updated_at:new Date().toISOString()
+    },{onConflict:'id'});
+  }catch(e){console.warn('Supabase profile sync:',e);}
+}
+async function syncRun(rec){
+  if(!sb||!sbUserId)return;
+  try{
+    await sb.from('runs').insert({
+      user_id:sbUserId,player_name:playerName,distance:rec.distance,duration:rec.duration,
+      points:rec.pts,kcal:rec.kcal||0,conquered:rec.conquered||false,defended:rec.defended||false,
+      path:rec.path||null
+    });
+  }catch(e){console.warn('Supabase run sync:',e);}
+}
+
 /* DOM */
 const $=id=>document.getElementById(id);
 const toastEl=$('toast'),statusBar=$('statusBar'),statusDot=$('statusDot'),statusTxt=$('statusTxt');
@@ -848,7 +884,7 @@ function load(){
   if(!quests.length)genQuests();
   if(!achievements.length)initAch();
 }
-function saveProfile(){localStorage.setItem('rc_profile',JSON.stringify({playerName,userColor,userAvatar,userId}));$('hdrAvatar').textContent=userAvatar;$('hdrName').textContent=playerName}
+function saveProfile(){localStorage.setItem('rc_profile',JSON.stringify({playerName,userColor,userAvatar,userId}));$('hdrAvatar').textContent=userAvatar;$('hdrName').textContent=playerName;syncProfile();}
 function loadProfile(){
   try{const p=JSON.parse(localStorage.getItem('rc_profile'));if(p){playerName=p.playerName;userColor=p.userColor;userAvatar=p.userAvatar;userId=p.userId||'u_'+playerName;$('hdrAvatar').textContent=userAvatar;$('hdrName').textContent=playerName;return true;}}catch(e){}
   return false;
@@ -1038,6 +1074,7 @@ function stopRun(){
   updateQuests(rec);updateAch();
   if(pathLayer)mapL.removeLayer(pathLayer);path=[];dist=0;
   statusTxt.textContent='Bereit';save();updateUI();showPostRun(rec);
+  syncRun(rec);syncProfile();
 }
 function mkPoly(){
   if(path.length<2)return null;
@@ -1239,20 +1276,43 @@ function renderEvents(){
 }
 
 /* ── LEADERBOARD ── */
-function renderLeaderboard(){
-  const myTerr=territories.filter(t=>t.owner===userId).length;
-  const board=[
-    {name:'SpeedKing',av:'⚡',pts:8420,terr:12,km:'142.3'},
-    {name:'MountainGoat',av:'🤸',pts:7110,terr:9,km:'118.7'},
-    {name:'NightOwl',av:'🏋️',pts:5830,terr:7,km:'96.2'},
-    {name:playerName||'Du',av:userAvatar,pts:points,terr:myTerr,km:totalKm.toFixed(1)},
-    {name:'CityRunner',av:'🏃',pts:3210,terr:4,km:'58.1'}
-  ];
-  board.sort((a,b)=>b.pts-a.pts);
-  board.forEach((r,i)=>r.rank=i+1);
+async function renderLeaderboard(){
+  const lb=$('leaderboardList');
+  if(!lb)return;
+  lb.innerHTML='<div style="padding:12px;color:var(--muted);font-size:.8rem;text-align:center">⏳ Lade Rangliste…</div>';
   const medals=['🥇','🥈','🥉'];
-  const isMe=r=>r.name===(playerName||'Du');
-  $('leaderboardList').innerHTML=board.map(r=>`<div class="list-row" style="background:${isMe(r)?'rgba(232,255,71,.05)':''}"><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:${r.rank<=3?'var(--primary)':'var(--muted)'};width:22px">${r.rank<=3?medals[r.rank-1]:r.rank}</span><span class="row-icon">${r.av}</span><div class="row-txt"><b style="color:${isMe(r)?'var(--primary)':'var(--text)'}">${r.name}</b><div style="font-size:.65rem;color:var(--muted)">${r.terr} Gebiete · ${r.km} km</div></div><span style="font-family:'Bebas Neue',sans-serif;color:var(--primary)">${r.pts}</span></div>`).join('');
+  try{
+    if(!sb||!sbUserId)throw new Error('no sb');
+    const{data,error}=await sb.from('profiles')
+      .select('player_name,user_avatar,user_color,points,total_km,total_conquered')
+      .order('points',{ascending:false})
+      .limit(10);
+    if(error||!data?.length)throw error||new Error('empty');
+    lb.innerHTML=data.map((r,i)=>{
+      const isMe=r.player_name===playerName;
+      return`<div class="list-row" style="background:${isMe?'rgba(232,255,71,.06)':''}">
+        <span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:${i<3?'var(--primary)':'var(--muted)'};width:22px;flex-shrink:0">${i<3?medals[i]:i+1}</span>
+        <span class="row-icon" style="font-size:1.2rem">${r.user_avatar||'🏃'}</span>
+        <div class="row-txt"><b style="color:${isMe?'var(--primary)':'var(--text)'}">${r.player_name}</b>
+        <div style="font-size:.65rem;color:var(--muted)">${r.total_conquered||0} Gebiete · ${(r.total_km||0).toFixed(1)} km</div></div>
+        <span style="font-family:'Bebas Neue',sans-serif;color:var(--primary)">${r.points}</span>
+      </div>`;
+    }).join('');
+  }catch(e){
+    // Fallback: lokale Mockdaten
+    const myTerr=territories.filter(t=>t.owner===userId).length;
+    const board=[
+      {name:'SpeedKing',av:'⚡',pts:8420,terr:12,km:'142.3'},
+      {name:'MountainGoat',av:'🤸',pts:7110,terr:9,km:'118.7'},
+      {name:'NightOwl',av:'🏋️',pts:5830,terr:7,km:'96.2'},
+      {name:playerName||'Du',av:userAvatar,pts:points,terr:myTerr,km:totalKm.toFixed(1)},
+      {name:'CityRunner',av:'🏃',pts:3210,terr:4,km:'58.1'}
+    ].sort((a,b)=>b.pts-a.pts);
+    lb.innerHTML=board.map((r,i)=>{
+      const isMe=r.name===(playerName||'Du');
+      return`<div class="list-row" style="background:${isMe?'rgba(232,255,71,.05)':''}"><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:${i<3?'var(--primary)':'var(--muted)'};width:22px">${i<3?medals[i]:i+1}</span><span class="row-icon">${r.av}</span><div class="row-txt"><b style="color:${isMe?'var(--primary)':'var(--text)'}">${r.name}</b><div style="font-size:.65rem;color:var(--muted)">${r.terr} Gebiete · ${r.km} km</div></div><span style="font-family:'Bebas Neue',sans-serif;color:var(--primary)">${r.pts}</span></div>`;
+    }).join('');
+  }
 }
 
 /* ── RICH SOCIAL FEED ── */
@@ -2125,6 +2185,7 @@ setTimeout(()=>{
   if(sp){sp.style.opacity='0';setTimeout(()=>{sp.style.display='none';},600);}
   setTimeout(()=>{
     try{
+      initSupabase();
       if(loadProfile()){$('app').style.display='flex';if(typeof window.initApp==='function')window.initApp();}
       else{$('onboarding').style.display='flex';renderOnboarding();if(typeof window.initApp==='function')window.initApp();}
     }catch(e){console.error('Boot error:',e);$('app').style.display='flex';}
