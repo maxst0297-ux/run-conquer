@@ -898,21 +898,22 @@ function fmtPace(m,s){if(m<10)return'--:--';const p=s/60/(m/1000);return Math.fl
 function debounce(fn,w){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),w)}}
 
 /* PERSIST */
-function save(){localStorage.setItem('rc_v4',JSON.stringify({territories,points,energy,lastEnergyTs,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,stepsToday}))}
+function save(){localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,stepsToday}))}
 function load(){
   try{
-    const d=JSON.parse(localStorage.getItem('rc_v4'));
+    const d=JSON.parse(localStorage.getItem('rc_v4_'+userId));
     if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;stepsToday=d.stepsToday||0;}
   }catch(e){}
   // Rival territories werden nach erstem GPS-Fix generiert (locationfound)
   if(!quests.length)genQuests();
   if(!achievements.length)initAch();
 }
-function saveProfile(){localStorage.setItem('rc_profile',JSON.stringify({playerName,userColor,userAvatar,userId}));$('hdrAvatar').textContent=userAvatar;$('hdrName').textContent=playerName;syncProfile();}
+function saveProfile(){localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userId}));$('hdrAvatar').textContent=userAvatar;$('hdrName').textContent=playerName;syncProfile();}
 function loadProfile(){
-  try{const p=JSON.parse(localStorage.getItem('rc_profile'));if(p){playerName=p.playerName;userColor=p.userColor;userAvatar=p.userAvatar;userId=p.userId||'u_'+playerName;$('hdrAvatar').textContent=userAvatar;$('hdrName').textContent=playerName;return true;}}catch(e){}
+  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;$('hdrAvatar').textContent=userAvatar;$('hdrName').textContent=playerName;return true;}}catch(e){}
   return false;
 }
+function closeAllModals(){['profileModal','postRunModal','renameModal','settingsModal','adminModal'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
 
 /* INIT DATA */
 function genRivals(lat,lng){
@@ -1315,7 +1316,7 @@ function updateCommunity(){
   }
 }
 window.flyTo=function(id){const t=territories.find(t=>t.id===id);if(!t)return;try{const c=turf.centroid(turf.feature(t.polygon)).geometry.coordinates;mapL.setView([c[1],c[0]],16);setView('map');}catch(e){}};
-window.openRename=function(id){selectedTerrId=id;const t=territories.find(t=>t.id===id);$('renameInput').value=t?.customName||'';$('renameModal').style.display='flex'};
+window.openRename=function(id){closeAllModals();selectedTerrId=id;const t=territories.find(t=>t.id===id);$('renameInput').value=t?.customName||'';$('renameModal').style.display='flex'};
 
 /* ── LIKE / ATTACK SYSTEM ── */
 window.likeTerritory=function(terrId){
@@ -1486,7 +1487,7 @@ function renderSettingsTab(tab){
   } else if(tab==='spiel'){
     body.innerHTML=`<div style="display:flex;flex-direction:column;gap:10px"><div style="font-size:.8rem;color:var(--muted);background:var(--card);padding:12px;border-radius:12px;border:1px solid var(--border)"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>⚡ Energie</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${energy}/${CFG.ENERGY_MAX}</span></div><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>🏆 Punkte</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${points}</span></div><div style="display:flex;justify-content:space-between"><span>📐 Gebiete</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${territories.filter(t=>t.owner===userId).length}</span></div></div><button class="btn btn-p" id="setPulsBtn"><i class="fas fa-heartbeat"></i> Pulsmesser koppeln</button><button class="btn" id="setResetBtn" style="color:var(--red);border-color:rgba(255,77,109,.3)"><i class="fas fa-trash"></i> Daten zurücksetzen</button><div id="setVersionTap" style="text-align:center;color:var(--muted);font-size:.6rem;margin-top:8px;cursor:pointer;-webkit-user-select:none;user-select:none">v1.0.0 · Run &amp; Conquer</div></div>`;
     $('setPulsBtn').addEventListener('click',connectBT);
-    $('setResetBtn').addEventListener('click',()=>{if(confirm('Alle Daten zurücksetzen?')){localStorage.removeItem('rc_v4');localStorage.removeItem('rc_profile');location.reload()}});
+    $('setResetBtn').addEventListener('click',()=>{if(confirm('Alle Daten zurücksetzen?')){localStorage.removeItem('rc_v4_'+userId);localStorage.removeItem('rc_profile_'+userId);location.reload()}});
     let vTaps=0;
     $('setVersionTap').addEventListener('click',()=>{vTaps++;if(vTaps>=5){vTaps=0;$('settingsModal').style.display='none';openAdminPanel();}});
   } else if(tab==='support'){
@@ -1611,6 +1612,7 @@ function drawCalendar(){
 
 /* NAV */
 function setView(view){
+  closeAllModals();
   currentView=view;
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   const map2={map:'mapView',dash:'dashView',community:'communityView',profile:'profileView'};
@@ -1664,23 +1666,25 @@ window.initApp=function(){
   renderOnboarding();
   $('startBtn').addEventListener('click',()=>{
     const name=($('nameInput').value.trim())||'Läufer'+Math.floor(Math.random()*9000+1000);
-    playerName=name;userId='u_'+name.replace(/\s/g,'_');saveProfile();
+    playerName=name;userId='u_'+name.replace(/\s/g,'_');
+    loadProfile(); // restore avatar/color for returning user (if exists)
+    playerName=name; // always use the typed name
+    saveProfile();
     $('onboarding').style.display='none';$('app').style.display='flex';
     initMap();setTimeout(()=>{load();updateUI();mapL?.invalidateSize()},150);setupBg();initSteps();
     initSupabase().then(()=>syncProfile());
   });
-  if($('app').style.display==='flex'){initMap();setTimeout(()=>{load();updateUI();mapL?.invalidateSize()},150);setupBg();initSteps();}
   startBtn.addEventListener('click',startRun);stopBtn.addEventListener('click',stopRun);
   $('fitnessQuickBtn').addEventListener('click',()=>{openDrawer();currentTab='fitness';document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab==='fitness'));renderDrawer()});
   dockToggle.addEventListener('click',e=>{e.stopPropagation();runDock.classList.toggle('up')});
   document.querySelectorAll('.nav-item').forEach(n=>n.addEventListener('click',()=>{
     const v=n.dataset.view;
-    if(v==='menu'){drawer.classList.contains('open')?closeDrawer():openDrawer();}
+    if(v==='menu'){closeAllModals();drawer.classList.contains('open')?closeDrawer():openDrawer();}
     else setView(v);
   }));
   document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',function(){document.querySelectorAll('.tab-btn').forEach(t=>t.classList.remove('active'));this.classList.add('active');currentTab=this.dataset.tab;renderDrawer()}));
-  $('pvEditBtn').addEventListener('click',()=>{$('settingsModal').style.display='flex';renderSettingsTab('profil');document.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.stab==='profil'));});
-  $('userBadge').addEventListener('click',()=>{$('settingsModal').style.display='flex';renderSettingsTab('profil');document.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.stab==='profil'));});
+  $('pvEditBtn').addEventListener('click',()=>{closeAllModals();$('settingsModal').style.display='flex';renderSettingsTab('profil');document.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.stab==='profil'));});
+  $('userBadge').addEventListener('click',()=>{closeAllModals();$('settingsModal').style.display='flex';renderSettingsTab('profil');document.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.stab==='profil'));});
   $('saveProfileBtn').addEventListener('click',()=>{playerName=$('editName').value.trim()||playerName;userAvatar=editAvatar;saveProfile();$('profileModal').style.display='none';toast('Profil gespeichert');updateProfile()});
   $('closeProfileBtn').addEventListener('click',()=>$('profileModal').style.display='none');
   $('closePostBtn').addEventListener('click',()=>$('postRunModal').style.display='none');
@@ -1689,11 +1693,11 @@ window.initApp=function(){
   $('showNearBtn').addEventListener('click',()=>setView('map'));
   $('pvBtBtn').addEventListener('click',connectBT);
   $('pvThemeBtn').addEventListener('click',toggleTheme);
-  $('pvResetBtn').addEventListener('click',()=>{if(confirm('Alle Daten zurücksetzen?')){localStorage.removeItem('rc_v4');localStorage.removeItem('rc_profile');location.reload()}});
+  $('pvResetBtn').addEventListener('click',()=>{if(confirm('Alle Daten zurücksetzen?')){localStorage.removeItem('rc_v4_'+userId);localStorage.removeItem('rc_profile_'+userId);location.reload()}});
   /* Locate-me button */
   $('locateBtn').addEventListener('click',()=>{if(mapL){mapL.locate({setView:true,maxZoom:17,enableHighAccuracy:true});toast('📍 Standort wird ermittelt…');}});
   /* Settings modal */
-  $('settingsBtn').addEventListener('click',()=>{$('settingsModal').style.display='flex';renderSettingsTab('profil');document.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.stab==='profil'));});
+  $('settingsBtn').addEventListener('click',()=>{closeAllModals();$('settingsModal').style.display='flex';renderSettingsTab('profil');document.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.stab==='profil'));});
   $('closeSettingsBtn').addEventListener('click',()=>$('settingsModal').style.display='none');
   document.querySelectorAll('.stab-btn').forEach(b=>b.addEventListener('click',function(){document.querySelectorAll('.stab-btn').forEach(t=>t.classList.remove('active'));this.classList.add('active');renderSettingsTab(this.dataset.stab);}));
   /* Admin modal */
@@ -2397,9 +2401,9 @@ setTimeout(()=>{
   setTimeout(async()=>{
     try{
       await initSupabase();
-      if(loadProfile()){$('app').style.display='flex';if(typeof window.initApp==='function')window.initApp();syncProfile();}
-      else{$('onboarding').style.display='flex';renderOnboarding();if(typeof window.initApp==='function')window.initApp();}
-    }catch(e){console.error('Boot error:',e);$('app').style.display='flex';}
+      $('onboarding').style.display='flex';
+      if(typeof window.initApp==='function')window.initApp();
+    }catch(e){console.error('Boot error:',e);$('onboarding').style.display='flex';if(typeof window.initApp==='function')window.initApp();}
   },400);
 },2800);
 
