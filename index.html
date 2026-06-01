@@ -793,6 +793,13 @@ const CFG={
 const COLORS=['#e8ff47','#ff4d6d','#00d4ff','#9b5de5','#ff9f1c'];
 const AVATARS=['🏃','🚴','🏋️','🤸','⚡'];
 const RIVAL_COLORS=['#ff4d6d','#00d4ff','#9b5de5','#ff9f1c','#e67e22'];
+const BOTS=[
+  {id:'bot_speed',name:'SpeedKing',avatar:'⚡',color:'#ff4d6d',pts:8420,totalKm:142.3,streak:14,conquered:47},
+  {id:'bot_mtn',name:'MountainGoat',avatar:'🤸',color:'#00d4ff',pts:7110,totalKm:118.7,streak:9,conquered:31},
+  {id:'bot_night',name:'NightOwl',avatar:'🏋️',color:'#9b5de5',pts:5830,totalKm:96.2,streak:7,conquered:23},
+  {id:'bot_city',name:'CityRunner',avatar:'🏃',color:'#ff9f1c',pts:3210,totalKm:58.1,streak:3,conquered:12},
+  {id:'bot_ultra',name:'UltraMax',avatar:'💪',color:'#10b981',pts:2100,totalKm:41.5,streak:5,conquered:8},
+];
 const WEEKLY_GOAL=30;
 
 /* LEVEL */
@@ -820,6 +827,7 @@ let weekChart=null;
 let selectedTerrId=null,editAvatar=AVATARS[0];
 let kmSplits=[],lastSplitKm=0,lastSplitSecs=0;
 let liveInterval=null;
+let botActivities=[];
 
 /* ═══ SUPABASE ═══ */
 const SB_URL='https://mlkpryhacihbqnmtgkcg.supabase.co';
@@ -898,8 +906,70 @@ function genRivals(){
     const poly=mkCircle(c.lat+o[0],c.lng+o[1],o[2]);
     const area=turf.area(poly);
     const str=CFG.STR_INIT_MIN+Math.floor(Math.random()*(CFG.STR_INIT_MAX-CFG.STR_INIT_MIN));
-    territories.push({id:'rival_'+Date.now()+i,owner:'rival_'+i,color:RIVAL_COLORS[i%RIVAL_COLORS.length],polygon:poly,defense:str,maxDefense:CFG.MAX_DEF,createdAt:Date.now()-3600000*(5+i*2),lastDefended:Date.now()-3600000*(3+i),area,customName:'Rivale '+(i+1),attackHistory:{},_lastDecayTs:Date.now()});
+    const bot=BOTS[i%BOTS.length];
+    territories.push({id:'rival_'+Date.now()+i,owner:bot.id,color:bot.color,polygon:poly,defense:str,maxDefense:CFG.MAX_DEF,createdAt:Date.now()-3600000*(5+i*2),lastDefended:Date.now()-3600000*(3+i),area,customName:bot.name+'s Gebiet',attackHistory:{},_lastDecayTs:Date.now()});
   });
+}
+function simulateBotRun(){
+  if(!mapL||!territories.length)return;
+  const bot=BOTS[Math.floor(Math.random()*BOTS.length)];
+  const c=mapL.getCenter();
+  const botTerrs=territories.filter(t=>t.owner===bot.id);
+  let baseLat=c.lat,baseLng=c.lng;
+  if(botTerrs.length){try{const rc=turf.centroid(turf.feature(botTerrs[0].polygon)).geometry.coordinates;baseLat=rc[1];baseLng=rc[0];}catch(e){}}
+  const lat=baseLat+(Math.random()-.5)*.018;
+  const lng=baseLng+(Math.random()-.5)*.018;
+  const r=80+Math.random()*160;
+  const poly=mkCircle(lat,lng,r);
+  const area=turf.area(poly);
+  const dist=800+Math.random()*2200;
+  const km=dist/1000;
+  bot.totalKm=+(bot.totalKm+km).toFixed(1);
+  const ovl=territories.filter(t=>{try{return turf.booleanIntersects(turf.feature(t.polygon),turf.feature(poly));}catch(e){return false}});
+  let txt='';
+  const now=Date.now();
+  if(!ovl.length){
+    territories.push({id:'b_'+now,owner:bot.id,color:bot.color,polygon:poly.geometry,
+      defense:25+Math.floor(Math.random()*35),maxDefense:100,createdAt:now,
+      lastDefended:now,area,customName:bot.name+'s Gebiet',attackHistory:{},_lastDecayTs:now});
+    bot.pts+=80+Math.floor(area/200);bot.conquered++;
+    txt=`${bot.avatar} ${bot.name} hat neues Gebiet eingenommen`;
+  } else {
+    const playerTerr=ovl.find(t=>t.owner===userId);
+    const ownBotTerr=ovl.find(t=>t.owner===bot.id);
+    if(playerTerr){
+      const dmg=km*CFG.STR_DMG_PER_KM*.7;
+      playerTerr.defense=Math.max(0,playerTerr.defense-dmg);
+      if(playerTerr.defense<=0){
+        playerTerr.owner=bot.id;playerTerr.color=bot.color;
+        playerTerr.defense=20;playerTerr._lastDecayTs=now;
+        bot.pts+=150;bot.conquered++;
+        txt=`${bot.avatar} ${bot.name} hat dein Gebiet erobert! ⚔️`;
+        toast(`⚠️ ${bot.name} hat ein Gebiet übernommen!`);vib([100,50,100]);
+      } else {
+        bot.pts+=30;
+        txt=`${bot.avatar} ${bot.name} greift ein Gebiet an (${(km).toFixed(1)} km)`;
+      }
+    } else if(ownBotTerr){
+      ownBotTerr.defense=Math.min(100,ownBotTerr.defense+km*6);
+      ownBotTerr._lastDecayTs=now;
+      txt=`${bot.avatar} ${bot.name} verteidigt Gebiet`;
+    } else {
+      const rivalTerr=ovl[0];
+      rivalTerr.defense=Math.max(0,rivalTerr.defense-km*5);
+      if(rivalTerr.defense<=0){
+        rivalTerr.owner=bot.id;rivalTerr.color=bot.color;rivalTerr.defense=20;rivalTerr._lastDecayTs=now;
+        bot.pts+=100;bot.conquered++;
+        txt=`${bot.avatar} ${bot.name} hat Rivalen-Gebiet übernommen`;
+      } else {
+        txt=`${bot.avatar} ${bot.name} läuft ${(km).toFixed(1)} km`;
+      }
+    }
+  }
+  if(txt){botActivities.unshift({text:txt,time:now});if(botActivities.length>20)botActivities.pop();}
+  territories=territories.filter(t=>t.defense>0||t.owner===userId||(now-t.lastDefended)<CFG.MAX_AGE_H*3600000);
+  save();renderTerr();
+  if(currentView==='community')updateCommunity();
 }
 function mkCircle(lat,lng,r){return turf.circle([lng,lat],r,{steps:20,units:'meters'}).geometry}
 function genQuests(){quests=[{id:'q1',icon:'🏃',desc:'Laufe 2 km',target:2000,progress:0,reward:100,type:'distance',claimed:false},{id:'q2',icon:'⚔️',desc:'Erobere 1 Gebiet',target:1,progress:0,reward:150,type:'conquer',claimed:false},{id:'q3',icon:'🛡️',desc:'Verteidige 2 Gebiete',target:2,progress:0,reward:100,type:'defend',claimed:false},{id:'q4',icon:'🗺️',desc:'Laufe 5 km',target:5000,progress:0,reward:250,type:'distance',claimed:false}]}
@@ -955,7 +1025,8 @@ function renderTerr(){
       .bindPopup(()=>{
         const barW=Math.round(strPct*100);
         const barCol=strPct>.6?'#10b981':strPct>.3?'#ff9f1c':'#ff4d6d';
-        let h=`<b style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:1px">${own?'⚔️ Dein Gebiet':'🏴 Fremdes Gebiet'}</b>`;
+        const botOwner=BOTS.find(b=>b.id===t.owner);
+        let h=`<b style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:1px">${own?'⚔️ Dein Gebiet':`${botOwner?botOwner.avatar:'🏴'} ${botOwner?botOwner.name+'s':'Fremdes'} Gebiet`}</b>`;
         if(t.customName)h+=`<br><span style="font-size:.75rem;color:#6b6b82">📛 ${t.customName}</span>`;
         h+=`<div style="margin:7px 0 5px"><div style="display:flex;justify-content:space-between;font-size:.72rem;margin-bottom:3px"><span>🛡️ Stärke</span><span style="color:${barCol};font-weight:700">${Math.round(t.defense)}/100</span></div>`;
         h+=`<div style="background:#1a1a26;border-radius:4px;height:6px;overflow:hidden"><div style="background:${barCol};height:100%;width:${barW}%;border-radius:4px"></div></div></div>`;
@@ -1208,7 +1279,9 @@ function renderWeekChart(){
 
 /* COMMUNITY */
 function updateCommunity(){
-  $('newsList').innerHTML=[{icon:'📰',txt:'Runner42 hat 5000 m² erobert!',t:'vor 2 Std.'},{icon:'⚔️',txt:'Kampf um den Stadtpark!',t:'vor 1 Std.'},{icon:'🏆',txt:'Neuer Wochenrekord: 15 km!',t:'vor 30 Min.'}].map(n=>`<div class="list-row"><span class="row-icon">${n.icon}</span><span class="row-txt">${n.txt}</span><span class="row-meta">${n.t}</span></div>`).join('');
+  const staticNews=[{icon:'📰',txt:'Neuer Wochenrekord gebrochen!',t:'vor 2 Std.'},{icon:'🏆',txt:'Kampf um den Stadtpark!',t:'vor 1 Std.'}];
+  const liveNews=botActivities.slice(0,4).map(a=>{const diff=Math.round((Date.now()-a.time)/60000);const t=diff<1?'gerade':diff<60?`vor ${diff} Min.`:`vor ${Math.floor(diff/60)} Std.`;return{icon:'🏃',txt:a.text,t};});
+  $('newsList').innerHTML=[...liveNews,...staticNews].slice(0,5).map(n=>`<div class="list-row"><span class="row-icon">${n.icon}</span><span class="row-txt">${n.txt}</span><span class="row-meta">${n.t}</span></div>`).join('');
   $('recordsList').innerHTML=[['🏃','Längster Lauf',fmtDist(Math.max(0,...history.map(r=>r.distance)))],['⚔️','Gebiete erobert',totalConquered],['📐','Größtes Gebiet',Math.round(Math.max(0,...territories.filter(t=>t.owner===userId).map(t=>t.area||0)))+' m²'],['🔥','Streak',streakDays+' Tage']].map(([i,l,v])=>`<div class="list-row"><span class="row-icon">${i}</span><span class="row-txt">${l}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary)">${v}</span></div>`).join('');
   $('followerList').innerHTML=[{name:'SpeedKing',av:'⚡',txt:'10 km in 45 Min',t:'vor 1 Tag'},{name:'MountainGoat',av:'🤸',txt:'500 Punkte durch Eroberung',t:'vor 3 Std.'},{name:'NightOwl',av:'🏋️',txt:'3 Gebiete verteidigt',t:'vor 6 Std.'}].map(f=>`<div class="list-row"><span class="row-icon">${f.av}</span><div class="row-txt"><b>${f.name}</b>: ${f.txt}</div><span class="row-meta">${f.t}</span></div>`).join('');
   renderEvents();
@@ -1302,11 +1375,8 @@ async function renderLeaderboard(){
     // Fallback: lokale Mockdaten
     const myTerr=territories.filter(t=>t.owner===userId).length;
     const board=[
-      {name:'SpeedKing',av:'⚡',pts:8420,terr:12,km:'142.3'},
-      {name:'MountainGoat',av:'🤸',pts:7110,terr:9,km:'118.7'},
-      {name:'NightOwl',av:'🏋️',pts:5830,terr:7,km:'96.2'},
-      {name:playerName||'Du',av:userAvatar,pts:points,terr:myTerr,km:totalKm.toFixed(1)},
-      {name:'CityRunner',av:'🏃',pts:3210,terr:4,km:'58.1'}
+      ...BOTS.map(b=>({name:b.name,av:b.avatar,pts:b.pts,terr:territories.filter(t=>t.owner===b.id).length,km:b.totalKm.toFixed(1)})),
+      {name:playerName||'Du',av:userAvatar,pts:points,terr:myTerr,km:totalKm.toFixed(1)}
     ].sort((a,b)=>b.pts-a.pts);
     lb.innerHTML=board.map((r,i)=>{
       const isMe=r.name===(playerName||'Du');
@@ -1317,12 +1387,20 @@ async function renderLeaderboard(){
 
 /* ── RICH SOCIAL FEED ── */
 function renderSocialFeed(){
-  const feedItems=[
-    {name:'SpeedKing',av:'⚡',txt:'10 km in 45 Min',t:'vor 1 Tag',hasPhoto:true,photoColor:'#1a2a4a',route:[[48.14,11.57],[48.145,11.575],[48.15,11.58],[48.148,11.585]]},
-    {name:'MountainGoat',av:'🤸',txt:'500 Punkte durch Eroberung',t:'vor 3 Std.',hasPhoto:false,route:null},
-    {name:'NightOwl',av:'🏋️',txt:'3 Gebiete verteidigt',t:'vor 6 Std.',hasPhoto:true,photoColor:'#0a1a0a',route:[[48.13,11.56],[48.132,11.565],[48.135,11.57]]}
-  ];
-  $('followerList').innerHTML=feedItems.map((f,idx)=>`<div class="list-row" style="flex-direction:column;align-items:stretch;gap:8px"><div style="display:flex;align-items:center;gap:10px"><span class="row-icon">${f.av}</span><div class="row-txt"><b>${f.name}</b>: ${f.txt}</div><span class="row-meta">${f.t}</span></div>${(f.hasPhoto||f.route)?`<div style="display:flex;gap:8px">${f.hasPhoto?`<div style="width:70px;height:70px;background:${f.photoColor};border-radius:10px;border:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.4rem">📸</div>`:''} ${f.route?`<canvas id="feedRoute${idx}" width="120" height="70" style="border-radius:10px;border:1px solid var(--border);background:var(--bg2)"></canvas>`:''}</div>`:''}</div>`).join('');
+  const now=Date.now();
+  const feedItems=botActivities.length>=3
+    ? botActivities.slice(0,3).map(a=>{
+        const bot=BOTS.find(b=>b.id===a.bot)||BOTS[0];
+        const diff=Math.round((now-a.time)/60000);
+        const t=diff<1?'gerade':diff<60?`vor ${diff} Min.`:`vor ${Math.floor(diff/60)} Std.`;
+        return{name:bot.name,av:bot.avatar,txt:a.text.replace(bot.avatar+' '+bot.name+' ',''),t,route:null};
+      })
+    : [
+        {name:'SpeedKing',av:'⚡',txt:'10 km in 45 Min gelaufen',t:'vor 1 Tag',route:[[48.14,11.57],[48.145,11.575],[48.15,11.58],[48.148,11.585]]},
+        {name:'MountainGoat',av:'🤸',txt:'500 Punkte durch Eroberung',t:'vor 3 Std.',route:null},
+        {name:'NightOwl',av:'🏋️',txt:'3 Gebiete verteidigt',t:'vor 6 Std.',route:[[48.13,11.56],[48.132,11.565],[48.135,11.57]]}
+      ];
+  $('followerList').innerHTML=feedItems.map((f,idx)=>`<div class="list-row" style="flex-direction:column;align-items:stretch;gap:8px"><div style="display:flex;align-items:center;gap:10px"><span class="row-icon">${f.av}</span><div class="row-txt"><b>${f.name}</b>: ${f.txt}</div><span class="row-meta">${f.t}</span></div>${f.route?`<div style="display:flex;gap:8px"><canvas id="feedRoute${idx}" width="120" height="70" style="border-radius:10px;border:1px solid var(--border);background:var(--bg2)"></canvas></div>`:''}</div>`).join('');
   feedItems.forEach((f,idx)=>{if(f.route){const cv=document.getElementById('feedRoute'+idx);if(cv)drawMiniMap(cv,f.route);}});
 }
 
@@ -1458,6 +1536,7 @@ function setupBg(){
   setInterval(()=>{if(energy<CFG.ENERGY_MAX&&(Date.now()-lastEnergyTs)>=CFG.ENERGY_REGEN_H*3600000){energy=Math.min(CFG.ENERGY_MAX,energy+1);lastEnergyTs=Date.now();toast('⚡ Energie aufgeladen!')}},60000);
   setInterval(applyDecay,60000);
   setInterval(()=>{if(hrSource==='sim')simHR()},3000);
+  setTimeout(()=>{simulateBotRun();setInterval(simulateBotRun,4*60*1000);},30000);
 }
 
 /* ONBOARDING */
