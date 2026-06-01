@@ -746,6 +746,7 @@ body.light .pv-banner{background:linear-gradient(160deg,#3a1a10 0%,#2a1508 45%,#
   </div>
 </div>
 
+<canvas id="applauseCanvas" style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1500;display:none"></canvas>
 <div id="toast"></div>
 
 <script>
@@ -1336,6 +1337,52 @@ function playLikeAnimation(t){
   requestAnimationFrame(animSparks);
 }
 
+function playApplauseAnimation(){
+  const cv=$('applauseCanvas');
+  cv.width=window.innerWidth;cv.height=window.innerHeight;cv.style.display='block';
+  const ctx=cv.getContext('2d');
+  const cx=window.innerWidth/2,cy=window.innerHeight*.45;
+  const sparks=[];let frame=0;
+  function drawSword(x1,y1,x2,y2,alpha){
+    ctx.save();ctx.globalAlpha=alpha;
+    ctx.strokeStyle='#e8ff47';ctx.lineWidth=5;ctx.lineCap='round';
+    ctx.shadowColor='#e8ff47';ctx.shadowBlur=18;
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+    const dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy)||1;
+    const mx=x1+dx*.28,my=y1+dy*.28,px=-dy/len*13,py=dx/len*13;
+    ctx.lineWidth=3.5;
+    ctx.beginPath();ctx.moveTo(mx-px,my-py);ctx.lineTo(mx+px,my+py);ctx.stroke();
+    ctx.restore();
+  }
+  function anim(){
+    ctx.clearRect(0,0,cv.width,cv.height);
+    if(frame<22){
+      const t=frame/22,e=t*t*(3-2*t);
+      drawSword(cx-120+e*80,cy-50+e*40,cx-40+e*40,cy-10+e*10,1);
+      drawSword(cx+120-e*80,cy+50-e*40,cx+40-e*40,cy+10-e*10,1);
+    }
+    if(frame===22){
+      for(let i=0;i<30;i++)sparks.push({x:cx,y:cy,vx:(Math.random()-.5)*11,vy:(Math.random()-.5)*11-3,life:1,r:2+Math.random()*3});
+    }
+    if(frame>=22&&frame<65){
+      const a=Math.max(0,1-(frame-22)/43*.9);
+      drawSword(cx-80,cy-40,cx+20,cy+20,a);
+      drawSword(cx+80,cy-40,cx-20,cy+20,a);
+      ctx.save();ctx.globalAlpha=a;
+      ctx.font="bold 2rem 'Bebas Neue',sans-serif";ctx.fillStyle='#e8ff47';
+      ctx.textAlign='center';ctx.shadowColor='#e8ff47';ctx.shadowBlur=22;
+      ctx.fillText('⚔️  CLASH!  ⚔️',cx,cy-50-(frame-22)*1.2);
+      ctx.restore();
+    }
+    sparks.forEach(s=>{s.x+=s.vx;s.y+=s.vy;s.vy+=.25;s.life-=.032;if(s.life>0){ctx.beginPath();ctx.arc(s.x,s.y,s.r*s.life,0,Math.PI*2);ctx.fillStyle=`rgba(232,255,71,${s.life})`;ctx.fill();}});
+    frame++;
+    if(frame<70)requestAnimationFrame(anim);
+    else{ctx.clearRect(0,0,cv.width,cv.height);cv.style.display='none';}
+  }
+  requestAnimationFrame(anim);
+}
+window.applaudActivity=function(){playApplauseAnimation();toast('👏 Applaus!');};
+
 /* ── EVENTS ── */
 function renderEvents(){
   const now=Date.now();
@@ -1400,7 +1447,7 @@ function renderSocialFeed(){
         {name:'MountainGoat',av:'🤸',txt:'500 Punkte durch Eroberung',t:'vor 3 Std.',route:null},
         {name:'NightOwl',av:'🏋️',txt:'3 Gebiete verteidigt',t:'vor 6 Std.',route:[[48.13,11.56],[48.132,11.565],[48.135,11.57]]}
       ];
-  $('followerList').innerHTML=feedItems.map((f,idx)=>`<div class="list-row" style="flex-direction:column;align-items:stretch;gap:8px"><div style="display:flex;align-items:center;gap:10px"><span class="row-icon">${f.av}</span><div class="row-txt"><b>${f.name}</b>: ${f.txt}</div><span class="row-meta">${f.t}</span></div>${f.route?`<div style="display:flex;gap:8px"><canvas id="feedRoute${idx}" width="120" height="70" style="border-radius:10px;border:1px solid var(--border);background:var(--bg2)"></canvas></div>`:''}</div>`).join('');
+  $('followerList').innerHTML=feedItems.map((f,idx)=>`<div class="list-row" style="flex-direction:column;align-items:stretch;gap:8px"><div style="display:flex;align-items:center;gap:10px"><span class="row-icon">${f.av}</span><div class="row-txt"><b>${f.name}</b>: ${f.txt}</div><span class="row-meta">${f.t}</span></div>${f.route?`<div style="display:flex;gap:8px"><canvas id="feedRoute${idx}" width="120" height="70" style="border-radius:10px;border:1px solid var(--border);background:var(--bg2)"></canvas></div>`:''}<button onclick="window.applaudActivity()" style="align-self:flex-end;background:none;border:1px solid var(--border);border-radius:20px;padding:3px 12px;font-size:.7rem;color:var(--muted);cursor:pointer;margin-top:2px">👏 Applaudieren</button></div>`).join('');
   feedItems.forEach((f,idx)=>{if(f.route){const cv=document.getElementById('feedRoute'+idx);if(cv)drawMiniMap(cv,f.route);}});
 }
 
@@ -1571,8 +1618,8 @@ window.initApp=function(){
   $('drawerBtn').addEventListener('click',e=>{e.stopPropagation();drawer.classList.contains('open')?closeDrawer():openDrawer()});
   $('shareBtn').addEventListener('click',async()=>{try{const c=await html2canvas($('mapView'));const blob=await(await fetch(c.toDataURL())).blob();const file=new File([blob],'run-conquer.png',{type:'image/png'});if(navigator.share)await navigator.share({title:'Run & Conquer',files:[file]});else{const a=document.createElement('a');a.download='map.png';a.href=c.toDataURL();a.click();toast('Screenshot gespeichert')}}catch(e){}});
   $('themeBtn').addEventListener('click',toggleTheme);
-  $('pvEditBtn').addEventListener('click',()=>{$('editName').value=playerName;renderEditAvatars();$('profileModal').style.display='flex'});
-  $('userBadge').addEventListener('click',()=>{$('editName').value=playerName;renderEditAvatars();$('profileModal').style.display='flex'});
+  $('pvEditBtn').addEventListener('click',()=>{$('settingsModal').style.display='flex';renderSettingsTab('profil');document.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.stab==='profil'));});
+  $('userBadge').addEventListener('click',()=>{$('settingsModal').style.display='flex';renderSettingsTab('profil');document.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.stab==='profil'));});
   $('saveProfileBtn').addEventListener('click',()=>{playerName=$('editName').value.trim()||playerName;userAvatar=editAvatar;saveProfile();$('profileModal').style.display='none';toast('Profil gespeichert');updateProfile()});
   $('closeProfileBtn').addEventListener('click',()=>$('profileModal').style.display='none');
   $('closePostBtn').addEventListener('click',()=>$('postRunModal').style.display='none');
