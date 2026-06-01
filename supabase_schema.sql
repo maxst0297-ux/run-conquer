@@ -57,8 +57,8 @@ create table if not exists public.support_messages (
 
 alter table public.support_messages enable row level security;
 
-create policy "Nutzer senden eigene Nachrichten"
-  on public.support_messages for insert with check (auth.uid() = user_id);
+create policy "Nutzer senden Support-Nachrichten"
+  on public.support_messages for insert with check (true);
 
 create policy "Admin liest alle Nachrichten"
   on public.support_messages for select

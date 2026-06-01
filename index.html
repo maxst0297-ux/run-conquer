@@ -861,12 +861,15 @@ async function sendSupportMessage(){
   if(!msg){if(statusEl)statusEl.innerHTML='<span style="color:var(--red)">❌ Bitte Nachricht eingeben</span>';return;}
   if(statusEl)statusEl.textContent='⏳ Wird gesendet…';
   try{
-    if(sb&&sbUserId){
-      const{error}=await sb.from('support_messages').insert({user_id:sbUserId,player_name:playerName||'Unbekannt',subject,message:msg});
-      if(error)throw error;
-    } else {
-      throw new Error('Nicht eingeloggt');
-    }
+    if(!sb)throw new Error('Keine Verbindung');
+    if(!sbUserId)await initSupabase();
+    const{error}=await sb.from('support_messages').insert({
+      user_id:sbUserId||null,
+      player_name:playerName||'Unbekannt',
+      subject,
+      message:msg
+    });
+    if(error)throw error;
     if(statusEl)statusEl.innerHTML='<span style="color:var(--green)">✅ Gesendet! Wir melden uns bald.</span>';
     if(document.getElementById('suppSubject'))document.getElementById('suppSubject').value='';
     if(document.getElementById('suppMsg'))document.getElementById('suppMsg').value='';
