@@ -717,32 +717,34 @@ body.light .pv-banner{background:linear-gradient(160deg,#3a1a10 0%,#2a1508 45%,#
   </div>
 </div>
 
+<!-- ADMIN LOGIN MODAL -->
+<div id="adminLoginModal" class="modal" style="display:none">
+  <div class="modal-card" style="max-width:320px">
+    <div class="modal-title" style="color:var(--red)">🔐 ADMIN LOGIN</div>
+    <div class="field"><label>E-Mail</label><input type="email" id="adminEmail" class="modal-input" value="maxst0297@gmail.com"></div>
+    <div class="field"><label>Passwort</label><input type="password" id="adminPwd" class="modal-input" placeholder="Passwort…"></div>
+    <div class="modal-actions">
+      <button class="btn btn-p" id="adminLoginBtn">Einloggen</button>
+      <button class="btn" id="closeAdminLoginBtn">✕</button>
+    </div>
+    <div id="adminLoginStatus" style="text-align:center;margin-top:10px;font-size:.8rem"></div>
+  </div>
+</div>
+
 <!-- ADMIN MODAL -->
 <div id="adminModal" class="modal" style="display:none">
   <div class="modal-card" style="max-width:420px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
       <div class="modal-title" style="margin-bottom:0;color:var(--red)">⚙️ ADMIN</div>
       <button class="btn" id="closeAdminBtn" style="width:auto;padding:6px 14px">✕</button>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;text-align:center">
-        <canvas id="adminWeekChart" height="80"></canvas>
-        <div style="font-size:.6rem;color:var(--muted);margin-top:4px">Wochenaktivität</div>
-      </div>
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;text-align:center">
-        <canvas id="adminTerrChart" height="80"></canvas>
-        <div style="font-size:.6rem;color:var(--muted);margin-top:4px">Gebiete</div>
-      </div>
+    <div style="display:flex;gap:4px;margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch">
+      <button class="stab-btn active" data-atab="users">👥 Nutzer</button>
+      <button class="stab-btn" data-atab="support">📨 Support</button>
+      <button class="stab-btn" data-atab="charts">📊 Charts</button>
     </div>
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:12px">
-      <canvas id="adminRadarChart" height="120"></canvas>
-      <div style="font-size:.6rem;color:var(--muted);text-align:center;margin-top:4px">Fitness-Radar</div>
-    </div>
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:12px">
-      <canvas id="adminLineChart" height="80"></canvas>
-      <div style="font-size:.6rem;color:var(--muted);text-align:center;margin-top:4px">30-Tage Aktivität</div>
-    </div>
-    <button class="btn" id="closeAdminBtn2" style="width:100%">Schließen</button>
+    <div id="adminTabBody" style="min-height:200px;max-height:52vh;overflow-y:auto"></div>
+    <button class="btn" id="closeAdminBtn2" style="width:100%;margin-top:12px">Schließen</button>
   </div>
 </div>
 
@@ -834,13 +836,16 @@ let botActivities=[];
 const SB_URL='https://mlkpryhacihbqnmtgkcg.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1sa3ByeWhhY2loYnFubXRna2NnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzMTcwMzMsImV4cCI6MjA5NTg5MzAzM30.YEVBlg686Ssj0p8ACz6eur3snBzay_exEedZ3gzqh7g';
 const sb=window.supabase?.createClient(SB_URL,SB_KEY);
-let sbUserId=null;
+let sbUserId=null,isAdmin=false;
 
 async function initSupabase(){
   if(!sb)return;
   try{
     const{data:{session}}=await sb.auth.getSession();
-    if(session){sbUserId=session.user.id;}
+    if(session){
+      sbUserId=session.user.id;
+      if(session.user.email==='maxst0297@gmail.com')isAdmin=true;
+    }
     else{const{data,error}=await sb.auth.signInAnonymously();if(data?.user)sbUserId=data.user.id;}
   }catch(e){console.warn('Supabase auth:',e);}
 }
@@ -863,6 +868,28 @@ async function syncRun(rec){
       path:rec.path||null
     });
   }catch(e){console.warn('Supabase run sync:',e);}
+}
+async function sendSupportMessage(){
+  const subject=(document.getElementById('suppSubject')?.value||'').trim()||'Kein Betreff';
+  const msg=(document.getElementById('suppMsg')?.value||'').trim();
+  const statusEl=document.getElementById('suppStatus');
+  if(!msg){if(statusEl)statusEl.innerHTML='<span style="color:var(--red)">❌ Bitte Nachricht eingeben</span>';return;}
+  if(statusEl)statusEl.textContent='⏳ Wird gesendet…';
+  try{
+    if(sb&&sbUserId){
+      const{error}=await sb.from('support_messages').insert({user_id:sbUserId,player_name:playerName||'Unbekannt',subject,message:msg});
+      if(error)throw error;
+    } else {
+      throw new Error('Nicht eingeloggt');
+    }
+    if(statusEl)statusEl.innerHTML='<span style="color:var(--green)">✅ Gesendet! Wir melden uns bald.</span>';
+    if(document.getElementById('suppSubject'))document.getElementById('suppSubject').value='';
+    if(document.getElementById('suppMsg'))document.getElementById('suppMsg').value='';
+    toast('📨 Nachricht gesendet');
+  }catch(e){
+    console.warn('Support message error:',e);
+    if(statusEl)statusEl.innerHTML='<span style="color:var(--red)">❌ '+(e.message||'Fehler beim Senden')+'</span>';
+  }
 }
 
 /* DOM */
@@ -1471,29 +1498,75 @@ function renderSettingsTab(tab){
     let vTaps=0;
     $('setVersionTap').addEventListener('click',()=>{vTaps++;if(vTaps>=5){vTaps=0;$('settingsModal').style.display='none';openAdminPanel();}});
   } else if(tab==='support'){
-    body.innerHTML=`<div style="text-align:center;padding:16px"><div style="font-size:2rem;margin-bottom:8px">🛠️</div><div style="font-weight:600;margin-bottom:6px">Hilfe &amp; Kontakt</div><div style="font-size:.8rem;color:var(--muted);margin-bottom:16px">Probleme oder Feedback? Schreib uns!</div><a href="mailto:support@runandconquer.app?subject=Run%20%26%20Conquer%20Support" class="btn btn-p" style="display:block;text-decoration:none;text-align:center">✉️ E-Mail senden</a></div>`;
+    body.innerHTML=`<div style="font-size:.88rem;font-weight:600;margin-bottom:5px">🛠️ Support &amp; Feedback</div><div style="font-size:.75rem;color:var(--muted);margin-bottom:14px">Probleme oder Ideen? Wir antworten schnell!</div><div class="field"><label>Betreff</label><input type="text" id="suppSubject" class="modal-input" placeholder="z.B. Bug, Feedback, Idee…"></div><div class="field"><label>Nachricht</label><textarea id="suppMsg" class="modal-input" style="resize:none;height:90px;font-family:'Poppins',sans-serif;font-size:.85rem;padding:12px" placeholder="Beschreibe dein Anliegen…"></textarea></div><button class="btn btn-p" id="sendSuppBtn" style="width:100%"><i class="fas fa-paper-plane"></i> Absenden</button><div id="suppStatus" style="text-align:center;margin-top:8px;font-size:.78rem"></div>`;
+    document.getElementById('sendSuppBtn')?.addEventListener('click',sendSupportMessage);
   }
 }
 
 /* ── ADMIN PANEL ── */
 let adminCharts=[];
+function openAdminLogin(){
+  $('adminLoginModal').style.display='flex';
+  const s=$('adminLoginStatus');if(s)s.textContent='';
+}
 function openAdminPanel(){
+  if(!isAdmin){openAdminLogin();return;}
   $('adminModal').style.display='flex';
-  setTimeout(()=>{
-    adminCharts.forEach(c=>{try{c.destroy()}catch(e){}});adminCharts=[];
-    const acc=getComputedStyle(document.body).getPropertyValue('--primary').trim()||'#e8ff47';
-    const labels=['Mo','Di','Mi','Do','Fr','Sa','So'],today=(new Date().getDay()+6)%7;
-    const wData=labels.map((_,i)=>{const d=new Date();d.setDate(d.getDate()-today+i);d.setHours(0,0,0,0);return history.filter(r=>new Date(r.date).toDateString()===d.toDateString()).reduce((s,r)=>s+r.distance/1000,0)});
-    adminCharts.push(new Chart($('adminWeekChart').getContext('2d'),{type:'bar',data:{labels,datasets:[{data:wData,backgroundColor:acc+'88',borderColor:acc,borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{display:false},x:{ticks:{color:'#6b6b82',font:{size:9}},grid:{display:false}}}}}));
-    const mine=territories.filter(t=>t.owner===userId).length,rival=territories.filter(t=>t.owner!==userId).length;
-    adminCharts.push(new Chart($('adminTerrChart').getContext('2d'),{type:'doughnut',data:{labels:['Meine','Feind'],datasets:[{data:[mine||1,rival||1],backgroundColor:[acc+'cc','#ff4d6dcc'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}}));
-    const avgPace=history.length?history.reduce((s,r)=>s+(r.duration/60/(r.distance/1000||1)),0)/history.length:6;
-    adminCharts.push(new Chart($('adminRadarChart').getContext('2d'),{type:'radar',data:{labels:['Ausdauer','Tempo','Gebiete','Streak','Energie'],datasets:[{data:[Math.min(100,(totalKm/100)*100),Math.min(100,(6/Math.max(1,avgPace))*100),Math.min(100,(territories.filter(t=>t.owner===userId).length/10)*100),Math.min(100,streakDays*10),(energy/CFG.ENERGY_MAX)*100],fill:true,backgroundColor:acc+'22',borderColor:acc,pointBackgroundColor:acc}]},options:{responsive:true,maintainAspectRatio:false,scales:{r:{ticks:{display:false},grid:{color:'rgba(255,255,255,.06)'},pointLabels:{color:'#6b6b82',font:{size:9}}}},plugins:{legend:{display:false}}}}));
-    const days30=Array.from({length:30},(_,i)=>{const d=new Date();d.setDate(d.getDate()-29+i);return d});
-    const d30Data=days30.map(d=>history.filter(r=>new Date(r.date).toDateString()===d.toDateString()).reduce((s,r)=>s+r.distance/1000,0));
-    const d30Labels=days30.map((_,i)=>i%7===0?days30[i].toLocaleDateString('de',{day:'numeric',month:'numeric'}):'');
-    adminCharts.push(new Chart($('adminLineChart').getContext('2d'),{type:'line',data:{labels:d30Labels,datasets:[{data:d30Data,borderColor:'#00d4ff',backgroundColor:'#00d4ff22',tension:.4,fill:true,pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{display:false},x:{ticks:{color:'#6b6b82',font:{size:8}},grid:{display:false}}}}}));
-  },80);
+  document.querySelectorAll('[data-atab]').forEach(b=>b.classList.toggle('active',b.dataset.atab==='users'));
+  renderAdminTab('users');
+}
+function renderAdminTab(tab){
+  document.querySelectorAll('[data-atab]').forEach(b=>b.classList.toggle('active',b.dataset.atab===tab));
+  const body=$('adminTabBody');if(!body)return;
+  if(tab==='users'){
+    body.innerHTML='<div style="padding:12px;color:var(--muted);font-size:.8rem;text-align:center">⏳ Lade Nutzer…</div>';
+    loadAdminUsers();
+  } else if(tab==='support'){
+    body.innerHTML='<div style="padding:12px;color:var(--muted);font-size:.8rem;text-align:center">⏳ Lade Nachrichten…</div>';
+    loadAdminMessages();
+  } else if(tab==='charts'){
+    body.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px"><div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center"><canvas id="adminWeekChart" height="80"></canvas><div style="font-size:.6rem;color:var(--muted);margin-top:4px">Wochenaktivität</div></div><div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center"><canvas id="adminTerrChart" height="80"></canvas><div style="font-size:.6rem;color:var(--muted);margin-top:4px">Gebiete</div></div></div><div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px;margin-bottom:8px"><canvas id="adminRadarChart" height="110"></canvas><div style="font-size:.6rem;color:var(--muted);text-align:center;margin-top:4px">Fitness-Radar</div></div><div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px"><canvas id="adminLineChart" height="70"></canvas><div style="font-size:.6rem;color:var(--muted);text-align:center;margin-top:4px">30-Tage Aktivität</div></div>`;
+    setTimeout(initAdminCharts,60);
+  }
+}
+async function loadAdminUsers(){
+  const body=$('adminTabBody');if(!body)return;
+  try{
+    if(!sb)throw new Error('no sb');
+    const{data,error}=await sb.from('profiles').select('*').order('points',{ascending:false}).limit(50);
+    if(error||!data)throw error||new Error('empty');
+    if(!data.length){body.innerHTML='<div style="padding:16px;color:var(--muted);font-size:.8rem;text-align:center">Noch keine Nutzer in der Datenbank</div>';return;}
+    body.innerHTML=`<div style="font-size:.65rem;color:var(--muted);padding:0 0 8px;text-transform:uppercase;letter-spacing:1px">${data.length} Nutzer gesamt</div>`+data.map(u=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)"><span style="font-size:1.2rem">${u.user_avatar||'🏃'}</span><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.player_name||'Unbekannt'}</div><div style="font-size:.63rem;color:var(--muted)">${(u.total_km||0).toFixed(1)} km · ${u.total_conquered||0} Gebiete · 🔥${u.streak_days||0}</div></div><span style="font-family:'Bebas Neue',sans-serif;color:var(--primary);font-size:1rem;flex-shrink:0">${u.points||0}</span></div>`).join('');
+  }catch(e){
+    body.innerHTML='<div style="padding:16px;color:var(--red);font-size:.8rem;text-align:center">⚠️ Fehler: '+e.message+'</div>';
+  }
+}
+async function loadAdminMessages(){
+  const body=$('adminTabBody');if(!body)return;
+  try{
+    if(!sb)throw new Error('no sb');
+    const{data,error}=await sb.from('support_messages').select('*').order('created_at',{ascending:false}).limit(50);
+    if(error||!data)throw error||new Error('empty');
+    if(!data.length){body.innerHTML='<div style="padding:16px;color:var(--muted);font-size:.8rem;text-align:center">Keine Nachrichten</div>';return;}
+    body.innerHTML=`<div style="font-size:.65rem;color:var(--muted);padding:0 0 8px;text-transform:uppercase;letter-spacing:1px">${data.length} Nachricht${data.length===1?'':'en'}</div>`+data.map(m=>{const d=new Date(m.created_at);const ds=d.toLocaleDateString('de',{day:'numeric',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('de',{hour:'2-digit',minute:'2-digit'});return`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px"><span style="font-weight:600;font-size:.8rem">${m.player_name||'Unbekannt'}</span><span style="font-size:.6rem;color:var(--muted)">${ds}</span></div><div style="font-size:.75rem;font-weight:600;color:var(--primary);margin-bottom:3px">${m.subject||'Kein Betreff'}</div><div style="font-size:.78rem;color:var(--text);line-height:1.5">${m.message}</div></div>`;}).join('');
+  }catch(e){
+    body.innerHTML='<div style="padding:16px;color:var(--red);font-size:.8rem;text-align:center">⚠️ Keine Berechtigung oder Fehler: '+e.message+'</div>';
+  }
+}
+function initAdminCharts(){
+  adminCharts.forEach(c=>{try{c.destroy()}catch(e){}});adminCharts=[];
+  const acc=getComputedStyle(document.body).getPropertyValue('--primary').trim()||'#e8ff47';
+  const labels=['Mo','Di','Mi','Do','Fr','Sa','So'],today=(new Date().getDay()+6)%7;
+  const wData=labels.map((_,i)=>{const d=new Date();d.setDate(d.getDate()-today+i);d.setHours(0,0,0,0);return history.filter(r=>new Date(r.date).toDateString()===d.toDateString()).reduce((s,r)=>s+r.distance/1000,0)});
+  const wc=$('adminWeekChart');if(wc)adminCharts.push(new Chart(wc.getContext('2d'),{type:'bar',data:{labels,datasets:[{data:wData,backgroundColor:acc+'88',borderColor:acc,borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{display:false},x:{ticks:{color:'#6b6b82',font:{size:9}},grid:{display:false}}}}}));
+  const mine=territories.filter(t=>t.owner===userId).length,rival=territories.filter(t=>t.owner!==userId).length;
+  const tc=$('adminTerrChart');if(tc)adminCharts.push(new Chart(tc.getContext('2d'),{type:'doughnut',data:{labels:['Meine','Feind'],datasets:[{data:[mine||1,rival||1],backgroundColor:[acc+'cc','#ff4d6dcc'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}}));
+  const avgPace=history.length?history.reduce((s,r)=>s+(r.duration/60/(r.distance/1000||1)),0)/history.length:6;
+  const rc=$('adminRadarChart');if(rc)adminCharts.push(new Chart(rc.getContext('2d'),{type:'radar',data:{labels:['Ausdauer','Tempo','Gebiete','Streak','Energie'],datasets:[{data:[Math.min(100,(totalKm/100)*100),Math.min(100,(6/Math.max(1,avgPace))*100),Math.min(100,(territories.filter(t=>t.owner===userId).length/10)*100),Math.min(100,streakDays*10),(energy/CFG.ENERGY_MAX)*100],fill:true,backgroundColor:acc+'22',borderColor:acc,pointBackgroundColor:acc}]},options:{responsive:true,maintainAspectRatio:false,scales:{r:{ticks:{display:false},grid:{color:'rgba(255,255,255,.06)'},pointLabels:{color:'#6b6b82',font:{size:9}}}},plugins:{legend:{display:false}}}}));
+  const days30=Array.from({length:30},(_,i)=>{const d=new Date();d.setDate(d.getDate()-29+i);return d});
+  const d30Data=days30.map(d=>history.filter(r=>new Date(r.date).toDateString()===d.toDateString()).reduce((s,r)=>s+r.distance/1000,0));
+  const d30Labels=days30.map((_,i)=>i%7===0?days30[i].toLocaleDateString('de',{day:'numeric',month:'numeric'}):'');
+  const lc=$('adminLineChart');if(lc)adminCharts.push(new Chart(lc.getContext('2d'),{type:'line',data:{labels:d30Labels,datasets:[{data:d30Data,borderColor:'#00d4ff',backgroundColor:'#00d4ff22',tension:.4,fill:true,pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{display:false},x:{ticks:{color:'#6b6b82',font:{size:8}},grid:{display:false}}}}}));
 }
 
 /* ── MAP PANEL TOGGLE ── */
@@ -1651,6 +1724,33 @@ window.initApp=function(){
   /* Admin modal */
   $('closeAdminBtn').addEventListener('click',()=>$('adminModal').style.display='none');
   $('closeAdminBtn2').addEventListener('click',()=>$('adminModal').style.display='none');
+  /* Admin login modal */
+  $('closeAdminLoginBtn').addEventListener('click',()=>$('adminLoginModal').style.display='none');
+  $('adminLoginBtn').addEventListener('click',async()=>{
+    const email=($('adminEmail')?.value||'').trim();
+    const pwd=$('adminPwd')?.value||'';
+    const statusEl=$('adminLoginStatus');
+    if(!email||!pwd){if(statusEl)statusEl.innerHTML='<span style="color:var(--red)">❌ E-Mail und Passwort eingeben</span>';return;}
+    if(statusEl)statusEl.textContent='⏳ Wird eingeloggt…';
+    try{
+      if(!sb)throw new Error('Supabase nicht verfügbar');
+      const{data,error}=await sb.auth.signInWithPassword({email,password:pwd});
+      if(error)throw error;
+      if(data?.user?.email==='maxst0297@gmail.com'){
+        isAdmin=true;sbUserId=data.user.id;
+        $('adminLoginModal').style.display='none';
+        toast('✅ Admin eingeloggt');
+        openAdminPanel();
+      } else {
+        await sb.auth.signOut();
+        if(statusEl)statusEl.innerHTML='<span style="color:var(--red)">❌ Kein Admin-Zugang für diese E-Mail</span>';
+      }
+    }catch(e){
+      if(statusEl)statusEl.innerHTML='<span style="color:var(--red)">❌ '+(e.message||'Fehler beim Login')+'</span>';
+    }
+  });
+  /* Admin tab buttons */
+  document.querySelectorAll('[data-atab]').forEach(b=>b.addEventListener('click',function(){renderAdminTab(this.dataset.atab);}));
   /* Secret admin: 5 taps on level badge */
   let hdrTaps=0;
   $('hdrLevel').addEventListener('click',()=>{hdrTaps++;if(hdrTaps>=5){hdrTaps=0;openAdminPanel();}});

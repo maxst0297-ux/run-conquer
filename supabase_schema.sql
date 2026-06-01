@@ -44,3 +44,22 @@ create policy "Alle können Runs lesen"
 
 create policy "Nutzer fügen eigene Runs ein"
   on public.runs for insert with check (auth.uid() = user_id);
+
+-- Support Messages Tabelle
+create table if not exists public.support_messages (
+  id           uuid primary key default gen_random_uuid(),
+  user_id      uuid references public.profiles(id) on delete set null,
+  player_name  text,
+  subject      text default 'Kein Betreff',
+  message      text not null,
+  created_at   timestamptz default now()
+);
+
+alter table public.support_messages enable row level security;
+
+create policy "Nutzer senden eigene Nachrichten"
+  on public.support_messages for insert with check (auth.uid() = user_id);
+
+create policy "Admin liest alle Nachrichten"
+  on public.support_messages for select
+  using ((auth.jwt() ->> 'email') = 'maxst0297@gmail.com');
