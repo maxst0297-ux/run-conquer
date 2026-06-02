@@ -930,12 +930,36 @@ async function initSupabase(){
 async function syncProfile(){
   if(!sb||!sbUserId||!playerName)return;
   try{
+    const gameSnap=JSON.stringify({territories,points,energy,totalKm,totalConquered,totalDefended,totalDiscovered,streakDays,history:history.slice(-20),capturedLandmarks,raids});
     await sb.from('profiles').upsert({
       id:sbUserId,player_name:playerName,user_avatar:userAvatar,user_color:userColor,
       points,total_km:totalKm,total_conquered:totalConquered,streak_days:streakDays,
-      updated_at:new Date().toISOString()
+      updated_at:new Date().toISOString(),
+      game_data:gameSnap
     },{onConflict:'id'});
   }catch(e){console.warn('Supabase profile sync:',e);}
+}
+async function loadFromCloud(){
+  if(!sb||!playerName)return false;
+  try{
+    await initSupabase();
+    if(!sbUserId)return false;
+    const{data}=await sb.from('profiles').select('game_data').eq('id',sbUserId).single();
+    if(data?.game_data){
+      const d=JSON.parse(data.game_data);
+      if(d.territories&&d.territories.length>territories.length){
+        territories=d.territories;points=d.points||points;energy=d.energy||energy;
+        totalKm=d.totalKm||totalKm;totalConquered=d.totalConquered||totalConquered;
+        totalDefended=d.totalDefended||totalDefended;streakDays=d.streakDays||streakDays;
+        totalDiscovered=d.totalDiscovered||totalDiscovered;
+        if(d.history)history=[...history,...d.history].slice(-50);
+        capturedLandmarks=d.capturedLandmarks||capturedLandmarks;
+        raids=d.raids||raids;
+        save();return true;
+      }
+    }
+  }catch(e){console.warn('Cloud load:',e);}
+  return false;
 }
 async function syncRun(rec){
   if(!sb||!sbUserId)return;
@@ -1152,24 +1176,26 @@ function genRivals(lat,lng){
   if(!mapL)return;
   const c=lat?{lat,lng}:mapL.getCenter();
   [[.008,.012,180],[-.01,.005,200],[.005,-.015,160],[-.012,-.008,220],[.015,-.005,140]].forEach((o,i)=>{
-    const poly=mkCircle(c.lat+o[0],c.lng+o[1],o[2]);
+    const poly=mkNaturalPoly(c.lat+o[0],c.lng+o[1],o[2]);
     const area=turf.area(poly);
     const str=CFG.STR_INIT_MIN+Math.floor(Math.random()*(CFG.STR_INIT_MAX-CFG.STR_INIT_MIN));
     const bot=BOTS[i%BOTS.length];
     territories.push({id:'rival_'+Date.now()+i,owner:bot.id,color:bot.color,polygon:poly,defense:str,maxDefense:CFG.MAX_DEF,createdAt:Date.now()-3600000*(5+i*2),lastDefended:Date.now()-3600000*(3+i),area,customName:bot.name+'s Gebiet',attackHistory:{},_lastDecayTs:Date.now(),rarity:pickRarity(false)});
   });
+  save();
 }
 function simulateBotRun(){
   if(!mapL||!territories.length)return;
   const bot=BOTS[Math.floor(Math.random()*BOTS.length)];
   const userPos=userMarker?userMarker.getLatLng():mapL.getCenter();
   const botTerrs=territories.filter(t=>t.owner===bot.id);
-  let baseLat=userPos.lat,baseLng=userPos.lng;
-  if(botTerrs.length){try{const rc=turf.centroid(turf.feature(botTerrs[0].polygon)).geometry.coordinates;baseLat=rc[1];baseLng=rc[0];}catch(e){}}
-  const lat=baseLat+(Math.random()-.5)*.018;
-  const lng=baseLng+(Math.random()-.5)*.018;
-  const r=80+Math.random()*160;
-  const poly=mkCircle(lat,lng,r);
+  const baseLat=userPos.lat,baseLng=userPos.lng;
+  const spread=.006+Math.random()*.012; /* 600-1800m radius around user */
+  const angle=Math.random()*Math.PI*2;
+  const lat=baseLat+Math.sin(angle)*spread;
+  const lng=baseLng+Math.cos(angle)*spread/Math.cos(baseLat*Math.PI/180);
+  const r=60+Math.random()*120;
+  const poly=mkNaturalPoly(lat,lng,r);
   const area=turf.area(poly);
   const dist=800+Math.random()*2200;
   const km=dist/1000;
@@ -1223,6 +1249,22 @@ function simulateBotRun(){
   if(currentView==='community')updateCommunity();
 }
 function mkCircle(lat,lng,r){return turf.circle([lng,lat],r,{steps:20,units:'meters'}).geometry}
+function mkNaturalPoly(lat,lng,radiusM){
+  try{
+    const steps=10,coords=[];
+    const latScale=1/111111,lngScale=1/(111111*Math.cos(lat*Math.PI/180));
+    for(let i=0;i<=steps;i++){
+      const angle=(i/steps)*Math.PI*2;
+      const jitter=radiusM*(0.55+Math.random()*0.65);
+      coords.push([lng+Math.cos(angle)*jitter*lngScale,lat+Math.sin(angle)*jitter*latScale]);
+    }
+    coords[steps]=coords[0];
+    const poly=turf.polygon([coords]);
+    const hull=turf.convex(turf.featureCollection(coords.slice(0,-1).map(c=>turf.point(c))));
+    const base=hull||poly;
+    return turf.transformScale(base,1.0).geometry;
+  }catch(e){return mkCircle(lat,lng,radiusM);}
+}
 function genQuests(){quests=[{id:'q1',icon:'🏃',desc:'Laufe 2 km',target:2000,progress:0,reward:100,type:'distance',claimed:false},{id:'q2',icon:'⚔️',desc:'Erobere 1 Gebiet',target:1,progress:0,reward:150,type:'conquer',claimed:false},{id:'q3',icon:'🛡️',desc:'Verteidige 2 Gebiete',target:2,progress:0,reward:100,type:'defend',claimed:false},{id:'q4',icon:'🗺️',desc:'Laufe 5 km',target:5000,progress:0,reward:250,type:'distance',claimed:false}]}
 function initAch(){achievements=[{id:'km10',name:'10 km',icon:'👟',target:10,progress:0,earned:false},{id:'km50',name:'50 km',icon:'🏃',target:50,progress:0,earned:false},{id:'conq5',name:'Eroberer',icon:'⚔️',target:5,progress:0,earned:false},{id:'def10',name:'Verteidiger',icon:'🛡️',target:10,progress:0,earned:false},{id:'pts1k',name:'1000 Pts',icon:'⭐',target:1000,progress:0,earned:false}]}
 
@@ -1367,7 +1409,14 @@ function fallbackMotion(){
 }
 
 /* HR */
-function simHR(){if(!isRunning||isPaused){heartRate=CFG.HR_BASE;return}const el=(runSecs+(Date.now()-runStart)/1000)/60,dk=dist/1000,pace=dk>.01?el/dk:6,diff=Math.max(0,6-pace);heartRate=Math.min(190,Math.floor(CFG.HR_BASE+diff*55+Math.random()*4-2))}
+function simHR(){
+  if(!isRunning||isPaused){heartRate=Math.max(CFG.HR_BASE,Math.round(heartRate*.96+CFG.HR_BASE*.04));return;}
+  const el=(runSecs+(Date.now()-runStart)/1000)/60,dk=dist/1000;
+  const pace=dk>.02?el/dk:7;
+  const effort=Math.max(0,Math.min(1,(7-pace)/5));
+  const target=Math.round(CFG.HR_BASE+effort*110);
+  heartRate=Math.max(CFG.HR_BASE,Math.min(195,Math.round(heartRate*.88+target*.12+(Math.random()*4-2))));
+}
 async function connectBT(){
   if(!navigator.bluetooth){toast('Bluetooth nicht verfügbar');return}
   try{
@@ -1459,22 +1508,23 @@ function startRun(){
 }
 function onGPS(pos){
   if(isPaused)return;
+  const acc=pos.coords.accuracy||999;
+  if(acc>80)return; /* ignore very inaccurate readings */
   const lat=pos.coords.latitude,lng=pos.coords.longitude,pt=[lat,lng];
   if(pos.coords.speed!=null&&pos.coords.speed>=0)gpsSpeed=pos.coords.speed;
   if(pos.coords.altitude!=null)gpsAlt=Math.round(pos.coords.altitude);
-  if(lastPos){
+  if(lastPos&&acc<=50){
     const d=turf.distance(turf.point([lastPos[1],lastPos[0]]),turf.point([lng,lat]),{units:'meters'});
-    if(d>3){
+    if(d>2&&d<80){
       dist+=d;path.push(pt);pathLayer.addLatLng(pt);distLive.textContent=fmtDist(dist);
       const km=Math.floor(dist/1000);
       if(km>lastSplitKm){const el=runSecs+Math.floor((Date.now()-runStart)/1000),ss=el-lastSplitSecs;kmSplits.push({km,pace:fmtPace(1000,ss),splitSecs:ss});lastSplitKm=km;lastSplitSecs=el;beep(660,.1);toast(`KM ${km} · ${fmtPace(1000,ss)}/km`);}
       if(!heatPersonalOnly)heatLayer.addLatLng([lat,lng,.5]);
     }
-  } else{path.push(pt);pathLayer.addLatLng(pt)}
-  lastPos=pt;if(userMarker)userMarker.setLatLng(pt);mapL.setView(pt,mapL.getZoom());
-  // Fog of War reveal
+  } else if(!lastPos){path.push(pt);pathLayer.addLatLng(pt);}
+  lastPos=pt;if(userMarker)userMarker.setLatLng(pt);
+  if(isRunning&&!isPaused)mapL.setView(pt,mapL.getZoom());
   if(fogEnabled)revealCell(lat,lng);
-  // Landmark-Näherungsprüfung
   landmarks.forEach(lm=>{
     if(capturedLandmarks.includes(lm.id))return;
     const dist2=turf.distance(turf.point([lng,lat]),turf.point([lm.lng,lm.lat]),{units:'meters'});
@@ -2084,7 +2134,7 @@ window.initApp=function(){
     saveProfile();
     $('onboarding').style.display='none';$('app').style.display='flex';
     initMap();setTimeout(()=>{load();updateUI();mapL?.invalidateSize()},150);setupBg();initSteps();
-    initSupabase().then(()=>syncProfile());
+    initSupabase().then(async()=>{const restored=await loadFromCloud();if(!restored&&!territories.length){genRivals();save();}renderTerr();updateUI();syncProfile();});
   });
   startBtn.addEventListener('click',startRun);
   pauseBtn.addEventListener('click',()=>{isPaused?resumeRun():pauseRun();});
