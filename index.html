@@ -1147,22 +1147,41 @@ function toggleMapPanel(){
 function genRivals(lat,lng){
   if(!mapL)return;
   const c=lat?{lat,lng}:mapL.getCenter();
-  [[.008,.012,180],[-.01,.005,200],[.005,-.015,160],[-.012,-.008,220],[.015,-.005,140]].forEach((o,i)=>{
-    const poly=mkNaturalPoly(c.lat+o[0],c.lng+o[1],o[2]);
-    const area=turf.area(poly);
-    const str=CFG.STR_INIT_MIN+Math.floor(Math.random()*(CFG.STR_INIT_MAX-CFG.STR_INIT_MIN));
-    const bot=BOTS[i%BOTS.length];
-    territories.push({id:'rival_'+Date.now()+i,owner:bot.id,color:bot.color,polygon:poly,defense:str,maxDefense:CFG.MAX_DEF,createdAt:Date.now()-3600000*(5+i*2),lastDefended:Date.now()-3600000*(3+i),area,customName:bot.name+'s Gebiet',attackHistory:{},_lastDecayTs:Date.now(),rarity:pickRarity(false)});
+  /* Each bot gets 3 initial territories at varying distances/directions */
+  const now=Date.now();
+  BOTS.forEach((bot,bi)=>{
+    const baseAngle=(bi/BOTS.length)*Math.PI*2;
+    for(let t=0;t<3;t++){
+      const angle=baseAngle+(t-1)*0.55;
+      const dist=.008+t*.007+Math.random()*.006;
+      const r=90+Math.random()*130;
+      const tlat=c.lat+Math.sin(angle)*dist;
+      const tlng=c.lng+Math.cos(angle)*dist/Math.cos(c.lat*Math.PI/180);
+      const poly=mkNaturalPoly(tlat,tlng,r);
+      const area=turf.area(poly);
+      const age=3600000*(4+bi*3+t*2);
+      const str=CFG.STR_INIT_MIN+Math.floor(Math.random()*(CFG.STR_INIT_MAX-CFG.STR_INIT_MIN));
+      territories.push({id:'rival_'+now+bi+'_'+t,owner:bot.id,color:bot.color,polygon:poly,
+        defense:str,maxDefense:CFG.MAX_DEF,createdAt:now-age,lastDefended:now-age/2,
+        area,customName:bot.name+'s Revier',attackHistory:{},_lastDecayTs:now,rarity:pickRarity(false)});
+    }
   });
   save();
 }
-function simulateBotRun(){
+function runOneBot(bot){
   if(!mapL||!territories.length)return;
-  const bot=BOTS[Math.floor(Math.random()*BOTS.length)];
   const userPos=userMarker?userMarker.getLatLng():mapL.getCenter();
   const botTerrs=territories.filter(t=>t.owner===bot.id);
-  const baseLat=userPos.lat,baseLng=userPos.lng;
-  const spread=.006+Math.random()*.012; /* 600-1800m radius around user */
+  /* 60% chance: expand from existing territory; 40%: run near user area */
+  let baseLat,baseLng;
+  if(botTerrs.length&&Math.random()<0.6){
+    const src=botTerrs[Math.floor(Math.random()*botTerrs.length)];
+    try{const ctr=turf.centroid(turf.feature(src.polygon));baseLat=ctr.geometry.coordinates[1];baseLng=ctr.geometry.coordinates[0];}
+    catch(e){baseLat=userPos.lat;baseLng=userPos.lng;}
+  } else {
+    baseLat=userPos.lat;baseLng=userPos.lng;
+  }
+  const spread=.004+Math.random()*.01;
   const angle=Math.random()*Math.PI*2;
   const lat=baseLat+Math.sin(angle)*spread;
   const lng=baseLng+Math.cos(angle)*spread/Math.cos(baseLat*Math.PI/180);
@@ -1215,6 +1234,14 @@ function simulateBotRun(){
     }
   }
   if(txt){botActivities.unshift({text:txt,time:now});if(botActivities.length>20)botActivities.pop();}
+}
+function simulateBotRun(){
+  if(!mapL||!territories.length)return;
+  /* 2-3 bots run per tick — feels like a busy city */
+  const count=2+Math.floor(Math.random()*2);
+  const shuffled=[...BOTS].sort(()=>Math.random()-.5).slice(0,count);
+  shuffled.forEach(bot=>runOneBot(bot));
+  const now=Date.now();
   territories=territories.filter(t=>t.defense>0||t.owner===userId||(now-t.lastDefended)<CFG.MAX_AGE_H*3600000);
   resolveRaids();
   save();renderTerr();
@@ -2098,7 +2125,7 @@ function setupBg(){
   setInterval(()=>{if(energy<CFG.ENERGY_MAX&&(Date.now()-lastEnergyTs)>=CFG.ENERGY_REGEN_H*3600000){energy=Math.min(CFG.ENERGY_MAX,energy+1);lastEnergyTs=Date.now();toast('⚡ Energie aufgeladen!')}},60000);
   setInterval(applyDecay,60000);
   setInterval(()=>{if(hrSource==='sim')simHR()},3000);
-  setTimeout(()=>{simulateBotRun();setInterval(simulateBotRun,4*60*1000);},30000);
+  setTimeout(()=>{simulateBotRun();setInterval(simulateBotRun,3*60*1000);},20000);
 }
 
 /* ONBOARDING */
