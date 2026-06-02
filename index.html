@@ -402,6 +402,10 @@ body.light .pv-banner{background:linear-gradient(160deg,#3a1a10 0%,#2a1508 45%,#
           <div class="live-row">
             <div class="live-pill"><i class="fas fa-bolt"></i><b id="livePace">--:--</b><span style="font-size:.65rem;color:var(--muted)">/km</span></div>
             <div class="live-pill"><i class="fas fa-heartbeat"></i><b id="liveHR">--</b><span style="font-size:.65rem;color:var(--muted)">bpm</span></div>
+            <div class="live-pill"><i class="fas fa-shoe-prints"></i><b id="liveCadence">--</b><span style="font-size:.65rem;color:var(--muted)">/min</span></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:.68rem;color:var(--muted);margin-top:4px;padding:0 2px" id="liveExtra">
+            <span id="liveAlt"></span><span id="liveSrc" style="margin-left:auto"></span>
           </div>
         </div>
         <div class="idle-stats" id="idleStats">
@@ -788,6 +792,7 @@ let totalKm=0,totalConquered=0,totalDefended=0;
 let streakDays=0,stepsToday=0,lastStepTs=0;
 let runStart=null,runSecs=0,isPaused=false;
 let heartRate=72,hrSource='sim';
+let cadence=0,gpsSpeed=null,gpsAlt=null;
 let btDevice=null,btChar=null;
 let calDate=new Date();
 let currentView='map',currentTab='history';
@@ -876,6 +881,7 @@ function fmtDist(m){return m<1000?Math.round(m)+' m':(m/1000).toFixed(2)+' km'}
 function fmtTime(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=Math.floor(s%60);return h>0?`${h}:${pad(m)}:${pad(sc)}`:`${pad(m)}:${pad(sc)}`}
 function pad(n){return String(n).padStart(2,'0')}
 function fmtPace(m,s){if(m<10)return'--:--';const p=s/60/(m/1000);return Math.floor(p)+':'+pad(Math.round((p%1)*60))}
+function speedToPace(mps){if(!mps||mps<0.3)return'--:--';const p=1000/mps/60;return Math.floor(p)+':'+pad(Math.round((p%1)*60))}
 function debounce(fn,w){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),w)}}
 
 /* PERSIST */
@@ -1060,6 +1066,26 @@ function updateStatsUI(){
 
 /* STEPS */
 function initSteps(){
+  /* Moderne Sensor-API (Chrome/Android) */
+  if('Accelerometer' in window){
+    try{
+      const accel=new Accelerometer({frequency:50});
+      let prev=0,lastMag=10;
+      accel.addEventListener('reading',()=>{
+        const mag=Math.sqrt(accel.x**2+accel.y**2+accel.z**2);
+        const now=Date.now();
+        /* Aufwärts-Nulldurchgang: Magnitude überschreitet 12 g (Schrittstoß) */
+        if(prev<12&&mag>=12&&now-lastStepTs>250){stepsToday++;lastStepTs=now;if(isRunning&&!isPaused)cadence=Math.round(60000/(now-(lastStepTs||now)));}
+        prev=mag;lastMag=mag;
+      });
+      accel.addEventListener('error',()=>fallbackMotion());
+      accel.start();
+      return;
+    }catch(e){}
+  }
+  fallbackMotion();
+}
+function fallbackMotion(){
   if(!window.DeviceMotionEvent)return;
   const h=e=>{const a=e.accelerationIncludingGravity;if(!a)return;const m=Math.sqrt(a.x**2+a.y**2+a.z**2);if(m>CFG.STEP_THR&&Date.now()-lastStepTs>CFG.STEP_INTERVAL){stepsToday++;lastStepTs=Date.now();}};
   if(typeof DeviceMotionEvent.requestPermission==='function')DeviceMotionEvent.requestPermission().then(p=>{if(p==='granted')window.addEventListener('devicemotion',h)}).catch(()=>{});
@@ -1070,8 +1096,55 @@ function initSteps(){
 function simHR(){if(!isRunning||isPaused){heartRate=CFG.HR_BASE;return}const el=(runSecs+(Date.now()-runStart)/1000)/60,dk=dist/1000,pace=dk>.01?el/dk:6,diff=Math.max(0,6-pace);heartRate=Math.min(190,Math.floor(CFG.HR_BASE+diff*55+Math.random()*4-2))}
 async function connectBT(){
   if(!navigator.bluetooth){toast('Bluetooth nicht verfügbar');return}
-  try{btDevice=await navigator.bluetooth.requestDevice({filters:[{services:['heart_rate']}]});const srv=await(await btDevice.gatt.connect()).getPrimaryService('heart_rate');btChar=await srv.getCharacteristic('heart_rate_measurement');await btChar.startNotifications();btChar.addEventListener('characteristicvaluechanged',e=>{const v=e.target.value,f=v.getUint8(0);heartRate=(f&1)?v.getUint16(1,true):v.getUint8(1);hrSource='bt'});toast('✅ Pulsmesser verbunden')}
-  catch(e){toast('Verbindung fehlgeschlagen')}
+  try{
+    toast('🔍 Suche Geräte…');
+    btDevice=await navigator.bluetooth.requestDevice({
+      filters:[
+        {services:['heart_rate']},
+        {services:['running_speed_and_cadence']},
+        {services:['cycling_speed_and_cadence']}
+      ],
+      optionalServices:['heart_rate','running_speed_and_cadence','battery_service']
+    });
+    const server=await btDevice.gatt.connect();
+    let connected=[];
+    /* ── Herzfrequenz ── */
+    try{
+      const s=await server.getPrimaryService('heart_rate');
+      const c=await s.getCharacteristic('heart_rate_measurement');
+      await c.startNotifications();
+      c.addEventListener('characteristicvaluechanged',e=>{
+        const v=e.target.value,f=v.getUint8(0);
+        heartRate=(f&1)?v.getUint16(1,true):v.getUint8(1);
+        hrSource='bt';
+      });
+      connected.push('Puls');
+    }catch(e){}
+    /* ── Laufgeschwindigkeit & Kadenz (RSC) ── */
+    try{
+      const s=await server.getPrimaryService('running_speed_and_cadence');
+      const c=await s.getCharacteristic('rsc_measurement');
+      await c.startNotifications();
+      c.addEventListener('characteristicvaluechanged',e=>{
+        const v=e.target.value;
+        const speedRaw=v.getUint16(1,true); /* 1/256 m/s */
+        cadence=v.getUint8(3);              /* Schritte/min */
+        if(!isPaused)gpsSpeed=speedRaw/256;
+        hrSource='bt';
+      });
+      connected.push('Kadenz');
+    }catch(e){}
+    /* ── Batterie ── */
+    try{
+      const s=await server.getPrimaryService('battery_service');
+      const c=await s.getCharacteristic('battery_level');
+      const v=await c.readValue();
+      connected.push('Akku '+v.getUint8(0)+'%');
+    }catch(e){}
+    toast('✅ '+(btDevice.name||'Gerät')+' · '+( connected.join(' · ')||'verbunden'));
+  }catch(e){
+    if(e.name!=='NotFoundError')toast('❌ '+(e.message||'Verbindung fehlgeschlagen'));
+  }
 }
 function calcKcal(m,s){const spd=(m/1000)/(s/3600),met=spd<8?6:spd>12?12:8;return Math.round(met*70*(s/3600))}
 
@@ -1099,6 +1172,7 @@ function startRun(){
   if(isRunning)return;
   isRunning=true;isPaused=false;beep(440);
   runStart=Date.now();runSecs=0;path=[];lastPos=null;dist=0;kmSplits=[];lastSplitKm=0;lastSplitSecs=0;
+  gpsSpeed=null;gpsAlt=null;cadence=0;
   statusTxt.textContent='Läuft…';statusDot.style.background='var(--green)';statusBar.classList.add('running');
   startBtn.disabled=true;pauseBtn.disabled=false;pauseBtn.innerHTML='<i class="fas fa-pause"></i> PAUSE';stopBtn.disabled=false;
   liveRun.classList.add('on');idleStats.style.display='none';
@@ -1111,6 +1185,9 @@ function startRun(){
 function onGPS(pos){
   if(isPaused)return;
   const lat=pos.coords.latitude,lng=pos.coords.longitude,pt=[lat,lng];
+  /* use GPS speed (m/s) when available and reliable */
+  if(pos.coords.speed!=null&&pos.coords.speed>=0)gpsSpeed=pos.coords.speed;
+  if(pos.coords.altitude!=null)gpsAlt=Math.round(pos.coords.altitude);
   if(lastPos){
     const d=turf.distance(turf.point([lastPos[1],lastPos[0]]),turf.point([lng,lat]),{units:'meters'});
     if(d>3){
@@ -1122,7 +1199,18 @@ function onGPS(pos){
   } else{path.push(pt);pathLayer.addLatLng(pt)}
   lastPos=pt;if(userMarker)userMarker.setLatLng(pt);mapL.setView(pt,mapL.getZoom());
 }
-function startLiveUpdate(){liveInterval=setInterval(()=>{if(!isRunning||isPaused)return;const el=runSecs+Math.floor((Date.now()-runStart)/1000);$('liveKm').textContent=(dist/1000).toFixed(2);$('liveTime').textContent=fmtTime(el);$('livePace').textContent=fmtPace(dist,el);$('liveHR').textContent=heartRate;if(hrSource==='sim')simHR();},1000)}
+function startLiveUpdate(){liveInterval=setInterval(()=>{
+  if(!isRunning||isPaused)return;
+  const el=runSecs+Math.floor((Date.now()-runStart)/1000);
+  $('liveKm').textContent=(dist/1000).toFixed(2);
+  $('liveTime').textContent=fmtTime(el);
+  $('livePace').textContent=gpsSpeed!=null?speedToPace(gpsSpeed):fmtPace(dist,el);
+  $('liveHR').textContent=heartRate;
+  $('liveCadence').textContent=cadence||'--';
+  if(gpsAlt!=null)$('liveAlt').textContent='⛰ '+gpsAlt+' m';
+  $('liveSrc').textContent=hrSource==='bt'?'💙 BT':'📱 GPS';
+  if(hrSource==='sim')simHR();
+},1000)}
 function stopLiveUpdate(){clearInterval(liveInterval);liveInterval=null}
 
 function pauseRun(){
