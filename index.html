@@ -1272,9 +1272,27 @@ function mkUserIcon(){return L.divIcon({html:`<div style="background:${userColor
 async function loadLandmarks(){
   if(!mapL)return;
   const b=mapL.getBounds();
-  const bbox=`${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
-  const q=`[out:json];(node["amenity"="place_of_worship"](${bbox});node["leisure"="stadium"](${bbox});node["tourism"="attraction"](${bbox});node["historic"="monument"](${bbox}););out body;`;
-  try{const r=await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);const d=await r.json();landmarks=d.elements.map(el=>({id:el.id,lat:el.lat,lng:el.lon,name:el.tags.name||'Wahrzeichen',type:el.tags.amenity||el.tags.leisure||el.tags.tourism||el.tags.historic}));renderLandmarks();}catch(e){}
+  const bb=`${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
+  const q=`[out:json][timeout:20];(`
+    +`node["tourism"~"attraction|museum|viewpoint|artwork|theme_park|zoo|aquarium|gallery"](${bb})[name];`
+    +`node["historic"~"monument|memorial|castle|ruins|archaeological_site|church|fort|building"](${bb})[name];`
+    +`node["leisure"~"stadium|nature_reserve|park"](${bb})[name];`
+    +`node["amenity"~"place_of_worship|fountain|theatre|cinema"](${bb})[name];`
+    +`node["natural"~"peak|waterfall|cave_entrance"](${bb})[name];`
+    +`way["tourism"~"attraction|museum|viewpoint|theme_park|zoo|aquarium"](${bb})[name];`
+    +`way["historic"~"monument|memorial|castle|ruins|archaeological_site|building"](${bb})[name];`
+    +`);out center body qt;`;
+  try{
+    const r=await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
+    const d=await r.json();
+    landmarks=d.elements.map(el=>{
+      const lat=el.lat??el.center?.lat;
+      const lng=el.lon??el.center?.lon;
+      if(!lat||!lng)return null;
+      return{id:el.id,lat,lng,name:el.tags?.name||'Wahrzeichen',type:el.tags?.tourism||el.tags?.historic||el.tags?.leisure||el.tags?.amenity||el.tags?.natural||''};
+    }).filter(Boolean);
+    renderLandmarks();
+  }catch(e){console.warn('Landmarks:',e);}
 }
 function renderLandmarks(){
   if(!landmarkLayer)return;
