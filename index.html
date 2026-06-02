@@ -115,11 +115,11 @@ body{
 #screens{position:fixed;top:var(--hdr-total);left:0;right:0;bottom:var(--nav-total);overflow:hidden}
 .view{position:absolute;top:0;left:0;right:0;bottom:0;overflow-y:auto;padding:18px 16px 16px;opacity:0;transform:translateX(24px);transition:opacity .32s ease,transform .32s ease;pointer-events:none;-webkit-overflow-scrolling:touch}
 .view.active{opacity:1;transform:translateX(0);pointer-events:auto}
-#mapView{padding:0}
+#mapView{padding:0;overflow:hidden;-webkit-overflow-scrolling:unset}
 #map{height:100%;width:100%;z-index:1}
 
 /* ═══ RUN DOCK ═══ */
-#runDock{position:absolute;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid var(--border);border-radius:22px 22px 0 0;padding:14px 16px 20px;z-index:500;box-shadow:0 -4px 24px rgba(0,0,0,.35);transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1)}
+#runDock{position:fixed;bottom:var(--nav-total);left:0;right:0;background:var(--bg2);border-top:1px solid var(--border);border-radius:22px 22px 0 0;padding:14px 16px 20px;z-index:550;box-shadow:0 -4px 24px rgba(0,0,0,.35);transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1)}
 #runDock.up{transform:translateY(0)}
 #dockToggle{position:fixed;bottom:calc(var(--nav-total) + 14px);right:14px;background:var(--primary);color:var(--bg);width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.3rem;cursor:pointer;z-index:600;box-shadow:0 4px 20px rgba(0,0,0,.55);transition:transform .15s;-webkit-user-select:none;user-select:none}
 #dockToggle:active{transform:scale(.9)}
@@ -2105,8 +2105,11 @@ function setView(view){
   const map2={map:'mapView',dash:'dashView',community:'communityView',profile:'profileView'};
   document.getElementById(map2[view])?.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.view===view));
+  const onMap=view==='map';
+  if(dockToggle)dockToggle.style.display=onMap?'':'none';
+  if(runDock){if(!onMap)runDock.classList.remove('up');runDock.style.display=onMap?'':'none';}
   if(view==='dash')updateDash();if(view==='community')updateCommunity();if(view==='profile')updateProfile();
-  if(view==='map'&&mapL)setTimeout(()=>mapL.invalidateSize(),120);
+  if(onMap&&mapL)setTimeout(()=>mapL.invalidateSize(),120);
 }
 function updateUI(){updateStatsUI();renderTerr();if(currentView==='dash')updateDash();if(currentView==='community')updateCommunity();if(currentView==='profile')updateProfile();if(drawer.classList.contains('open'))renderDrawer()}
 
