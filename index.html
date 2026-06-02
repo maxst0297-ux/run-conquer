@@ -246,7 +246,11 @@ body.light .pv-banner{background:linear-gradient(160deg,#3a1a10 0%,#2a1508 45%,#
 /* ═══ DRAWER ═══ */
 #drawer{position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid var(--border);border-radius:22px 22px 0 0;z-index:700;max-height:78vh;overflow-y:auto;display:none;flex-direction:column;transform:translateY(100%);transition:transform .32s cubic-bezier(.4,0,.2,1)}
 #drawer.open{transform:translateY(0)}
-.drawer-handle{width:36px;height:4px;background:var(--border);border-radius:4px;margin:12px auto 0}
+.drawer-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px 4px;cursor:pointer;-webkit-user-select:none;user-select:none;flex-shrink:0}
+.drawer-handle{width:36px;height:4px;background:var(--border);border-radius:4px;margin:0 auto}
+.drawer-close-btn{background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;padding:4px 6px;line-height:1}
+#drawerOverlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.35);z-index:699;display:none;-webkit-tap-highlight-color:transparent}
+#drawerOverlay.open{display:block}
 .drawer-tabs{display:flex;gap:4px;padding:10px 14px 0;overflow-x:auto}
 .tab-btn{padding:6px 14px;border-radius:40px;border:none;background:var(--card);color:var(--muted);font-weight:600;font-size:.72rem;cursor:pointer;white-space:nowrap;transition:all .2s}
 .tab-btn.active{background:var(--primary);color:var(--bg)}
@@ -617,8 +621,13 @@ body.light .pv-banner{background:linear-gradient(160deg,#3a1a10 0%,#2a1508 45%,#
     <div class="nav-item" data-view="menu"><div class="nav-indicator"></div><i class="fas fa-bars"></i><span>Menü</span></div>
   </nav>
 
+  <div id="drawerOverlay"></div>
   <div id="drawer">
-    <div class="drawer-handle"></div>
+    <div class="drawer-header" id="drawerClose">
+      <div style="width:28px"></div>
+      <div class="drawer-handle"></div>
+      <button class="drawer-close-btn" aria-label="Schließen"><i class="fas fa-times"></i></button>
+    </div>
     <div class="drawer-tabs" id="drawerTabs">
       <button class="tab-btn active" data-tab="history">Läufe</button>
       <button class="tab-btn" data-tab="quests">Quests</button>
@@ -1556,8 +1565,8 @@ function updateProfile(){
 }
 
 /* DRAWER */
-function openDrawer(){drawer.style.display='flex';setTimeout(()=>drawer.classList.add('open'),10);renderDrawer()}
-function closeDrawer(){drawer.classList.remove('open');setTimeout(()=>{if(!drawer.classList.contains('open'))drawer.style.display='none'},350)}
+function openDrawer(){$('drawerOverlay').classList.add('open');drawer.style.display='flex';setTimeout(()=>drawer.classList.add('open'),10);renderDrawer()}
+function closeDrawer(){$('drawerOverlay').classList.remove('open');drawer.classList.remove('open');setTimeout(()=>{if(!drawer.classList.contains('open'))drawer.style.display='none'},350)}
 function renderDrawer(){
   const tabs={
     history:()=>history.slice(-8).reverse().map(r=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)"><span style="font-size:1.2rem">${r.conquered?'⚔️':r.defended?'🛡️':'🏃'}</span><div style="flex:1"><div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary)">${fmtDist(r.distance)}</div><div style="font-size:.68rem;color:var(--muted)">${new Date(r.date).toLocaleDateString('de')} · ${fmtTime(r.duration)}</div></div><span style="font-family:'Bebas Neue',sans-serif;color:var(--primary)">+${r.pts}</span></div>`).join('')||'<div class="muted" style="padding:16px">Noch keine Läufe</div>',
@@ -1646,6 +1655,8 @@ window.initApp=function(){
   });
   startBtn.addEventListener('click',startRun);stopBtn.addEventListener('click',stopRun);
   $('fitnessQuickBtn').addEventListener('click',()=>{openDrawer();currentTab='fitness';document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab==='fitness'));renderDrawer()});
+  $('drawerClose').addEventListener('click',closeDrawer);
+  $('drawerOverlay').addEventListener('click',closeDrawer);
   dockToggle.addEventListener('click',e=>{e.stopPropagation();runDock.classList.toggle('up')});
   document.querySelectorAll('.nav-item').forEach(n=>n.addEventListener('click',()=>{
     const v=n.dataset.view;
