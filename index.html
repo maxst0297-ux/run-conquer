@@ -314,6 +314,18 @@ body.light .pv-banner{background:linear-gradient(160deg,#3a1a10 0%,#2a1508 45%,#
 /* ═══ SETTINGS / ADMIN TABS ═══ */
 .stab-btn{padding:6px 14px;border-radius:40px;border:none;background:var(--card);color:var(--muted);font-weight:600;font-size:.72rem;cursor:pointer;white-space:nowrap;transition:all .2s;font-family:'Poppins',sans-serif}
 .stab-btn.active{background:var(--primary);color:var(--bg)}
+
+/* ═══ CONQRUN FEATURES ═══ */
+#fogCanvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:298;display:none}
+.rar-rare{color:#00d4ff}.rar-epic{color:#9b5de5}.rar-legendary{color:#ffd700}
+.team-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:.72rem;font-weight:700;letter-spacing:.5px;margin-top:6px}
+.ruler-badge{font-family:'Bebas Neue',sans-serif;font-size:.9rem;letter-spacing:2px;padding:2px 14px;border-radius:20px;background:rgba(232,255,71,.1);color:var(--primary);border:1px solid rgba(232,255,71,.25);display:inline-block;margin-top:4px}
+.season-row{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);font-size:.78rem}
+.season-row:last-child{border-bottom:none}
+.dominion-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:.72rem}
+.dom-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:8px;text-align:center}
+.dom-val{font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary)}
+.dom-lbl{color:var(--muted);font-size:.6rem;margin-top:2px}
 </style>
 </head>
 <body class="light">
@@ -428,6 +440,21 @@ body.light .pv-banner{background:linear-gradient(160deg,#3a1a10 0%,#2a1508 45%,#
       <div id="dockToggle"><i class="fas fa-running"></i></div>
       <button id="locateBtn" aria-label="Mein Standort"><i class="fas fa-location-arrow"></i></button>
       <canvas id="likeCanvas"></canvas>
+      <canvas id="fogCanvas"></canvas>
+      <button id="mapPanelArrow" aria-label="Kartenoptionen"><i class="fas fa-chevron-left" id="mapPanelIcon"></i></button>
+      <div id="mapPanel">
+        <div class="map-panel-title">Karte</div>
+        <button class="map-panel-btn" id="panelLocateBtn"><i class="fas fa-location-arrow"></i> Mein Ort</button>
+        <div class="map-panel-sep"></div>
+        <div class="map-panel-title">Ebenen</div>
+        <button class="map-panel-btn active" id="panelTerrBtn"><i class="fas fa-map"></i> Gebiete</button>
+        <button class="map-panel-btn active" id="panelHeatBtn"><i class="fas fa-fire"></i> Heatmap</button>
+        <button class="map-panel-btn active" id="panelLmBtn"><i class="fas fa-star"></i> Wahrzeichen</button>
+        <div class="map-panel-sep"></div>
+        <div class="map-panel-title">Extras</div>
+        <button class="map-panel-btn" id="panelFogBtn"><i class="fas fa-cloud"></i> Nebel ein</button>
+        <button class="map-panel-btn" id="panelHeatPersonalBtn"><i class="fas fa-user"></i> Meine Wärme</button>
+      </div>
     </div>
 
     <!-- DASHBOARD -->
@@ -600,12 +627,20 @@ body.light .pv-banner{background:linear-gradient(160deg,#3a1a10 0%,#2a1508 45%,#
         <div id="lvlBreakdown"></div>
       </div>
       <div class="section-card">
+        <div class="section-title"><i class="fas fa-crown"></i> Herrschaft</div>
+        <div id="pvDomainSection"></div>
+      </div>
+      <div class="section-card">
         <div class="section-title"><i class="fas fa-medal"></i> Persönliche Bestleistungen</div>
         <div id="pvPRs"></div>
       </div>
       <div class="section-card">
         <div class="section-title"><i class="fas fa-star"></i> Erfolge</div>
         <div class="ach-grid" id="pvAchs"></div>
+      </div>
+      <div class="section-card">
+        <div class="section-title"><i class="fas fa-calendar-alt"></i> Saisonhistorie</div>
+        <div id="pvSeasons"></div>
       </div>
       <div class="section-card">
         <div class="section-title"><i class="fas fa-cog"></i> Einstellungen</div>
@@ -669,7 +704,10 @@ body.light .pv-banner{background:linear-gradient(160deg,#3a1a10 0%,#2a1508 45%,#
     </div>
     <div id="postSplits"></div>
     <div id="postSong"></div>
-    <button class="btn btn-p" id="closePostBtn" style="width:100%;margin-top:14px">WEITER →</button>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn btn-p" id="closePostBtn" style="flex:1">WEITER →</button>
+      <button class="btn" id="shareRunBtn" style="padding:0 16px"><i class="fas fa-share-alt"></i></button>
+    </div>
   </div>
 </div>
 
@@ -694,6 +732,7 @@ body.light .pv-banner{background:linear-gradient(160deg,#3a1a10 0%,#2a1508 45%,#
     <div style="display:flex;gap:4px;margin-bottom:16px;overflow-x:auto;-webkit-overflow-scrolling:touch">
       <button class="stab-btn active" data-stab="profil">Profil</button>
       <button class="stab-btn" data-stab="theme">Theme</button>
+      <button class="stab-btn" data-stab="team">Team</button>
       <button class="stab-btn" data-stab="spiel">Spiel</button>
       <button class="stab-btn" data-stab="support">Support</button>
     </div>
@@ -761,7 +800,11 @@ const CFG={
   DEF_REGEN_LVL:.03,
   // Sonstiges
   ENERGY_MAX:3,ENERGY_REGEN_H:8,
-  HR_BASE:70,STEP_THR:12,STEP_INTERVAL:250
+  HR_BASE:70,STEP_THR:12,STEP_INTERVAL:250,
+  // ConqRun Features
+  LANDMARK_PTS:50,
+  RAID_DURATION_MS:86400000,
+  RAID_DAMAGE:40
 };
 const COLORS=['#e8ff47','#ff4d6d','#00d4ff','#9b5de5','#ff9f1c'];
 const AVATARS=['🏃','🚴','🏋️','🤸','⚡'];
@@ -774,6 +817,17 @@ const BOTS=[
   {id:'bot_ultra',name:'UltraMax',avatar:'💪',color:'#10b981',pts:2100,totalKm:41.5,streak:5,conquered:8},
 ];
 const WEEKLY_GOAL=30;
+const TEAMS=[
+  {id:'fire',name:'Feuer',color:'#ff4d6d',icon:'🔥'},
+  {id:'ice',name:'Eis',color:'#00d4ff',icon:'❄️'},
+  {id:'storm',name:'Sturm',color:'#10b981',icon:'⚡'},
+  {id:'shadow',name:'Schatten',color:'#9b5de5',icon:'🌑'}
+];
+const BOT_TEAMS={bot_speed:'fire',bot_mtn:'ice',bot_night:'shadow',bot_city:'storm',bot_ultra:'storm'};
+const RARITY=['common','rare','epic','legendary'];
+const RARITY_LABELS={common:'Gewöhnlich',rare:'Selten',epic:'Episch',legendary:'Legendär'};
+const RARITY_COLORS={common:'',rare:'#00d4ff',epic:'#9b5de5',legendary:'#ffd700'};
+const RULER_TIERS=[{min:0,name:'Neuling'},{min:1,name:'Besitzer'},{min:3,name:'Baron'},{min:7,name:'Herzog'},{min:12,name:'König'},{min:20,name:'Imperator'}];
 
 /* LEVEL */
 function getLevel(pts){for(let i=CFG.LVL_XP.length-1;i>=0;i--)if(pts>=CFG.LVL_XP[i])return i+1;return 1}
@@ -802,6 +856,12 @@ let selectedTerrId=null,editAvatar=AVATARS[0];
 let kmSplits=[],lastSplitKm=0,lastSplitSecs=0;
 let liveInterval=null;
 let botActivities=[];
+/* ConqRun new state */
+let userTeam=null;
+let capturedLandmarks=[],raids=[],totalDiscovered=0;
+let revealedCells=new Set();
+let heatPersonalOnly=false,fogEnabled=false;
+let seasonChecked=false;
 
 /* ═══ SUPABASE ═══ */
 const SB_URL='https://mlkpryhacihbqnmtgkcg.supabase.co';
@@ -885,22 +945,156 @@ function speedToPace(mps){if(!mps||mps<0.3)return'--:--';const p=1000/mps/60;ret
 function debounce(fn,w){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),w)}}
 
 /* PERSIST */
-function save(){localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,stepsToday}))}
+function save(){localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered}))}
 function load(){
   try{
     const d=JSON.parse(localStorage.getItem('rc_v4_'+userId));
-    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;stepsToday=d.stepsToday||0;}
+    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;}
   }catch(e){}
   // Rival territories werden nach erstem GPS-Fix generiert (locationfound)
   if(!quests.length)genQuests();
   if(!achievements.length)initAch();
+  checkSeasonRollover();
 }
-function saveProfile(){const theme=document.body.classList.contains('light')?'light':'dark';localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userId,theme}));$('hdrAvatar').textContent=userAvatar;$('hdrName').textContent=playerName;syncProfile();}
+function saveProfile(){const theme=document.body.classList.contains('light')?'light':'dark';localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userId,theme,userTeam}));$('hdrAvatar').textContent=userAvatar;$('hdrName').textContent=playerName;syncProfile();}
 function loadProfile(){
-  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;if(p.theme==='dark')document.body.classList.remove('light');else document.body.classList.add('light');$('hdrAvatar').textContent=userAvatar;$('hdrName').textContent=playerName;return true;}}catch(e){}
+  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userTeam=p.userTeam||null;if(p.theme==='dark')document.body.classList.remove('light');else document.body.classList.add('light');$('hdrAvatar').textContent=userAvatar;$('hdrName').textContent=playerName;return true;}}catch(e){}
   return false;
 }
 function closeAllModals(){['profileModal','postRunModal','renameModal','settingsModal','adminModal'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+
+/* ── HERRSCHERTITEL ── */
+function getTerritoryTitle(){
+  const mine=territories.filter(t=>t.owner===userId);
+  const n=mine.length,area=mine.reduce((s,t)=>s+(t.area||0),0);
+  const areaThresh=[0,0,5000,15000,30000,50000];
+  for(let i=RULER_TIERS.length-1;i>=0;i--){
+    if(n>=RULER_TIERS[i].min||(areaThresh[i]&&area>=areaThresh[i]))return RULER_TIERS[i].name;
+  }
+  return RULER_TIERS[0].name;
+}
+
+/* ── SELTENHEIT ── */
+function pickRarity(hasLandmarks){
+  const w=[60,25,12,3];let r=Math.random()*100,i=0;
+  for(;i<w.length-1;i++){r-=w[i];if(r<=0)break;}
+  if(hasLandmarks&&i<RARITY.length-1)i++;
+  return RARITY[i];
+}
+
+/* ── HEATMAP PERSONAL TOGGLE ── */
+function refreshHeat(){
+  if(!heatLayer)return;
+  if(heatPersonalOnly){
+    const pts=[];
+    history.forEach(r=>{(r.path||[]).forEach(p=>pts.push([p[0],p[1],.4]))});
+    heatLayer.setLatLngs(pts);
+  }
+  const btn=$('panelHeatPersonalBtn');
+  if(btn){btn.classList.toggle('active',heatPersonalOnly);btn.innerHTML='<i class="fas fa-user"></i> '+(heatPersonalOnly?'Meine Wärme':'Alle Wärme');}
+}
+
+/* ── SAISON ── */
+function checkSeasonRollover(){
+  if(seasonChecked)return;seasonChecked=true;
+  try{
+    const seasons=JSON.parse(localStorage.getItem('rc_seasons_'+userId)||'[]');
+    const now=new Date(),cm=now.getMonth(),cy=now.getFullYear();
+    const last=seasons[0];
+    if(!last||(last.month!==cm||last.year!==cy)){
+      const mine=territories.filter(t=>t.owner===userId);
+      const snap={year:cy,month:cm,points,km:totalKm,territories:mine.length,title:getTerritoryTitle(),rank:null};
+      if(last&&(last.month!==cm||last.year!==cy)){
+        const mn=new Date(last.year,last.month,1).toLocaleString('de',{month:'long',year:'numeric'});
+        seasons.unshift(snap);
+        if(seasons.length>7)seasons.pop();
+        localStorage.setItem('rc_seasons_'+userId,JSON.stringify(seasons));
+        setTimeout(()=>toast('🏆 Saison '+mn+' abgeschlossen!'),2000);
+      } else if(!last){
+        seasons.push(snap);
+        localStorage.setItem('rc_seasons_'+userId,JSON.stringify(seasons));
+      }
+    }
+  }catch(e){}
+}
+
+/* ── NEBEL DES KRIEGES ── */
+const debouncedDrawFog=debounce(drawFog,400);
+function revealCell(lat,lng){
+  const key=String(Math.round(lat/0.0005)*0.0005)+'_'+String(Math.round(lng/0.0005)*0.0005);
+  if(!revealedCells.has(key)){
+    revealedCells.add(key);
+    if(revealedCells.size>5000){const arr=[...revealedCells];revealedCells=new Set(arr.slice(arr.length-5000));}
+  }
+  debouncedDrawFog();
+}
+function drawFog(){
+  const cv=$('fogCanvas');if(!cv||!mapL||!fogEnabled)return;
+  cv.width=cv.offsetWidth||window.innerWidth;cv.height=cv.offsetHeight||window.innerHeight;
+  const ctx=cv.getContext('2d');
+  ctx.fillStyle='rgba(0,0,0,.75)';ctx.fillRect(0,0,cv.width,cv.height);
+  ctx.globalCompositeOperation='destination-out';
+  const zoom=mapL.getZoom(),r=Math.max(25,Math.min(120,Math.pow(2,zoom-12)*18));
+  revealedCells.forEach(key=>{
+    const parts=key.split('_');
+    try{const p=mapL.latLngToContainerPoint([+parts[0],+parts[1]]);ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fill();}catch(e){}
+  });
+  ctx.globalCompositeOperation='source-over';
+}
+
+/* ── RAIDS ── */
+function startRaid(terrId){
+  if(raids.find(r=>r.terrId===terrId)){toast('⚔️ Raid läuft bereits!');return;}
+  raids.push({terrId,attackedAt:Date.now(),attackerName:playerName});
+  save();renderTerr();
+  toast('⚔️ Raid gestartet! 24 Stunden laufen…');beep(660,.12);vib(150);
+}
+function resolveRaids(){
+  if(!raids.length)return;
+  const now=Date.now();let changed=false;
+  raids=raids.filter(r=>{
+    if(now-r.attackedAt<CFG.RAID_DURATION_MS)return true;
+    const t=territories.find(tt=>tt.id===r.terrId);
+    if(t&&t.owner!==userId){
+      t.defense=Math.max(0,t.defense-CFG.RAID_DAMAGE);
+      toast('⚔️ Raid auf '+(t.customName||'Gebiet')+' beendet! -'+CFG.RAID_DAMAGE+' Stärke');
+    }
+    changed=true;return false;
+  });
+  if(changed){save();renderTerr();}
+}
+window.startRaid=startRaid;
+
+/* ── SOCIAL SHARING ── */
+async function shareRun(){
+  const card=document.querySelector('#postRunModal .modal-card');
+  if(!card){toast('Fehler beim Erstellen');return;}
+  toast('📸 Erstelle Bild…');
+  try{
+    const canvas=await html2canvas(card,{backgroundColor:document.body.classList.contains('light')?'#fdf5e7':'#09090f',scale:2,logging:false,useCORS:true});
+    canvas.toBlob(async blob=>{
+      const file=new File([blob],'conqrun_lauf.png',{type:'image/png'});
+      const km=($('liveKm')?.textContent||'?');
+      const time=($('liveTime')?.textContent||'?');
+      if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+        try{await navigator.share({files:[file],title:'ConqRun – Lauf abgeschlossen!',text:`${km} km in ${time} | #ConqRun #Running`});}
+        catch(e){if(e.name!=='AbortError')downloadCanvas(canvas);}
+      } else{downloadCanvas(canvas);}
+    },'image/png');
+  }catch(e){console.warn(e);toast('Teilen nicht verfügbar');}
+}
+function downloadCanvas(canvas){
+  const a=document.createElement('a');a.href=canvas.toDataURL('image/png');a.download='conqrun_lauf.png';a.click();toast('📥 Bild gespeichert');
+}
+
+/* ── MAP PANEL ── */
+function toggleMapPanel(){
+  const panel=$('mapPanel'),arrow=$('mapPanelArrow'),icon=$('mapPanelIcon');
+  const isOpen=panel.classList.toggle('open');
+  if(icon){icon.className=isOpen?'fas fa-chevron-right':'fas fa-chevron-left';}
+  if(arrow){arrow.style.right=isOpen?'175px':'0';}
+  setTimeout(()=>mapL&&mapL.invalidateSize(),360);
+}
 
 /* INIT DATA */
 function genRivals(lat,lng){
@@ -911,7 +1105,7 @@ function genRivals(lat,lng){
     const area=turf.area(poly);
     const str=CFG.STR_INIT_MIN+Math.floor(Math.random()*(CFG.STR_INIT_MAX-CFG.STR_INIT_MIN));
     const bot=BOTS[i%BOTS.length];
-    territories.push({id:'rival_'+Date.now()+i,owner:bot.id,color:bot.color,polygon:poly,defense:str,maxDefense:CFG.MAX_DEF,createdAt:Date.now()-3600000*(5+i*2),lastDefended:Date.now()-3600000*(3+i),area,customName:bot.name+'s Gebiet',attackHistory:{},_lastDecayTs:Date.now()});
+    territories.push({id:'rival_'+Date.now()+i,owner:bot.id,color:bot.color,polygon:poly,defense:str,maxDefense:CFG.MAX_DEF,createdAt:Date.now()-3600000*(5+i*2),lastDefended:Date.now()-3600000*(3+i),area,customName:bot.name+'s Gebiet',attackHistory:{},_lastDecayTs:Date.now(),rarity:pickRarity(false)});
   });
 }
 function simulateBotRun(){
@@ -935,7 +1129,8 @@ function simulateBotRun(){
   if(!ovl.length){
     territories.push({id:'b_'+now,owner:bot.id,color:bot.color,polygon:poly.geometry,
       defense:25+Math.floor(Math.random()*35),maxDefense:100,createdAt:now,
-      lastDefended:now,area,customName:bot.name+'s Gebiet',attackHistory:{},_lastDecayTs:now});
+      lastDefended:now,area,customName:bot.name+'s Gebiet',attackHistory:{},_lastDecayTs:now,
+      rarity:pickRarity(false)});
     bot.pts+=80+Math.floor(area/200);bot.conquered++;
     txt=`${bot.avatar} ${bot.name} hat neues Gebiet eingenommen`;
   } else {
@@ -972,6 +1167,7 @@ function simulateBotRun(){
   }
   if(txt){botActivities.unshift({text:txt,time:now});if(botActivities.length>20)botActivities.pop();}
   territories=territories.filter(t=>t.defense>0||t.owner===userId||(now-t.lastDefended)<CFG.MAX_AGE_H*3600000);
+  resolveRaids();
   save();renderTerr();
   if(currentView==='community')updateCommunity();
 }
@@ -1018,7 +1214,13 @@ async function loadLandmarks(){
 function renderLandmarks(){
   if(!landmarkLayer)return;
   landmarkLayer.clearLayers();
-  landmarks.forEach(lm=>L.marker([lm.lat,lm.lng],{icon:L.divIcon({html:'⭐',className:'landmark-icon',iconSize:[20,20]})}).bindPopup(`<b>${lm.name}</b><br>${lm.type}`).addTo(landmarkLayer));
+  landmarks.forEach(lm=>{
+    const captured=capturedLandmarks.includes(lm.id);
+    const icon=L.divIcon({html:captured?'✅':'⭐',className:'landmark-icon',iconSize:[22,22]});
+    L.marker([lm.lat,lm.lng],{icon})
+      .bindPopup(`<b>${lm.name}</b><br><span style="font-size:.72rem;color:#6b6b82">${lm.type}</span>${captured?'<br><span style="color:#10b981;font-size:.72rem">✅ Entdeckt</span>':'<br><span style="font-size:.72rem;color:#ff9f1c">⭐ Näherungspunkt: 50 m</span>'}`)
+      .addTo(landmarkLayer);
+  });
 }
 function lmsInPoly(poly){if(!poly)return[];return landmarks.filter(lm=>{try{return turf.booleanPointInPolygon(turf.point([lm.lng,lm.lat]),turf.feature(poly));}catch(e){return false}}).map(l=>l.id)}
 
@@ -1026,28 +1228,49 @@ function lmsInPoly(poly){if(!poly)return[];return landmarks.filter(lm=>{try{retu
 function renderTerr(){
   if(!terrLayer)return;
   terrLayer.clearLayers();
+  const rarityStyle={
+    common:{weight:own=>own?2:1.5,dashArray:null,borderCol:null},
+    rare:{weight:2,dashArray:null,borderCol:'#00d4ff'},
+    epic:{weight:2.5,dashArray:null,borderCol:'#9b5de5'},
+    legendary:{weight:3,dashArray:'6 3',borderCol:'#ffd700'}
+  };
   territories.forEach(t=>{
     const own=t.owner===userId,col=own?userColor:t.color;
     const strPct=Math.min(1,t.defense/CFG.MAX_DEF);
-    L.geoJSON(t.polygon,{style:{fillColor:col,color:own?'#fff':col,weight:own?2:1.5,fillOpacity:Math.max(.08,strPct*.55),opacity:Math.max(.4,strPct)}})
+    const rar=t.rarity||'common',rs=rarityStyle[rar]||rarityStyle.common;
+    const borderCol=own?(rs.borderCol||'#fff'):( rs.borderCol||col);
+    const weight=typeof rs.weight==='function'?rs.weight(own):rs.weight;
+    const styleOpts={fillColor:col,color:borderCol,weight:weight,fillOpacity:Math.max(.08,strPct*.55),opacity:Math.max(.4,strPct)};
+    if(rs.dashArray)styleOpts.dashArray=rs.dashArray;
+
+    L.geoJSON(t.polygon,{style:styleOpts})
       .bindPopup(()=>{
         const barW=Math.round(strPct*100);
         const barCol=strPct>.6?'#10b981':strPct>.3?'#ff9f1c':'#ff4d6d';
         const botOwner=BOTS.find(b=>b.id===t.owner);
+        const rarCol=RARITY_COLORS[rar]||'';
         let h=`<b style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:1px">${own?'⚔️ Dein Gebiet':`${botOwner?botOwner.avatar:'🏴'} ${botOwner?botOwner.name+'s':'Fremdes'} Gebiet`}</b>`;
         if(t.customName)h+=`<br><span style="font-size:.75rem;color:#6b6b82">📛 ${t.customName}</span>`;
+        if(rar!=='common')h+=`<br><span style="font-size:.68rem;color:${rarCol||'var(--primary)'};font-weight:700">🏅 ${RARITY_LABELS[rar]}</span>`;
+        if(t.firstRunnerName)h+=`<br><span style="font-size:.68rem;color:var(--primary)">⭐ Erstentdecker: ${t.firstRunnerName}</span>`;
         h+=`<div style="margin:7px 0 5px"><div style="display:flex;justify-content:space-between;font-size:.72rem;margin-bottom:3px"><span>🛡️ Stärke</span><span style="color:${barCol};font-weight:700">${Math.round(t.defense)}/100</span></div>`;
         h+=`<div style="background:#1a1a26;border-radius:4px;height:6px;overflow:hidden"><div style="background:${barCol};height:100%;width:${barW}%;border-radius:4px"></div></div></div>`;
         h+=`<span style="font-size:.68rem;color:#6b6b82">📐 ${Math.round(t.area)} m²</span>`;
         if(own){
+          h+=`<br><span style="font-size:.68rem;color:#6b6b82">👑 ${getTerritoryTitle()}</span>`;
           h+=`<br><span style="font-size:.68rem;color:var(--green)">⚡ Energie: ${energy}/${CFG.ENERGY_MAX}</span>`;
           h+=`<br><button onclick="window.openRename('${t.id}')" style="margin-top:8px;background:#e8ff47;color:#09090f;border:none;border-radius:8px;padding:4px 12px;cursor:pointer;font-size:.72rem">✏️ Umbenennen</button>`;
         } else {
-          const decayMinsLeft=Math.round(t.defense/(CFG.DECAY_PER_DAY/24/60));
+          const decayMinsLeft=Math.max(0,Math.round(t.defense/(CFG.DECAY_PER_DAY/24/60)));
           const dmgPotPct=Math.round(CFG.STR_DMG_PER_KM*2);
+          const raid=raids.find(r=>r.terrId===t.id);
+          if(raid){const hrs=Math.max(0,Math.ceil((CFG.RAID_DURATION_MS-(Date.now()-raid.attackedAt))/3600000));h+=`<br><span style="font-size:.68rem;color:#ff4d6d">⚔️ Raid läuft – ${hrs} Std. verbleibend</span>`;}
           h+=`<br><span style="font-size:.68rem;color:#ff9f1c">⏳ Verfall in ${decayMinsLeft} min</span>`;
           h+=`<br><span style="font-size:.68rem;color:#ff4d6d">💥 Schadenspotential: ${dmgPotPct}% / km</span>`;
-          h+=`<br><button onclick="window.likeTerritory('${t.id}')" style="margin-top:8px;background:#ff4d6d;color:#fff;border:none;border-radius:8px;padding:4px 12px;cursor:pointer;font-size:.72rem">⚔️ LIKE!</button>`;
+          h+=`<div style="display:flex;gap:6px;margin-top:8px">`;
+          h+=`<button onclick="window.likeTerritory('${t.id}')" style="flex:1;background:#ff4d6d;color:#fff;border:none;border-radius:8px;padding:4px 8px;cursor:pointer;font-size:.72rem">⚔️ LIKE!</button>`;
+          if(!raid)h+=`<button onclick="window.startRaid('${t.id}')" style="flex:1;background:#ff9f1c;color:#fff;border:none;border-radius:8px;padding:4px 8px;cursor:pointer;font-size:.72rem">🔥 Raid</button>`;
+          h+=`</div>`;
         }
         return h;
       })
@@ -1185,7 +1408,6 @@ function startRun(){
 function onGPS(pos){
   if(isPaused)return;
   const lat=pos.coords.latitude,lng=pos.coords.longitude,pt=[lat,lng];
-  /* use GPS speed (m/s) when available and reliable */
   if(pos.coords.speed!=null&&pos.coords.speed>=0)gpsSpeed=pos.coords.speed;
   if(pos.coords.altitude!=null)gpsAlt=Math.round(pos.coords.altitude);
   if(lastPos){
@@ -1194,10 +1416,23 @@ function onGPS(pos){
       dist+=d;path.push(pt);pathLayer.addLatLng(pt);distLive.textContent=fmtDist(dist);
       const km=Math.floor(dist/1000);
       if(km>lastSplitKm){const el=runSecs+Math.floor((Date.now()-runStart)/1000),ss=el-lastSplitSecs;kmSplits.push({km,pace:fmtPace(1000,ss),splitSecs:ss});lastSplitKm=km;lastSplitSecs=el;beep(660,.1);toast(`KM ${km} · ${fmtPace(1000,ss)}/km`);}
-      heatLayer.addLatLng([lat,lng,.5]);
+      if(!heatPersonalOnly)heatLayer.addLatLng([lat,lng,.5]);
     }
   } else{path.push(pt);pathLayer.addLatLng(pt)}
   lastPos=pt;if(userMarker)userMarker.setLatLng(pt);mapL.setView(pt,mapL.getZoom());
+  // Fog of War reveal
+  if(fogEnabled)revealCell(lat,lng);
+  // Landmark-Näherungsprüfung
+  landmarks.forEach(lm=>{
+    if(capturedLandmarks.includes(lm.id))return;
+    const dist2=turf.distance(turf.point([lng,lat]),turf.point([lm.lng,lm.lat]),{units:'meters'});
+    if(dist2<=50){
+      capturedLandmarks.push(lm.id);
+      points+=CFG.LANDMARK_PTS;
+      save();renderLandmarks();
+      toast('⭐ Wahrzeichen entdeckt: '+lm.name+' +'+CFG.LANDMARK_PTS+' Pts!');beep(880,.1);vib(120);
+    }
+  });
 }
 function startLiveUpdate(){liveInterval=setInterval(()=>{
   if(!isRunning||isPaused)return;
@@ -1281,13 +1516,18 @@ function processConquest(np,area,d){
     // Neutral → sofortige Einnahme
     const lms=lmsInPoly(np.geometry);
     const initStr=Math.min(CFG.MAX_DEF,30+Math.floor(d/200));
+    const rarity=pickRarity(lms.length>0);
     const t={id:'u_'+Date.now(),owner:userId,color:userColor,polygon:np.geometry,
       defense:initStr,maxDefense:CFG.MAX_DEF,createdAt:now,lastDefended:now,
-      area,landmarkIds:lms,attackHistory:{},_lastDecayTs:now,_lastBonus:0};
+      area,landmarkIds:lms,attackHistory:{},_lastDecayTs:now,_lastBonus:0,
+      rarity,firstRunner:userId,firstRunnerName:playerName};
     if(lms.length){t.defense=Math.min(CFG.MAX_DEF,Math.floor(t.defense*CFG.LM_DEF_BONUS));pts+=CFG.LM_PTS;toast('🏛️ Wahrzeichen! +'+CFG.LM_PTS);}
     territories.push(t);
+    totalDiscovered++;
     const gainXP=CFG.XP_NEUTRAL+Math.min(CFG.XP_CONQUER_MAX-CFG.XP_NEUTRAL,Math.floor(area/500));
-    pts+=gainXP;toast('🗺️ Neues Gebiet! +'+gainXP+' XP');
+    pts+=gainXP;
+    const rarLbl=rarity!=='common'?(' · '+RARITY_LABELS[rarity]):'';
+    toast('🗺️ Neues Gebiet'+rarLbl+'! +'+gainXP+' XP');
   }else{
     ovl.forEach(t=>{
       let ov=0;try{const inter=turf.intersect(turf.featureCollection([turf.feature(t.polygon),turf.feature(np)]));if(inter)ov=turf.area(inter);}catch(e){}
@@ -1323,8 +1563,10 @@ function processConquest(np,area,d){
           pts+=conquestXP;conquered=true;
           t.owner=userId;t.color=userColor;t.defense=20;t.maxDefense=CFG.MAX_DEF;
           t.lastDefended=now;t._lastDecayTs=now;t.createdAt=now;t._lastBonus=0;
+          if(!t.rarity)t.rarity=pickRarity((t.landmarkIds||[]).length>0);
           [660,880,1100].forEach((f,i)=>setTimeout(()=>beep(f,.1),i*80));
-          toast('🔥 GEBIET EROBERT! +'+conquestXP+' XP');vib([100,50,100]);
+          const rarLbl=t.rarity&&t.rarity!=='common'?(' · '+RARITY_LABELS[t.rarity]):'';
+          toast('🔥 GEBIET EROBERT'+rarLbl+'! +'+conquestXP+' XP');vib([100,50,100]);
         }else{
           t.lastDefended=now;
           toast('⚔️ Angriff! Stärke: '+Math.round(t.defense)+'/100 (-'+Math.round(dmg)+')');
@@ -1574,6 +1816,10 @@ function renderSettingsTab(tab){
     body.innerHTML=`<div style="display:flex;flex-direction:column;gap:10px"><button class="btn ${isLight?'':'btn-p'}" id="setDark">🌙 Dunkel</button><button class="btn ${isLight?'btn-p':''}" id="setLight">☀️ Hell</button></div>`;
     $('setDark').addEventListener('click',()=>{document.body.classList.remove('light');setTiles();saveProfile();renderSettingsTab('theme')});
     $('setLight').addEventListener('click',()=>{document.body.classList.add('light');setTiles();saveProfile();renderSettingsTab('theme')});
+  } else if(tab==='team'){
+    const cur=userTeam;
+    body.innerHTML=`<div style="font-size:.82rem;font-weight:600;margin-bottom:10px">🔥 Wähle dein Team</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${TEAMS.map(tm=>`<button class="team-sel-btn" data-tid="${tm.id}" style="padding:14px 8px;border-radius:14px;border:2px solid ${cur===tm.id?tm.color:'var(--border)'};background:${cur===tm.id?tm.color+'22':'var(--card)'};color:${cur===tm.id?tm.color:'var(--text)'};cursor:pointer;font-weight:700;font-size:.88rem;transition:.2s;font-family:'Poppins',sans-serif;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.6rem">${tm.icon}</span><span>${tm.name}</span>${cur===tm.id?'<span style="font-size:.65rem;color:inherit">✓ Aktiv</span>':''}</button>`).join('')}</div><div style="margin-top:12px;font-size:.72rem;color:var(--muted)">Dein Team beeinflusst deine Farben in der Community und Team-Rangliste.</div>`;
+    body.querySelectorAll('.team-sel-btn').forEach(btn=>{btn.addEventListener('click',()=>{userTeam=btn.dataset.tid;saveProfile();renderSettingsTab('team');updateProfile();toast(TEAMS.find(t=>t.id===userTeam)?.icon+' Team '+TEAMS.find(t=>t.id===userTeam)?.name+' gewählt!');});});
   } else if(tab==='spiel'){
     body.innerHTML=`<div style="display:flex;flex-direction:column;gap:10px"><div style="font-size:.8rem;color:var(--muted);background:var(--card);padding:12px;border-radius:12px;border:1px solid var(--border)"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>⚡ Energie</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${energy}/${CFG.ENERGY_MAX}</span></div><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>🏆 Punkte</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${points}</span></div><div style="display:flex;justify-content:space-between"><span>📐 Gebiete</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${territories.filter(t=>t.owner===userId).length}</span></div></div><button class="btn btn-p" id="setPulsBtn"><i class="fas fa-heartbeat"></i> Pulsmesser koppeln</button><div id="setVersionTap" style="text-align:center;color:var(--muted);font-size:.6rem;margin-top:8px;cursor:pointer;-webkit-user-select:none;user-select:none">v1.0.0 · Run &amp; Conquer</div></div>`;
     $('setPulsBtn').addEventListener('click',connectBT);
@@ -1666,12 +1912,32 @@ function updateProfile(){
   $('pvLvLabel').textContent='Level '+lvD.lv+' · '+lvD.name;
   $('pvLvBar').style.width=lvD.pct+'%';
   $('pvLvXpTxt').textContent=points+' XP · noch '+lvD.xpLeft+' bis Lv.'+(lvD.lv<CFG.LVL_NAMES.length?lvD.lv+1:'MAX');
-  $('ps-km').textContent=totalKm.toFixed(1);$('ps-runs').textContent=history.length;$('ps-streak').textContent=streakDays+'🔥';$('ps-terr').textContent=territories.filter(t=>t.owner===userId).length;$('ps-pts').textContent=points;
-  $('lvlBreakdown').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:.72rem">${[['⚔️ Angriff-Bonus','+'+Math.round((1+(lvD.lv-1)*CFG.ATK_BONUS_LVL-1)*100)+'%'],['🛡️ Verteidigungs-Bonus','+'+Math.round((1+(lvD.lv-1)*CFG.DEF_REGEN_LVL-1)*100)+'%'],['🔥 Streak',streakDays>0?streakDays+' Tage ×'+Math.min(2,1+(streakDays-1)*0.1).toFixed(1):'Inaktiv'],['⚡ Energie',energy+'/'+CFG.ENERGY_MAX]].map(([l,v])=>`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:8px;text-align:center"><div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary)">${v}</div><div style="color:var(--muted);font-size:.6rem;margin-top:2px">${l}</div></div>`).join('')}</div>`;
+  const mine=territories.filter(t=>t.owner===userId);
+  $('ps-km').textContent=totalKm.toFixed(1);$('ps-runs').textContent=history.length;$('ps-streak').textContent=streakDays+'🔥';$('ps-terr').textContent=mine.length;$('ps-pts').textContent=points;
+  // Herrschertitel + Team-Badge
+  const title=getTerritoryTitle();
+  const sinceEl=$('pvSince');
+  if(sinceEl){
+    const oldBadges=sinceEl.parentNode.querySelector('.pv-extra-badges');if(oldBadges)oldBadges.remove();
+    const badgeDiv=document.createElement('div');badgeDiv.className='pv-extra-badges';badgeDiv.style.cssText='text-align:center;margin-top:6px';
+    badgeDiv.innerHTML=`<span class="ruler-badge">👑 ${title}</span>`;
+    if(userTeam){const tm=TEAMS.find(t=>t.id===userTeam);if(tm)badgeDiv.innerHTML+=`<span class="team-badge" style="background:${tm.color}22;color:${tm.color};border:1px solid ${tm.color}44;margin-left:6px">${tm.icon} Team ${tm.name}</span>`;}
+    sinceEl.insertAdjacentElement('afterend',badgeDiv);
+  }
+  // Entdeckungen-Stat (einmalig anhängen)
+  const statsRow=document.querySelector('.pv-stats');
+  if(statsRow&&!document.querySelector('.disc-stat')){const discEl=document.createElement('div');discEl.className='pv-stat disc-stat';discEl.innerHTML=`<div class="pv-sv">${totalDiscovered}</div><div class="pv-sl">⭐ Entdeckt</div>`;statsRow.appendChild(discEl);}
+  $('lvlBreakdown').innerHTML=`<div class="dominion-grid">${[['⚔️ Angriff','+'+Math.round((1+(lvD.lv-1)*CFG.ATK_BONUS_LVL-1)*100)+'%'],['🛡️ Verteidigung','+'+Math.round((1+(lvD.lv-1)*CFG.DEF_REGEN_LVL-1)*100)+'%'],['🔥 Streak',streakDays>0?streakDays+' Tage':'Inaktiv'],['⚡ Energie',energy+'/'+CFG.ENERGY_MAX]].map(([l,v])=>`<div class="dom-card"><div class="dom-val">${v}</div><div class="dom-lbl">${l}</div></div>`).join('')}</div>`;
+  // Herrschafts-Abschnitt
+  const domEl=document.getElementById('pvDomainSection');
+  if(domEl){const totalArea=mine.reduce((s,t)=>s+(t.area||0),0);const avgDef=mine.length?Math.round(mine.reduce((s,t)=>s+t.defense,0)/mine.length):0;const legCount=mine.filter(t=>t.rarity==='legendary').length;domEl.innerHTML=`<div class="dominion-grid">${[['🗺️ Fläche',totalArea>9999?(totalArea/1000000).toFixed(2)+' km²':Math.round(totalArea)+' m²'],['🛡️ Ø Stärke',avgDef+'/100'],['🏅 Legendär',legCount],['🔥 Raids',raids.length]].map(([l,v])=>`<div class="dom-card"><div class="dom-val">${v}</div><div class="dom-lbl">${l}</div></div>`).join('')}</div>`;}
   const bm=history.filter(r=>r.distance>=500).reduce((b,r)=>{const p=r.duration/60/(r.distance/1000);return p<b?p:b},Infinity);
-  const bd=Math.max(0,...history.map(r=>r.distance)),ba=Math.max(0,...territories.filter(t=>t.owner===userId).map(t=>t.area||0));
+  const bd=Math.max(0,...history.map(r=>r.distance)),ba=Math.max(0,...mine.map(t=>t.area||0));
   $('pvPRs').innerHTML=[['⚡','Beste Pace',bm===Infinity?'--':Math.floor(bm)+':'+pad(Math.round((bm%1)*60))+'/km'],['📏','Längster Lauf',fmtDist(bd)],['🗺️','Größtes Gebiet',Math.round(ba)+' m²'],['🔥','kcal gesamt',history.reduce((s,r)=>s+(r.kcal||0),0)+' kcal'],['🏆','Punkte',points],['⚔️','Gebiete erobert',totalConquered]].map(([i,l,v])=>`<div class="pr-row"><span class="pr-icon">${i}</span><span class="pr-label">${l}</span><span class="pr-val">${v}</span></div>`).join('');
   $('pvAchs').innerHTML=achievements.map(a=>`<div class="ach-badge ${a.earned?'earned':''}"><div class="ach-badge-icon">${a.icon}</div><div class="ach-badge-name">${a.name}</div><div class="ach-badge-prog">${a.earned?'✓':Math.round(a.progress)+'/'+a.target}</div></div>`).join('');
+  // Saisonhistorie
+  const seasEl=document.getElementById('pvSeasons');
+  if(seasEl){try{const seasons=JSON.parse(localStorage.getItem('rc_seasons_'+userId)||'[]');const MONTHS=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];seasEl.innerHTML=seasons.length?seasons.slice(0,6).map(s=>`<div class="season-row"><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${MONTHS[s.month]} ${s.year}</span><span style="color:var(--muted);font-size:.72rem">${s.title}</span><span style="font-family:'Bebas Neue',sans-serif;color:var(--primary)">${s.points} Pts</span></div>`).join(''):'<div style="padding:10px;color:var(--muted);font-size:.78rem;text-align:center">Noch keine abgeschlossenen Saisons</div>';}catch(e){seasEl.innerHTML=''}}
 }
 
 /* DRAWER */
@@ -1830,6 +2096,31 @@ window.initApp=function(){
     }catch(e){
       if(statusEl)statusEl.innerHTML='<span style="color:var(--red)">❌ '+(e.message||'Fehler')+'</span>';
     }
+  });
+  /* Share run button */
+  $('shareRunBtn')?.addEventListener('click',shareRun);
+  /* Map panel */
+  $('mapPanelArrow')?.addEventListener('click',toggleMapPanel);
+  $('panelLocateBtn')?.addEventListener('click',()=>{if(mapL){mapL.locate({setView:true,maxZoom:17,enableHighAccuracy:true});toast('📍 Standort wird ermittelt…')}});
+  $('panelTerrBtn')?.addEventListener('click',function(){this.classList.toggle('active');if(this.classList.contains('active'))terrLayer&&mapL.addLayer(terrLayer);else terrLayer&&mapL.removeLayer(terrLayer);});
+  $('panelHeatBtn')?.addEventListener('click',function(){this.classList.toggle('active');if(this.classList.contains('active'))heatLayer&&mapL.addLayer(heatLayer);else heatLayer&&mapL.removeLayer(heatLayer);});
+  $('panelLmBtn')?.addEventListener('click',function(){this.classList.toggle('active');if(this.classList.contains('active'))landmarkLayer&&mapL.addLayer(landmarkLayer);else landmarkLayer&&mapL.removeLayer(landmarkLayer);});
+  $('panelFogBtn')?.addEventListener('click',function(){
+    fogEnabled=!fogEnabled;
+    const cv=$('fogCanvas');if(cv)cv.style.display=fogEnabled?'block':'none';
+    this.classList.toggle('active',fogEnabled);
+    this.innerHTML=fogEnabled?'<i class="fas fa-cloud"></i> Nebel aus':'<i class="fas fa-cloud"></i> Nebel ein';
+    if(fogEnabled)drawFog();
+    if(mapL)mapL.on('move',debouncedDrawFog);else mapL?.off('move',debouncedDrawFog);
+  });
+  $('panelHeatPersonalBtn')?.addEventListener('click',function(){
+    heatPersonalOnly=!heatPersonalOnly;
+    if(!heatPersonalOnly){
+      // rebuild from all run history + live (reset then add back)
+      heatLayer?.setLatLngs([]);
+      history.forEach(r=>(r.path||[]).forEach(p=>heatLayer?.addLatLng([p[0],p[1],.4])));
+    }
+    refreshHeat();
   });
   /* Close modal on backdrop click */
   document.querySelectorAll('.modal').forEach(modal=>{
