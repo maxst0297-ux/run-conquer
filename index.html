@@ -103,9 +103,8 @@ body{
 /* ═══ RUN DOCK ═══ */
 #runDock{position:absolute;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid var(--border);border-radius:22px 22px 0 0;padding:14px 16px 20px;z-index:500;box-shadow:0 -4px 24px rgba(0,0,0,.35);transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1)}
 #runDock.up{transform:translateY(0)}
-#dockToggle{position:absolute;bottom:14px;right:14px;background:var(--primary);color:var(--bg);width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.3rem;cursor:pointer;z-index:510;box-shadow:0 4px 20px rgba(0,0,0,.45);transition:transform .15s;-webkit-user-select:none;user-select:none}
+#dockToggle{position:fixed;bottom:calc(var(--nav-total) + 14px);right:14px;background:var(--primary);color:var(--bg);width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.3rem;cursor:pointer;z-index:600;box-shadow:0 4px 20px rgba(0,0,0,.55);transition:transform .15s;-webkit-user-select:none;user-select:none}
 #dockToggle:active{transform:scale(.9)}
-#runDock.up~#dockToggle i{transform:rotate(180deg)}
 
 /* Live stats */
 .live-run{display:none;margin-bottom:12px}
@@ -280,7 +279,7 @@ body.light .pv-banner{background:linear-gradient(160deg,#3a1a10 0%,#2a1508 45%,#
 .leaflet-popup-content{font-family:'Poppins',sans-serif;font-size:.82rem;color:#f0f0f8;min-width:160px}
 
 /* ═══ LOCATE BUTTON ═══ */
-#locateBtn{position:absolute;bottom:80px;right:14px;background:var(--card);border:1px solid var(--border);color:var(--primary);width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;cursor:pointer;z-index:510;box-shadow:0 2px 12px rgba(0,0,0,.3);-webkit-user-select:none;user-select:none;transition:transform .15s}
+#locateBtn{position:fixed;bottom:calc(var(--nav-total) + 82px);right:14px;background:var(--card);border:1px solid var(--border);color:var(--primary);width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;cursor:pointer;z-index:600;box-shadow:0 2px 12px rgba(0,0,0,.3);-webkit-user-select:none;user-select:none;transition:transform .15s}
 #locateBtn:active{transform:scale(.9)}
 
 /* ═══ LIKE ANIMATION ═══ */
@@ -1708,11 +1707,16 @@ window.initApp=function(){
       if(statusEl)statusEl.innerHTML='<span style="color:var(--red)">❌ '+(e.message||'Fehler')+'</span>';
     }
   });
+  /* Close modal on backdrop click */
+  document.querySelectorAll('.modal').forEach(modal=>{
+    modal.addEventListener('click',e=>{if(e.target===modal)modal.style.display='none';});
+  });
   /* Swipe down to close modals */
   document.querySelectorAll('.modal-card').forEach(card=>{
-    let sy=0;
-    card.addEventListener('touchstart',e=>{sy=e.touches[0].clientY;},{passive:true});
-    card.addEventListener('touchend',e=>{if(card.scrollTop===0&&e.changedTouches[0].clientY-sy>70){const m=card.closest('.modal');if(m)m.style.display='none';}},{passive:true});
+    let sy=0,dragging=false;
+    card.addEventListener('touchstart',e=>{sy=e.touches[0].clientY;dragging=false;},{passive:true});
+    card.addEventListener('touchmove',e=>{if(card.scrollTop===0&&e.touches[0].clientY-sy>30)dragging=true;},{passive:true});
+    card.addEventListener('touchend',e=>{if(dragging&&e.changedTouches[0].clientY-sy>50){const m=card.closest('.modal');if(m)m.style.display='none';}},{passive:true});
   });
   /* Secret admin: 5 taps on level badge */
   let hdrTaps=0;
@@ -1807,30 +1811,59 @@ try{(function(){
 
   function drawRunner(r,t){
     const {x,y,color,sc,ph,spd}=r;
-    const sw=Math.sin(t*8*spd/2+ph)*.85;
+    /* a: leg cycle angle, 0→2π per stride */
+    const a=t*6.5*(spd/1.8)+ph;
+    const rLeg=Math.sin(a);   /* right leg: +1=forward, -1=back */
+    const lLeg=-rLeg;         /* left leg opposite */
+    const HIP=-sc*.55;        /* hip y from foot level */
+    const SH=-sc*1.1;         /* shoulder y */
+    const HD=-sc*1.38;        /* head center y */
+
     ctx.save();ctx.translate(x,y);
-    /* shadow */
-    ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(0,sc*.2,sc*.65,sc*.13,0,0,Math.PI*2);ctx.fill();
-    ctx.shadowColor=color;ctx.shadowBlur=10;
-    ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineCap='round';
-    /* back leg */
-    ctx.lineWidth=sc*.21;
-    ctx.beginPath();ctx.moveTo(0,sc*.1);
-    ctx.lineTo(-Math.sin(sw)*sc*.5,Math.cos(sw)*sc*.5);
-    ctx.lineTo(-Math.sin(sw*.75)*sc*.45,sc*.95);ctx.stroke();
+
+    /* ground shadow */
+    ctx.fillStyle='rgba(0,0,0,.2)';
+    ctx.beginPath();ctx.ellipse(0,sc*.05,sc*.6,sc*.1,0,0,Math.PI*2);ctx.fill();
+
+    ctx.shadowColor=color;ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineCap='round';ctx.lineJoin='round';
+
+    /* ── helper: draw one leg from hip ── */
+    function leg(sw){
+      /* thigh swings forward/back */
+      const kx=Math.sin(sw*0.85)*sc*.5;
+      /* knee dips lower when swinging forward (heel-strike phase) */
+      const ky=HIP+sc*.52+Math.max(0,sw)*sc*.12;
+      /* shin: kicks back when thigh is forward, extends when pushing off */
+      const sh=sw*0.55;
+      const fx=kx+Math.sin(sh)*sc*.44;
+      const fy=ky+sc*.42;
+      ctx.beginPath();ctx.moveTo(0,HIP);ctx.lineTo(kx,ky);ctx.lineTo(fx,fy);ctx.stroke();
+    }
+
+    ctx.shadowBlur=8;ctx.lineWidth=sc*.22;
+    leg(lLeg); /* back leg drawn first */
+
     /* torso */
-    ctx.fillStyle=color;ctx.beginPath();ctx.ellipse(0,-sc*.18,sc*.2,sc*.38,0,0,Math.PI*2);ctx.fill();
-    /* front leg */
-    ctx.beginPath();ctx.moveTo(0,sc*.1);
-    ctx.lineTo(Math.sin(sw)*sc*.5,Math.cos(sw)*sc*.5);
-    ctx.lineTo(Math.sin(sw*.75)*sc*.45,sc*.95);ctx.stroke();
-    /* arms */
-    const as=Math.sin(t*8*spd/2+ph+Math.PI)*.6;
-    ctx.lineWidth=sc*.17;
-    ctx.beginPath();ctx.moveTo(sc*.1,-sc*.38);ctx.lineTo(Math.sin(as)*sc*.45,-sc*.06);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(-sc*.1,-sc*.38);ctx.lineTo(-Math.sin(as)*sc*.45,-sc*.06);ctx.stroke();
+    ctx.lineWidth=sc*.28;
+    const lean=0.08; /* slight forward lean */
+    ctx.beginPath();ctx.moveTo(0,HIP);ctx.lineTo(sc*lean,SH);ctx.stroke();
+
+    leg(rLeg); /* front leg on top */
+
+    /* arms: right arm forward when left leg forward */
+    ctx.lineWidth=sc*.16;ctx.shadowBlur=6;
+    const armR=-lLeg*0.55;
+    const armL=-rLeg*0.55;
+    /* right arm */
+    const rax=Math.sin(armR)*sc*.42, ray=SH+sc*.38;
+    ctx.beginPath();ctx.moveTo(sc*.08,SH+sc*.05);ctx.lineTo(rax,ray);ctx.stroke();
+    /* left arm */
+    const lax=Math.sin(armL)*sc*.42;
+    ctx.beginPath();ctx.moveTo(-sc*.08,SH+sc*.05);ctx.lineTo(lax,ray);ctx.stroke();
+
     /* head */
-    ctx.shadowBlur=14;ctx.beginPath();ctx.arc(0,-sc*.72,sc*.23,0,Math.PI*2);ctx.fill();
+    ctx.shadowBlur=14;
+    ctx.beginPath();ctx.arc(sc*lean,HD,sc*.24,0,Math.PI*2);ctx.fill();
     ctx.shadowBlur=0;ctx.restore();
   }
 
