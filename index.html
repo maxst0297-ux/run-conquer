@@ -818,7 +818,7 @@ const CFG={
   ATK_BONUS_LVL:.05,
   DEF_REGEN_LVL:.03,
   // Sonstiges
-  ENERGY_MAX:3,ENERGY_REGEN_H:8,
+  ENERGY_MAX:99,ENERGY_REGEN_H:1,
   HR_BASE:70,STEP_THR:12,STEP_INTERVAL:250,
   // ConqRun Features
   LANDMARK_PTS:50,
@@ -1309,7 +1309,7 @@ async function loadLandmarks(){
     +`node["natural"~"peak|waterfall|cave_entrance"]["name"](${bb});`
     +`way["tourism"~"attraction|museum|viewpoint|theme_park|zoo"]["name"](${bb});`
     +`way["historic"~"monument|memorial|castle|ruins"]["name"](${bb});`
-    +`);out center body qt;`;
+    +`);out center qt;`;
   try{
     const r=await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
     const d=await r.json();
@@ -1511,7 +1511,6 @@ function drawMiniMap(canvas,pts){
 
 /* RUN */
 function startRun(){
-  if(energy<=0){toast('Keine Energie!');return}
   if(isRunning)return;
   isRunning=true;isPaused=false;beep(440);
   runStart=Date.now();runSecs=0;path=[];lastPos=null;dist=0;kmSplits=[];lastSplitKm=0;lastSplitSecs=0;
