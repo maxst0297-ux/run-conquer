@@ -1249,6 +1249,7 @@ function initMap(){
   terrLayer=L.layerGroup().addTo(mapL);
   heatLayer=L.heatLayer([],{radius:20,blur:15,maxZoom:17}).addTo(mapL);
   landmarkLayer=L.layerGroup().addTo(mapL);
+  setTimeout(loadLandmarks,800);
   mapL.locate({setView:true,maxZoom:16,enableHighAccuracy:true});
   mapL.on('locationfound',e=>{
     if(!userMarker)userMarker=L.marker(e.latlng,{icon:mkUserIcon()}).addTo(mapL);
@@ -1259,7 +1260,7 @@ function initMap(){
     }
     loadLandmarks();
   });
-  mapL.on('moveend',debounce(loadLandmarks,800));
+  mapL.on('moveend',debounce(loadLandmarks,1500));
   mapL.on('click',closeDrawer);
 }
 function isLightTheme(){const t=getActiveTheme();return t==='theme-stone'||t==='theme-petrol';}
@@ -1273,14 +1274,14 @@ async function loadLandmarks(){
   if(!mapL)return;
   const b=mapL.getBounds();
   const bb=`${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
-  const q=`[out:json][timeout:20];(`
-    +`node["tourism"~"attraction|museum|viewpoint|artwork|theme_park|zoo|aquarium|gallery"](${bb})[name];`
-    +`node["historic"~"monument|memorial|castle|ruins|archaeological_site|church|fort|building"](${bb})[name];`
-    +`node["leisure"~"stadium|nature_reserve|park"](${bb})[name];`
-    +`node["amenity"~"place_of_worship|fountain|theatre|cinema"](${bb})[name];`
-    +`node["natural"~"peak|waterfall|cave_entrance"](${bb})[name];`
-    +`way["tourism"~"attraction|museum|viewpoint|theme_park|zoo|aquarium"](${bb})[name];`
-    +`way["historic"~"monument|memorial|castle|ruins|archaeological_site|building"](${bb})[name];`
+  const q=`[out:json][timeout:25];(`
+    +`node["tourism"~"attraction|museum|viewpoint|artwork|theme_park|zoo|aquarium|gallery"]["name"](${bb});`
+    +`node["historic"~"monument|memorial|castle|ruins|archaeological_site|church|fort"]["name"](${bb});`
+    +`node["leisure"~"stadium|nature_reserve"]["name"](${bb});`
+    +`node["amenity"~"place_of_worship|fountain|theatre"]["name"](${bb});`
+    +`node["natural"~"peak|waterfall|cave_entrance"]["name"](${bb});`
+    +`way["tourism"~"attraction|museum|viewpoint|theme_park|zoo"]["name"](${bb});`
+    +`way["historic"~"monument|memorial|castle|ruins"]["name"](${bb});`
     +`);out center body qt;`;
   try{
     const r=await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
