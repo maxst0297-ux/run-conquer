@@ -1160,20 +1160,23 @@ function toggleMapPanel(){
 }
 
 /* INIT DATA */
-function genRivals(lat,lng){
+async function genRivals(lat,lng){
   if(!mapL)return;
   const c=lat?{lat,lng}:mapL.getCenter();
-  /* Each bot gets 3 initial territories at varying distances/directions */
   const now=Date.now();
+  /* Straßen-Graph einmal für alle Bots laden */
+  const g=await fetchRoadGraph(c.lat,c.lng);
   BOTS.forEach((bot,bi)=>{
     const baseAngle=(bi/BOTS.length)*Math.PI*2;
     for(let t=0;t<3;t++){
       const angle=baseAngle+(t-1)*0.55;
-      const dist=.008+t*.007+Math.random()*.006;
-      const r=90+Math.random()*130;
-      const tlat=c.lat+Math.sin(angle)*dist;
-      const tlng=c.lng+Math.cos(angle)*dist/Math.cos(c.lat*Math.PI/180);
-      const poly=mkNaturalPoly(tlat,tlng,r);
+      /* Offset vom Spieler (800m–2km) */
+      const off=.007+t*.006+Math.random()*.006;
+      const tlat=c.lat+Math.sin(angle)*off;
+      const tlng=c.lng+Math.cos(angle)*off/Math.cos(c.lat*Math.PI/180);
+      /* Umfang 5–15km, realistisch wie ein Stadtviertel */
+      const perimKm=5+Math.random()*10;
+      const poly=mkRoadPoly(g,tlat,tlng,perimKm);
       const area=turf.area(poly);
       const age=3600000*(4+bi*3+t*2);
       const str=CFG.STR_INIT_MIN+Math.floor(Math.random()*(CFG.STR_INIT_MAX-CFG.STR_INIT_MIN));
@@ -1184,11 +1187,10 @@ function genRivals(lat,lng){
   });
   save();
 }
-function runOneBot(bot){
+async function runOneBot(bot){
   if(!mapL||!territories.length)return;
   const userPos=userMarker?userMarker.getLatLng():mapL.getCenter();
   const botTerrs=territories.filter(t=>t.owner===bot.id);
-  /* 60% chance: expand from existing territory; 40%: run near user area */
   let baseLat,baseLng;
   if(botTerrs.length&&Math.random()<0.6){
     const src=botTerrs[Math.floor(Math.random()*botTerrs.length)];
@@ -1201,8 +1203,10 @@ function runOneBot(bot){
   const angle=Math.random()*Math.PI*2;
   const lat=baseLat+Math.sin(angle)*spread;
   const lng=baseLng+Math.cos(angle)*spread/Math.cos(baseLat*Math.PI/180);
-  const r=60+Math.random()*120;
-  const poly=mkNaturalPoly(lat,lng,r);
+  /* Umfang 5–24km: wie ein echter Läufer ein Viertel absteckt */
+  const perimKm=5+Math.random()*19;
+  const g=await fetchRoadGraph(lat,lng);
+  const poly=mkRoadPoly(g,lat,lng,perimKm);
   const area=turf.area(poly);
   const dist=800+Math.random()*2200;
   const km=dist/1000;
@@ -1251,12 +1255,11 @@ function runOneBot(bot){
   }
   if(txt){botActivities.unshift({text:txt,time:now});if(botActivities.length>20)botActivities.pop();}
 }
-function simulateBotRun(){
+async function simulateBotRun(){
   if(!mapL||!territories.length)return;
-  /* 2-3 bots run per tick — feels like a busy city */
   const count=2+Math.floor(Math.random()*2);
   const shuffled=[...BOTS].sort(()=>Math.random()-.5).slice(0,count);
-  shuffled.forEach(bot=>runOneBot(bot));
+  for(const bot of shuffled)await runOneBot(bot);
   const now=Date.now();
   territories=territories.filter(t=>t.defense>0||t.owner===userId||(now-t.lastDefended)<CFG.MAX_AGE_H*3600000);
   resolveRaids();
@@ -1264,6 +1267,90 @@ function simulateBotRun(){
   if(currentView==='community')updateCommunity();
 }
 function mkCircle(lat,lng,r){return turf.circle([lng,lat],r,{steps:20,units:'meters'}).geometry}
+
+/* ═══ ROAD GRAPH (Straßen-Netz für realistische Bot-Gebiete) ═══ */
+let _rg=null,_rgC=null,_rgExp=0;
+async function fetchRoadGraph(lat,lng){
+  /* Cache 30 min; neu laden wenn Zentrum >4km verschoben */
+  if(_rg&&Date.now()<_rgExp&&_rgC&&Math.hypot(lat-_rgC[0],lng-_rgC[1])<0.036)return _rg;
+  const cos=Math.cos(lat*Math.PI/180),r=0.06;
+  const bb=`${lat-r},${lng-r/cos},${lat+r},${lng+r/cos}`;
+  const q=`[out:json][timeout:30];(way["highway"~"primary|secondary|tertiary|residential|unclassified|living_street|service"](${bb}););out geom qt;`;
+  try{
+    const d=await(await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q)})).json();
+    const g=new Map();
+    (d.elements||[]).forEach(w=>{
+      if(!w.geometry||w.geometry.length<2)return;
+      const geom=w.geometry;
+      for(let i=0;i<geom.length-1;i++){
+        const a=geom[i],b=geom[i+1];
+        const ka=`${a.lat.toFixed(5)},${a.lon.toFixed(5)}`;
+        const kb=`${b.lat.toFixed(5)},${b.lon.toFixed(5)}`;
+        if(!g.has(ka))g.set(ka,{lat:a.lat,lng:a.lon,nb:[]});
+        if(!g.has(kb))g.set(kb,{lat:b.lat,lng:b.lon,nb:[]});
+        if(!g.get(ka).nb.includes(kb))g.get(ka).nb.push(kb);
+        if(!g.get(kb).nb.includes(ka))g.get(kb).nb.push(ka);
+      }
+    });
+    if(g.size>15){_rg=g;_rgC=[lat,lng];_rgExp=Date.now()+30*60*1000;}
+    return g.size>15?g:null;
+  }catch(e){return null;}
+}
+
+function mkRoadPoly(g,lat,lng,perimKm){
+  /* Ziel-Radius aus Umfang (Kreis-Näherung) */
+  const R=perimKm*1000/(2*Math.PI);
+  if(!g||g.size<15)return mkNaturalPoly(lat,lng,R);
+  const lats=1/111111,lngs=1/(111111*Math.cos(lat*Math.PI/180));
+  /* N Wegpunkte: jeweils nächster Straßen-Knoten zum Zielwinkel */
+  const N=10,wps=[];
+  for(let i=0;i<N;i++){
+    const ang=(i/N)*Math.PI*2;
+    const tLat=lat+Math.sin(ang)*R*lats,tLng=lng+Math.cos(ang)*R*lngs;
+    let bk=null,bd=Infinity;
+    g.forEach((nd,k)=>{const d=Math.hypot(nd.lat-tLat,nd.lng-tLng);if(d<bd){bd=d;bk=k;}});
+    if(bk&&!wps.includes(bk))wps.push(bk);
+  }
+  if(wps.length<4)return mkNaturalPoly(lat,lng,R);
+  /* Gieriger Straßenpfad von Knoten A → B */
+  function rPath(fk,tk){
+    const tgt=g.get(tk);if(!tgt)return[fk];
+    const vis=new Set([fk]);let cur=fk;const path=[fk];
+    for(let s=0;s<150&&cur!==tk;s++){
+      const nd=g.get(cur);if(!nd)break;
+      let bk2=null,bs=-Infinity;
+      nd.nb.forEach(nk=>{
+        const nn=g.get(nk);if(!nn)return;
+        /* Score: näher am Ziel = höher; bereits besucht = Strafe */
+        const sc=-Math.hypot(nn.lat-tgt.lat,nn.lng-tgt.lng)*(vis.has(nk)?2:1);
+        if(sc>bs){bs=sc;bk2=nk;}
+      });
+      if(!bk2)break;
+      vis.add(bk2);path.push(bk2);cur=bk2;
+    }
+    if(cur!==tk)path.push(tk);
+    return path;
+  }
+  /* Polygon aus verketteten Straßenpfaden */
+  const coords=[];
+  for(let i=0;i<wps.length;i++){
+    rPath(wps[i],wps[(i+1)%wps.length]).forEach(k=>{
+      const n=g.get(k);if(n)coords.push([n.lng,n.lat]);
+    });
+  }
+  if(coords.length<4)return mkNaturalPoly(lat,lng,R);
+  coords.push(coords[0]);
+  try{
+    const poly=turf.polygon([coords]);
+    if(turf.area(poly)<100)throw new Error('tiny');
+    return poly.geometry;
+  }catch(e){
+    try{
+      const hull=turf.convex(turf.featureCollection(coords.slice(0,-1).map(c=>turf.point(c))));
+      return hull?hull.geometry:mkNaturalPoly(lat,lng,R);
+    }catch(e2){return mkNaturalPoly(lat,lng,R);}
+  }
+}
 function mkNaturalPoly(lat,lng,radiusM){
   try{
     const steps=10,coords=[];
@@ -1298,8 +1385,7 @@ function initMap(){
     if(!userMarker)userMarker=L.marker(e.latlng,{icon:mkUserIcon()}).addTo(mapL);
     else userMarker.setLatLng(e.latlng);
     if(territories.filter(t=>t.owner!==userId).length===0){
-      genRivals(e.latlng.lat,e.latlng.lng);
-      save();renderTerr();
+      genRivals(e.latlng.lat,e.latlng.lng).then(()=>{renderTerr();updateUI();});
     }
     loadLandmarks();
   });
@@ -2191,7 +2277,7 @@ window.initApp=function(){
     saveProfile();
     $('onboarding').style.display='none';$('app').style.display='flex';
     initMap();setTimeout(()=>{load();updateUI();mapL?.invalidateSize()},150);setupBg();initSteps();
-    initSupabase().then(async()=>{const restored=await loadFromCloud();if(!restored&&!territories.length){genRivals();save();}renderTerr();updateUI();syncProfile();});
+    initSupabase().then(async()=>{const restored=await loadFromCloud();if(!restored&&!territories.length){await genRivals();}renderTerr();updateUI();syncProfile();});
   });
   startBtn.addEventListener('click',startRun);
   pauseBtn.addEventListener('click',()=>{isPaused?resumeRun():pauseRun();});
