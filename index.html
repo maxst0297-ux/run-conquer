@@ -1195,7 +1195,7 @@ function runOneBot(bot){
   let txt='';
   const now=Date.now();
   if(!ovl.length){
-    territories.push({id:'b_'+now,owner:bot.id,color:bot.color,polygon:poly.geometry,
+    territories.push({id:'b_'+now,owner:bot.id,color:bot.color,polygon:poly,
       defense:25+Math.floor(Math.random()*35),maxDefense:100,createdAt:now,
       lastDefended:now,area,customName:bot.name+'s Gebiet',attackHistory:{},_lastDecayTs:now,
       rarity:pickRarity(false)});
@@ -1346,6 +1346,7 @@ function renderTerr(){
     legendary:{weight:3,dashArray:'6 3',borderCol:'#ffd700'}
   };
   territories.forEach(t=>{
+    if(!t.polygon)return;
     const own=t.owner===userId,col=own?userColor:t.color;
     const strPct=Math.min(1,t.defense/CFG.MAX_DEF);
     const rar=t.rarity||'common',rs=rarityStyle[rar]||rarityStyle.common;
@@ -1527,21 +1528,23 @@ function startRun(){
 function onGPS(pos){
   if(isPaused)return;
   const acc=pos.coords.accuracy||999;
-  if(acc>80)return; /* ignore very inaccurate readings */
   const lat=pos.coords.latitude,lng=pos.coords.longitude,pt=[lat,lng];
+  /* always update marker position so user sees themselves on map */
+  if(userMarker)userMarker.setLatLng(pt);
+  if(isRunning&&!isPaused)mapL.setView(pt,mapL.getZoom());
+  if(acc>150)return; /* skip path recording for very inaccurate fixes */
   if(pos.coords.speed!=null&&pos.coords.speed>=0)gpsSpeed=pos.coords.speed;
   if(pos.coords.altitude!=null)gpsAlt=Math.round(pos.coords.altitude);
-  if(lastPos&&acc<=50){
+  if(lastPos&&acc<=100){
     const d=turf.distance(turf.point([lastPos[1],lastPos[0]]),turf.point([lng,lat]),{units:'meters'});
-    if(d>2&&d<80){
+    if(d>2&&d<100){
       dist+=d;path.push(pt);pathLayer.addLatLng(pt);distLive.textContent=fmtDist(dist);
       const km=Math.floor(dist/1000);
       if(km>lastSplitKm){const el=runSecs+Math.floor((Date.now()-runStart)/1000),ss=el-lastSplitSecs;kmSplits.push({km,pace:fmtPace(1000,ss),splitSecs:ss});lastSplitKm=km;lastSplitSecs=el;beep(660,.1);toast(`KM ${km} · ${fmtPace(1000,ss)}/km`);}
       if(!heatPersonalOnly)heatLayer.addLatLng([lat,lng,.5]);
     }
   } else if(!lastPos){path.push(pt);pathLayer.addLatLng(pt);}
-  lastPos=pt;if(userMarker)userMarker.setLatLng(pt);
-  if(isRunning&&!isPaused)mapL.setView(pt,mapL.getZoom());
+  lastPos=pt;
   if(fogEnabled)revealCell(lat,lng);
   landmarks.forEach(lm=>{
     if(capturedLandmarks.includes(lm.id))return;
