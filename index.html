@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Run &amp; Conquer</title>
+<title>Runners Conquer</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -17,14 +17,14 @@
 
 <style>
 /* ═══ TOKENS ═══ */
-:root {
-  --bg:#09090f; --bg2:#111118; --card:#1a1a26;
-  --border:rgba(255,255,255,.07);
-  --primary:#e8ff47; --red:#ff4d6d; --green:#10b981; --cyan:#00d4ff;
-  --muted:#6b6b82; --text:#f0f0f8;
+:root, body.theme-citrus {
+  --bg:#042D22; --bg2:#062e23; --card:#0d3d2c;
+  --border:rgba(255,255,255,.09);
+  --primary:#E6FF55; --primary-rgb:230,255,85;
+  --red:#ff4d6d; --green:#10b981; --cyan:#00d4ff;
+  --muted:#5a8a6e; --text:#eef7f2;
   --radius:16px;
   --nav-h:72px; --hdr-h:58px;
-  /* safe-area für Notch + Home-Bar (iPhone) */
   --sat: env(safe-area-inset-top,    0px);
   --sab: env(safe-area-inset-bottom, 0px);
   --sal: env(safe-area-inset-left,   0px);
@@ -32,10 +32,26 @@
   --hdr-total: calc(var(--hdr-h) + var(--sat));
   --nav-total: calc(var(--nav-h) + var(--sab));
 }
-body.light {
-  --bg:#fdf5e7; --bg2:#fae3c4; --card:#fae3c4;
-  --border:rgba(48,73,70,.18); --primary:#d14e30;
-  --muted:#304946; --text:#04191c;
+body.theme-stone {
+  --bg:#F0EBE9; --bg2:#E8E2DE; --card:#EDE7E4;
+  --border:rgba(54,163,114,.18);
+  --primary:#36A372; --primary-rgb:54,163,114;
+  --red:#cc3355; --green:#36A372; --cyan:#0088bb;
+  --muted:#8a7e79; --text:#1a2e25;
+}
+body.theme-pine {
+  --bg:#455B51; --bg2:#3c5148; --card:#4e6459;
+  --border:rgba(255,240,164,.13);
+  --primary:#FFF0A4; --primary-rgb:255,240,164;
+  --red:#ff6b7a; --green:#7ecba1; --cyan:#7dd3e8;
+  --muted:#8aab99; --text:#F0EBE9;
+}
+body.theme-petrol {
+  --bg:#F4E9D4; --bg2:#EDE0C4; --card:#EDE0C4;
+  --border:rgba(50,101,134,.16);
+  --primary:#326586; --primary-rgb:50,101,134;
+  --red:#c03355; --green:#2d7a5e; --cyan:#2277aa;
+  --muted:#8a7f70; --text:#1a2832;
 }
 html{height:-webkit-fill-available}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -47,17 +63,13 @@ body{
 }
 
 /* ═══ SPLASH ═══ */
-#splash{position:fixed;top:0;left:0;right:0;bottom:0;background:#06060e;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;z-index:10000;transition:opacity .7s;overflow:hidden;padding-top:calc(max(8vh,44px) + var(--sat,0px))}
-#splashCanvas{position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;display:block}
-#splashTitle{position:relative;z-index:2;text-align:center;opacity:0;animation:splashIn .7s cubic-bezier(.22,1,.36,1) .4s forwards}
-.splash-logo{font-family:'Bebas Neue',sans-serif;font-size:clamp(2.6rem,9vw,4.8rem);letter-spacing:6px;color:#e8ff47;text-shadow:0 0 30px rgba(232,255,71,.7),0 0 80px rgba(232,255,71,.25),0 2px 0 rgba(0,0,0,.5)}
-.splash-sub{font-size:.7rem;text-transform:uppercase;letter-spacing:4px;color:rgba(232,255,71,.55);margin-top:6px}
-@keyframes splashIn{to{opacity:1;transform:translateY(0)}}
+#splash{position:fixed;top:0;left:0;right:0;bottom:0;background:#042D22;display:flex;align-items:center;justify-content:center;z-index:10000;transition:opacity .7s;overflow:hidden}
+#splashCanvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block}
 
 /* ═══ ONBOARDING ═══ */
 #onboarding{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);display:flex;align-items:flex-start;justify-content:center;z-index:2000;padding:calc(20px + var(--sat)) 20px calc(20px + var(--sab));overflow-y:auto;-webkit-overflow-scrolling:touch}
 .ob-card{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:28px 28px 36px;max-width:400px;width:100%;text-align:center}
-.ob-illus{display:flex;justify-content:center;margin-bottom:12px;background:rgba(232,255,71,.04);border-radius:16px;padding:14px}
+.ob-illus{display:flex;justify-content:center;margin-bottom:12px;background:rgba(var(--primary-rgb),.04);border-radius:16px;padding:14px}
 .ob-title{font-family:'Bebas Neue',sans-serif;font-size:3.2rem;letter-spacing:2px;color:var(--primary);line-height:1}
 .ob-sub{color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:3px;margin:4px 0 28px}
 .field{margin-bottom:20px;text-align:left}
@@ -190,7 +202,7 @@ body{
 /* ═══ COMMUNITY ═══ */
 .comm-banner{position:relative;border-radius:var(--radius);overflow:hidden;margin-bottom:16px;height:80px}
 .comm-banner svg{width:100%;height:100%;position:absolute;top:0;left:0;right:0;bottom:0}
-.comm-banner-title{position:relative;z-index:1;font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:3px;color:#e8ff47;text-shadow:0 0 20px rgba(232,255,71,.5);display:flex;align-items:center;gap:8px;padding:0 16px;height:100%}
+.comm-banner-title{position:relative;z-index:1;font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:3px;color:var(--primary);text-shadow:0 0 20px rgba(var(--primary-rgb),.5);display:flex;align-items:center;gap:8px;padding:0 16px;height:100%}
 .comm-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px}
 .comm-card h3{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:2px;color:var(--primary);margin-bottom:14px;display:flex;align-items:center;gap:8px}
 .list-row{padding:10px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;animation:fadeRow .3s ease}
@@ -206,7 +218,8 @@ body{
 /* ═══ PROFILE ═══ */
 .pv-banner{border-radius:var(--radius);padding:28px 20px 20px;margin-bottom:16px;text-align:center;position:relative;border:1px solid var(--border);transition:background .3s;background:linear-gradient(160deg,#0d1a40 0%,#0e1028 45%,#100d20 100%);overflow:hidden}
 .pv-banner::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='100' viewBox='0 0 200 100'%3E%3Cpath d='M0 60 L30 55 L50 62 L75 50 L100 57 L130 45 L160 55 L200 48' stroke='rgba(232,255,71,0.15)' stroke-width='2' fill='none' stroke-dasharray='6 4'/%3E%3Crect x='10' y='30' width='15' height='30' fill='rgba(232,255,71,0.07)' rx='1'/%3E%3Crect x='14' y='22' width='8' height='38' fill='rgba(232,255,71,0.09)' rx='1'/%3E%3Crect x='40' y='25' width='12' height='35' fill='rgba(232,255,71,0.07)' rx='1'/%3E%3Crect x='70' y='18' width='16' height='42' fill='rgba(232,255,71,0.10)' rx='1'/%3E%3Crect x='105' y='28' width='10' height='32' fill='rgba(232,255,71,0.07)' rx='1'/%3E%3Crect x='140' y='20' width='14' height='40' fill='rgba(232,255,71,0.09)' rx='1'/%3E%3Crect x='170' y='30' width='12' height='30' fill='rgba(232,255,71,0.07)' rx='1'/%3E%3Cellipse cx='58' cy='66' rx='8' ry='9' fill='rgba(16,185,129,0.15)'/%3E%3Cellipse cx='125' cy='65' rx='7' ry='8' fill='rgba(16,185,129,0.12)'/%3E%3Cellipse cx='185' cy='64' rx='8' ry='9' fill='rgba(16,185,129,0.13)'/%3E%3C/svg%3E");background-size:cover;background-position:center;opacity:.7;pointer-events:none}
-body.light .pv-banner{background:linear-gradient(160deg,#3a1a10 0%,#2a1508 45%,#1e0f04 100%)}
+body.theme-stone .pv-banner{background:linear-gradient(160deg,#1a3d2e 0%,#12301f 45%,#0d2416 100%)}
+body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#112232 45%,#0d1a28 100%)}
 .pv-avatar{font-size:3.5rem;line-height:1;margin-bottom:6px}
 .pv-name{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:2px}
 .pv-since{font-size:.7rem;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:2px}
@@ -228,7 +241,7 @@ body.light .pv-banner{background:linear-gradient(160deg,#3a1a10 0%,#2a1508 45%,#
 
 .ach-grid{display:flex;flex-wrap:wrap;gap:8px}
 .ach-badge{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;padding:8px 14px;text-align:center;min-width:66px;transition:all .25s}
-.ach-badge.earned{background:rgba(232,255,71,.1);border-color:rgba(232,255,71,.35)}
+.ach-badge.earned{background:rgba(var(--primary-rgb),.1);border-color:rgba(var(--primary-rgb),.35)}
 .ach-badge-icon{font-size:1.5rem}
 .ach-badge-name{font-size:.6rem;color:var(--muted);margin-top:2px}
 .ach-badge-prog{font-size:.65rem;font-weight:700;margin-top:2px;color:var(--muted)}
@@ -308,7 +321,7 @@ body.light .pv-banner{background:linear-gradient(160deg,#3a1a10 0%,#2a1508 45%,#
 .map-panel-sep{height:1px;background:var(--border);margin:2px 0}
 .map-panel-btn{background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:8px 10px;display:flex;align-items:center;gap:8px;font-size:.78rem;cursor:pointer;transition:background .15s;-webkit-user-select:none;user-select:none;font-family:'Poppins',sans-serif}
 .map-panel-btn i{color:var(--primary);width:16px;text-align:center}
-.map-panel-btn.active{background:rgba(232,255,71,.08);border-color:rgba(232,255,71,.25)}
+.map-panel-btn.active{background:rgba(var(--primary-rgb),.08);border-color:rgba(var(--primary-rgb),.25)}
 .map-panel-btn:active{transform:scale(.97)}
 
 /* ═══ SETTINGS / ADMIN TABS ═══ */
@@ -319,7 +332,7 @@ body.light .pv-banner{background:linear-gradient(160deg,#3a1a10 0%,#2a1508 45%,#
 #fogCanvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:298;display:none}
 .rar-rare{color:#00d4ff}.rar-epic{color:#9b5de5}.rar-legendary{color:#ffd700}
 .team-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:.72rem;font-weight:700;letter-spacing:.5px;margin-top:6px}
-.ruler-badge{font-family:'Bebas Neue',sans-serif;font-size:.9rem;letter-spacing:2px;padding:2px 14px;border-radius:20px;background:rgba(232,255,71,.1);color:var(--primary);border:1px solid rgba(232,255,71,.25);display:inline-block;margin-top:4px}
+.ruler-badge{font-family:'Bebas Neue',sans-serif;font-size:.9rem;letter-spacing:2px;padding:2px 14px;border-radius:20px;background:rgba(var(--primary-rgb),.1);color:var(--primary);border:1px solid rgba(var(--primary-rgb),.25);display:inline-block;margin-top:4px}
 .season-row{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);font-size:.78rem}
 .season-row:last-child{border-bottom:none}
 .dominion-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:.72rem}
@@ -328,15 +341,11 @@ body.light .pv-banner{background:linear-gradient(160deg,#3a1a10 0%,#2a1508 45%,#
 .dom-lbl{color:var(--muted);font-size:.6rem;margin-top:2px}
 </style>
 </head>
-<body class="light">
+<body class="theme-citrus">
 
 <!-- SPLASH -->
 <div id="splash">
   <canvas id="splashCanvas"></canvas>
-  <div id="splashTitle">
-    <div class="splash-logo">RUN &amp; CONQUER</div>
-    <div class="splash-sub">Lauf · Erobere · Verteidige</div>
-  </div>
 </div>
 
 <!-- ONBOARDING -->
@@ -368,8 +377,8 @@ body.light .pv-banner{background:linear-gradient(160deg,#3a1a10 0%,#2a1508 45%,#
         </circle>
       </svg>
     </div>
-    <div class="ob-title">RUN &amp; CONQUER</div>
-    <div class="ob-sub">Lauf · Erobere · Verteidige</div>
+    <div class="ob-title">RUNNERS CONQUER</div>
+    <div class="ob-sub">Lauf · Erobere · Herrsche</div>
     <div class="ob-tabs">
       <button class="ob-tab active" id="obTabPlayer">🎮 Als Spieler</button>
       <button class="ob-tab" id="obTabAdmin">🔐 Admin Login</button>
@@ -395,7 +404,7 @@ body.light .pv-banner{background:linear-gradient(160deg,#3a1a10 0%,#2a1508 45%,#
 <div id="app" style="display:none">
 
   <header class="hdr">
-    <span class="hdr-logo">R&amp;C</span>
+    <span class="hdr-logo">RC</span>
     <span class="hdr-badge" id="userBadge"><span id="hdrAvatar">🏃</span><span id="hdrName">Läufer</span><span id="hdrLevel" style="font-size:.6rem;color:var(--primary);margin-left:2px">Lv.1</span></span>
     <button class="icon-btn" id="settingsBtn"><i class="fas fa-cog"></i></button>
   </header>
@@ -956,9 +965,12 @@ function load(){
   if(!achievements.length)initAch();
   checkSeasonRollover();
 }
-function saveProfile(){const theme=document.body.classList.contains('light')?'light':'dark';localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userId,theme,userTeam}));$('hdrAvatar').textContent=userAvatar;$('hdrName').textContent=playerName;syncProfile();}
+const THEME_CLASSES=['theme-citrus','theme-stone','theme-pine','theme-petrol'];
+function getActiveTheme(){return THEME_CLASSES.find(c=>document.body.classList.contains(c))||'theme-citrus';}
+function applyTheme(name){THEME_CLASSES.forEach(c=>document.body.classList.remove(c));document.body.classList.add(THEME_CLASSES.includes(name)?name:'theme-citrus');setTiles();}
+function saveProfile(){const theme=getActiveTheme();localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userId,theme,userTeam}));$('hdrAvatar').textContent=userAvatar;$('hdrName').textContent=playerName;syncProfile();}
 function loadProfile(){
-  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userTeam=p.userTeam||null;if(p.theme==='dark')document.body.classList.remove('light');else document.body.classList.add('light');$('hdrAvatar').textContent=userAvatar;$('hdrName').textContent=playerName;return true;}}catch(e){}
+  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userTeam=p.userTeam||null;const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').textContent=userAvatar;$('hdrName').textContent=playerName;return true;}}catch(e){}
   return false;
 }
 function closeAllModals(){['profileModal','postRunModal','renameModal','settingsModal','adminModal'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
@@ -1071,7 +1083,8 @@ async function shareRun(){
   if(!card){toast('Fehler beim Erstellen');return;}
   toast('📸 Erstelle Bild…');
   try{
-    const canvas=await html2canvas(card,{backgroundColor:document.body.classList.contains('light')?'#fdf5e7':'#09090f',scale:2,logging:false,useCORS:true});
+    const bgCol=getComputedStyle(document.body).getPropertyValue('--bg').trim()||'#042D22';
+    const canvas=await html2canvas(card,{backgroundColor:bgCol,scale:2,logging:false,useCORS:true});
     canvas.toBlob(async blob=>{
       const file=new File([blob],'conqrun_lauf.png',{type:'image/png'});
       const km=($('liveKm')?.textContent||'?');
@@ -1197,10 +1210,10 @@ function initMap(){
   mapL.on('moveend',debounce(loadLandmarks,800));
   mapL.on('click',closeDrawer);
 }
+function isLightTheme(){const t=getActiveTheme();return t==='theme-stone'||t==='theme-petrol';}
 function setTiles(){
-  const dark=!document.body.classList.contains('light');
   mapL?.eachLayer(l=>{if(l instanceof L.TileLayer)mapL.removeLayer(l)});
-  L.tileLayer(dark?'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png':'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap'}).addTo(mapL);
+  L.tileLayer(isLightTheme()?'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png':'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap'}).addTo(mapL);
 }
 function mkUserIcon(){return L.divIcon({html:`<div style="background:${userColor};width:16px;height:16px;border-radius:50%;border:2px solid white;box-shadow:0 0 12px ${userColor}"></div>`,iconSize:[16,16],className:''})}
 
@@ -1375,18 +1388,19 @@ function calcKcal(m,s){const spd=(m/1000)/(s/3600),met=spd<8?6:spd>12?12:8;retur
 function drawMiniMap(canvas,pts){
   if(!canvas||!pts||pts.length<2)return;
   const ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;
-  const dark=!document.body.classList.contains('light');
-  ctx.fillStyle=dark?'#1a1a26':'#f5efe8';ctx.fillRect(0,0,W,H);
+  const light=isLightTheme();
+  ctx.fillStyle=light?'#EDE7E4':'#0d3d2c';ctx.fillRect(0,0,W,H);
   const lats=pts.map(p=>p[0]),lngs=pts.map(p=>p[1]);
   const mnLat=Math.min(...lats),mxLat=Math.max(...lats),mnLng=Math.min(...lngs),mxLng=Math.max(...lngs);
   const pad=10,rL=mxLat-mnLat||.0001,rG=mxLng-mnLng||.0001;
   const sc=Math.min((W-pad*2)/rG,(H-pad*2)/rL);
   const oX=(W-rG*sc)/2,oY=(H-rL*sc)/2;
   const tx=lng=>oX+(lng-mnLng)*sc,ty=lat=>H-oY-(lat-mnLat)*sc;
-  ctx.strokeStyle=dark?'#e8ff47':'#d14e30';ctx.lineWidth=2.5;ctx.lineCap='round';ctx.lineJoin='round';
+  const pCol=getComputedStyle(document.body).getPropertyValue('--primary').trim();
+  ctx.strokeStyle=pCol;ctx.lineWidth=2.5;ctx.lineCap='round';ctx.lineJoin='round';
   ctx.beginPath();pts.forEach((p,i)=>i===0?ctx.moveTo(tx(p[1]),ty(p[0])):ctx.lineTo(tx(p[1]),ty(p[0])));ctx.stroke();
   ctx.fillStyle='#10b981';ctx.beginPath();ctx.arc(tx(pts[0][1]),ty(pts[0][0]),3.5,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle=dark?'#e8ff47':'#d14e30';ctx.beginPath();ctx.arc(tx(pts[pts.length-1][1]),ty(pts[pts.length-1][0]),3.5,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=pCol;ctx.beginPath();ctx.arc(tx(pts[pts.length-1][1]),ty(pts[pts.length-1][0]),3.5,0,Math.PI*2);ctx.fill();
 }
 
 /* RUN */
@@ -1812,16 +1826,21 @@ function renderSettingsTab(tab){
     AVATARS.forEach(a=>{const s=document.createElement('span');s.className='av-opt'+(a===tmpAv?' sel':'');s.textContent=a;s.onclick=()=>{document.querySelectorAll('#setAvatarRow .av-opt').forEach(o=>o.classList.remove('sel'));s.classList.add('sel');tmpAv=a};$('setAvatarRow').appendChild(s)});
     $('saveSetProfil').addEventListener('click',()=>{playerName=$('setName').value.trim()||playerName;userAvatar=tmpAv;editAvatar=tmpAv;saveProfile();updateProfile();toast('Profil gespeichert')});
   } else if(tab==='theme'){
-    const isLight=document.body.classList.contains('light');
-    body.innerHTML=`<div style="display:flex;flex-direction:column;gap:10px"><button class="btn ${isLight?'':'btn-p'}" id="setDark">🌙 Dunkel</button><button class="btn ${isLight?'btn-p':''}" id="setLight">☀️ Hell</button></div>`;
-    $('setDark').addEventListener('click',()=>{document.body.classList.remove('light');setTiles();saveProfile();renderSettingsTab('theme')});
-    $('setLight').addEventListener('click',()=>{document.body.classList.add('light');setTiles();saveProfile();renderSettingsTab('theme')});
+    const cur=getActiveTheme();
+    const themes=[
+      {id:'theme-citrus',name:'Citrus Jade',dark:true,bg:'#042D22',accent:'#E6FF55',desc:'Dunkel · Grün & Gelb'},
+      {id:'theme-stone',name:'Soft Pine',dark:false,bg:'#F0EBE9',accent:'#36A372',desc:'Hell · Stein & Grün'},
+      {id:'theme-pine',name:'Muted Pine',dark:true,bg:'#455B51',accent:'#FFF0A4',desc:'Dunkel · Salbei & Creme'},
+      {id:'theme-petrol',name:'Petrol Sand',dark:false,bg:'#F4E9D4',accent:'#326586',desc:'Hell · Blau & Sand'}
+    ];
+    body.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${themes.map(th=>`<button class="theme-pick-btn" data-tid="${th.id}" style="padding:14px 10px;border-radius:14px;border:2px solid ${cur===th.id?th.accent:'var(--border)'};background:${th.bg};cursor:pointer;transition:.2s;display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left"><div style="display:flex;gap:6px;align-items:center"><div style="width:18px;height:18px;border-radius:50%;background:${th.accent};box-shadow:0 0 8px ${th.accent}44"></div>${cur===th.id?'<div style="font-size:.6rem;background:'+th.accent+'33;color:'+th.accent+';padding:1px 7px;border-radius:10px;font-weight:700">AKTIV</div>':''}</div><div style="font-weight:700;font-size:.82rem;color:${th.dark?'#fff':th.bg==='#F4E9D4'?'#1a2832':'#1a2e25'}">${th.name}</div><div style="font-size:.6rem;color:${th.dark?'rgba(255,255,255,.5)':'rgba(0,0,0,.4)'}">${th.desc}</div></button>`).join('')}</div>`;
+    body.querySelectorAll('.theme-pick-btn').forEach(btn=>{btn.addEventListener('click',()=>{applyTheme(btn.dataset.tid);saveProfile();renderSettingsTab('theme');});});
   } else if(tab==='team'){
     const cur=userTeam;
     body.innerHTML=`<div style="font-size:.82rem;font-weight:600;margin-bottom:10px">🔥 Wähle dein Team</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${TEAMS.map(tm=>`<button class="team-sel-btn" data-tid="${tm.id}" style="padding:14px 8px;border-radius:14px;border:2px solid ${cur===tm.id?tm.color:'var(--border)'};background:${cur===tm.id?tm.color+'22':'var(--card)'};color:${cur===tm.id?tm.color:'var(--text)'};cursor:pointer;font-weight:700;font-size:.88rem;transition:.2s;font-family:'Poppins',sans-serif;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.6rem">${tm.icon}</span><span>${tm.name}</span>${cur===tm.id?'<span style="font-size:.65rem;color:inherit">✓ Aktiv</span>':''}</button>`).join('')}</div><div style="margin-top:12px;font-size:.72rem;color:var(--muted)">Dein Team beeinflusst deine Farben in der Community und Team-Rangliste.</div>`;
     body.querySelectorAll('.team-sel-btn').forEach(btn=>{btn.addEventListener('click',()=>{userTeam=btn.dataset.tid;saveProfile();renderSettingsTab('team');updateProfile();toast(TEAMS.find(t=>t.id===userTeam)?.icon+' Team '+TEAMS.find(t=>t.id===userTeam)?.name+' gewählt!');});});
   } else if(tab==='spiel'){
-    body.innerHTML=`<div style="display:flex;flex-direction:column;gap:10px"><div style="font-size:.8rem;color:var(--muted);background:var(--card);padding:12px;border-radius:12px;border:1px solid var(--border)"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>⚡ Energie</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${energy}/${CFG.ENERGY_MAX}</span></div><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>🏆 Punkte</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${points}</span></div><div style="display:flex;justify-content:space-between"><span>📐 Gebiete</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${territories.filter(t=>t.owner===userId).length}</span></div></div><button class="btn btn-p" id="setPulsBtn"><i class="fas fa-heartbeat"></i> Pulsmesser koppeln</button><div id="setVersionTap" style="text-align:center;color:var(--muted);font-size:.6rem;margin-top:8px;cursor:pointer;-webkit-user-select:none;user-select:none">v1.0.0 · Run &amp; Conquer</div></div>`;
+    body.innerHTML=`<div style="display:flex;flex-direction:column;gap:10px"><div style="font-size:.8rem;color:var(--muted);background:var(--card);padding:12px;border-radius:12px;border:1px solid var(--border)"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>⚡ Energie</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${energy}/${CFG.ENERGY_MAX}</span></div><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>🏆 Punkte</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${points}</span></div><div style="display:flex;justify-content:space-between"><span>📐 Gebiete</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${territories.filter(t=>t.owner===userId).length}</span></div></div><button class="btn btn-p" id="setPulsBtn"><i class="fas fa-heartbeat"></i> Pulsmesser koppeln</button><div id="setVersionTap" style="text-align:center;color:var(--muted);font-size:.6rem;margin-top:8px;cursor:pointer;-webkit-user-select:none;user-select:none">v2.0.0 · Runners Conquer</div></div>`;
     $('setPulsBtn').addEventListener('click',connectBT);
     let vTaps=0;
     $('setVersionTap').addEventListener('click',()=>{vTaps++;if(vTaps>=5){vTaps=0;$('settingsModal').style.display='none';openAdminPanel();}});
@@ -2014,7 +2033,7 @@ function renderEditAvatars(){
   editAvatar=userAvatar;const ad=$('editAvatarRow');ad.innerHTML='';
   AVATARS.forEach(a=>{const s=document.createElement('span');s.className='av-opt'+(a===editAvatar?' sel':'');s.textContent=a;s.onclick=()=>{document.querySelectorAll('#editAvatarRow .av-opt').forEach(o=>o.classList.remove('sel'));s.classList.add('sel');editAvatar=a};ad.appendChild(s)});
 }
-function toggleTheme(){document.body.classList.toggle('light');setTiles()}
+function toggleTheme(){const i=(THEME_CLASSES.indexOf(getActiveTheme())+1)%THEME_CLASSES.length;applyTheme(THEME_CLASSES[i]);saveProfile();}
 
 /* INIT */
 window.initApp=function(){
@@ -2138,162 +2157,151 @@ window.initApp=function(){
   $('hdrLevel').addEventListener('click',()=>{hdrTaps++;if(hdrTaps>=5){hdrTaps=0;openAdminPanel();}});
 };
 
-/* ═══ SPLASH RUNNERS ANIMATION ═══ */
+/* ═══ SPLASH LOGO BUILD-UP ═══ */
 try{(function(){
   const canvas=$('splashCanvas');
   if(!canvas)return;
   const ctx=canvas.getContext('2d');
   const DPR=window.devicePixelRatio||1;
-  const vvp=window.visualViewport;
-  const W=vvp?vvp.width:window.innerWidth;
-  const H=vvp?vvp.height:window.innerHeight;
+  const W=window.innerWidth,H=window.innerHeight;
   canvas.width=Math.round(W*DPR);canvas.height=Math.round(H*DPR);
   canvas.style.width=W+'px';canvas.style.height=H+'px';
   ctx.scale(DPR,DPR);
 
-  let seed=7;
-  function rng(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;}
+  const cx=W/2, cy=H/2-10;
+  const GOLD='#E6FF55', WHITE='#ffffff', BG='#042D22';
+  const FS=Math.min(W*.38,160); /* RC font size */
 
-  const GND=H*0.66;
+  function ease(t){return t<0.5?2*t*t:-1+(4-2*t)*t;}
+  function cl01(t){return Math.max(0,Math.min(1,t));}
+  function alpha(t,s,d){return ease(cl01((t-s)/d));}
 
-  /* pre-compute static scene elements */
-  const stars=[];
-  for(let i=0;i<90;i++)stars.push({x:(i*113+29)%W,y:(i*79+11)%(H*.44),r:i%5===0?1.4:.75,a:.35+rng()*.55});
-
-  const farBldgs=[];
-  let bx=0;
-  while(bx<W+80){const bw=20+rng()*50,bh=25+rng()*80;farBldgs.push({x:bx,w:bw,h:bh});bx+=bw+rng()*8;}
-
-  const nearBldgs=[];
-  bx=-30;
-  while(bx<W+100){
-    const bw=35+rng()*80,bh=60+rng()*130;
-    const wins=[];
-    for(let wx=bx+7;wx<bx+bw-7;wx+=12)
-      for(let wy=(GND-bh)+7;wy<GND-4;wy+=15)
-        wins.push({x:wx,y:wy,lit:rng()>.4});
-    nearBldgs.push({x:bx,w:bw,h:bh,wins});
-    bx+=bw+2+rng()*16;
-  }
-
-  /* runners: 5 colors, staggered start, different speeds for overtaking */
-  const RC=['#e8ff47','#ff4d6d','#00d4ff','#9b5de5','#ff9f1c'];
-  const runners=RC.map((color,i)=>({
-    x:-55-i*(W/RC.length+rng()*40),
-    y:GND-(2+i*2.5),
-    spd:1.7+i*.22+rng()*.35,
-    ph:rng()*Math.PI*2,
-    color,sc:9+rng()*3.5
-  }));
-
-  function drawScene(){
-    /* sky */
-    const g=ctx.createLinearGradient(0,0,0,H);
-    g.addColorStop(0,'#03030c');g.addColorStop(.3,'#060d1a');g.addColorStop(.65,'#0a1622');g.addColorStop(1,'#09090f');
-    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-    /* stars */
-    stars.forEach(s=>{ctx.fillStyle=`rgba(255,255,255,${s.a})`;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();});
-    /* moon */
-    const mx=W*.78,my=H*.1;
-    const mg=ctx.createRadialGradient(mx,my,0,mx,my,26);
-    mg.addColorStop(0,'rgba(255,255,240,.95)');mg.addColorStop(1,'rgba(200,200,180,0)');
-    ctx.fillStyle=mg;ctx.beginPath();ctx.arc(mx,my,26,0,Math.PI*2);ctx.fill();
-    /* far buildings */
-    ctx.fillStyle='rgba(14,14,28,.9)';
-    farBldgs.forEach(b=>ctx.fillRect(b.x,GND-b.h,b.w,b.h));
-    /* near buildings */
-    nearBldgs.forEach(b=>{
-      const bg=ctx.createLinearGradient(0,GND-b.h,0,GND);
-      bg.addColorStop(0,'#181828');bg.addColorStop(1,'#0e0e1c');
-      ctx.fillStyle=bg;ctx.fillRect(b.x,GND-b.h,b.w,b.h);
-      ctx.strokeStyle='rgba(100,120,200,.12)';ctx.lineWidth=1;ctx.strokeRect(b.x,GND-b.h,b.w,b.h);
-      if(b.w>55&&b.h>90){
-        ctx.strokeStyle='rgba(130,140,180,.3)';ctx.lineWidth=1.5;
-        ctx.beginPath();ctx.moveTo(b.x+b.w*.5,GND-b.h);ctx.lineTo(b.x+b.w*.5,GND-b.h-18);ctx.stroke();
-        ctx.fillStyle='rgba(255,80,80,.75)';ctx.beginPath();ctx.arc(b.x+b.w*.5,GND-b.h-18,2.5,0,Math.PI*2);ctx.fill();
-      }
-      b.wins.forEach(wn=>{ctx.fillStyle=wn.lit?'rgba(255,235,140,.45)':'rgba(50,55,80,.55)';ctx.fillRect(wn.x,wn.y,8,11);});
+  /* draw crown shape */
+  function drawCrown(a,sc){
+    if(a<=0)return;
+    ctx.save();ctx.globalAlpha=a;
+    const cw=FS*.55,ch=FS*.3,cx2=cx,cy2=cy-FS*.72;
+    ctx.fillStyle=GOLD;
+    ctx.shadowColor=GOLD;ctx.shadowBlur=28*a;
+    /* crown polygon */
+    ctx.beginPath();
+    ctx.moveTo(cx2-cw*.5,cy2+ch);       /* bottom-left */
+    ctx.lineTo(cx2-cw*.5,cy2+ch*.35);   /* left pillar */
+    ctx.lineTo(cx2-cw*.18,cy2+ch*.6);   /* left valley */
+    ctx.lineTo(cx2,cy2);                 /* center peak */
+    ctx.lineTo(cx2+cw*.18,cy2+ch*.6);   /* right valley */
+    ctx.lineTo(cx2+cw*.5,cy2+ch*.35);   /* right pillar */
+    ctx.lineTo(cx2+cw*.5,cy2+ch);       /* bottom-right */
+    ctx.closePath();ctx.fill();
+    /* gem dots */
+    [[cx2-cw*.42,cy2+ch*.22],[cx2,cy2+ch*.08],[cx2+cw*.42,cy2+ch*.22]].forEach(([dx,dy],i)=>{
+      const r=[3.5,4.5,3.5][i];
+      ctx.beginPath();ctx.arc(dx,dy,r,0,Math.PI*2);
+      ctx.fillStyle=i===1?'#fff':'rgba(255,255,255,.7)';ctx.fill();
     });
-    /* ground */
-    const rg=ctx.createLinearGradient(0,GND,0,H);rg.addColorStop(0,'#0d0d1e');rg.addColorStop(1,'#080810');
-    ctx.fillStyle=rg;ctx.fillRect(0,GND,W,H-GND);
-    ctx.strokeStyle='rgba(232,255,71,.07)';ctx.lineWidth=1;
-    ctx.beginPath();ctx.moveTo(0,GND);ctx.lineTo(W,GND);ctx.stroke();
-    ctx.strokeStyle='rgba(255,255,255,.05)';ctx.lineWidth=2;ctx.setLineDash([18,14]);
-    ctx.beginPath();ctx.moveTo(0,GND+14);ctx.lineTo(W,GND+14);ctx.stroke();
-    ctx.setLineDash([]);
-  }
-
-  function drawRunner(r,t){
-    const {x,y,color,sc,ph,spd}=r;
-    /* a: leg cycle angle, 0→2π per stride */
-    const a=t*6.5*(spd/1.8)+ph;
-    const rLeg=Math.sin(a);   /* right leg: +1=forward, -1=back */
-    const lLeg=-rLeg;         /* left leg opposite */
-    const HIP=-sc*.55;        /* hip y from foot level */
-    const SH=-sc*1.1;         /* shoulder y */
-    const HD=-sc*1.38;        /* head center y */
-
-    ctx.save();ctx.translate(x,y);
-
-    /* ground shadow */
-    ctx.fillStyle='rgba(0,0,0,.2)';
-    ctx.beginPath();ctx.ellipse(0,sc*.05,sc*.6,sc*.1,0,0,Math.PI*2);ctx.fill();
-
-    ctx.shadowColor=color;ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineCap='round';ctx.lineJoin='round';
-
-    /* ── helper: draw one leg from hip ── */
-    function leg(sw){
-      /* thigh swings forward/back */
-      const kx=Math.sin(sw*0.85)*sc*.5;
-      /* knee dips lower when swinging forward (heel-strike phase) */
-      const ky=HIP+sc*.52+Math.max(0,sw)*sc*.12;
-      /* shin: kicks back when thigh is forward, extends when pushing off */
-      const sh=sw*0.55;
-      const fx=kx+Math.sin(sh)*sc*.44;
-      const fy=ky+sc*.42;
-      ctx.beginPath();ctx.moveTo(0,HIP);ctx.lineTo(kx,ky);ctx.lineTo(fx,fy);ctx.stroke();
-    }
-
-    ctx.shadowBlur=8;ctx.lineWidth=sc*.22;
-    leg(lLeg); /* back leg drawn first */
-
-    /* torso */
-    ctx.lineWidth=sc*.28;
-    const lean=0.08; /* slight forward lean */
-    ctx.beginPath();ctx.moveTo(0,HIP);ctx.lineTo(sc*lean,SH);ctx.stroke();
-
-    leg(rLeg); /* front leg on top */
-
-    /* arms: right arm forward when left leg forward */
-    ctx.lineWidth=sc*.16;ctx.shadowBlur=6;
-    const armR=-lLeg*0.55;
-    const armL=-rLeg*0.55;
-    /* right arm */
-    const rax=Math.sin(armR)*sc*.42, ray=SH+sc*.38;
-    ctx.beginPath();ctx.moveTo(sc*.08,SH+sc*.05);ctx.lineTo(rax,ray);ctx.stroke();
-    /* left arm */
-    const lax=Math.sin(armL)*sc*.42;
-    ctx.beginPath();ctx.moveTo(-sc*.08,SH+sc*.05);ctx.lineTo(lax,ray);ctx.stroke();
-
-    /* head */
-    ctx.shadowBlur=14;
-    ctx.beginPath();ctx.arc(sc*lean,HD,sc*.24,0,Math.PI*2);ctx.fill();
     ctx.shadowBlur=0;ctx.restore();
   }
 
-  let t0=null;
+  /* draw R and C letters with scale-in */
+  function drawRC(a,sc){
+    if(a<=0)return;
+    ctx.save();ctx.globalAlpha=a;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    const s=FS*(0.4+0.6*sc);
+    ctx.font=`900 ${s}px 'Bebas Neue',sans-serif`;
+    /* R – white with subtle glow */
+    ctx.fillStyle=WHITE;
+    ctx.shadowColor='rgba(255,255,255,.35)';ctx.shadowBlur=22*a;
+    ctx.fillText('R',cx-s*.28,cy);
+    /* C – gold with citrus glow */
+    ctx.fillStyle=GOLD;
+    ctx.shadowColor=GOLD;ctx.shadowBlur=30*a;
+    ctx.fillText('C',cx+s*.28,cy);
+    ctx.shadowBlur=0;ctx.restore();
+  }
+
+  /* draw runner silhouette (forward-lean running pose) */
+  function drawSilhouette(a){
+    if(a<=0)return;
+    const sc=FS*.018;  /* scale relative to letter size */
+    const rx=cx+FS*.06, ry=cy+FS*.04;
+    ctx.save();ctx.globalAlpha=a;ctx.translate(rx,ry);
+    /* use destination-out to cut runner shape from letters */
+    ctx.globalCompositeOperation='source-over';
+    /* draw as semi-transparent dark shape over letters for overlay effect */
+    ctx.strokeStyle='rgba(4,45,34,'+(a*.7)+')';
+    ctx.fillStyle='rgba(4,45,34,'+(a*.65)+')';
+    ctx.lineCap='round';ctx.lineJoin='round';
+    const sz=sc*28;
+    /* head */
+    ctx.beginPath();ctx.arc(sz*.08,-sz*1.38,sz*.22,0,Math.PI*2);ctx.fill();
+    /* torso */
+    ctx.lineWidth=sz*.26;
+    ctx.beginPath();ctx.moveTo(0,-sz*.55);ctx.lineTo(sz*.08,-sz*1.1);ctx.stroke();
+    /* legs – frozen in mid-stride */
+    ctx.lineWidth=sz*.2;
+    /* back leg */
+    ctx.beginPath();ctx.moveTo(0,-sz*.55);ctx.lineTo(-sz*.42,-sz*.1);ctx.lineTo(-sz*.18,sz*.38);ctx.stroke();
+    /* front leg */
+    ctx.beginPath();ctx.moveTo(0,-sz*.55);ctx.lineTo(sz*.38,-sz*.05);ctx.lineTo(sz*.55,sz*.34);ctx.stroke();
+    /* arms */
+    ctx.lineWidth=sz*.14;
+    ctx.beginPath();ctx.moveTo(sz*.06,-sz*1.08);ctx.lineTo(sz*.42,-sz*.72);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(-sz*.06,-sz*1.08);ctx.lineTo(-sz*.36,-sz*.68);ctx.stroke();
+    ctx.restore();
+  }
+
+  /* draw "RUNNERS CONQUER" brand text */
+  function drawBrand(a,yOff){
+    if(a<=0)return;
+    ctx.save();ctx.globalAlpha=a;
+    const bfs=Math.min(W*.05,20);
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    /* main title */
+    ctx.font=`700 ${bfs}px 'Poppins',sans-serif`;
+    ctx.fillStyle=WHITE;ctx.shadowColor='rgba(255,255,255,.2)';ctx.shadowBlur=12;
+    ctx.fillText('RUNNERS CONQUER',cx,cy+FS*.58+yOff);
+    /* tagline */
+    ctx.font=`500 ${bfs*.52}px 'Poppins',sans-serif`;
+    ctx.fillStyle='rgba(230,255,85,.55)';ctx.shadowBlur=0;
+    ctx.fillText('LAUF  ·  EROBERE  ·  HERRSCHE',cx,cy+FS*.58+bfs*1.6+yOff);
+    ctx.restore();
+  }
+
+  /* subtle green glow ring behind RC */
+  function drawGlow(a){
+    if(a<=0)return;
+    const g=ctx.createRadialGradient(cx,cy,0,cx,cy,FS*.6);
+    g.addColorStop(0,`rgba(10,90,60,${a*.4})`);
+    g.addColorStop(1,'rgba(4,45,34,0)');
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  }
+
+  let t0=null,raf=null;
   function frame(ts){
     if(!t0)t0=ts;
     const t=(ts-t0)/1000;
+
     ctx.clearRect(0,0,W,H);
-    drawScene();
-    /* update positions and draw back-to-front */
-    runners.forEach(r=>{r.x+=r.spd;if(r.x>W+50)r.x=-50;});
-    [...runners].sort((a,b)=>a.y-b.y).forEach(r=>drawRunner(r,t));
-    requestAnimationFrame(frame);
+    /* background */
+    ctx.fillStyle=BG;ctx.fillRect(0,0,W,H);
+    /* glow behind letters */
+    drawGlow(alpha(t,.5,.8));
+    /* crown: 0.2s→0.8s */
+    drawCrown(alpha(t,.2,.6),1);
+    /* RC letters scale in: 0.6s→1.3s */
+    const rcA=alpha(t,.6,.7), rcSc=0.6+0.4*ease(cl01((t-.6)/.7));
+    drawRC(rcA,rcSc);
+    /* runner silhouette: 1.1s→1.6s */
+    drawSilhouette(alpha(t,1.1,.5));
+    /* brand text slides up: 1.5s→2.1s */
+    const bA=alpha(t,1.5,.6), bOff=(1-ease(cl01((t-1.5)/.6)))*14;
+    drawBrand(bA,bOff);
+    raf=requestAnimationFrame(frame);
   }
-  requestAnimationFrame(frame);
+  raf=requestAnimationFrame(frame);
+  /* stop animation loop once splash fades */
+  setTimeout(()=>{if(raf)cancelAnimationFrame(raf);},3500);
 })();}catch(e){console.warn('Splash:',e);}
 
 /* BOOT */
