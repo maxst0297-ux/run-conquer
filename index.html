@@ -119,10 +119,8 @@ body{
 #map{height:100%;width:100%;z-index:1}
 
 /* ═══ RUN DOCK ═══ */
-#runDock{position:fixed;bottom:var(--nav-total);left:0;right:0;background:var(--bg2);border-top:1px solid var(--border);border-radius:22px 22px 0 0;padding:14px 16px 20px;z-index:550;box-shadow:0 -4px 24px rgba(0,0,0,.35);transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1)}
-#runDock.up{transform:translateY(0)}
-#dockToggle{position:fixed;bottom:calc(var(--nav-total) + 14px);right:14px;background:var(--primary);color:var(--bg);width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.3rem;cursor:pointer;z-index:600;box-shadow:0 4px 20px rgba(0,0,0,.55);transition:transform .15s;-webkit-user-select:none;user-select:none}
-#dockToggle:active{transform:scale(.9)}
+#runDock{display:none!important}
+#dockToggle{display:none!important}
 
 /* Live stats */
 .live-run{display:none;margin-bottom:12px}
@@ -321,10 +319,18 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 
 /* ═══ MAP PANEL ═══ */
 #mapPanelArrow{position:absolute;right:0;top:50%;transform:translateY(-50%);width:26px;height:52px;background:var(--card);border:1px solid var(--border);border-right:none;border-radius:8px 0 0 8px;color:var(--primary);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:520;font-size:.85rem;transition:right .32s cubic-bezier(.4,0,.2,1);-webkit-user-select:none;user-select:none}
-#mapPanel{position:absolute;right:0;top:0;bottom:0;width:175px;background:var(--bg2);border-left:1px solid var(--border);padding:70px 10px 20px;display:flex;flex-direction:column;gap:6px;z-index:515;transform:translateX(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);overflow-y:auto}
+#mapPanel{position:absolute;right:0;top:0;bottom:0;width:185px;background:var(--bg2);border-left:1px solid var(--border);padding:70px 10px 20px;display:flex;flex-direction:column;gap:6px;z-index:515;transform:translateX(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);overflow-y:auto}
 #mapPanel.open{transform:translateX(0)}
 .map-panel-title{font-family:'Bebas Neue',sans-serif;font-size:.72rem;letter-spacing:2px;color:var(--muted);padding:2px 4px}
 .map-panel-sep{height:1px;background:var(--border);margin:2px 0}
+#panelStartBtn{background:var(--primary);color:var(--bg);border:none;border-radius:12px;padding:12px 8px;font-family:'Bebas Neue',sans-serif;font-size:1.15rem;letter-spacing:2px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;width:100%;-webkit-user-select:none;user-select:none;transition:transform .12s}
+#panelStartBtn:active{transform:scale(.96)}
+#panelRunBox{display:none;flex-direction:column;gap:5px}
+#panelRunStats{font-family:'Bebas Neue',sans-serif;font-size:.85rem;color:var(--primary);text-align:center;letter-spacing:1px;background:var(--card);border-radius:8px;padding:5px 4px}
+.panel-run-row{display:flex;gap:5px}
+.panel-run-row button{flex:1;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:9px;padding:8px 4px;font-family:'Bebas Neue',sans-serif;font-size:.88rem;cursor:pointer;-webkit-user-select:none;user-select:none;transition:transform .12s}
+.panel-run-row button:active{transform:scale(.95)}
+#panelStopBtn2{background:rgba(255,77,109,.15);border-color:var(--red)!important;color:var(--red)!important}
 .map-panel-btn{background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:8px 10px;display:flex;align-items:center;gap:8px;font-size:.78rem;cursor:pointer;transition:background .15s;-webkit-user-select:none;user-select:none;font-family:'Poppins',sans-serif}
 .map-panel-btn i{color:var(--primary);width:16px;text-align:center}
 .map-panel-btn.active{background:rgba(var(--primary-rgb),.08);border-color:rgba(var(--primary-rgb),.25)}
@@ -462,6 +468,16 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <canvas id="fogCanvas"></canvas>
       <button id="mapPanelArrow" aria-label="Kartenoptionen"><i class="fas fa-chevron-left" id="mapPanelIcon"></i></button>
       <div id="mapPanel">
+        <div class="map-panel-title">Lauf</div>
+        <button id="panelStartBtn"><i class="fas fa-play"></i> START</button>
+        <div id="panelRunBox">
+          <div id="panelRunStats">0.00 km · 00:00</div>
+          <div class="panel-run-row">
+            <button id="panelPauseBtn2"><i class="fas fa-pause"></i> Pause</button>
+            <button id="panelStopBtn2"><i class="fas fa-stop"></i> Stop</button>
+          </div>
+        </div>
+        <div class="map-panel-sep"></div>
         <div class="map-panel-title">Karte</div>
         <button class="map-panel-btn" id="panelLocateBtn"><i class="fas fa-location-arrow"></i> Mein Ort</button>
         <div class="map-panel-sep"></div>
@@ -472,7 +488,6 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <div class="map-panel-sep"></div>
         <div class="map-panel-title">Extras</div>
         <button class="map-panel-btn" id="panelFogBtn"><i class="fas fa-cloud"></i> Nebel ein</button>
-        <button class="map-panel-btn" id="panelHeatPersonalBtn"><i class="fas fa-user"></i> Meine Wärme</button>
       </div>
     </div>
 
@@ -1520,7 +1535,13 @@ function startRun(){
   statusDot.style.background=energy>0?'var(--primary)':'var(--green)';statusBar.classList.add('running');
   startBtn.disabled=true;pauseBtn.disabled=false;pauseBtn.innerHTML='<i class="fas fa-pause"></i> PAUSE';stopBtn.disabled=false;
   liveRun.classList.add('on');idleStats.style.display='none';
-  runDock.classList.add('up');
+  /* Panel: START ausblenden, RunBox einblenden, Panel öffnen */
+  const pSB=$('panelStartBtn'),pRB=$('panelRunBox');
+  if(pSB)pSB.style.display='none';
+  if(pRB){pRB.style.display='flex';}
+  const pPB=$('panelPauseBtn2');if(pPB)pPB.innerHTML='<i class="fas fa-pause"></i> Pause';
+  /* Panel öffnen falls zugeklappt */
+  const panel=$('mapPanel');if(panel&&!panel.classList.contains('open'))toggleMapPanel();
   if(pathLayer)mapL.removeLayer(pathLayer);
   pathLayer=L.polyline([],{color:userColor,weight:4}).addTo(mapL);
   startLiveUpdate();
@@ -1569,6 +1590,7 @@ function startLiveUpdate(){liveInterval=setInterval(()=>{
   if(gpsAlt!=null)$('liveAlt').textContent='⛰ '+gpsAlt+' m';
   $('liveSrc').textContent=hrSource==='bt'?'💙 BT':'📱 GPS';
   if(hrSource==='sim')simHR();
+  const pStats=$('panelRunStats');if(pStats)pStats.textContent=(dist/1000).toFixed(2)+' km · '+fmtTime(el);
 },1000)}
 function stopLiveUpdate(){clearInterval(liveInterval);liveInterval=null}
 
@@ -1579,6 +1601,7 @@ function pauseRun(){
   navigator.geolocation.clearWatch(watchId);stopLiveUpdate();
   statusTxt.textContent='Pausiert';statusDot.style.background='var(--primary)';
   pauseBtn.innerHTML='<i class="fas fa-play"></i> WEITER';
+  const pPause=$('panelPauseBtn2');if(pPause)pPause.innerHTML='<i class="fas fa-play"></i> Weiter';
   beep(330,.08);
 }
 function resumeRun(){
@@ -1587,6 +1610,7 @@ function resumeRun(){
   runStart=Date.now();
   statusTxt.textContent='Läuft…';statusDot.style.background='var(--green)';
   pauseBtn.innerHTML='<i class="fas fa-pause"></i> PAUSE';
+  const pRes=$('panelPauseBtn2');if(pRes)pRes.innerHTML='<i class="fas fa-pause"></i> Pause';
   watchId=navigator.geolocation.watchPosition(onGPS,()=>{statusTxt.textContent='GPS Fehler'},{enableHighAccuracy:true,maximumAge:0});
   startLiveUpdate();
   beep(440,.08);
@@ -1598,6 +1622,10 @@ function stopRun(){
   statusBar.classList.remove('running');statusDot.style.background='var(--muted)';
   startBtn.disabled=false;pauseBtn.disabled=true;pauseBtn.innerHTML='<i class="fas fa-pause"></i> PAUSE';stopBtn.disabled=true;
   liveRun.classList.remove('on');idleStats.style.display='';beep(330);
+  /* Panel: RunBox ausblenden, START einblenden */
+  const pSB2=$('panelStartBtn'),pRB2=$('panelRunBox');
+  if(pSB2)pSB2.style.display='';
+  if(pRB2)pRB2.style.display='none';
   const elapsed=runSecs;runSecs=elapsed;
   if(path.length<3||dist<CFG.MIN_DIST){toast('Zu kurz – mind. '+CFG.MIN_DIST+' m');if(pathLayer)mapL.removeLayer(pathLayer);path=[];dist=0;return}
   const pd=mkPoly();if(!pd)return;
@@ -2249,15 +2277,10 @@ window.initApp=function(){
     if(fogEnabled)drawFog();
     if(mapL)mapL.on('move',debouncedDrawFog);else mapL?.off('move',debouncedDrawFog);
   });
-  $('panelHeatPersonalBtn')?.addEventListener('click',function(){
-    heatPersonalOnly=!heatPersonalOnly;
-    if(!heatPersonalOnly){
-      // rebuild from all run history + live (reset then add back)
-      heatLayer?.setLatLngs([]);
-      history.forEach(r=>(r.path||[]).forEach(p=>heatLayer?.addLatLng([p[0],p[1],.4])));
-    }
-    refreshHeat();
-  });
+  /* Panel-Lauf-Buttons */
+  $('panelStartBtn')?.addEventListener('click',()=>{startRun();});
+  $('panelPauseBtn2')?.addEventListener('click',()=>{isPaused?resumeRun():pauseRun();});
+  $('panelStopBtn2')?.addEventListener('click',()=>{stopRun();});
   /* Close modal on backdrop click */
   document.querySelectorAll('.modal').forEach(modal=>{
     modal.addEventListener('click',e=>{if(e.target===modal)modal.style.display='none';});
