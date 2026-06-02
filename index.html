@@ -442,7 +442,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <div class="idle-stats" id="idleStats">
           <div class="stat-card"><div class="sv" id="ptsVal">0</div><div class="sl">Punkte</div></div>
           <div class="stat-card"><div class="sv" id="areaVal">0</div><div class="sl">m²</div></div>
-          <div class="stat-card"><div class="sv" id="defVal">0</div><div class="sl">Verteid.</div></div>
+          <div class="stat-card"><div class="sv" id="energyVal">⚡3</div><div class="sl">Boosts/Woche</div></div>
         </div>
         <div class="status-bar" id="statusBar">
           <span class="blink" id="statusDot"></span>
@@ -818,7 +818,7 @@ const CFG={
   ATK_BONUS_LVL:.05,
   DEF_REGEN_LVL:.03,
   // Sonstiges
-  ENERGY_MAX:99,ENERGY_REGEN_H:1,
+  ENERGY_MAX:3,ENERGY_BOOST_PTS:0.5,ENERGY_BOOST_ATK:0.3,
   HR_BASE:70,STEP_THR:12,STEP_INTERVAL:250,
   // ConqRun Features
   LANDMARK_PTS:50,
@@ -859,7 +859,7 @@ let isRunning=false,watchId=null;
 let path=[],lastPos=null,dist=0;
 let territories=[],points=0;
 let userId='user',playerName='',userColor=COLORS[0],userAvatar=AVATARS[0];
-let energy=CFG.ENERGY_MAX,lastEnergyTs=Date.now();
+let energy=CFG.ENERGY_MAX,lastEnergyTs=Date.now(),energyWeek='';
 let history=[],quests=[],achievements=[];
 let totalKm=0,totalConquered=0,totalDefended=0;
 let streakDays=0,stepsToday=0,lastStepTs=0;
@@ -988,16 +988,17 @@ function speedToPace(mps){if(!mps||mps<0.3)return'--:--';const p=1000/mps/60;ret
 function debounce(fn,w){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),w)}}
 
 /* PERSIST */
-function save(){localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered}))}
+function save(){localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,energyWeek,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered}))}
 function load(){
   try{
     const d=JSON.parse(localStorage.getItem('rc_v4_'+userId));
-    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;}
+    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;}
   }catch(e){}
   // Rival territories werden nach erstem GPS-Fix generiert (locationfound)
   if(!quests.length)genQuests();
   if(!achievements.length)initAch();
   checkSeasonRollover();
+  checkEnergyWeekReset();
 }
 const THEME_CLASSES=['theme-citrus','theme-stone','theme-pine','theme-petrol'];
 function getActiveTheme(){return THEME_CLASSES.find(c=>document.body.classList.contains(c))||'theme-citrus';}
@@ -1395,7 +1396,7 @@ function updateStatsUI(){
   const area=mine.reduce((s,t)=>s+(t.area||0),0);
   $('ptsVal').textContent=points;
   $('areaVal').textContent=area>9999?Math.round(area/1000)+'k':Math.round(area);
-  $('defVal').textContent=Math.round(mine.length?mine.reduce((s,t)=>s+t.defense,0)/mine.length:0);
+  const eEl=$('energyVal');if(eEl)eEl.textContent='⚡'+energy+'/'+CFG.ENERGY_MAX;
   const lvEl=$('hdrLevel');if(lvEl)lvEl.textContent='Lv.'+getLevel(points);
 }
 
@@ -1515,7 +1516,8 @@ function startRun(){
   isRunning=true;isPaused=false;beep(440);
   runStart=Date.now();runSecs=0;path=[];lastPos=null;dist=0;kmSplits=[];lastSplitKm=0;lastSplitSecs=0;
   gpsSpeed=null;gpsAlt=null;cadence=0;
-  statusTxt.textContent='Läuft…';statusDot.style.background='var(--green)';statusBar.classList.add('running');
+  statusTxt.textContent=energy>0?`⚡ Boost aktiv (${energy}/${CFG.ENERGY_MAX})`:'Läuft…';
+  statusDot.style.background=energy>0?'var(--primary)':'var(--green)';statusBar.classList.add('running');
   startBtn.disabled=true;pauseBtn.disabled=false;pauseBtn.innerHTML='<i class="fas fa-pause"></i> PAUSE';stopBtn.disabled=false;
   liveRun.classList.add('on');idleStats.style.display='none';
   runDock.classList.add('up');
@@ -1600,12 +1602,15 @@ function stopRun(){
   if(path.length<3||dist<CFG.MIN_DIST){toast('Zu kurz – mind. '+CFG.MIN_DIST+' m');if(pathLayer)mapL.removeLayer(pathLayer);path=[];dist=0;return}
   const pd=mkPoly();if(!pd)return;
   const{polyGeom,gap}=pd,area=turf.area(polyGeom);
-  energy=Math.max(0,energy-1);
-  const res=processConquest(polyGeom,area,dist);
+  const boosted=energy>0;
+  const res=processConquest(polyGeom,area,dist,boosted);
   const streakMul=streakDays>0?Math.min(2,1+(streakDays-1)*0.1):1;
   const kmXP=Math.round((dist/1000)*CFG.XP_PER_KM*streakMul);
-  points+=res.pts+kmXP;
-  if(streakDays>1)toast(`🔥 Streak ×${streakMul.toFixed(1)} · +${kmXP} km-XP`);
+  const boostMul=boosted?1+CFG.ENERGY_BOOST_PTS:1;
+  const totalPts=Math.round((res.pts+kmXP)*boostMul);
+  points+=totalPts;
+  if(boosted){energy=Math.max(0,energy-1);toast(`⚡ Energie-Boost! ×${boostMul.toFixed(1)} · +${totalPts} Punkte · noch ${energy}/${CFG.ENERGY_MAX} Boosts`);}
+  else if(streakDays>1)toast(`🔥 Streak ×${streakMul.toFixed(1)} · +${kmXP} km-XP`);
   const kcal=calcKcal(dist,elapsed);
   const rec={date:Date.now(),distance:dist,area,pts:res.pts,path:path.filter((_,i)=>i%3===0),conquered:res.conquered,defended:res.defended,duration:elapsed,gap,kcal,avgHR:heartRate,splits:[...kmSplits]};
   history.push(rec);if(history.length>30)history.shift();
@@ -1627,10 +1632,10 @@ function mkPoly(){
 }
 
 /* CONQUEST */
-function processConquest(np,area,d){
+function processConquest(np,area,d,boosted=false){
   const now=Date.now();let pts=0,conquered=false,defended=false;
   const lv=getLevel(points);
-  const atkBonus=1+(lv-1)*CFG.ATK_BONUS_LVL;
+  const atkBonus=(1+(lv-1)*CFG.ATK_BONUS_LVL)*(boosted?1+CFG.ENERGY_BOOST_ATK:1);
   const defBonus=1+(lv-1)*CFG.DEF_REGEN_LVL;
 
   const ovl=territories.filter(t=>{try{return turf.booleanIntersects(turf.feature(t.polygon),turf.feature(np));}catch(e){return false}});
@@ -2119,12 +2124,13 @@ function applyDecay(){
   }).filter(t=>t.defense>0||t.owner===userId||(now-t.lastDefended)<CFG.MAX_AGE_H*3600000);
   renderTerr();
 }
+function getWeekKey(){const d=new Date(),day=d.getDay(),diff=d.getDate()-day+(day===0?-6:1),m=new Date(d);m.setDate(diff);return m.getFullYear()+'-'+String(m.getMonth()+1).padStart(2,'0')+'-'+String(m.getDate()).padStart(2,'0');}
+function checkEnergyWeekReset(){const wk=getWeekKey();if(energyWeek!==wk){const wasSet=energyWeek!=='';energy=CFG.ENERGY_MAX;energyWeek=wk;save();if(wasSet)toast('⚡ Neue Woche – 3 Energie-Boosts verfügbar!');}}
 function setupBg(){
   document.addEventListener('visibilitychange',()=>{
-    if(document.visibilityState==='visible'){applyDecay();if(currentView==='community')updateCommunity();}
+    if(document.visibilityState==='visible'){applyDecay();checkEnergyWeekReset();if(currentView==='community')updateCommunity();}
   });
   if('wakeLock' in navigator){const aq=async()=>{try{await navigator.wakeLock.request('screen')}catch(e){}};document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&isRunning)aq()});}
-  setInterval(()=>{if(energy<CFG.ENERGY_MAX&&(Date.now()-lastEnergyTs)>=CFG.ENERGY_REGEN_H*3600000){energy=Math.min(CFG.ENERGY_MAX,energy+1);lastEnergyTs=Date.now();toast('⚡ Energie aufgeladen!')}},60000);
   setInterval(applyDecay,60000);
   setInterval(()=>{if(hrSource==='sim')simHR()},3000);
   setTimeout(()=>{simulateBotRun();setInterval(simulateBotRun,3*60*1000);},20000);
