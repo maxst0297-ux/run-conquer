@@ -1007,7 +1007,9 @@ function save(){localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories
 function load(){
   try{
     const d=JSON.parse(localStorage.getItem('rc_v4_'+userId));
-    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;}
+    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;
+      /* Alte Bot-Gebiete (Blob, <100k m²) entfernen → werden neu als Straßen-Polygon generiert */
+      territories=territories.filter(t=>t.owner===userId||t.area>100000);}
   }catch(e){}
   // Rival territories werden nach erstem GPS-Fix generiert (locationfound)
   if(!quests.length)genQuests();
@@ -2277,7 +2279,7 @@ window.initApp=function(){
     saveProfile();
     $('onboarding').style.display='none';$('app').style.display='flex';
     initMap();setTimeout(()=>{load();updateUI();mapL?.invalidateSize()},150);setupBg();initSteps();
-    initSupabase().then(async()=>{const restored=await loadFromCloud();if(!restored&&!territories.length){await genRivals();}renderTerr();updateUI();syncProfile();});
+    initSupabase().then(async()=>{const restored=await loadFromCloud();if(!restored&&territories.filter(t=>t.owner!==userId).length===0){await genRivals();}renderTerr();updateUI();syncProfile();});
   });
   startBtn.addEventListener('click',startRun);
   pauseBtn.addEventListener('click',()=>{isPaused?resumeRun():pauseRun();});
