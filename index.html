@@ -416,6 +416,7 @@ body.light .pv-banner{background:linear-gradient(160deg,#3a1a10 0%,#2a1508 45%,#
         </div>
         <div class="dock-btns">
           <button class="btn btn-p" id="startRunBtn"><i class="fas fa-play"></i> START</button>
+          <button class="btn" id="pauseRunBtn" disabled><i class="fas fa-pause"></i> PAUSE</button>
           <button class="btn" id="stopRunBtn" disabled><i class="fas fa-stop"></i> STOP</button>
           <button class="btn" id="fitnessQuickBtn"><i class="fas fa-heart"></i></button>
         </div>
@@ -785,7 +786,7 @@ let energy=CFG.ENERGY_MAX,lastEnergyTs=Date.now();
 let history=[],quests=[],achievements=[];
 let totalKm=0,totalConquered=0,totalDefended=0;
 let streakDays=0,stepsToday=0,lastStepTs=0;
-let runStart=null,runSecs=0;
+let runStart=null,runSecs=0,isPaused=false;
 let heartRate=72,hrSource='sim';
 let btDevice=null,btChar=null;
 let calDate=new Date();
@@ -863,7 +864,7 @@ async function sendSupportMessage(){
 /* DOM */
 const $=id=>document.getElementById(id);
 const toastEl=$('toast'),statusBar=$('statusBar'),statusDot=$('statusDot'),statusTxt=$('statusTxt');
-const distLive=$('distLive'),startBtn=$('startRunBtn'),stopBtn=$('stopRunBtn');
+const distLive=$('distLive'),startBtn=$('startRunBtn'),pauseBtn=$('pauseRunBtn'),stopBtn=$('stopRunBtn');
 const runDock=$('runDock'),dockToggle=$('dockToggle'),liveRun=$('liveRun'),idleStats=$('idleStats');
 const drawer=$('drawer'),drawerBody=$('drawerBody');
 
@@ -1066,7 +1067,7 @@ function initSteps(){
 }
 
 /* HR */
-function simHR(){if(!isRunning){heartRate=CFG.HR_BASE;return}const el=((Date.now()-runStart)/1000)/60,dk=dist/1000,pace=dk>.01?el/dk:6,diff=Math.max(0,6-pace);heartRate=Math.min(190,Math.floor(CFG.HR_BASE+diff*55+Math.random()*4-2))}
+function simHR(){if(!isRunning||isPaused){heartRate=CFG.HR_BASE;return}const el=(runSecs+(Date.now()-runStart)/1000)/60,dk=dist/1000,pace=dk>.01?el/dk:6,diff=Math.max(0,6-pace);heartRate=Math.min(190,Math.floor(CFG.HR_BASE+diff*55+Math.random()*4-2))}
 async function connectBT(){
   if(!navigator.bluetooth){toast('Bluetooth nicht verfügbar');return}
   try{btDevice=await navigator.bluetooth.requestDevice({filters:[{services:['heart_rate']}]});const srv=await(await btDevice.gatt.connect()).getPrimaryService('heart_rate');btChar=await srv.getCharacteristic('heart_rate_measurement');await btChar.startNotifications();btChar.addEventListener('characteristicvaluechanged',e=>{const v=e.target.value,f=v.getUint8(0);heartRate=(f&1)?v.getUint16(1,true):v.getUint8(1);hrSource='bt'});toast('✅ Pulsmesser verbunden')}
@@ -1096,10 +1097,10 @@ function drawMiniMap(canvas,pts){
 function startRun(){
   if(energy<=0){toast('Keine Energie!');return}
   if(isRunning)return;
-  isRunning=true;beep(440);
+  isRunning=true;isPaused=false;beep(440);
   runStart=Date.now();runSecs=0;path=[];lastPos=null;dist=0;kmSplits=[];lastSplitKm=0;lastSplitSecs=0;
   statusTxt.textContent='Läuft…';statusDot.style.background='var(--green)';statusBar.classList.add('running');
-  startBtn.disabled=true;stopBtn.disabled=false;
+  startBtn.disabled=true;pauseBtn.disabled=false;pauseBtn.innerHTML='<i class="fas fa-pause"></i> PAUSE';stopBtn.disabled=false;
   liveRun.classList.add('on');idleStats.style.display='none';
   runDock.classList.add('up');
   if(pathLayer)mapL.removeLayer(pathLayer);
@@ -1108,28 +1109,49 @@ function startRun(){
   watchId=navigator.geolocation.watchPosition(onGPS,()=>{statusTxt.textContent='GPS Fehler'},{enableHighAccuracy:true,maximumAge:0});
 }
 function onGPS(pos){
+  if(isPaused)return;
   const lat=pos.coords.latitude,lng=pos.coords.longitude,pt=[lat,lng];
   if(lastPos){
     const d=turf.distance(turf.point([lastPos[1],lastPos[0]]),turf.point([lng,lat]),{units:'meters'});
     if(d>3){
       dist+=d;path.push(pt);pathLayer.addLatLng(pt);distLive.textContent=fmtDist(dist);
       const km=Math.floor(dist/1000);
-      if(km>lastSplitKm){const el=Math.floor((Date.now()-runStart)/1000),ss=el-lastSplitSecs;kmSplits.push({km,pace:fmtPace(1000,ss),splitSecs:ss});lastSplitKm=km;lastSplitSecs=el;beep(660,.1);toast(`KM ${km} · ${fmtPace(1000,ss)}/km`);}
+      if(km>lastSplitKm){const el=runSecs+Math.floor((Date.now()-runStart)/1000),ss=el-lastSplitSecs;kmSplits.push({km,pace:fmtPace(1000,ss),splitSecs:ss});lastSplitKm=km;lastSplitSecs=el;beep(660,.1);toast(`KM ${km} · ${fmtPace(1000,ss)}/km`);}
       heatLayer.addLatLng([lat,lng,.5]);
     }
   } else{path.push(pt);pathLayer.addLatLng(pt)}
   lastPos=pt;if(userMarker)userMarker.setLatLng(pt);mapL.setView(pt,mapL.getZoom());
 }
-function startLiveUpdate(){liveInterval=setInterval(()=>{if(!isRunning)return;const el=Math.floor((Date.now()-runStart)/1000);$('liveKm').textContent=(dist/1000).toFixed(2);$('liveTime').textContent=fmtTime(el);$('livePace').textContent=fmtPace(dist,el);$('liveHR').textContent=heartRate;if(hrSource==='sim')simHR();},1000)}
+function startLiveUpdate(){liveInterval=setInterval(()=>{if(!isRunning||isPaused)return;const el=runSecs+Math.floor((Date.now()-runStart)/1000);$('liveKm').textContent=(dist/1000).toFixed(2);$('liveTime').textContent=fmtTime(el);$('livePace').textContent=fmtPace(dist,el);$('liveHR').textContent=heartRate;if(hrSource==='sim')simHR();},1000)}
 function stopLiveUpdate(){clearInterval(liveInterval);liveInterval=null}
 
+function pauseRun(){
+  if(!isRunning||isPaused)return;
+  isPaused=true;
+  runSecs+=Math.floor((Date.now()-runStart)/1000);
+  navigator.geolocation.clearWatch(watchId);stopLiveUpdate();
+  statusTxt.textContent='Pausiert';statusDot.style.background='var(--primary)';
+  pauseBtn.innerHTML='<i class="fas fa-play"></i> WEITER';
+  beep(330,.08);
+}
+function resumeRun(){
+  if(!isRunning||!isPaused)return;
+  isPaused=false;
+  runStart=Date.now();
+  statusTxt.textContent='Läuft…';statusDot.style.background='var(--green)';
+  pauseBtn.innerHTML='<i class="fas fa-pause"></i> PAUSE';
+  watchId=navigator.geolocation.watchPosition(onGPS,()=>{statusTxt.textContent='GPS Fehler'},{enableHighAccuracy:true,maximumAge:0});
+  startLiveUpdate();
+  beep(440,.08);
+}
 function stopRun(){
   if(!isRunning)return;
+  if(isPaused){isPaused=false;}else{runSecs+=Math.floor((Date.now()-runStart)/1000);}
   isRunning=false;navigator.geolocation.clearWatch(watchId);stopLiveUpdate();
   statusBar.classList.remove('running');statusDot.style.background='var(--muted)';
-  startBtn.disabled=false;stopBtn.disabled=true;
+  startBtn.disabled=false;pauseBtn.disabled=true;pauseBtn.innerHTML='<i class="fas fa-pause"></i> PAUSE';stopBtn.disabled=true;
   liveRun.classList.remove('on');idleStats.style.display='';beep(330);
-  const elapsed=Math.floor((Date.now()-runStart)/1000);runSecs=elapsed;
+  const elapsed=runSecs;runSecs=elapsed;
   if(path.length<3||dist<CFG.MIN_DIST){toast('Zu kurz – mind. '+CFG.MIN_DIST+' m');if(pathLayer)mapL.removeLayer(pathLayer);path=[];dist=0;return}
   const pd=mkPoly();if(!pd)return;
   const{polyGeom,gap}=pd,area=turf.area(polyGeom);
@@ -1653,7 +1675,9 @@ window.initApp=function(){
     initMap();setTimeout(()=>{load();updateUI();mapL?.invalidateSize()},150);setupBg();initSteps();
     initSupabase().then(()=>syncProfile());
   });
-  startBtn.addEventListener('click',startRun);stopBtn.addEventListener('click',stopRun);
+  startBtn.addEventListener('click',startRun);
+  pauseBtn.addEventListener('click',()=>{isPaused?resumeRun():pauseRun();});
+  stopBtn.addEventListener('click',stopRun);
   $('fitnessQuickBtn').addEventListener('click',()=>{openDrawer();currentTab='fitness';document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab==='fitness'));renderDrawer()});
   $('drawerClose').addEventListener('click',closeDrawer);
   $('drawerOverlay').addEventListener('click',closeDrawer);
