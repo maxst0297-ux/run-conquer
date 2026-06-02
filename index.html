@@ -312,7 +312,7 @@ body.light .pv-banner{background:linear-gradient(160deg,#3a1a10 0%,#2a1508 45%,#
 .stab-btn.active{background:var(--primary);color:var(--bg)}
 </style>
 </head>
-<body>
+<body class="light">
 
 <!-- SPLASH -->
 <div id="splash">
@@ -379,8 +379,9 @@ body.light .pv-banner{background:linear-gradient(160deg,#3a1a10 0%,#2a1508 45%,#
 <div id="app" style="display:none">
 
   <header class="hdr">
+    <span class="hdr-logo">R&amp;C</span>
     <span class="hdr-badge" id="userBadge"><span id="hdrAvatar">🏃</span><span id="hdrName">Läufer</span><span id="hdrLevel" style="font-size:.6rem;color:var(--primary);margin-left:2px">Lv.1</span></span>
-    <button class="icon-btn" id="settingsBtn" style="margin-left:auto"><i class="fas fa-cog"></i></button>
+    <button class="icon-btn" id="settingsBtn"><i class="fas fa-cog"></i></button>
   </header>
 
   <div id="screens">
@@ -878,9 +879,9 @@ function load(){
   if(!quests.length)genQuests();
   if(!achievements.length)initAch();
 }
-function saveProfile(){localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userId}));$('hdrAvatar').textContent=userAvatar;$('hdrName').textContent=playerName;syncProfile();}
+function saveProfile(){const theme=document.body.classList.contains('light')?'light':'dark';localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userId,theme}));$('hdrAvatar').textContent=userAvatar;$('hdrName').textContent=playerName;syncProfile();}
 function loadProfile(){
-  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;$('hdrAvatar').textContent=userAvatar;$('hdrName').textContent=playerName;return true;}}catch(e){}
+  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;if(p.theme==='dark')document.body.classList.remove('light');else document.body.classList.add('light');$('hdrAvatar').textContent=userAvatar;$('hdrName').textContent=playerName;return true;}}catch(e){}
   return false;
 }
 function closeAllModals(){['profileModal','postRunModal','renameModal','settingsModal','adminModal'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
@@ -1452,8 +1453,8 @@ function renderSettingsTab(tab){
   } else if(tab==='theme'){
     const isLight=document.body.classList.contains('light');
     body.innerHTML=`<div style="display:flex;flex-direction:column;gap:10px"><button class="btn ${isLight?'':'btn-p'}" id="setDark">🌙 Dunkel</button><button class="btn ${isLight?'btn-p':''}" id="setLight">☀️ Hell</button></div>`;
-    $('setDark').addEventListener('click',()=>{document.body.classList.remove('light');setTiles();document.body.classList.remove('light');renderSettingsTab('theme')});
-    $('setLight').addEventListener('click',()=>{document.body.classList.add('light');setTiles();document.body.classList.add('light');renderSettingsTab('theme')});
+    $('setDark').addEventListener('click',()=>{document.body.classList.remove('light');setTiles();saveProfile();renderSettingsTab('theme')});
+    $('setLight').addEventListener('click',()=>{document.body.classList.add('light');setTiles();saveProfile();renderSettingsTab('theme')});
   } else if(tab==='spiel'){
     body.innerHTML=`<div style="display:flex;flex-direction:column;gap:10px"><div style="font-size:.8rem;color:var(--muted);background:var(--card);padding:12px;border-radius:12px;border:1px solid var(--border)"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>⚡ Energie</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${energy}/${CFG.ENERGY_MAX}</span></div><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>🏆 Punkte</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${points}</span></div><div style="display:flex;justify-content:space-between"><span>📐 Gebiete</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${territories.filter(t=>t.owner===userId).length}</span></div></div><button class="btn btn-p" id="setPulsBtn"><i class="fas fa-heartbeat"></i> Pulsmesser koppeln</button><div id="setVersionTap" style="text-align:center;color:var(--muted);font-size:.6rem;margin-top:8px;cursor:pointer;-webkit-user-select:none;user-select:none">v1.0.0 · Run &amp; Conquer</div></div>`;
     $('setPulsBtn').addEventListener('click',connectBT);
