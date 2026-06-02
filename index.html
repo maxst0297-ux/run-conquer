@@ -1179,6 +1179,9 @@ async function genRivals(lat,lng){
       /* Umfang 5–15km, realistisch wie ein Stadtviertel */
       const perimKm=5+Math.random()*10;
       const poly=mkRoadPoly(g,tlat,tlng,perimKm);
+      /* Überschneidung mit bereits platzierten Gebieten verhindern */
+      const overlaps=territories.some(ex=>{try{return turf.booleanIntersects(turf.feature(ex.polygon),turf.feature(poly));}catch(e){return false;}});
+      if(overlaps)continue;
       const area=turf.area(poly);
       const age=3600000*(4+bi*3+t*2);
       const str=CFG.STR_INIT_MIN+Math.floor(Math.random()*(CFG.STR_INIT_MAX-CFG.STR_INIT_MIN));
