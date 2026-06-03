@@ -74,7 +74,8 @@ body{
 @keyframes spUp{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
 
 /* ═══ ONBOARDING ═══ */
-#bgVideo{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;object-fit:cover}
+#bgVideo{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;object-fit:cover;pointer-events:none}
+#bgVideo::-webkit-media-controls,#bgVideo::-webkit-media-controls-start-playback-button{display:none!important}
 #onboarding{position:fixed;top:0;left:0;right:0;bottom:0;background:transparent;display:flex;align-items:center;justify-content:center;z-index:2000;padding:calc(20px + var(--sat)) 20px calc(20px + var(--sab));overflow-y:auto;-webkit-overflow-scrolling:touch}
 .ob-card{background:rgba(0,0,0,.62);border:1px solid rgba(255,255,255,.1);border-radius:24px;padding:28px 28px 36px;max-width:400px;width:100%;text-align:center;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 12px 48px rgba(0,0,0,.6)}
 .ob-illus{display:flex;justify-content:center;margin-bottom:12px;background:rgba(255,255,255,.04);border-radius:16px;padding:14px}
@@ -2565,12 +2566,24 @@ window.initApp=function(){
   $('hdrLevel').addEventListener('click',()=>{hdrTaps++;if(hdrTaps>=5){hdrTaps=0;openAdminPanel();}});
 };
 
-/* Video sofort abspielen */
+/* Video abspielen – Autoplay-Fallback bei erstem Touch */
 (function(){
   const vid=document.getElementById('bgVideo');
   if(!vid)return;
-  const p=vid.play();
-  if(p&&p.catch)p.catch(()=>{});
+  function tryPlay(){
+    vid.muted=true;
+    const p=vid.play();
+    if(p&&p.catch)p.catch(()=>{});
+  }
+  tryPlay();
+  /* Falls Autoplay geblockt: beim ersten Tippen/Klick starten */
+  function onFirst(){
+    tryPlay();
+    document.removeEventListener('touchstart',onFirst);
+    document.removeEventListener('click',onFirst);
+  }
+  document.addEventListener('touchstart',onFirst,{once:true,passive:true});
+  document.addEventListener('click',onFirst,{once:true});
 })();
 window._hideCityBg=function(){
   const vid=document.getElementById('bgVideo');
