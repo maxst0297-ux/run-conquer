@@ -2667,6 +2667,28 @@ function openDmPicker(container){
   el.querySelectorAll('[data-dmuid]').forEach(row=>row.addEventListener('click',()=>openDmThread(row.dataset.dmuid,decodeURIComponent(row.dataset.dmname))));
 }
 
+function loadArchiveView(container){
+  const el=container||$('inboxBody');if(!el)return;
+  const backFn=isAdmin?()=>{loadInbox();}:()=>{loadDmConvList(el);};
+  const archivedList=[...archivedConvs].map(uid=>{
+    const f=followedUsers.find(u=>u.uid===uid);
+    return`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:6px;opacity:.7">
+      <div style="width:34px;height:34px;border-radius:50%;background:var(--primary)22;display:flex;align-items:center;justify-content:center;font-size:1rem;color:var(--primary)">${f?f.av:'💬'}</div>
+      <div style="flex:1"><div style="font-size:.82rem;font-weight:600">${f?f.name:uid}</div><div style="font-size:.68rem;color:var(--muted)">Archiviert</div></div>
+      <button class="btn" style="font-size:.65rem;padding:4px 10px;width:auto" data-unarch-uid="${uid}">↩ Zurück</button>
+    </div>`;
+  }).join('');
+  el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+    <button class="btn" id="archBackBtn" style="width:auto;padding:6px 12px;font-size:.8rem">←</button>
+    <div style="font-weight:700;font-size:.9rem">📦 Archiv</div>
+  </div>
+  ${archivedList||'<div style="text-align:center;padding:24px;color:var(--muted);font-size:.82rem">Archiv ist leer</div>'}`;
+  document.getElementById('archBackBtn')?.addEventListener('click',backFn);
+  el.querySelectorAll('[data-unarch-uid]').forEach(btn=>{
+    btn.addEventListener('click',()=>{archivedConvs.delete(btn.dataset.unarchUid);saveArchived();loadArchiveView(container);});
+  });
+}
+
 function showSqlHint(type,container){
   const sql=type==='support'
     ?`ALTER TABLE support_messages\n  ADD COLUMN IF NOT EXISTS admin_reply TEXT,\n  ADD COLUMN IF NOT EXISTS replied_at TIMESTAMPTZ;`
