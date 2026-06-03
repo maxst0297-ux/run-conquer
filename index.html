@@ -2227,6 +2227,11 @@ function renderSettingsTab(tab){
     let vTaps=0;
     $('setVersionTap').addEventListener('click',()=>{vTaps++;if(vTaps>=5){vTaps=0;$('settingsModal').style.display='none';openAdminPanel();}});
   } else if(tab==='support'){
+    if(isAdmin){
+      body.innerHTML=`<div style="text-align:center;padding:24px 0"><div style="font-size:2rem;margin-bottom:10px">📬</div><div style="font-weight:700;margin-bottom:6px">Admin-Posteingang</div><div style="font-size:.78rem;color:var(--muted);margin-bottom:16px">Nutzernachrichten sind im Posteingang oben rechts verfügbar.</div><button class="btn btn-p" id="openInboxFromSettings" style="width:auto;padding:10px 24px"><i class="fas fa-envelope"></i> Posteingang öffnen</button></div>`;
+      document.getElementById('openInboxFromSettings')?.addEventListener('click',()=>{$('settingsModal').style.display='none';$('inboxModal').style.display='flex';loadInbox();});
+      return;
+    }
     body.innerHTML=`<div style="font-size:.88rem;font-weight:600;margin-bottom:5px">🛠️ Support &amp; Feedback</div><div style="font-size:.75rem;color:var(--muted);margin-bottom:14px">Probleme oder Ideen? Wir antworten schnell!</div><div class="field"><label>Betreff</label><input type="text" id="suppSubject" class="modal-input" placeholder="z.B. Bug, Feedback, Idee…"></div><div class="field"><label>Nachricht</label><textarea id="suppMsg" class="modal-input" style="resize:none;height:90px;font-family:'Poppins',sans-serif;font-size:.85rem;padding:12px" placeholder="Beschreibe dein Anliegen…"></textarea></div><button class="btn btn-p" id="sendSuppBtn" style="width:100%"><i class="fas fa-paper-plane"></i> Absenden</button><div id="suppStatus" style="text-align:center;margin-top:8px;font-size:.78rem"></div>`;
     document.getElementById('sendSuppBtn')?.addEventListener('click',sendSupportMessage);
   } else if(tab==='hilfe'){
@@ -2412,7 +2417,7 @@ async function loadInbox(){
         const ds=d.toLocaleDateString('de',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('de',{hour:'2-digit',minute:'2-digit'});
         const replied=!!(m.admin_reply&&m.admin_reply.trim());
         return`<div class="inbox-card${replied?'':' inbox-unread'}" id="imsg-${m.id}">
-  <div class="inbox-card-hdr" onclick="toggleInboxCard('${m.id}')">
+  <div class="inbox-card-hdr" data-toggle="${m.id}">
     <div style="flex:1;min-width:0">
       <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px">
         <span style="font-weight:700;font-size:.82rem">${m.player_name||'Unbekannt'}</span>
@@ -2420,41 +2425,36 @@ async function loadInbox(){
       </div>
       <div style="font-size:.73rem;font-weight:600;color:var(--primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.subject||'Kein Betreff'}</div>
     </div>
-    <span style="font-size:.6rem;color:var(--muted);flex-shrink:0;margin-left:8px">${ds}</span>
+    <span style="font-size:.6rem;color:var(--muted);flex-shrink:0;margin-left:8px">${ds} <i class="fas fa-chevron-down" style="margin-left:4px;font-size:.6rem"></i></span>
   </div>
   <div class="inbox-card-body" id="ibody-${m.id}" style="display:none">
     <div style="font-size:.8rem;color:var(--text);line-height:1.6;background:var(--bg2);padding:10px;border-radius:8px;margin-bottom:10px;white-space:pre-line">${m.message}</div>
     ${replied?`<div style="font-size:.75rem;color:#10b981;background:#10b98111;border:1px solid #10b98133;border-radius:8px;padding:8px 10px;margin-bottom:8px"><span style="font-weight:700">Gesendete Antwort:</span><br><span style="white-space:pre-line">${m.admin_reply}</span></div>`:''}
     <div style="display:flex;gap:6px;align-items:flex-end">
       <textarea id="ireply-${m.id}" class="modal-input" style="flex:1;resize:none;height:70px;font-family:'Poppins',sans-serif;font-size:.8rem;padding:8px" placeholder="${replied?'Antwort aktualisieren…':'Antwort verfassen…'}">${replied?m.admin_reply:''}</textarea>
-      <button class="btn btn-p" style="flex-shrink:0;padding:8px 14px;font-size:.8rem;touch-action:manipulation" onclick="sendAdminReply('${m.id}',this)">${replied?'✏️ Update':'📨 Senden'}</button>
+      <button class="btn btn-p" style="flex-shrink:0;padding:8px 14px;font-size:.8rem;touch-action:manipulation" data-reply="${m.id}">${replied?'✏️ Update':'📨 Senden'}</button>
     </div>
   </div>
 </div>`;
       }).join('');
+    /* Event-Delegation für Toggle + Antwort */
+    body.addEventListener('click',function handler(e){
+      const tog=e.target.closest('[data-toggle]');
+      if(tog){const b=document.getElementById('ibody-'+tog.dataset.toggle);if(b){const open=b.style.display!=='none';b.style.display=open?'none':'block';tog.querySelector('i.fa-chevron-down')?.style.setProperty('transform',open?'':'rotate(180deg)');}}
+      const rep=e.target.closest('[data-reply]');
+      if(rep&&!rep.disabled){
+        const id=rep.dataset.reply;
+        const ta=document.getElementById('ireply-'+id);
+        const txt=(ta?.value||'').trim();
+        if(!txt){toast('Bitte Antworttext eingeben');return;}
+        const orig=rep.innerHTML;rep.disabled=true;rep.textContent='⏳';
+        sb.from('support_messages').update({admin_reply:txt,replied_at:new Date().toISOString()}).eq('id',id)
+          .then(({error})=>{if(error){toast('❌ '+error.message);rep.disabled=false;rep.innerHTML=orig;}else{toast('✅ Antwort gesendet');body.removeEventListener('click',handler);loadInbox();}});
+      }
+    });
     refreshInboxBadge();
   }catch(e){
     body.innerHTML=`<div style="padding:16px;color:var(--red);font-size:.8rem;text-align:center">⚠️ ${e.message}</div>`;
-  }
-}
-function toggleInboxCard(id){
-  const b=document.getElementById('ibody-'+id);
-  if(b)b.style.display=b.style.display==='none'?'block':'none';
-}
-async function sendAdminReply(msgId,btn){
-  const ta=document.getElementById('ireply-'+msgId);
-  const replyText=(ta?.value||'').trim();
-  if(!replyText){toast('Bitte Antworttext eingeben');return;}
-  const origHtml=btn.innerHTML;btn.disabled=true;btn.textContent='⏳';
-  try{
-    if(!sb)throw new Error('Keine Verbindung');
-    const{error}=await sb.from('support_messages').update({admin_reply:replyText,replied_at:new Date().toISOString()}).eq('id',msgId);
-    if(error)throw error;
-    toast('✅ Antwort gesendet');
-    loadInbox();
-  }catch(e){
-    toast('❌ '+e.message);
-    btn.disabled=false;btn.innerHTML=origHtml;
   }
 }
 
