@@ -957,7 +957,7 @@ const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 const sb=window.supabase?.createClient(SB_URL,SB_KEY);
 let sbUserId=null,isAdmin=false;
 let followedUsers=[],activeDmThread=null;
-let archivedConvs=new Set(),archivedSupportIds=new Set();
+let archivedConvs=[],archivedSupportIds=new Set();
 
 async function initSupabase(){
   if(!sb)return;
@@ -1114,7 +1114,7 @@ function load(){
   checkSeasonRollover();
   checkEnergyWeekReset();
   followedUsers=JSON.parse(localStorage.getItem('rc_follows_'+userId)||'[]');
-  archivedConvs=new Set(JSON.parse(localStorage.getItem('rc_arch_dm_'+userId)||'[]'));
+  archivedConvs=JSON.parse(localStorage.getItem('rc_arch_dm_'+userId)||'[]');
   archivedSupportIds=new Set(JSON.parse(localStorage.getItem('rc_arch_sup_'+userId)||'[]'));
 }
 const THEME_CLASSES=['theme-citrus','theme-stone','theme-pine','theme-petrol'];
@@ -2428,7 +2428,7 @@ async function updateDmBadge(){
   if(total>0){badge.textContent=total>99?'99+':total;badge.style.display='flex';}else badge.style.display='none';
 }
 function saveFollows(){localStorage.setItem('rc_follows_'+userId,JSON.stringify(followedUsers));}
-function saveArchived(){localStorage.setItem('rc_arch_dm_'+userId,JSON.stringify([...archivedConvs]));localStorage.setItem('rc_arch_sup_'+userId,JSON.stringify([...archivedSupportIds]));}
+function saveArchived(){localStorage.setItem('rc_arch_dm_'+userId,JSON.stringify(archivedConvs));localStorage.setItem('rc_arch_sup_'+userId,JSON.stringify([...archivedSupportIds]));}
 function isFollowing(uid){return followedUsers.some(u=>u.uid===uid);}
 function followUser(uid,name,av){
   if(!isFollowing(uid)){followedUsers.push({uid,name,av:av||'🏃'});saveFollows();toast('✅ Du folgst '+name);}
@@ -2564,7 +2564,7 @@ async function loadDmConvList(container){
     if(!convs.length){
       el.innerHTML=newBtn+`<div style="padding:20px;text-align:center;color:var(--muted);font-size:.82rem">💬 Noch keine Direktnachrichten.<br><br>Folge Spielern aus der <b>Rangliste</b>,<br>um ihnen zu schreiben.</div>`;
     }else{
-      const activeConvs=convs.filter(c=>!archivedConvs.has(c.uid));
+      const activeConvs=convs.filter(c=>!archivedConvs.some(a=>a.uid===c.uid));
       const archCount=convs.length-activeConvs.length;
       const archHint=archCount>0?`<div style="text-align:center;font-size:.7rem;color:var(--muted);padding:6px 0 2px;cursor:pointer" id="showArchLink">📦 ${archCount} archiviert</div>`:'';
       el.innerHTML=newBtn+activeConvs.map(c=>{
@@ -2586,7 +2586,15 @@ async function loadDmConvList(container){
     el.querySelectorAll('.sw-wrap').forEach(wrap=>{
       const row=wrap.querySelector('[data-dmuid]');
       if(!row)return;
-      addSwipeArchive(wrap,()=>{archivedConvs.add(row.dataset.dmuid);saveArchived();updateDmBadge();});
+      addSwipeArchive(wrap,()=>{
+        const aUid=row.dataset.dmuid,aName=decodeURIComponent(row.dataset.dmname||'');
+        if(!archivedConvs.some(a=>a.uid===aUid))archivedConvs.push({uid:aUid,name:aName});
+        saveArchived();updateDmBadge();
+        // Refresh archHint after archiving
+        const archHintEl=el.querySelector('#showArchLink');
+        if(archHintEl){archHintEl.textContent=`📦 ${archivedConvs.length} archiviert`;archHintEl.style.display='';}
+        else{const h=document.createElement('div');h.id='showArchLink';h.style.cssText='text-align:center;font-size:.7rem;color:var(--muted);padding:6px 0 2px;cursor:pointer';h.textContent=`📦 ${archivedConvs.length} archiviert`;el.appendChild(h);h.addEventListener('click',()=>loadArchiveView(el));}
+      });
     });
     document.getElementById('showArchLink')?.addEventListener('click',()=>loadArchiveView(el));
     el.querySelectorAll('[data-dmuid]').forEach(row=>row.addEventListener('click',()=>openDmThread(row.dataset.dmuid,decodeURIComponent(row.dataset.dmname),()=>loadDmConvList(el))));
@@ -2629,7 +2637,7 @@ async function loadDmMessages(uid){
   try{
     const{data,error}=await sb.from('direct_messages').select('*').or(`and(from_uid.eq.${userId},to_uid.eq.${uid}),and(from_uid.eq.${uid},to_uid.eq.${userId})`).order('created_at',{ascending:true}).limit(100);
     if(error)throw error;
-    if(!data?.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:.8rem">Noch keine Nachrichten 👋</div>';return;}
+    if(!data?.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:.8rem">Noch keine Nachrichten 👋<br><span style="font-size:.65rem;color:var(--muted)">Falls Nachrichten fehlen: <span style="color:var(--primary);cursor:pointer;text-decoration:underline" id="dmRlsLink">Supabase-Setup prüfen</span></span></div>';document.getElementById('dmRlsLink')?.addEventListener('click',()=>showSqlHint('dm'));return;}
     el.innerHTML=data.map(m=>{
       const mine=m.from_uid===userId;
       const ts=new Date(m.created_at).toLocaleTimeString('de',{hour:'2-digit',minute:'2-digit'});
@@ -2674,23 +2682,35 @@ function openDmPicker(container){
 
 function loadArchiveView(container){
   const el=container||$('inboxBody');if(!el)return;
-  const backFn=isAdmin?()=>{loadInbox();}:()=>{loadDmConvList(el);};
-  const archivedList=[...archivedConvs].map(uid=>{
-    const f=followedUsers.find(u=>u.uid===uid);
-    return`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:6px;opacity:.7">
-      <div style="width:34px;height:34px;border-radius:50%;background:var(--primary)22;display:flex;align-items:center;justify-content:center;font-size:1rem;color:var(--primary)">${f?f.av:'💬'}</div>
-      <div style="flex:1"><div style="font-size:.82rem;font-weight:600">${f?f.name:uid}</div><div style="font-size:.68rem;color:var(--muted)">Archiviert</div></div>
-      <button class="btn" style="font-size:.65rem;padding:4px 10px;width:auto" data-unarch-uid="${uid}">↩ Zurück</button>
+  const backFn=()=>loadDmConvList(el);
+  const archivedList=archivedConvs.map(a=>{
+    const f=followedUsers.find(u=>u.uid===a.uid);
+    const displayName=a.name||(f?f.name:a.uid);
+    const initials=(displayName||'?')[0].toUpperCase();
+    return`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:6px;cursor:pointer;touch-action:manipulation" data-arch-uid="${a.uid}" data-arch-name="${encodeURIComponent(displayName)}">
+      <div style="width:38px;height:38px;border-radius:50%;background:var(--primary)22;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;color:var(--primary);flex-shrink:0">${initials}</div>
+      <div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600">${displayName}</div><div style="font-size:.68rem;color:var(--muted)">📦 Archiviert · Tippen zum Öffnen</div></div>
+      <button class="btn" style="font-size:.65rem;padding:4px 10px;width:auto;flex-shrink:0" data-unarch-uid="${a.uid}">↩</button>
     </div>`;
   }).join('');
-  el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+  el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-shrink:0">
     <button class="btn" id="archBackBtn" style="width:auto;padding:6px 12px;font-size:.8rem">←</button>
     <div style="font-weight:700;font-size:.9rem">📦 Archiv</div>
   </div>
-  ${archivedList||'<div style="text-align:center;padding:24px;color:var(--muted);font-size:.82rem">Archiv ist leer</div>'}`;
+  ${archivedList||'<div style="text-align:center;padding:24px;color:var(--muted);font-size:.82rem">📭 Archiv ist leer</div>'}`;
   document.getElementById('archBackBtn')?.addEventListener('click',backFn);
   el.querySelectorAll('[data-unarch-uid]').forEach(btn=>{
-    btn.addEventListener('click',()=>{archivedConvs.delete(btn.dataset.unarchUid);saveArchived();loadArchiveView(container);});
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      archivedConvs=archivedConvs.filter(a=>a.uid!==btn.dataset.unarchUid);
+      saveArchived();loadArchiveView(container);
+    });
+  });
+  el.querySelectorAll('[data-arch-uid]').forEach(row=>{
+    row.addEventListener('click',()=>{
+      const uid=row.dataset.archUid,name=decodeURIComponent(row.dataset.archName||uid);
+      openDmThread(uid,name,()=>loadArchiveView(container));
+    });
   });
 }
 
