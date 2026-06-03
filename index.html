@@ -898,6 +898,7 @@ function getLvlProg(pts){const lv=getLevel(pts),cur=CFG.LVL_XP[lv-1]||0,nx=CFG.L
 /* STATE */
 let mapL,userMarker,pathLayer,terrLayer,heatLayer,landmarkLayer,heatPts=[];
 let isRunning=false,watchId=null,bgWatchId=null;
+let wakeLockSentinel=null,silentCtx=null,silentSrc=null;
 let path=[],lastPos=null,dist=0;
 let territories=[],points=0;
 let userId='user',playerName='',userColor=COLORS[0],userAvatar=AVATARS[0];
@@ -1024,6 +1025,39 @@ const drawer=$('drawer'),drawerBody=$('drawerBody');
 function toast(msg){toastEl.textContent=msg;toastEl.style.opacity=1;setTimeout(()=>toastEl.style.opacity=0,2600)}
 function beep(f,d=.1){try{const c=new(window.AudioContext||window.webkitAudioContext)();if(c.state==='suspended')c.resume();const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=f;g.gain.value=.08;o.start();o.stop(c.currentTime+d);}catch(e){}}
 function vib(ms){if(navigator.vibrate)navigator.vibrate(ms)}
+
+/* ── LAUF-KEEP-ALIVE (verhindert GPS-Suspendierung im Hintergrund) ── */
+function startKeepAlive(){
+  /* 1) WakeLock: Bildschirm aktiv halten (Android/Desktop Chrome) */
+  if('wakeLock' in navigator){
+    navigator.wakeLock.request('screen').then(s=>{
+      wakeLockSentinel=s;
+      s.addEventListener('release',()=>{
+        if(isRunning)navigator.wakeLock.request('screen').then(s2=>wakeLockSentinel=s2).catch(()=>{});
+      });
+    }).catch(()=>{});
+  }
+  /* 2) Stiller AudioContext-Loop: hält iOS Safari wach (User-Geste erforderlich → wird von Startknopf getriggert) */
+  try{
+    silentCtx=new(window.AudioContext||window.webkitAudioContext)();
+    if(silentCtx.state==='suspended')silentCtx.resume();
+    const buf=silentCtx.createBuffer(1,silentCtx.sampleRate*2,silentCtx.sampleRate);
+    silentSrc=silentCtx.createBufferSource();
+    silentSrc.buffer=buf;silentSrc.loop=true;
+    silentSrc.connect(silentCtx.destination);
+    silentSrc.start(0);
+  }catch(e){}
+}
+function stopKeepAlive(){
+  try{wakeLockSentinel?.release();wakeLockSentinel=null;}catch(e){}
+  try{silentSrc?.stop();silentCtx?.close();silentSrc=null;silentCtx=null;}catch(e){}
+}
+function restartBgWatch(){
+  if(bgWatchId!==null){navigator.geolocation.clearWatch(bgWatchId);bgWatchId=null;}
+  bgWatchId=navigator.geolocation.watchPosition(onGPS,e=>{
+    console.warn('GPS:',e.code,e.message);
+  },{enableHighAccuracy:true,maximumAge:2000,timeout:15000});
+}
 function fmtDist(m){return m<1000?Math.round(m)+' m':(m/1000).toFixed(2)+' km'}
 function fmtTime(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=Math.floor(s%60);return h>0?`${h}:${pad(m)}:${pad(sc)}`:`${pad(m)}:${pad(sc)}`}
 function pad(n){return String(n).padStart(2,'0')}
@@ -1712,10 +1746,8 @@ function startRun(){
   if(pathLayer)mapL.removeLayer(pathLayer);
   pathLayer=L.polyline([],{color:userColor,weight:4}).addTo(mapL);
   startLiveUpdate();
-  /* bgWatchId läuft bereits – kein zweiter Watcher nötig */
-  if(!bgWatchId){
-    bgWatchId=navigator.geolocation.watchPosition(onGPS,e=>{if(isRunning)statusTxt.textContent='GPS Fehler';},{enableHighAccuracy:true,maximumAge:2000,timeout:15000});
-  }
+  startKeepAlive();   /* WakeLock + stiller Audio → verhindert Hintergrund-Suspendierung */
+  restartBgWatch();   /* frischer Watch beim Laufstart */
 }
 function onGPS(pos){
   const acc=pos.coords.accuracy||999;
@@ -1789,7 +1821,7 @@ function resumeRun(){
 function stopRun(){
   if(!isRunning)return;
   if(isPaused){isPaused=false;}else{runSecs+=Math.floor((Date.now()-runStart)/1000);}
-  isRunning=false;watchId=null;stopLiveUpdate(); /* bgWatchId läuft weiter */
+  isRunning=false;watchId=null;stopLiveUpdate();stopKeepAlive();
   statusBar.classList.remove('running');statusDot.style.background='var(--muted)';
   startBtn.disabled=false;pauseBtn.disabled=true;pauseBtn.innerHTML='<i class="fas fa-pause"></i> PAUSE';stopBtn.disabled=true;
   liveRun.classList.remove('on');idleStats.style.display='';beep(330);
@@ -2356,9 +2388,17 @@ function getWeekKey(){const d=new Date(),day=d.getDay(),diff=d.getDate()-day+(da
 function checkEnergyWeekReset(){const wk=getWeekKey();if(energyWeek!==wk){const wasSet=energyWeek!=='';energy=CFG.ENERGY_MAX;energyWeek=wk;save();if(wasSet)toast('⚡ Neue Woche – 3 Energie-Boosts verfügbar!');}}
 function setupBg(){
   document.addEventListener('visibilitychange',()=>{
-    if(document.visibilityState==='visible'){applyDecay();checkEnergyWeekReset();if(currentView==='community')updateCommunity();}
+    if(document.visibilityState==='visible'){
+      applyDecay();checkEnergyWeekReset();if(currentView==='community')updateCommunity();
+      if(isRunning){
+        /* Nach Hintergrund: GPS-Watcher neu starten (Browser kann ihn suspendiert haben) */
+        restartBgWatch();
+        /* WakeLock nach Hintergrund neu anfordern */
+        if('wakeLock' in navigator)navigator.wakeLock.request('screen').then(s=>{wakeLockSentinel=s;}).catch(()=>{});
+        toast('📍 GPS wieder aktiv');
+      }
+    }
   });
-  if('wakeLock' in navigator){const aq=async()=>{try{await navigator.wakeLock.request('screen')}catch(e){}};document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&isRunning)aq()});}
   setInterval(applyDecay,60000);
   setInterval(()=>{if(hrSource==='sim')simHR()},3000);
   setTimeout(()=>{simulateBotRun();setInterval(simulateBotRun,3*60*1000);},20000);
