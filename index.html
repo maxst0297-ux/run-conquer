@@ -490,6 +490,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <button class="map-panel-btn active" id="panelTerrBtn"><i class="fas fa-map"></i> Gebiete</button>
         <button class="map-panel-btn active" id="panelHeatBtn"><i class="fas fa-fire"></i> Heatmap</button>
         <button class="map-panel-btn active" id="panelLmBtn"><i class="fas fa-star"></i> Wahrzeichen</button>
+        <button class="map-panel-btn" id="panelHeatPersonalBtn"><i class="fas fa-user"></i> Alle Wärme</button>
         <div class="map-panel-sep"></div>
         <div class="map-panel-title">Extras</div>
         <button class="map-panel-btn" id="panelFogBtn"><i class="fas fa-cloud"></i> Nebel ein</button>
@@ -633,6 +634,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <div class="comm-card"><h3><i class="fas fa-trophy"></i> Deine Rekorde</h3><div id="recordsList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-users"></i> Follower-Aktivität</h3><div id="followerList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-medal"></i> Rangliste</h3><div id="leaderboardList"></div></div>
+      <div class="comm-card"><h3><i class="fas fa-shield-alt"></i> Team-Rangliste</h3><div id="teamRankList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-map-marked-alt"></i> Größte Gebiete</h3><div id="bigTerrList"></div></div>
       <div class="comm-card">
         <h3><i class="fas fa-location-arrow"></i> Nächste Gebiete</h3>
@@ -874,7 +876,7 @@ function getLvlName(pts){return CFG.LVL_NAMES[Math.min(getLevel(pts)-1,CFG.LVL_N
 function getLvlProg(pts){const lv=getLevel(pts),cur=CFG.LVL_XP[lv-1]||0,nx=CFG.LVL_XP[lv]||CFG.LVL_XP[CFG.LVL_XP.length-1]+1;return{lv,name:getLvlName(pts),pct:Math.min(100,Math.round((pts-cur)/(nx-cur)*100)),xpLeft:Math.max(0,nx-pts)}}
 
 /* STATE */
-let mapL,userMarker,pathLayer,terrLayer,heatLayer,landmarkLayer;
+let mapL,userMarker,pathLayer,terrLayer,heatLayer,landmarkLayer,heatPts=[];
 let isRunning=false,watchId=null;
 let path=[],lastPos=null,dist=0;
 let territories=[],points=0;
@@ -1058,6 +1060,8 @@ function refreshHeat(){
     const pts=[];
     history.forEach(r=>{(r.path||[]).forEach(p=>pts.push([p[0],p[1],.4]))});
     heatLayer.setLatLngs(pts);
+  } else {
+    heatLayer.setLatLngs(heatPts||[]);
   }
   const btn=$('panelHeatPersonalBtn');
   if(btn){btn.classList.toggle('active',heatPersonalOnly);btn.innerHTML='<i class="fas fa-user"></i> '+(heatPersonalOnly?'Meine Wärme':'Alle Wärme');}
@@ -1462,7 +1466,8 @@ function renderTerr(){
     const own=t.owner===userId,col=own?userColor:t.color;
     const strPct=Math.min(1,t.defense/CFG.MAX_DEF);
     const rar=t.rarity||'common',rs=rarityStyle[rar]||rarityStyle.common;
-    const borderCol=own?(rs.borderCol||'#fff'):( rs.borderCol||col);
+    const teamCol=own&&userTeam?TEAMS.find(tm=>tm.id===userTeam)?.color:null;
+    const borderCol=own?(rs.borderCol||teamCol||'#fff'):(rs.borderCol||col);
     const weight=typeof rs.weight==='function'?rs.weight(own):rs.weight;
     const styleOpts={fillColor:col,color:borderCol,weight:weight,fillOpacity:Math.max(.08,strPct*.55),opacity:Math.max(.4,strPct)};
     if(rs.dashArray)styleOpts.dashArray=rs.dashArray;
@@ -1659,7 +1664,7 @@ function onGPS(pos){
       dist+=d;path.push(pt);pathLayer.addLatLng(pt);distLive.textContent=fmtDist(dist);
       const km=Math.floor(dist/1000);
       if(km>lastSplitKm){const el=runSecs+Math.floor((Date.now()-runStart)/1000),ss=el-lastSplitSecs;kmSplits.push({km,pace:fmtPace(1000,ss),splitSecs:ss});lastSplitKm=km;lastSplitSecs=el;beep(660,.1);toast(`KM ${km} · ${fmtPace(1000,ss)}/km`);}
-      if(!heatPersonalOnly)heatLayer.addLatLng([lat,lng,.5]);
+      heatPts.push([lat,lng,.5]);if(!heatPersonalOnly)heatLayer.addLatLng([lat,lng,.5]);
     }
   } else if(!lastPos){path.push(pt);pathLayer.addLatLng(pt);}
   lastPos=pt;
@@ -1891,6 +1896,18 @@ function updateCommunity(){
   renderEvents();
   renderLeaderboard();
   renderSocialFeed();
+  // Team-Rangliste
+  const teamEl=$('teamRankList');
+  if(teamEl){
+    const teamStats=TEAMS.map(tm=>{
+      const botIds=Object.entries(BOT_TEAMS).filter(([,tid])=>tid===tm.id).map(([bid])=>bid);
+      const playerPts=(userTeam===tm.id)?points:0;
+      const botPts=botIds.reduce((s,bid)=>{const bot=BOTS.find(b=>b.id===bid);return s+(bot?bot.pts:0);},0);
+      const terrCount=territories.filter(t=>t.owner===userId?userTeam===tm.id:botIds.includes(t.owner)).length;
+      return{...tm,total:playerPts+botPts,terrCount};
+    }).sort((a,b)=>b.total-a.total);
+    teamEl.innerHTML=teamStats.map((tm,i)=>`<div class="list-row"><span style="font-size:1.1rem;width:24px">${['🥇','🥈','🥉','4.'][i]||''}</span><span style="font-size:1.1rem">${tm.icon}</span><span class="row-txt" style="color:${tm.color};font-weight:700">${tm.name}</span><span style="font-size:.72rem;color:var(--muted)">${tm.terrCount} Gebiete</span><span style="font-family:'Bebas Neue',sans-serif;color:${tm.color}">${tm.total} Pts</span></div>`).join('');
+  }
   $('bigTerrList').innerHTML=[...territories].sort((a,b)=>(b.area||0)-(a.area||0)).slice(0,5).map(t=>`<div class="list-row"><div class="terr-dot" style="background:${t.owner===userId?userColor:t.color}"></div><span class="row-txt">${t.customName||'Unbenannt'}</span><span class="muted" style="font-size:.72rem">${Math.round(t.area||0)} m²</span><span class="terr-owner" style="color:${t.owner===userId?'var(--primary)':'var(--red)'}">${t.owner===userId?'Deins':'Feind'}</span></div>`).join('')||'<div class="muted" style="padding:8px">Keine Gebiete</div>';
   if(userMarker){
     const pos=userMarker.getLatLng();
@@ -2364,6 +2381,7 @@ window.initApp=function(){
   $('panelLocateBtn')?.addEventListener('click',()=>{if(mapL){mapL.locate({setView:true,maxZoom:17,enableHighAccuracy:true});toast('📍 Standort wird ermittelt…')}});
   $('panelTerrBtn')?.addEventListener('click',function(){this.classList.toggle('active');if(this.classList.contains('active'))terrLayer&&mapL.addLayer(terrLayer);else terrLayer&&mapL.removeLayer(terrLayer);});
   $('panelHeatBtn')?.addEventListener('click',function(){this.classList.toggle('active');if(this.classList.contains('active'))heatLayer&&mapL.addLayer(heatLayer);else heatLayer&&mapL.removeLayer(heatLayer);});
+  $('panelHeatPersonalBtn')?.addEventListener('click',function(){heatPersonalOnly=!heatPersonalOnly;refreshHeat();if(heatPersonalOnly&&heatLayer&&!mapL.hasLayer(heatLayer))mapL.addLayer(heatLayer);});
   $('panelLmBtn')?.addEventListener('click',function(){this.classList.toggle('active');if(this.classList.contains('active'))landmarkLayer&&mapL.addLayer(landmarkLayer);else landmarkLayer&&mapL.removeLayer(landmarkLayer);});
   $('panelFogBtn')?.addEventListener('click',function(){
     fogEnabled=!fogEnabled;
