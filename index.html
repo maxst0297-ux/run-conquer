@@ -383,7 +383,9 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 </div>
 
 <!-- ONBOARDING -->
-<video id="bgVideo" src="bg.mp4" autoplay muted loop playsinline webkit-playsinline preload="auto" tabindex="-1"></video>
+<video id="bgVideo" autoplay muted loop playsinline webkit-playsinline preload="auto" tabindex="-1">
+  <source src="bg.mp4" type="video/mp4">
+</video>
 <div id="onboarding" style="display:none">
   <div class="ob-card">
     <div class="ob-illus">
@@ -2566,16 +2568,19 @@ window.initApp=function(){
   $('hdrLevel').addEventListener('click',()=>{hdrTaps++;if(hdrTaps>=5){hdrTaps=0;openAdminPanel();}});
 };
 
-/* Video starten – display:none nie setzen (iOS lädt sonst nicht) */
+/* Video starten – iOS-sicher: load() + canplay-Event + Touch-Fallback */
 function startBgVideo(){
   const vid=document.getElementById('bgVideo');
   if(!vid)return;
   vid.muted=true;
-  const p=vid.play();
-  if(p&&p.catch)p.catch(()=>{});
-  /* iOS-Fallback: beim ersten Touch erneut versuchen */
+  function doPlay(){vid.muted=true;vid.play().catch(()=>{});}
+  vid.addEventListener('canplay',doPlay,{once:true});
+  vid.load();
+  /* Sofortversuch (falls schon geladen) */
+  if(vid.readyState>=3)doPlay();
+  /* Letzter Fallback: erster Touch startet Video */
   document.addEventListener('touchstart',()=>{
-    if(vid.paused){vid.muted=true;vid.play().catch(()=>{});}
+    if(vid.paused)doPlay();
   },{once:true,passive:true});
 }
 window._hideCityBg=function(){
