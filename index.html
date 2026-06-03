@@ -272,7 +272,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 
 /* ═══ BOTTOM NAV ═══ */
 .bottom-nav{position:fixed;bottom:0;left:0;right:0;height:var(--nav-total);background:var(--bg);border-top:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-around;padding:4px calc(8px + var(--sal)) var(--sab) calc(8px + var(--sar));z-index:500}
-.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--muted);font-size:.6rem;cursor:pointer;transition:color .25s;padding:8px 0;position:relative}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--muted);font-size:.6rem;cursor:pointer;transition:color .25s;padding:8px 0;position:relative;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .nav-item i{font-size:1.35rem;transition:transform .25s}
 .nav-item.active{color:var(--primary)}
 .nav-item.active i{transform:translateY(-2px)}
@@ -785,6 +785,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <button class="stab-btn" data-stab="team">Team</button>
       <button class="stab-btn" data-stab="spiel">Spiel</button>
       <button class="stab-btn" data-stab="support">Support</button>
+      <button class="stab-btn" data-stab="hilfe">Hilfe</button>
     </div>
     <div id="settingsBody"></div>
   </div>
@@ -2206,6 +2207,103 @@ function renderSettingsTab(tab){
   } else if(tab==='support'){
     body.innerHTML=`<div style="font-size:.88rem;font-weight:600;margin-bottom:5px">🛠️ Support &amp; Feedback</div><div style="font-size:.75rem;color:var(--muted);margin-bottom:14px">Probleme oder Ideen? Wir antworten schnell!</div><div class="field"><label>Betreff</label><input type="text" id="suppSubject" class="modal-input" placeholder="z.B. Bug, Feedback, Idee…"></div><div class="field"><label>Nachricht</label><textarea id="suppMsg" class="modal-input" style="resize:none;height:90px;font-family:'Poppins',sans-serif;font-size:.85rem;padding:12px" placeholder="Beschreibe dein Anliegen…"></textarea></div><button class="btn btn-p" id="sendSuppBtn" style="width:100%"><i class="fas fa-paper-plane"></i> Absenden</button><div id="suppStatus" style="text-align:center;margin-top:8px;font-size:.78rem"></div>`;
     document.getElementById('sendSuppBtn')?.addEventListener('click',sendSupportMessage);
+  } else if(tab==='hilfe'){
+    body.innerHTML=`
+<div style="display:flex;flex-direction:column;gap:10px;font-size:.82rem">
+  <div style="font-weight:700;font-size:1rem;color:var(--primary)">📖 Spielanleitung</div>
+
+  <details open style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
+    <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">🗺️ Gebiete erobern</summary>
+    <div style="margin-top:8px;color:var(--muted);line-height:1.6">
+      Starte einen Lauf und zeichne eine geschlossene Route auf der Karte. Sobald du auf <b>Stop</b> tippst, wird die gelaufene Fläche als dein Gebiet eingetragen. Je größer die Fläche, desto mehr Punkte. Du kannst nur Gebiete beanspruchen, die nicht vollständig von anderen Gebieten überlappt werden.
+    </div>
+  </details>
+
+  <details style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
+    <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">🛡️ Stärke &amp; Verfall</summary>
+    <div style="margin-top:8px;color:var(--muted);line-height:1.6">
+      Jedes Gebiet hat eine <b>Stärke (0–100 %)</b>. Verteidige es durch erneutes Durchlaufen, um die Stärke wieder auf 100 % zu bringen. Unverteidigte Gebiete verlieren täglich an Stärke. Fällt ein Gebiet unter 0 %, wird es aufgelöst. Feindliche Gebiete können durch Raids geschwächt werden.
+    </div>
+  </details>
+
+  <details style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
+    <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">⚡ Energie</summary>
+    <div style="margin-top:8px;color:var(--muted);line-height:1.6">
+      Gebiete kosten Energie beim Erstellen. Energie regeneriert sich über die Zeit automatisch. Die maximale Energie beträgt <b>${CFG.ENERGY_MAX}</b>. Energie-Boosts erhältst du durch: Erste Läufe nach Pause, besondere Wahrzeichen-Capture, Saison-Belohnungen.
+    </div>
+  </details>
+
+  <details style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
+    <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">🎖️ Level &amp; XP</summary>
+    <div style="margin-top:8px;color:var(--muted);line-height:1.6">
+      Du erhältst XP für jeden Lauf, jedes Gebiet und jede Entdeckung. Mit steigendem Level schaltest du neue Titel frei. Das Level steigt proportional zu deinen gesamten Punkten. Jede Laufrunde gibt mindestens <b>${CFG.XP_RUN} XP</b>.
+    </div>
+  </details>
+
+  <details style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
+    <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">🏅 Seltenheit</summary>
+    <div style="margin-top:8px;color:var(--muted);line-height:1.6">
+      Jedes Gebiet bekommt beim Erstellen eine zufällige Seltenheitsstufe:<br>
+      <span style="color:#ccc">⬜ Gewöhnlich</span> — 60 %<br>
+      <span style="color:#00d4ff">🔵 Selten</span> — 25 % (blaue Umrandung)<br>
+      <span style="color:#9b5de5">🟣 Episch</span> — 12 % (lila Umrandung)<br>
+      <span style="color:#ffd700">🟡 Legendär</span> — 3 % (goldgestrichelte Umrandung)<br>
+      Gebiete in der Nähe von Wahrzeichen haben eine höhere Chance auf bessere Seltenheit.
+    </div>
+  </details>
+
+  <details style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
+    <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">⚔️ Raids</summary>
+    <div style="margin-top:8px;color:var(--muted);line-height:1.6">
+      Tippe auf ein feindliches Gebiet und starte einen <b>Raid</b>. Nach 24 Stunden verliert das Gebiet automatisch Stärke (−${CFG.RAID_DAMAGE} %). Du kannst gleichzeitig mehrere Raids laufen haben. Raids können nur gestartet werden, wenn du gerade keinen Lauf aktiv hast.
+    </div>
+  </details>
+
+  <details style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
+    <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">⭐ Wahrzeichen</summary>
+    <div style="margin-top:8px;color:var(--muted);line-height:1.6">
+      Auf der Karte sind besondere Orte (Parks, Denkmäler, Plätze) als ⭐ markiert. Läufst du einem Wahrzeichen auf <b>50 m</b> nahe, wird es als ✅ erfasst und du erhältst <b>${CFG.LANDMARK_PTS} Punkte</b>. Jedes Wahrzeichen kann nur einmal eingefangen werden.
+    </div>
+  </details>
+
+  <details style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
+    <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">👑 Herrschertitel</summary>
+    <div style="margin-top:8px;color:var(--muted);line-height:1.6">
+      Dein Titel richtet sich nach der Anzahl deiner Gebiete:<br>
+      ${CFG.RULER_TIERS.map(t=>`<span>• ${t.name} ab ${t.min} Gebiet${t.min!==1?'e':''}</span>`).join('<br>')}
+    </div>
+  </details>
+
+  <details style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
+    <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">🔥 Teams</summary>
+    <div style="margin-top:8px;color:var(--muted);line-height:1.6">
+      Wähle unter Einstellungen → Team eines von 4 Teams:<br>
+      ${TEAMS.map(t=>`<span style="color:${t.color}">${t.icon} ${t.name}</span>`).join('  ')}<br><br>
+      Dein Team beeinflusst die Randfarbe deiner Gebiete und deine Position in der Team-Rangliste.
+    </div>
+  </details>
+
+  <details style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
+    <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">🏆 Saison</summary>
+    <div style="margin-top:8px;color:var(--muted);line-height:1.6">
+      Jeden Monat beginnt eine neue Saison. Am Monatsende wird dein aktueller Rang, deine Punkte und Gebiete archiviert. In deinem Profil findest du die letzten 6 Saisons. Am Beginn einer neuen Saison erhältst du eine Benachrichtigung.
+    </div>
+  </details>
+
+  <details style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
+    <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">🌫️ Nebel des Krieges</summary>
+    <div style="margin-top:8px;color:var(--muted);line-height:1.6">
+      Die Karte ist zu Beginn mit einem schwarzen Nebel bedeckt. Jeder Meter, den du läufst, deckt einen kleinen Bereich auf. Über das Karten-Panel kannst du den Nebel ein- und ausschalten. Je mehr du läufst, desto mehr der Karte wird sichtbar.
+    </div>
+  </details>
+
+  <details style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
+    <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">📲 Lauf teilen</summary>
+    <div style="margin-top:8px;color:var(--muted);line-height:1.6">
+      Nach jedem Lauf kannst du eine automatisch generierte Lauf-Karte teilen. Tippe im Abschlussdialog auf <b>Teilen</b>. Auf unterstützten Geräten öffnet sich das Share-Sheet, andernfalls wird das Bild als PNG heruntergeladen.
+    </div>
+  </details>
+</div>`;
   }
 }
 
@@ -2449,11 +2547,21 @@ window.initApp=function(){
   $('drawerClose').addEventListener('click',closeDrawer);
   $('drawerOverlay').addEventListener('click',closeDrawer);
   dockToggle.addEventListener('click',e=>{e.stopPropagation();runDock.classList.toggle('up')});
-  document.querySelectorAll('.nav-item').forEach(n=>n.addEventListener('click',()=>{
-    const v=n.dataset.view;
-    if(v==='menu'){closeAllModals();drawer.classList.contains('open')?closeDrawer():openDrawer();}
-    else setView(v);
-  }));
+  document.querySelectorAll('.nav-item').forEach(n=>{
+    let _tapped=false;
+    n.addEventListener('touchend',e=>{
+      e.preventDefault();_tapped=true;
+      const v=n.dataset.view;
+      if(v==='menu'){closeAllModals();drawer.classList.contains('open')?closeDrawer():openDrawer();}
+      else setView(v);
+    },{passive:false});
+    n.addEventListener('click',()=>{
+      if(_tapped){_tapped=false;return;}
+      const v=n.dataset.view;
+      if(v==='menu'){closeAllModals();drawer.classList.contains('open')?closeDrawer():openDrawer();}
+      else setView(v);
+    });
+  });
   document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',function(){document.querySelectorAll('.tab-btn').forEach(t=>t.classList.remove('active'));this.classList.add('active');currentTab=this.dataset.tab;renderDrawer()}));
   $('pvEditBtn').addEventListener('click',()=>{closeAllModals();$('settingsModal').style.display='flex';renderSettingsTab('profil');document.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.stab==='profil'));});
   $('userBadge').addEventListener('click',()=>{closeAllModals();$('settingsModal').style.display='flex';renderSettingsTab('profil');document.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.stab==='profil'));});
