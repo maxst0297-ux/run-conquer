@@ -56,11 +56,12 @@ body.theme-petrol {
 html{height:-webkit-fill-available}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{
-  font-family:'Poppins',sans-serif;background:var(--bg);color:var(--text);
+  font-family:'Poppins',sans-serif;background:transparent;color:var(--text);
   height:100vh;height:100dvh;min-height:-webkit-fill-available;
   overflow:hidden;display:flex;flex-direction:column;
   transition:background .3s,color .3s;
 }
+
 
 /* ═══ SPLASH ═══ */
 #splash{position:fixed;top:0;left:0;right:0;bottom:0;background:#080808;display:flex;align-items:center;justify-content:center;z-index:10000;transition:opacity .7s;overflow:hidden}
@@ -99,7 +100,7 @@ body{
 .ob-card input:focus{border-color:rgba(255,255,255,.32);background:rgba(255,255,255,.12)}
 
 /* ═══ SHELL ═══ */
-#app{display:none;flex-direction:column;height:100%;position:relative}
+#app{display:none;flex-direction:column;height:100%;position:relative;background:var(--bg)}
 .hdr{
   position:fixed;top:0;left:0;right:0;
   height:var(--hdr-total);
@@ -2564,6 +2565,13 @@ window.initApp=function(){
   $('hdrLevel').addEventListener('click',()=>{hdrTaps++;if(hdrTaps>=5){hdrTaps=0;openAdminPanel();}});
 };
 
+/* Video sofort abspielen */
+(function(){
+  const vid=document.getElementById('bgVideo');
+  if(!vid)return;
+  const p=vid.play();
+  if(p&&p.catch)p.catch(()=>{});
+})();
 window._hideCityBg=function(){
   const vid=document.getElementById('bgVideo');
   if(vid){vid.pause();vid.style.display='none';}
