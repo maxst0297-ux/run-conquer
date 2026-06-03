@@ -1723,8 +1723,8 @@ function onGPS(pos){
   /* Marker immer aktualisieren – auch bei Pause und außerhalb eines Laufs */
   if(userMarker)userMarker.setLatLng(pt);
   else if(mapL)userMarker=L.marker(pt,{icon:mkUserIcon()}).addTo(mapL);
-  if(!isRunning||isPaused){if(!isRunning&&mapL)mapL.setView(pt,mapL.getZoom());return;}
-  if(isRunning)mapL.setView(pt,mapL.getZoom());
+  if(!isRunning||isPaused)return; /* Karte frei beweglich – kein Auto-Zentrieren */
+  mapL.setView(pt,mapL.getZoom());
   if(acc>150)return; /* skip path recording for very inaccurate fixes */
   if(pos.coords.speed!=null&&pos.coords.speed>=0)gpsSpeed=pos.coords.speed;
   if(pos.coords.altitude!=null)gpsAlt=Math.round(pos.coords.altitude);
