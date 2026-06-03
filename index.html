@@ -2218,7 +2218,7 @@ function renderSocialFeed(){
 function renderSettingsTab(tab){
   const body=$('settingsBody');
   if(tab==='profil'){
-    body.innerHTML=`<div class="field"><label>Name</label><input type="text" id="setName" class="modal-input" value="${playerName||''}"></div><div class="field"><label>Avatar</label><div class="avatar-row" id="setAvatarRow"></div></div><button class="btn btn-p" id="saveSetProfil" style="width:100%">Speichern</button>`;
+    body.innerHTML=`<div class="field"><label>Name</label><input type="text" id="setName" class="modal-input" value="${playerName||''}"></div><div class="field"><label>Avatar</label><div class="avatar-row" id="setAvatarRow"></div></div><button class="btn btn-p" id="saveSetProfil" style="width:100%">Speichern</button><button id="logoutBtn" style="width:100%;margin-top:8px;background:none;border:1px solid #ff4d6d;color:#ff4d6d;border-radius:12px;padding:12px;font-size:.85rem;font-family:'Poppins',sans-serif;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent">🚪 Abmelden</button>`;
     const setAvatarRow=$('setAvatarRow');
     setAvatarRow.innerHTML=`<div style="display:flex;align-items:center;gap:12px">
   <div id="setAvatarPreview" style="width:54px;height:54px;border-radius:50%;background:var(--bg2);border:2px solid var(--border);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center">${avatarHTML(54)}</div>
@@ -2234,6 +2234,7 @@ function renderSettingsTab(tab){
       reader.readAsDataURL(file);
     });
     $('saveSetProfil').addEventListener('click',()=>{playerName=$('setName').value.trim()||playerName;editAvatar=userAvatar;saveProfile();updateProfile();toast('Profil gespeichert')});
+    document.getElementById('logoutBtn')?.addEventListener('click',logoutUser);
   } else if(tab==='theme'){
     const cur=getActiveTheme();
     const themes=[
@@ -2646,7 +2647,11 @@ async function sendDm(toUid,toName,content){
   try{
     if(!sb||!userId)throw new Error('Keine Verbindung');
     const{error}=await sb.from('direct_messages').insert({from_uid:userId,from_name:playerName||'Unbekannt',to_uid:toUid,to_name:toName,content});
-    if(error){if(error.code==='42P01'||error.message?.includes('does not exist'))showSqlHint('dm');else throw error;}
+    if(error){
+      if(error.code==='42P01'||error.message?.includes('does not exist'))showSqlHint('dm');
+      else if(error.message?.includes('security policy')||error.message?.includes('permission denied')||error.code==='42501')showSqlHint('dm');
+      else throw error;
+    }
   }catch(e){toast('❌ '+e.message);}
 }
 
@@ -2689,12 +2694,17 @@ function loadArchiveView(container){
   });
 }
 
+async function logoutUser(){
+  try{if(sb)await sb.auth.signOut();}catch(e){}
+  location.reload();
+}
+
 function showSqlHint(type,container){
   const sql=type==='support'
     ?`ALTER TABLE support_messages\n  ADD COLUMN IF NOT EXISTS admin_reply TEXT,\n  ADD COLUMN IF NOT EXISTS replied_at TIMESTAMPTZ;`
-    :`CREATE TABLE IF NOT EXISTS direct_messages (\n  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,\n  from_uid TEXT NOT NULL,\n  from_name TEXT NOT NULL,\n  to_uid TEXT NOT NULL,\n  to_name TEXT NOT NULL,\n  content TEXT NOT NULL,\n  created_at TIMESTAMPTZ DEFAULT NOW(),\n  read_at TIMESTAMPTZ\n);`;
-  const title=type==='support'?'Spalten fehlen':'Tabelle fehlt';
-  const html=`<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px"><div style="font-weight:700;margin-bottom:8px">⚠️ ${title}</div><div style="font-size:.75rem;color:var(--muted);margin-bottom:10px">Führe diesen SQL-Befehl im Supabase Dashboard → SQL Editor aus:</div><pre style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:.68rem;color:var(--primary);overflow-x:auto;white-space:pre-wrap;word-break:break-all">${sql}</pre></div>`;
+    :`CREATE TABLE IF NOT EXISTS direct_messages (\n  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,\n  from_uid TEXT NOT NULL,\n  from_name TEXT NOT NULL,\n  to_uid TEXT NOT NULL,\n  to_name TEXT NOT NULL,\n  content TEXT NOT NULL,\n  created_at TIMESTAMPTZ DEFAULT NOW(),\n  read_at TIMESTAMPTZ\n);\n-- Wichtig: RLS deaktivieren!\nALTER TABLE direct_messages DISABLE ROW LEVEL SECURITY;`;
+  const title=type==='support'?'Spalten fehlen':'Tabelle einrichten';
+  const html=`<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px"><div style="font-weight:700;margin-bottom:8px">⚠️ ${title}</div><div style="font-size:.75rem;color:var(--muted);margin-bottom:10px">Führe diesen SQL-Befehl im <b>Supabase Dashboard → SQL Editor</b> aus und klicke auf „Run":</div><pre style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:.68rem;color:var(--primary);overflow-x:auto;white-space:pre-wrap;word-break:break-all">${sql}</pre></div>`;
   if(container){container.innerHTML=html;return;}
   const el=document.createElement('div');
   el.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.82);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px';
