@@ -897,7 +897,7 @@ function getLvlProg(pts){const lv=getLevel(pts),cur=CFG.LVL_XP[lv-1]||0,nx=CFG.L
 
 /* STATE */
 let mapL,userMarker,pathLayer,terrLayer,heatLayer,landmarkLayer,heatPts=[];
-let isRunning=false,watchId=null;
+let isRunning=false,watchId=null,bgWatchId=null;
 let path=[],lastPos=null,dist=0;
 let territories=[],points=0;
 let userId='user',playerName='',userColor=COLORS[0],userAvatar=AVATARS[0];
@@ -1463,6 +1463,12 @@ function initMap(){
     }
     loadLandmarks();
   });
+  /* Persistenter GPS-Watcher: Marker immer aktuell, auch außerhalb eines Laufs */
+  if(navigator.geolocation&&!bgWatchId){
+    bgWatchId=navigator.geolocation.watchPosition(onGPS,e=>{
+      console.warn('GPS-Hintergrund-Fehler:',e.code,e.message);
+    },{enableHighAccuracy:true,maximumAge:2000,timeout:20000});
+  }
   mapL.on('moveend',debounce(loadLandmarks,1500));
   mapL.on('click',closeDrawer);
 }
@@ -1706,15 +1712,19 @@ function startRun(){
   if(pathLayer)mapL.removeLayer(pathLayer);
   pathLayer=L.polyline([],{color:userColor,weight:4}).addTo(mapL);
   startLiveUpdate();
-  watchId=navigator.geolocation.watchPosition(onGPS,()=>{statusTxt.textContent='GPS Fehler'},{enableHighAccuracy:true,maximumAge:0});
+  /* bgWatchId läuft bereits – kein zweiter Watcher nötig */
+  if(!bgWatchId){
+    bgWatchId=navigator.geolocation.watchPosition(onGPS,e=>{if(isRunning)statusTxt.textContent='GPS Fehler';},{enableHighAccuracy:true,maximumAge:2000,timeout:15000});
+  }
 }
 function onGPS(pos){
-  if(isPaused)return;
   const acc=pos.coords.accuracy||999;
   const lat=pos.coords.latitude,lng=pos.coords.longitude,pt=[lat,lng];
-  /* always update marker position so user sees themselves on map */
+  /* Marker immer aktualisieren – auch bei Pause und außerhalb eines Laufs */
   if(userMarker)userMarker.setLatLng(pt);
-  if(isRunning&&!isPaused)mapL.setView(pt,mapL.getZoom());
+  else if(mapL)userMarker=L.marker(pt,{icon:mkUserIcon()}).addTo(mapL);
+  if(!isRunning||isPaused){if(!isRunning&&mapL)mapL.setView(pt,mapL.getZoom());return;}
+  if(isRunning)mapL.setView(pt,mapL.getZoom());
   if(acc>150)return; /* skip path recording for very inaccurate fixes */
   if(pos.coords.speed!=null&&pos.coords.speed>=0)gpsSpeed=pos.coords.speed;
   if(pos.coords.altitude!=null)gpsAlt=Math.round(pos.coords.altitude);
@@ -1760,7 +1770,7 @@ function pauseRun(){
   if(!isRunning||isPaused)return;
   isPaused=true;
   runSecs+=Math.floor((Date.now()-runStart)/1000);
-  navigator.geolocation.clearWatch(watchId);stopLiveUpdate();
+  stopLiveUpdate(); /* bgWatchId läuft weiter → Marker bleibt aktuell */
   statusTxt.textContent='Pausiert';statusDot.style.background='var(--primary)';
   pauseBtn.innerHTML='<i class="fas fa-play"></i> WEITER';
   const pPause=$('panelPauseBtn2');if(pPause)pPause.innerHTML='<i class="fas fa-play"></i> Weiter';
@@ -1773,14 +1783,13 @@ function resumeRun(){
   statusTxt.textContent='Läuft…';statusDot.style.background='var(--green)';
   pauseBtn.innerHTML='<i class="fas fa-pause"></i> PAUSE';
   const pRes=$('panelPauseBtn2');if(pRes)pRes.innerHTML='<i class="fas fa-pause"></i> Pause';
-  watchId=navigator.geolocation.watchPosition(onGPS,()=>{statusTxt.textContent='GPS Fehler'},{enableHighAccuracy:true,maximumAge:0});
   startLiveUpdate();
   beep(440,.08);
 }
 function stopRun(){
   if(!isRunning)return;
   if(isPaused){isPaused=false;}else{runSecs+=Math.floor((Date.now()-runStart)/1000);}
-  isRunning=false;navigator.geolocation.clearWatch(watchId);stopLiveUpdate();
+  isRunning=false;watchId=null;stopLiveUpdate(); /* bgWatchId läuft weiter */
   statusBar.classList.remove('running');statusDot.style.background='var(--muted)';
   startBtn.disabled=false;pauseBtn.disabled=true;pauseBtn.innerHTML='<i class="fas fa-pause"></i> PAUSE';stopBtn.disabled=true;
   liveRun.classList.remove('on');idleStats.style.display='';beep(330);
