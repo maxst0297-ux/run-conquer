@@ -2507,7 +2507,7 @@ async function loadAdminSupportMsgs(container){
     document.getElementById('showArchSupportLink')?.addEventListener('click',()=>loadArchiveView(el));
     _inboxSetHandler(el,function(e){
       const tog=e.target.closest('[data-toggle]');
-      if(tog){const b=document.getElementById('ibody-'+tog.dataset.toggle);if(b){const o=b.style.display!=='none';b.style.display=o?'none':'block';const ic=tog.querySelector('i.fa-chevron-down');if(ic)ic.style.transform=o?'':'rotate(180deg)';if(!o){readSupportIds.add(String(tog.dataset.toggle));saveReadSupport();updateDmBadge();/* Badge als gelesen aus der "Neu"-Markierung nehmen */const badge=tog.querySelector('.sup-new-badge');if(badge){badge.textContent='Gelesen';badge.style.background='var(--bg2)';badge.style.color='var(--muted)';badge.style.borderColor='var(--border)';badge.style.fontWeight='400';}}}
+      if(tog){const b=document.getElementById('ibody-'+tog.dataset.toggle);if(b){const o=b.style.display!=='none';b.style.display=o?'none':'block';const ic=tog.querySelector('i.fa-chevron-down');if(ic)ic.style.transform=o?'':'rotate(180deg)';if(!o){readSupportIds.add(String(tog.dataset.toggle));saveReadSupport();updateDmBadge();const badge=tog.querySelector('.sup-new-badge');if(badge){badge.textContent='Gelesen';badge.style.background='var(--bg2)';badge.style.color='var(--muted)';badge.style.borderColor='var(--border)';badge.style.fontWeight='400';}}}}
       const rep=e.target.closest('[data-reply]');
       if(rep&&!rep.disabled){
         const id=rep.dataset.reply,ta=document.getElementById('ireply-'+id),txt=(ta?.value||'').trim();
