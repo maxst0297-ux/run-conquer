@@ -129,6 +129,14 @@ body{
 .inbox-card-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;cursor:pointer;gap:8px;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .inbox-card-hdr:active{background:var(--bg2)}
 .inbox-card-body{padding:0 12px 12px}
+/* ═══ DM CHAT ═══ */
+.dm-conv-row{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;border-radius:12px;border:1px solid var(--border);margin-bottom:6px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:background .15s}
+.dm-conv-row:active{background:var(--bg2)}
+.dm-bubble{max-width:78%;padding:8px 12px;font-size:.82rem;line-height:1.5;word-break:break-word}
+.dm-bubble-me{background:var(--primary);color:#000;align-self:flex-end;border-radius:16px 16px 4px 16px}
+.dm-bubble-them{background:var(--card);border:1px solid var(--border);align-self:flex-start;border-radius:16px 16px 16px 4px}
+.follow-btn{font-size:.6rem;border:1px solid var(--border);background:none;color:var(--muted);border-radius:10px;padding:2px 8px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;font-family:'Poppins',sans-serif;white-space:nowrap;transition:.15s}
+.follow-btn.following{border-color:var(--primary);color:var(--primary)}
 .notif-row{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer}
 .notif-row:last-child{border-bottom:none}
 .notif-row.unread{background:rgba(var(--primary-rgb),.06)}
@@ -944,6 +952,7 @@ const SB_URL='https://mlkpryhacihbqnmtgkcg.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1sa3ByeWhhY2loYnFubXRna2NnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzMTcwMzMsImV4cCI6MjA5NTg5MzAzM30.YEVBlg686Ssj0p8ACz6eur3snBzay_exEedZ3gzqh7g';
 const sb=window.supabase?.createClient(SB_URL,SB_KEY);
 let sbUserId=null,isAdmin=false;
+let followedUsers=[],activeDmThread=null;
 
 async function initSupabase(){
   if(!sb)return;
@@ -1099,6 +1108,7 @@ function load(){
   if(!achievements.length)initAch();
   checkSeasonRollover();
   checkEnergyWeekReset();
+  followedUsers=JSON.parse(localStorage.getItem('rc_follows_'+userId)||'[]');
 }
 const THEME_CLASSES=['theme-citrus','theme-stone','theme-pine','theme-petrol'];
 function getActiveTheme(){return THEME_CLASSES.find(c=>document.body.classList.contains(c))||'theme-citrus';}
@@ -2140,20 +2150,30 @@ async function renderLeaderboard(){
   try{
     if(!sb||!sbUserId)throw new Error('no sb');
     const{data,error}=await sb.from('profiles')
-      .select('player_name,user_avatar,user_color,points,total_km,total_conquered')
+      .select('user_id,player_name,user_avatar,user_color,points,total_km,total_conquered')
       .order('points',{ascending:false})
       .limit(10);
     if(error||!data?.length)throw error||new Error('empty');
     lb.innerHTML=data.map((r,i)=>{
-      const isMe=r.player_name===playerName;
+      const isMe=r.user_id===userId||r.player_name===playerName;
+      const following=!isMe&&isFollowing(r.user_id);
       return`<div class="list-row" style="background:${isMe?'rgba(232,255,71,.06)':''}">
         <span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:${i<3?'var(--primary)':'var(--muted)'};width:22px;flex-shrink:0">${i<3?medals[i]:i+1}</span>
         <span class="row-icon" style="font-size:1.2rem">${r.user_avatar||'🏃'}</span>
         <div class="row-txt"><b style="color:${isMe?'var(--primary)':'var(--text)'}">${r.player_name}</b>
         <div style="font-size:.65rem;color:var(--muted)">${r.total_conquered||0} Gebiete · ${(r.total_km||0).toFixed(1)} km</div></div>
-        <span style="font-family:'Bebas Neue',sans-serif;color:var(--primary)">${r.points}</span>
+        <span style="font-family:'Bebas Neue',sans-serif;color:var(--primary);margin-left:auto">${r.points}</span>
+        ${!isMe?`<button class="follow-btn${following?' following':''}" data-uid="${r.user_id}" data-name="${r.player_name}" data-av="${r.user_avatar||'🏃'}">${following?'✓ Folge':'+ Folgen'}</button>`:''}
       </div>`;
     }).join('');
+    lb.querySelectorAll('.follow-btn').forEach(btn=>{
+      btn.addEventListener('click',e=>{
+        e.stopPropagation();
+        const {uid,name,av}=btn.dataset;
+        if(isFollowing(uid)){unfollowUser(uid,name);btn.textContent='+ Folgen';btn.classList.remove('following');}
+        else{followUser(uid,name,av);btn.textContent='✓ Folge';btn.classList.add('following');}
+      });
+    });
   }catch(e){
     // Fallback: lokale Mockdaten
     const myTerr=territories.filter(t=>t.owner===userId).length;
@@ -2227,12 +2247,7 @@ function renderSettingsTab(tab){
     let vTaps=0;
     $('setVersionTap').addEventListener('click',()=>{vTaps++;if(vTaps>=5){vTaps=0;$('settingsModal').style.display='none';openAdminPanel();}});
   } else if(tab==='support'){
-    if(isAdmin){
-      body.innerHTML=`<div style="text-align:center;padding:24px 0"><div style="font-size:2rem;margin-bottom:10px">📬</div><div style="font-weight:700;margin-bottom:6px">Admin-Posteingang</div><div style="font-size:.78rem;color:var(--muted);margin-bottom:16px">Nutzernachrichten sind im Posteingang oben rechts verfügbar.</div><button class="btn btn-p" id="openInboxFromSettings" style="width:auto;padding:10px 24px"><i class="fas fa-envelope"></i> Posteingang öffnen</button></div>`;
-      document.getElementById('openInboxFromSettings')?.addEventListener('click',()=>{$('settingsModal').style.display='none';$('inboxModal').style.display='flex';loadInbox();});
-      return;
-    }
-    body.innerHTML=`<div style="font-size:.88rem;font-weight:600;margin-bottom:5px">🛠️ Support &amp; Feedback</div><div style="font-size:.75rem;color:var(--muted);margin-bottom:14px">Probleme oder Ideen? Wir antworten schnell!</div><div class="field"><label>Betreff</label><input type="text" id="suppSubject" class="modal-input" placeholder="z.B. Bug, Feedback, Idee…"></div><div class="field"><label>Nachricht</label><textarea id="suppMsg" class="modal-input" style="resize:none;height:90px;font-family:'Poppins',sans-serif;font-size:.85rem;padding:12px" placeholder="Beschreibe dein Anliegen…"></textarea></div><button class="btn btn-p" id="sendSuppBtn" style="width:100%"><i class="fas fa-paper-plane"></i> Absenden</button><div id="suppStatus" style="text-align:center;margin-top:8px;font-size:.78rem"></div>`;
+    body.innerHTML=`<div style="font-size:.88rem;font-weight:600;margin-bottom:5px">🛠️ Support &amp; Feedback</div><div style="font-size:.75rem;color:var(--muted);margin-bottom:14px">Probleme oder Ideen? Wir antworten schnell!</div><div style="font-size:.72rem;color:var(--primary);background:var(--primary)11;border:1px solid var(--primary)33;border-radius:8px;padding:6px 10px;margin-bottom:12px">📨 An: Admin</div><div class="field"><label>Betreff</label><input type="text" id="suppSubject" class="modal-input" placeholder="z.B. Bug, Feedback, Idee…"></div><div class="field"><label>Nachricht</label><textarea id="suppMsg" class="modal-input" style="resize:none;height:90px;font-family:'Poppins',sans-serif;font-size:.85rem;padding:12px" placeholder="Beschreibe dein Anliegen…"></textarea></div><button class="btn btn-p" id="sendSuppBtn" style="width:100%"><i class="fas fa-paper-plane"></i> Absenden</button><div id="suppStatus" style="text-align:center;margin-top:8px;font-size:.78rem"></div>`;
     document.getElementById('sendSuppBtn')?.addEventListener('click',sendSupportMessage);
   } else if(tab==='hilfe'){
     body.innerHTML=`
@@ -2389,108 +2404,229 @@ async function loadAdminMessages(){
   }
 }
 
-/* ── ADMIN POSTEINGANG ── */
-function showInboxIfAdmin(){
-  const btn=$('inboxBtn');
-  if(btn&&isAdmin){btn.style.display='flex';refreshInboxBadge();}
+/* ── POSTFACH / FOLLOW / DM ── */
+function showInboxBtn(){
+  const btn=$('inboxBtn');if(btn)btn.style.display='flex';
+  updateDmBadge();
 }
-async function refreshInboxBadge(){
-  if(!isAdmin||!sb)return;
+function showInboxIfAdmin(){showInboxBtn();}
+async function updateDmBadge(){
+  const badge=$('inboxBadge');if(!badge)return;
+  let total=0;
   try{
-    const{count}=await sb.from('support_messages').select('id',{count:'exact',head:true}).is('admin_reply',null);
-    const badge=$('inboxBadge');
-    if(badge){if((count||0)>0){badge.textContent=count>99?'99+':count;badge.style.display='flex';}else badge.style.display='none';}
+    if(sb&&userId){const{count}=await sb.from('direct_messages').select('id',{count:'exact',head:true}).eq('to_uid',userId).is('read_at',null);total+=(count||0);}
+    if(isAdmin&&sb){const{count}=await sb.from('support_messages').select('id',{count:'exact',head:true}).is('admin_reply',null);total+=(count||0);}
   }catch(e){}
+  if(total>0){badge.textContent=total>99?'99+':total;badge.style.display='flex';}else badge.style.display='none';
 }
-async function loadInbox(){
-  const body=$('inboxBody');if(!body)return;
-  body.innerHTML='<div style="padding:20px;color:var(--muted);font-size:.8rem;text-align:center">⏳ Lade Nachrichten…</div>';
+function saveFollows(){localStorage.setItem('rc_follows_'+userId,JSON.stringify(followedUsers));}
+function isFollowing(uid){return followedUsers.some(u=>u.uid===uid);}
+function followUser(uid,name,av){
+  if(!isFollowing(uid)){followedUsers.push({uid,name,av:av||'🏃'});saveFollows();toast('✅ Du folgst '+name);}
+}
+function unfollowUser(uid,name){
+  followedUsers=followedUsers.filter(u=>u.uid!==uid);saveFollows();toast('Entfolgt '+name);
+}
+function _inboxClearHandler(body){if(body._ih)body.removeEventListener('click',body._ih);}
+function _inboxSetHandler(body,fn){_inboxClearHandler(body);body._ih=fn;body.addEventListener('click',fn);}
+
+/* Admin Support-Nachrichten */
+async function loadAdminSupportMsgs(container){
+  const el=container||$('inboxBody');if(!el)return;
+  el.innerHTML='<div style="padding:16px;color:var(--muted);font-size:.8rem;text-align:center">⏳ Lade…</div>';
   try{
-    if(!sb)throw new Error('Keine Supabase-Verbindung');
+    if(!sb)throw new Error('Keine Verbindung');
     const{data,error}=await sb.from('support_messages').select('*').order('created_at',{ascending:false}).limit(100);
     if(error)throw error;
-    if(!data||!data.length){body.innerHTML='<div style="padding:24px;color:var(--muted);font-size:.85rem;text-align:center">📭 Noch keine Nachrichten</div>';return;}
+    if(!data?.length){el.innerHTML='<div style="padding:24px;color:var(--muted);font-size:.85rem;text-align:center">📭 Noch keine Nachrichten</div>';return;}
     const unread=data.filter(m=>!m.admin_reply).length;
-    body.innerHTML=`<div style="font-size:.65rem;color:var(--muted);padding:0 0 10px;text-transform:uppercase;letter-spacing:1px">${data.length} Nachricht${data.length===1?'':'en'} · <span style="color:var(--primary)">${unread} neu</span></div>`
+    el.innerHTML=`<div style="font-size:.65rem;color:var(--muted);padding:0 0 10px;text-transform:uppercase;letter-spacing:1px">${data.length} Nachricht${data.length===1?'':'en'} · <span style="color:var(--primary)">${unread} neu</span></div>`
       +data.map(m=>{
         const d=new Date(m.created_at);
         const ds=d.toLocaleDateString('de',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('de',{hour:'2-digit',minute:'2-digit'});
-        const replied=!!(m.admin_reply&&m.admin_reply.trim());
+        const replied=!!(m.admin_reply?.trim());
         return`<div class="inbox-card${replied?'':' inbox-unread'}" id="imsg-${m.id}">
-  <div class="inbox-card-hdr" data-toggle="${m.id}">
-    <div style="flex:1;min-width:0">
-      <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px">
-        <span style="font-weight:700;font-size:.82rem">${m.player_name||'Unbekannt'}</span>
-        ${replied?'<span style="font-size:.58rem;background:#10b98122;color:#10b981;border:1px solid #10b98144;border-radius:10px;padding:1px 6px;flex-shrink:0">✓ Beantwortet</span>':'<span style="font-size:.58rem;background:var(--primary)22;color:var(--primary);border:1px solid var(--primary)44;border-radius:10px;padding:1px 6px;flex-shrink:0;font-weight:700">Neu</span>'}
-      </div>
-      <div style="font-size:.73rem;font-weight:600;color:var(--primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.subject||'Kein Betreff'}</div>
+<div class="inbox-card-hdr" data-toggle="${m.id}">
+  <div style="flex:1;min-width:0">
+    <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px">
+      <span style="font-weight:700;font-size:.82rem">${m.player_name||'Unbekannt'}</span>
+      ${replied?'<span style="font-size:.58rem;background:#10b98122;color:#10b981;border:1px solid #10b98144;border-radius:10px;padding:1px 6px;flex-shrink:0">✓ Beantwortet</span>':'<span style="font-size:.58rem;background:var(--primary)22;color:var(--primary);border:1px solid var(--primary)44;border-radius:10px;padding:1px 6px;flex-shrink:0;font-weight:700">Neu</span>'}
     </div>
-    <span style="font-size:.6rem;color:var(--muted);flex-shrink:0;margin-left:8px">${ds} <i class="fas fa-chevron-down" style="margin-left:4px;font-size:.6rem"></i></span>
+    <div style="font-size:.73rem;font-weight:600;color:var(--primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.subject||'Kein Betreff'}</div>
   </div>
-  <div class="inbox-card-body" id="ibody-${m.id}" style="display:none">
-    <div style="font-size:.8rem;color:var(--text);line-height:1.6;background:var(--bg2);padding:10px;border-radius:8px;margin-bottom:10px;white-space:pre-line">${m.message}</div>
-    ${replied?`<div style="font-size:.75rem;color:#10b981;background:#10b98111;border:1px solid #10b98133;border-radius:8px;padding:8px 10px;margin-bottom:8px"><span style="font-weight:700">Gesendete Antwort:</span><br><span style="white-space:pre-line">${m.admin_reply}</span></div>`:''}
-    <div style="display:flex;gap:6px;align-items:flex-end">
-      <textarea id="ireply-${m.id}" class="modal-input" style="flex:1;resize:none;height:70px;font-family:'Poppins',sans-serif;font-size:.8rem;padding:8px" placeholder="${replied?'Antwort aktualisieren…':'Antwort verfassen…'}">${replied?m.admin_reply:''}</textarea>
-      <button class="btn btn-p" style="flex-shrink:0;padding:8px 14px;font-size:.8rem;touch-action:manipulation" data-reply="${m.id}">${replied?'✏️ Update':'📨 Senden'}</button>
-    </div>
+  <span style="font-size:.6rem;color:var(--muted);flex-shrink:0;margin-left:8px">${ds} <i class="fas fa-chevron-down" style="font-size:.6rem"></i></span>
+</div>
+<div class="inbox-card-body" id="ibody-${m.id}" style="display:none">
+  <div style="font-size:.8rem;color:var(--text);line-height:1.6;background:var(--bg2);padding:10px;border-radius:8px;margin-bottom:10px;white-space:pre-line">${m.message}</div>
+  ${replied?`<div style="font-size:.75rem;color:#10b981;background:#10b98111;border:1px solid #10b98133;border-radius:8px;padding:8px 10px;margin-bottom:8px"><b>Deine Antwort:</b><br><span style="white-space:pre-line">${m.admin_reply}</span></div>`:''}
+  <div style="display:flex;gap:6px;align-items:flex-end">
+    <textarea id="ireply-${m.id}" class="modal-input" style="flex:1;resize:none;height:70px;font-family:'Poppins',sans-serif;font-size:.8rem;padding:8px" placeholder="${replied?'Antwort aktualisieren…':'Antwort verfassen…'}">${replied?m.admin_reply:''}</textarea>
+    <button class="btn btn-p" style="flex-shrink:0;padding:8px 14px;font-size:.8rem;touch-action:manipulation" data-reply="${m.id}">${replied?'✏️':'📨'}</button>
   </div>
-</div>`;
+</div></div>`;
       }).join('');
-    /* Event-Delegation für Toggle + Antwort (nur ein Listener pro Aufruf) */
-    if(body._inboxHandler)body.removeEventListener('click',body._inboxHandler);
-    body._inboxHandler=function(e){
+    _inboxSetHandler(el,function(e){
       const tog=e.target.closest('[data-toggle]');
-      if(tog){
-        const b=document.getElementById('ibody-'+tog.dataset.toggle);
-        if(b){const open=b.style.display!=='none';b.style.display=open?'none':'block';
-          const ico=tog.querySelector('i.fa-chevron-down');if(ico)ico.style.transform=open?'':'rotate(180deg)';}
-      }
+      if(tog){const b=document.getElementById('ibody-'+tog.dataset.toggle);if(b){const o=b.style.display!=='none';b.style.display=o?'none':'block';const ic=tog.querySelector('i.fa-chevron-down');if(ic)ic.style.transform=o?'':'rotate(180deg)';}}
       const rep=e.target.closest('[data-reply]');
       if(rep&&!rep.disabled){
-        const id=rep.dataset.reply;
-        const ta=document.getElementById('ireply-'+id);
-        const txt=(ta?.value||'').trim();
-        if(!txt){toast('Bitte Antworttext eingeben');return;}
+        const id=rep.dataset.reply,ta=document.getElementById('ireply-'+id),txt=(ta?.value||'').trim();
+        if(!txt){toast('Bitte Text eingeben');return;}
         const orig=rep.innerHTML;rep.disabled=true;rep.textContent='⏳';
         sb.from('support_messages').update({admin_reply:txt,replied_at:new Date().toISOString()}).eq('id',id)
           .then(({error})=>{
-            if(error){
-              rep.disabled=false;rep.innerHTML=orig;
-              /* Spalten fehlen noch → SQL-Hinweis zeigen */
-              if(error.code==='42703'||error.message?.includes('admin_reply')){
-                showInboxSqlHint();
-              } else {
-                toast('❌ '+error.message);
-              }
-            } else {
-              toast('✅ Antwort gesendet');
-              loadInbox();
-            }
+            if(error){rep.disabled=false;rep.innerHTML=orig;
+              (error.code==='42703'||error.message?.includes('admin_reply'))?showSqlHint('support'):toast('❌ '+error.message);
+            }else{toast('✅ Antwort gesendet');loadAdminSupportMsgs(el);}
           });
       }
+    });
+    updateDmBadge();
+  }catch(e){el.innerHTML=`<div style="padding:16px;color:var(--red);font-size:.8rem;text-align:center">⚠️ ${e.message}</div>`;}
+}
+
+/* Haupt-Inbox: Admin → zwei Tabs, Nutzer → DM-Konversationen */
+async function loadInbox(){
+  const body=$('inboxBody');if(!body)return;
+  activeDmThread=null;
+  if(isAdmin){
+    body.innerHTML=`<div style="display:flex;gap:6px;margin-bottom:12px;flex-shrink:0">
+      <button class="stab-btn active" data-itab="support" style="font-size:.73rem">📨 Support</button>
+      <button class="stab-btn" data-itab="dms" style="font-size:.73rem">💬 Direktnachrichten</button>
+    </div><div id="inboxTabBody" style="overflow-y:auto;flex:1"></div>`;
+    const switchTab=tab=>{
+      body.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.itab===tab));
+      const tc=document.getElementById('inboxTabBody');
+      if(tab==='support')loadAdminSupportMsgs(tc);
+      else loadDmConvList(tc);
     };
-    body.addEventListener('click',body._inboxHandler);
-    refreshInboxBadge();
-  }catch(e){
-    body.innerHTML=`<div style="padding:16px;color:var(--red);font-size:.8rem;text-align:center">⚠️ ${e.message}</div>`;
+    body.querySelectorAll('.stab-btn').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.itab)));
+    loadAdminSupportMsgs(document.getElementById('inboxTabBody'));
+  } else {
+    loadDmConvList(body);
   }
 }
-function showInboxSqlHint(){
-  const existing=document.getElementById('inboxSqlHint');if(existing)existing.remove();
+
+/* DM-Konversationsliste */
+async function loadDmConvList(container){
+  const el=container||$('inboxBody');if(!el)return;
+  el.innerHTML='<div style="padding:16px;color:var(--muted);font-size:.8rem;text-align:center">⏳ Lade Chats…</div>';
+  try{
+    if(!sb||!userId)throw new Error('Keine Verbindung');
+    const{data,error}=await sb.from('direct_messages').select('*').or(`from_uid.eq.${userId},to_uid.eq.${userId}`).order('created_at',{ascending:false}).limit(300);
+    if(error){if(error.code==='42P01'||error.message?.includes('does not exist')){showSqlHint('dm',el);return;}throw error;}
+    const convMap={};
+    (data||[]).forEach(m=>{
+      const oUid=m.from_uid===userId?m.to_uid:m.from_uid;
+      const oName=m.from_uid===userId?m.to_name:m.from_name;
+      if(!convMap[oUid]){convMap[oUid]={uid:oUid,name:oName,last:m,unread:0};}
+      if(m.to_uid===userId&&!m.read_at)convMap[oUid].unread++;
+    });
+    const convs=Object.values(convMap).sort((a,b)=>new Date(b.last.created_at)-new Date(a.last.created_at));
+    const newBtn=`<button class="btn btn-p" style="width:100%;margin-bottom:10px" id="newDmBtn"><i class="fas fa-pen"></i> Neue Nachricht</button>`;
+    if(!convs.length){
+      el.innerHTML=newBtn+`<div style="padding:20px;text-align:center;color:var(--muted);font-size:.82rem">💬 Noch keine Direktnachrichten.<br><br>Folge Spielern aus der <b>Rangliste</b>,<br>um ihnen zu schreiben.</div>`;
+    }else{
+      el.innerHTML=newBtn+convs.map(c=>`<div class="dm-conv-row" data-dmuid="${c.uid}" data-dmname="${encodeURIComponent(c.name)}">
+        <div style="width:38px;height:38px;border-radius:50%;background:var(--primary)22;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;color:var(--primary);flex-shrink:0">${(c.name||'?')[0].toUpperCase()}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:.82rem">${c.name}</div>
+          <div style="font-size:.72rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.last.content}</div>
+        </div>
+        ${c.unread>0?`<span style="background:var(--primary);color:#000;border-radius:50%;min-width:18px;height:18px;font-size:.6rem;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;flex-shrink:0">${c.unread}</span>`:'<i class="fas fa-chevron-right" style="color:var(--muted);font-size:.7rem;flex-shrink:0"></i>'}
+      </div>`).join('');
+    }
+    document.getElementById('newDmBtn')?.addEventListener('click',()=>openDmPicker(el));
+    el.querySelectorAll('[data-dmuid]').forEach(row=>row.addEventListener('click',()=>openDmThread(row.dataset.dmuid,decodeURIComponent(row.dataset.dmname))));
+    updateDmBadge();
+  }catch(e){el.innerHTML=`<div style="padding:16px;color:var(--red);font-size:.8rem;text-align:center">⚠️ ${e.message}</div>`;}
+}
+
+/* DM-Chat öffnen */
+async function openDmThread(uid,name){
+  activeDmThread={uid,name};
+  const body=$('inboxBody');if(!body)return;
+  _inboxClearHandler(body);
+  body.innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-shrink:0">
+      <button id="dmBackBtn" class="btn" style="width:auto;padding:6px 12px;font-size:.8rem">←</button>
+      <div style="font-weight:700;font-size:.9rem;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${name}</div>
+    </div>
+    <div id="dmMsgs" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:2px;min-height:120px;padding-bottom:4px">
+      <div style="padding:16px;text-align:center;color:var(--muted);font-size:.8rem">⏳</div>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:8px;flex-shrink:0">
+      <input type="text" id="dmInput" class="modal-input" style="flex:1;padding:8px 12px;font-size:.85rem" placeholder="Nachricht…">
+      <button class="btn btn-p" id="dmSendBtn" style="flex-shrink:0;padding:8px 14px;touch-action:manipulation"><i class="fas fa-paper-plane"></i></button>
+    </div>`;
+  const send=async()=>{
+    const inp=$('dmInput');const txt=(inp?.value||'').trim();if(!txt)return;
+    inp.value='';inp.disabled=true;
+    await sendDm(uid,name,txt);inp.disabled=false;inp.focus();
+    await loadDmMessages(uid);
+  };
+  $('dmBackBtn').addEventListener('click',()=>{activeDmThread=null;loadInbox();});
+  $('dmSendBtn').addEventListener('click',send);
+  $('dmInput')?.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
+  sb?.from('direct_messages').update({read_at:new Date().toISOString()}).eq('to_uid',userId).eq('from_uid',uid).is('read_at',null).then(()=>updateDmBadge());
+  await loadDmMessages(uid);
+}
+
+async function loadDmMessages(uid){
+  const el=document.getElementById('dmMsgs');if(!el)return;
+  try{
+    const{data,error}=await sb.from('direct_messages').select('*').or(`and(from_uid.eq.${userId},to_uid.eq.${uid}),and(from_uid.eq.${uid},to_uid.eq.${userId})`).order('created_at',{ascending:true}).limit(100);
+    if(error)throw error;
+    if(!data?.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:.8rem">Noch keine Nachrichten 👋</div>';return;}
+    el.innerHTML=data.map(m=>{
+      const mine=m.from_uid===userId;
+      const ts=new Date(m.created_at).toLocaleTimeString('de',{hour:'2-digit',minute:'2-digit'});
+      return`<div style="display:flex;flex-direction:column;align-items:${mine?'flex-end':'flex-start'}">
+        <div class="dm-bubble ${mine?'dm-bubble-me':'dm-bubble-them'}">${m.content}</div>
+        <span style="font-size:.58rem;color:var(--muted);padding:0 4px;margin-bottom:4px">${ts}</span>
+      </div>`;
+    }).join('');
+    el.scrollTop=el.scrollHeight;
+  }catch(e){el.innerHTML=`<div style="color:var(--red);padding:8px">⚠️ ${e.message}</div>`;}
+}
+
+async function sendDm(toUid,toName,content){
+  try{
+    if(!sb||!userId)throw new Error('Keine Verbindung');
+    const{error}=await sb.from('direct_messages').insert({from_uid:userId,from_name:playerName||'Unbekannt',to_uid:toUid,to_name:toName,content});
+    if(error){if(error.code==='42P01'||error.message?.includes('does not exist'))showSqlHint('dm');else throw error;}
+  }catch(e){toast('❌ '+e.message);}
+}
+
+function openDmPicker(container){
+  const el=container||$('inboxBody');if(!el)return;
+  if(!followedUsers.length){
+    el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><button id="dmPickBack" class="btn" style="width:auto;padding:6px 12px;font-size:.8rem">←</button><div style="font-weight:700;font-size:.9rem">Neue Nachricht</div></div><div style="padding:20px;text-align:center;color:var(--muted);font-size:.82rem">Du folgst noch niemandem.<br><br>Gehe zur <b>Rangliste</b> in der Community und tippe auf <b>+ Folgen</b>, um Spielern zu folgen.</div>`;
+    document.getElementById('dmPickBack')?.addEventListener('click',()=>loadInbox());
+    return;
+  }
+  el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><button id="dmPickBack" class="btn" style="width:auto;padding:6px 12px;font-size:.8rem">←</button><div style="font-weight:700;font-size:.9rem">Spieler wählen</div></div>`
+    +followedUsers.map(f=>`<div class="dm-conv-row" data-dmuid="${f.uid}" data-dmname="${encodeURIComponent(f.name)}">
+      <div style="width:38px;height:38px;border-radius:50%;background:var(--primary)22;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">${f.av||'🏃'}</div>
+      <div style="flex:1"><div style="font-weight:700;font-size:.85rem">${f.name}</div><div style="font-size:.7rem;color:var(--muted)">Tippe zum Schreiben</div></div>
+      <i class="fas fa-chevron-right" style="color:var(--muted);font-size:.7rem"></i>
+    </div>`).join('');
+  document.getElementById('dmPickBack')?.addEventListener('click',()=>loadInbox());
+  el.querySelectorAll('[data-dmuid]').forEach(row=>row.addEventListener('click',()=>openDmThread(row.dataset.dmuid,decodeURIComponent(row.dataset.dmname))));
+}
+
+function showSqlHint(type,container){
+  const sql=type==='support'
+    ?`ALTER TABLE support_messages\n  ADD COLUMN IF NOT EXISTS admin_reply TEXT,\n  ADD COLUMN IF NOT EXISTS replied_at TIMESTAMPTZ;`
+    :`CREATE TABLE IF NOT EXISTS direct_messages (\n  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,\n  from_uid TEXT NOT NULL,\n  from_name TEXT NOT NULL,\n  to_uid TEXT NOT NULL,\n  to_name TEXT NOT NULL,\n  content TEXT NOT NULL,\n  created_at TIMESTAMPTZ DEFAULT NOW(),\n  read_at TIMESTAMPTZ\n);`;
+  const title=type==='support'?'Spalten fehlen':'Tabelle fehlt';
+  const html=`<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px"><div style="font-weight:700;margin-bottom:8px">⚠️ ${title}</div><div style="font-size:.75rem;color:var(--muted);margin-bottom:10px">Führe diesen SQL-Befehl im Supabase Dashboard → SQL Editor aus:</div><pre style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:.68rem;color:var(--primary);overflow-x:auto;white-space:pre-wrap;word-break:break-all">${sql}</pre></div>`;
+  if(container){container.innerHTML=html;return;}
   const el=document.createElement('div');
-  el.id='inboxSqlHint';
   el.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.82);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px';
-  el.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:18px;padding:20px;max-width:400px;width:100%">
-  <div style="font-weight:700;font-size:.95rem;margin-bottom:8px">⚠️ Datenbank-Spalten fehlen</div>
-  <div style="font-size:.78rem;color:var(--muted);margin-bottom:14px">Führe diese SQL-Befehle einmalig im Supabase Dashboard → SQL Editor aus:</div>
-  <pre style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:.72rem;color:var(--primary);overflow-x:auto;white-space:pre-wrap;word-break:break-all;margin-bottom:14px">ALTER TABLE support_messages
-  ADD COLUMN IF NOT EXISTS admin_reply TEXT,
-  ADD COLUMN IF NOT EXISTS replied_at TIMESTAMPTZ;</pre>
-  <button class="btn btn-p" style="width:100%" id="inboxSqlClose">Verstanden</button>
-</div>`;
+  el.innerHTML=`<div style="max-width:400px;width:100%">${html}<button class="btn btn-p" style="width:100%;margin-top:12px" id="sqlHintClose">Verstanden</button></div>`;
   document.body.appendChild(el);
-  el.querySelector('#inboxSqlClose').addEventListener('click',()=>el.remove());
+  el.querySelector('#sqlHintClose').addEventListener('click',()=>el.remove());
   el.addEventListener('click',e=>{if(e.target===el)el.remove();});
 }
 
@@ -2670,8 +2806,8 @@ window.initApp=function(){
     saveProfile();
     $('onboarding').style.display='none';$('app').style.display='flex';
     window._hideCityBg?.();
-    initMap();setTimeout(()=>{load();updateUI();mapL?.invalidateSize()},150);setupBg();initSteps();
-    initSupabase().then(async()=>{const restored=await loadFromCloud();if(!restored&&territories.filter(t=>t.owner!==userId).length===0){await genRivals();}renderTerr();updateUI();syncProfile();});
+    initMap();setTimeout(()=>{load();updateUI();mapL?.invalidateSize();showInboxBtn();},150);setupBg();initSteps();
+    initSupabase().then(async()=>{const restored=await loadFromCloud();if(!restored&&territories.filter(t=>t.owner!==userId).length===0){await genRivals();}renderTerr();updateUI();syncProfile();updateDmBadge();});
   });
   startBtn.addEventListener('click',startRun);
   pauseBtn.addEventListener('click',()=>{isPaused?resumeRun():pauseRun();});
