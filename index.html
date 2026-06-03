@@ -78,10 +78,10 @@ body{
 #bgCanvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;display:none}
 #cityLabel{position:fixed;top:28px;left:50%;transform:translateX(-50%);color:rgba(230,255,85,.75);font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:8px;z-index:2001;opacity:0;transition:opacity 1s;pointer-events:none;text-shadow:0 0 30px rgba(230,255,85,.5)}
 #onboarding{position:fixed;top:0;left:0;right:0;bottom:0;background:transparent;display:flex;align-items:center;justify-content:center;z-index:2000;padding:calc(20px + var(--sat)) 20px calc(20px + var(--sab));overflow-y:auto;-webkit-overflow-scrolling:touch}
-.ob-card{background:rgba(3,14,9,.78);border:1px solid rgba(230,255,85,.18);border-radius:24px;padding:28px 28px 36px;max-width:400px;width:100%;text-align:center;backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);box-shadow:0 8px 60px rgba(0,0,0,.7),0 0 0 1px rgba(230,255,85,.06)}
+.ob-card{background:rgba(10,10,16,.52);border:1px solid rgba(255,255,255,.1);border-radius:24px;padding:28px 28px 36px;max-width:400px;width:100%;text-align:center;backdrop-filter:blur(32px);-webkit-backdrop-filter:blur(32px);box-shadow:0 12px 48px rgba(0,0,0,.55)}
 .ob-illus{display:flex;justify-content:center;margin-bottom:12px;background:rgba(var(--primary-rgb),.04);border-radius:16px;padding:14px}
-.ob-title{font-family:'Bebas Neue',sans-serif;font-size:3.2rem;letter-spacing:2px;color:var(--primary);line-height:1}
-.ob-sub{color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:3px;margin:4px 0 28px}
+.ob-title{font-family:'Bebas Neue',sans-serif;font-size:3.2rem;letter-spacing:2px;color:#fff;line-height:1}
+.ob-sub{color:rgba(255,255,255,.45);font-size:.75rem;text-transform:uppercase;letter-spacing:3px;margin:4px 0 28px}
 .field{margin-bottom:20px;text-align:left}
 .field label{font-size:.65rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted);display:block;margin-bottom:6px}
 .field input{width:100%;padding:13px 16px;font-size:1rem;background:var(--bg2);border:1px solid var(--border);border-radius:12px;color:var(--text);outline:none;font-family:'Poppins',sans-serif}
@@ -91,11 +91,15 @@ body{
 .avatar-row{display:flex;gap:8px;justify-content:center;margin-top:6px}
 .av-opt{font-size:1.8rem;cursor:pointer;padding:6px 10px;border-radius:12px;background:var(--bg2);border:2px solid transparent;transition:.15s}
 .av-opt.sel{border-color:var(--primary)}
-.btn-start{background:var(--primary);color:var(--bg);border:none;padding:17px;border-radius:14px;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;width:100%;cursor:pointer;margin-top:8px;transition:transform .15s}
+.btn-start{background:rgba(255,255,255,.92);color:#0a0a10;border:none;padding:17px;border-radius:14px;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;width:100%;cursor:pointer;margin-top:8px;transition:transform .15s}
 .btn-start:active{transform:scale(.97)}
 .ob-tabs{display:flex;gap:6px;margin-bottom:20px}
-.ob-tab{flex:1;padding:9px;border:1px solid var(--border);background:var(--card);color:var(--muted);border-radius:12px;font-family:'Poppins',sans-serif;font-weight:600;font-size:.8rem;cursor:pointer;transition:all .2s}
-.ob-tab.active{background:var(--primary);color:var(--bg);border-color:var(--primary)}
+.ob-tab{flex:1;padding:9px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:rgba(255,255,255,.55);border-radius:12px;font-family:'Poppins',sans-serif;font-weight:600;font-size:.8rem;cursor:pointer;transition:all .2s}
+.ob-tab.active{background:rgba(255,255,255,.18);color:#fff;border-color:rgba(255,255,255,.3)}
+.ob-card .field label{color:rgba(255,255,255,.5)}
+.ob-card input{width:100%;padding:13px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:12px;color:#fff;font-size:.95rem;margin-bottom:14px;outline:none;font-family:'Poppins',sans-serif}
+.ob-card input::placeholder{color:rgba(255,255,255,.3)}
+.ob-card input:focus{border-color:rgba(255,255,255,.32);background:rgba(255,255,255,.12)}
 
 /* ═══ SHELL ═══ */
 #app{display:none;flex-direction:column;height:100%;position:relative}
@@ -1034,7 +1038,15 @@ function load(){
     const d=JSON.parse(localStorage.getItem('rc_v4_'+userId));
     if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;
       /* Alte Bot-Gebiete (Blob, <100k m²) entfernen → werden neu als Straßen-Polygon generiert */
-      territories=territories.filter(t=>t.owner===userId||t.area>100000);}
+      territories=territories.filter(t=>t.owner===userId||t.area>100000);
+      /* Überlappende Bot-Gebiete entfernen */
+      const deduped=[],player=territories.filter(t=>t.owner===userId);
+      territories.filter(t=>t.owner!==userId).forEach(t=>{
+        const hits=deduped.concat(player);
+        const overlaps=hits.some(ex=>{try{return turf.booleanIntersects(turf.feature(ex.polygon),turf.feature(t.polygon));}catch(e){return false;}});
+        if(!overlaps)deduped.push(t);
+      });
+      territories=[...player,...deduped];}
   }catch(e){}
   // Rival territories werden nach erstem GPS-Fix generiert (locationfound)
   if(!quests.length)genQuests();
@@ -1517,7 +1529,7 @@ function renderTerr(){
     const teamCol=own&&userTeam?TEAMS.find(tm=>tm.id===userTeam)?.color:null;
     const borderCol=own?(rs.borderCol||teamCol||'#fff'):(rs.borderCol||col);
     const weight=typeof rs.weight==='function'?rs.weight(own):rs.weight;
-    const styleOpts={fillColor:col,color:borderCol,weight:weight,fillOpacity:Math.max(.08,strPct*.55),opacity:Math.max(.4,strPct)};
+    const styleOpts={fillColor:col,color:borderCol,weight:weight,fillOpacity:Math.max(.04,strPct*.22),opacity:Math.max(.55,strPct*.9)};
     if(rs.dashArray)styleOpts.dashArray=rs.dashArray;
 
     L.geoJSON(t.polygon,{style:styleOpts})
