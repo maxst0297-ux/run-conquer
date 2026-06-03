@@ -958,6 +958,7 @@ const sb=window.supabase?.createClient(SB_URL,SB_KEY);
 let sbUserId=null,isAdmin=false;
 let followedUsers=[],activeDmThread=null;
 let archivedConvs=[],archivedSupportIds=new Set();
+let dmViewState={},readSupportIds=new Set();
 
 async function initSupabase(){
   if(!sb)return;
@@ -1116,6 +1117,8 @@ function load(){
   followedUsers=JSON.parse(localStorage.getItem('rc_follows_'+userId)||'[]');
   archivedConvs=JSON.parse(localStorage.getItem('rc_arch_dm_'+userId)||'[]');
   archivedSupportIds=new Set(JSON.parse(localStorage.getItem('rc_arch_sup_'+userId)||'[]'));
+  dmViewState=JSON.parse(localStorage.getItem('rc_dmview_'+userId)||'{}');
+  readSupportIds=new Set(JSON.parse(localStorage.getItem('rc_rsup_'+userId)||'[]'));
 }
 const THEME_CLASSES=['theme-citrus','theme-stone','theme-pine','theme-petrol'];
 function getActiveTheme(){return THEME_CLASSES.find(c=>document.body.classList.contains(c))||'theme-citrus';}
@@ -2422,13 +2425,28 @@ async function updateDmBadge(){
   const badge=$('inboxBadge');if(!badge)return;
   let total=0;
   try{
-    if(sb&&userId){const{count}=await sb.from('direct_messages').select('id',{count:'exact',head:true}).eq('to_uid',userId).is('read_at',null);total+=(count||0);}
-    if(isAdmin&&sb){const{count}=await sb.from('support_messages').select('id',{count:'exact',head:true}).is('admin_reply',null);total+=(count||0);}
+    if(sb&&userId){
+      /* Ungelesene DMs: letzte empfangene Nachricht pro Gespräch, die nach dem letzten Öffnen liegt */
+      const{data}=await sb.from('direct_messages').select('from_uid,to_uid,created_at').or(`from_uid.eq.${userId},to_uid.eq.${userId}`).order('created_at',{ascending:false}).limit(300);
+      if(data){
+        const latest={};
+        data.forEach(m=>{
+          if(m.to_uid===userId){const oUid=m.from_uid;if(!latest[oUid])latest[oUid]=new Date(m.created_at).getTime();}
+        });
+        total+=Object.entries(latest).filter(([uid,ts])=>!dmViewState[uid]||ts>dmViewState[uid]).length;
+      }
+    }
+    if(isAdmin&&sb){
+      const{data}=await sb.from('support_messages').select('id').is('admin_reply',null);
+      total+=(data||[]).filter(m=>!readSupportIds.has(String(m.id))).length;
+    }
   }catch(e){}
   if(total>0){badge.textContent=total>99?'99+':total;badge.style.display='flex';}else badge.style.display='none';
 }
 function saveFollows(){localStorage.setItem('rc_follows_'+userId,JSON.stringify(followedUsers));}
 function saveArchived(){localStorage.setItem('rc_arch_dm_'+userId,JSON.stringify(archivedConvs));localStorage.setItem('rc_arch_sup_'+userId,JSON.stringify([...archivedSupportIds]));}
+function saveDmViewState(){localStorage.setItem('rc_dmview_'+userId,JSON.stringify(dmViewState));}
+function saveReadSupport(){localStorage.setItem('rc_rsup_'+userId,JSON.stringify([...readSupportIds]));}
 function isFollowing(uid){return followedUsers.some(u=>u.uid===uid);}
 function followUser(uid,name,av){
   if(!isFollowing(uid)){followedUsers.push({uid,name,av:av||'🏃'});saveFollows();toast('✅ Du folgst '+name);}
@@ -2457,14 +2475,15 @@ async function loadAdminSupportMsgs(container){
         const d=new Date(m.created_at);
         const ds=d.toLocaleDateString('de',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('de',{hour:'2-digit',minute:'2-digit'});
         const replied=!!(m.admin_reply?.trim());
+        const wasRead=readSupportIds.has(String(m.id));
         return`<div class="sw-wrap" style="margin-bottom:8px">
   <div class="sw-arch"><i class="fas fa-archive" style="font-size:.85rem;color:#fff"></i><span style="font-size:.58rem;color:#fff;font-weight:700;margin-top:2px">Archivieren</span></div>
-  <div class="inbox-card${replied?'':' inbox-unread'} sw-content" id="imsg-${m.id}" style="margin-bottom:0">
+  <div class="inbox-card${replied||wasRead?'':' inbox-unread'} sw-content" id="imsg-${m.id}" style="margin-bottom:0;${wasRead&&!replied?'opacity:.6':''}">
 <div class="inbox-card-hdr" data-toggle="${m.id}">
   <div style="flex:1;min-width:0">
     <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px">
       <span style="font-weight:700;font-size:.82rem">${m.player_name||'Unbekannt'}</span>
-      ${replied?'<span style="font-size:.58rem;background:#10b98122;color:#10b981;border:1px solid #10b98144;border-radius:10px;padding:1px 6px;flex-shrink:0">✓ Beantwortet</span>':'<span style="font-size:.58rem;background:var(--primary)22;color:var(--primary);border:1px solid var(--primary)44;border-radius:10px;padding:1px 6px;flex-shrink:0;font-weight:700">Neu</span>'}
+      ${replied?'<span style="font-size:.58rem;background:#10b98122;color:#10b981;border:1px solid #10b98144;border-radius:10px;padding:1px 6px;flex-shrink:0">✓ Beantwortet</span>':readSupportIds.has(String(m.id))?'<span class="sup-new-badge" style="font-size:.58rem;background:var(--bg2);color:var(--muted);border:1px solid var(--border);border-radius:10px;padding:1px 6px;flex-shrink:0">Gelesen</span>':'<span class="sup-new-badge" style="font-size:.58rem;background:var(--primary)22;color:var(--primary);border:1px solid var(--primary)44;border-radius:10px;padding:1px 6px;flex-shrink:0;font-weight:700">Neu</span>'}
     </div>
     <div style="font-size:.73rem;font-weight:600;color:var(--primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.subject||'Kein Betreff'}</div>
   </div>
@@ -2488,7 +2507,7 @@ async function loadAdminSupportMsgs(container){
     document.getElementById('showArchSupportLink')?.addEventListener('click',()=>loadArchiveView(el));
     _inboxSetHandler(el,function(e){
       const tog=e.target.closest('[data-toggle]');
-      if(tog){const b=document.getElementById('ibody-'+tog.dataset.toggle);if(b){const o=b.style.display!=='none';b.style.display=o?'none':'block';const ic=tog.querySelector('i.fa-chevron-down');if(ic)ic.style.transform=o?'':'rotate(180deg)';}}
+      if(tog){const b=document.getElementById('ibody-'+tog.dataset.toggle);if(b){const o=b.style.display!=='none';b.style.display=o?'none':'block';const ic=tog.querySelector('i.fa-chevron-down');if(ic)ic.style.transform=o?'':'rotate(180deg)';if(!o){readSupportIds.add(String(tog.dataset.toggle));saveReadSupport();updateDmBadge();/* Badge als gelesen aus der "Neu"-Markierung nehmen */const badge=tog.querySelector('.sup-new-badge');if(badge){badge.textContent='Gelesen';badge.style.background='var(--bg2)';badge.style.color='var(--muted)';badge.style.borderColor='var(--border)';badge.style.fontWeight='400';}}}
       const rep=e.target.closest('[data-reply]');
       if(rep&&!rep.disabled){
         const id=rep.dataset.reply,ta=document.getElementById('ireply-'+id),txt=(ta?.value||'').trim();
@@ -2568,7 +2587,7 @@ async function loadDmConvList(container){
       const archCount=convs.length-activeConvs.length;
       const archHint=archCount>0?`<div style="text-align:center;font-size:.7rem;color:var(--muted);padding:6px 0 2px;cursor:pointer" id="showArchLink">📦 ${archCount} archiviert</div>`:'';
       el.innerHTML=newBtn+activeConvs.map(c=>{
-      const isRead=c.unread===0&&c.last.from_uid!==userId;
+      const isRead=c.last.from_uid!==userId&&(dmViewState[c.uid]&&new Date(c.last.created_at).getTime()<=dmViewState[c.uid]);
       return`<div class="sw-wrap">
         <div class="sw-arch"><i class="fas fa-archive" style="font-size:.85rem;color:#fff"></i><span style="font-size:.58rem;color:#fff;font-weight:700;margin-top:2px">Archivieren</span></div>
         <div class="dm-conv-row sw-content" data-dmuid="${c.uid}" data-dmname="${encodeURIComponent(c.name)}" style="margin-bottom:0;${isRead?'opacity:.5':''}">
@@ -2628,14 +2647,14 @@ async function openDmThread(uid,name,backFn=null){
   $('dmBackBtn').addEventListener('click',()=>{activeDmThread=null;if(backFn)backFn();else loadInbox();});
   $('dmSendBtn').addEventListener('click',send);
   $('dmInput')?.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
-  if(sb){await sb.from('direct_messages').update({read_at:new Date().toISOString()}).eq('to_uid',userId).eq('from_uid',uid).is('read_at',null);updateDmBadge();}
+  dmViewState[uid]=Date.now();saveDmViewState();updateDmBadge();
   await loadDmMessages(uid);
 }
 
 async function loadDmMessages(uid){
   const el=document.getElementById('dmMsgs');if(!el)return;
   try{
-    const{data,error}=await sb.from('direct_messages').select('*').or(`and(from_uid.eq.${userId},to_uid.eq.${uid}),and(from_uid.eq.${uid},to_uid.eq.${userId})`).order('created_at',{ascending:true}).limit(100);
+    const{data,error}=await sb.from('direct_messages').select('*').in('from_uid',[userId,uid]).in('to_uid',[userId,uid]).order('created_at',{ascending:true}).limit(100);
     if(error)throw error;
     if(!data?.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:.8rem">Noch keine Nachrichten 👋<br><span style="font-size:.65rem;color:var(--muted)">Falls Nachrichten fehlen: <span style="color:var(--primary);cursor:pointer;text-decoration:underline" id="dmRlsLink">Supabase-Setup prüfen</span></span></div>';document.getElementById('dmRlsLink')?.addEventListener('click',()=>showSqlHint('dm'));return;}
     el.innerHTML=data.map(m=>{
