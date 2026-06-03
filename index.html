@@ -385,6 +385,10 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 <video id="bgVideo" autoplay muted loop playsinline webkit-playsinline preload="auto" tabindex="-1">
   <source src="bg.mp4" type="video/mp4">
 </video>
+<script>
+/* Frühestmöglicher play()-Aufruf – direkt nach dem Element, vor allem anderen */
+(function(){var v=document.getElementById('bgVideo');if(!v)return;v.muted=true;var p=v.play();if(p&&p.catch)p.catch(function(){});})();
+</script>
 <div id="onboarding" style="display:none">
   <div class="ob-card">
     <div class="ob-title">RUNNERS CONQUER</div>
@@ -2541,12 +2545,11 @@ window.initApp=function(){
   $('hdrLevel').addEventListener('click',()=>{hdrTaps++;if(hdrTaps>=5){hdrTaps=0;openAdminPanel();}});
 };
 
-/* Autoplay läuft über HTML-Attribute (autoplay muted playsinline).
-   Nur Touch-Fallback falls Browser es trotzdem blockiert. */
 function startBgVideo(){
   const vid=document.getElementById('bgVideo');
   if(!vid)return;
   vid.muted=true;
+  if(vid.paused){vid.play().catch(()=>{});}
   document.addEventListener('touchstart',()=>{
     if(vid.paused){vid.muted=true;vid.play().catch(()=>{});}
   },{once:true,passive:true});
