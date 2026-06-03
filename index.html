@@ -114,6 +114,17 @@ body{
 .hdr-actions{display:flex;gap:6px}
 .icon-btn{background:var(--card);border:1px solid var(--border);color:var(--primary);width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;transition:transform .15s;-webkit-user-select:none;user-select:none}
 .icon-btn:active{transform:scale(.9)}
+.notif-badge{position:absolute;top:-4px;right:-4px;background:#ff4d6d;color:#fff;font-size:.55rem;font-weight:700;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;pointer-events:none}
+#notifBtn{position:relative}
+.notif-panel{position:fixed;top:calc(var(--hdr-total) + 4px);right:14px;width:min(320px,calc(100vw - 28px));background:var(--card);border:1px solid var(--border);border-radius:18px;z-index:700;box-shadow:0 8px 32px rgba(0,0,0,.4);max-height:380px;overflow-y:auto;display:none}
+.notif-panel.open{display:block}
+.notif-row{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer}
+.notif-row:last-child{border-bottom:none}
+.notif-row.unread{background:rgba(var(--primary-rgb),.06)}
+.notif-icon{font-size:1.3rem;flex-shrink:0;margin-top:1px}
+.notif-text{flex:1;font-size:.78rem;line-height:1.4}
+.notif-time{font-size:.65rem;color:var(--muted);white-space:nowrap}
+.notif-header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px 6px;font-size:.72rem;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase}
 
 /* ═══ SCREENS ═══ */
 #screens{position:fixed;top:var(--hdr-total);left:0;right:0;bottom:var(--nav-total);overflow:hidden}
@@ -428,7 +439,12 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
     <span class="hdr-logo">RC</span>
     <span class="hdr-badge" id="userBadge"><span id="hdrAvatar">🏃</span><span id="hdrName">Läufer</span><span id="hdrLevel" style="font-size:.6rem;color:var(--primary);margin-left:2px">Lv.1</span></span>
     <button class="icon-btn" id="settingsBtn"><i class="fas fa-cog"></i></button>
+    <button class="icon-btn" id="notifBtn" aria-label="Benachrichtigungen"><i class="fas fa-bell"></i><span id="notifBadge" class="notif-badge" style="display:none">0</span></button>
   </header>
+  <div id="notifPanel" class="notif-panel">
+    <div class="notif-header"><span>Benachrichtigungen</span><button id="clearNotifBtn" style="background:none;border:none;color:var(--primary);font-size:.72rem;cursor:pointer">Alle löschen</button></div>
+    <div id="notifList"></div>
+  </div>
 
   <div id="screens">
 
@@ -881,6 +897,7 @@ let isRunning=false,watchId=null;
 let path=[],lastPos=null,dist=0;
 let territories=[],points=0;
 let userId='user',playerName='',userColor=COLORS[0],userAvatar=AVATARS[0];
+let userAvatarImg=null;
 let energy=CFG.ENERGY_MAX,lastEnergyTs=Date.now(),energyWeek='';
 let history=[],quests=[],achievements=[];
 let totalKm=0,totalConquered=0,totalDefended=0;
@@ -894,6 +911,7 @@ let currentView='map',currentTab='history';
 let landmarks=[];
 let weekChart=null;
 let selectedTerrId=null,editAvatar=AVATARS[0];
+let notifications=[];
 let kmSplits=[],lastSplitKm=0,lastSplitSecs=0;
 let liveInterval=null;
 let botActivities=[];
@@ -1027,12 +1045,18 @@ function load(){
 const THEME_CLASSES=['theme-citrus','theme-stone','theme-pine','theme-petrol'];
 function getActiveTheme(){return THEME_CLASSES.find(c=>document.body.classList.contains(c))||'theme-citrus';}
 function applyTheme(name){THEME_CLASSES.forEach(c=>document.body.classList.remove(c));document.body.classList.add(THEME_CLASSES.includes(name)?name:'theme-citrus');setTiles();}
-function saveProfile(){const theme=getActiveTheme();localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userId,theme,userTeam}));$('hdrAvatar').textContent=userAvatar;$('hdrName').textContent=playerName;syncProfile();}
+function saveProfile(){const theme=getActiveTheme();localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam}));$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;syncProfile();}
 function loadProfile(){
-  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userTeam=p.userTeam||null;const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').textContent=userAvatar;$('hdrName').textContent=playerName;return true;}}catch(e){}
+  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
   return false;
 }
 function closeAllModals(){['profileModal','postRunModal','renameModal','settingsModal','adminModal'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+
+/* ── AVATAR HTML HELPER ── */
+function avatarHTML(size){
+  if(userAvatarImg)return`<img src="${userAvatarImg}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;display:block">`;
+  return`<span style="font-size:${Math.round(size*.65)}px;line-height:${size}px;display:block;text-align:center">${userAvatar||'🏃'}</span>`;
+}
 
 /* ── HERRSCHERTITEL ── */
 function getTerritoryTitle(){
@@ -1067,6 +1091,27 @@ function refreshHeat(){
   if(btn){btn.classList.toggle('active',heatPersonalOnly);btn.innerHTML='<i class="fas fa-user"></i> '+(heatPersonalOnly?'Meine Wärme':'Alle Wärme');}
 }
 
+/* ── NOTIFICATIONS ── */
+function addNotif(icon, text){
+  notifications.unshift({id:Date.now(),icon,text,time:Date.now(),read:false});
+  if(notifications.length>50)notifications=notifications.slice(0,50);
+  updateNotifBadge();
+}
+function updateNotifBadge(){
+  const count=notifications.filter(n=>!n.read).length;
+  const badge=$('notifBadge');
+  if(badge){badge.textContent=count>9?'9+':count;badge.style.display=count?'flex':'none';}
+}
+function renderNotifPanel(){
+  const MONTHS=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+  $('notifList').innerHTML=notifications.length?notifications.map(n=>{
+    const d=new Date(n.time);const diff=Math.round((Date.now()-n.time)/60000);
+    const t=diff<1?'gerade':diff<60?`${diff} Min.`:diff<1440?`${Math.floor(diff/60)} Std.`:`${d.getDate()}. ${MONTHS[d.getMonth()]}`;
+    return`<div class="notif-row${n.read?'':' unread'}" onclick="window.markNotifRead(${n.id})"><span class="notif-icon">${n.icon}</span><span class="notif-text">${n.text}</span><span class="notif-time">${t}</span></div>`;
+  }).join(''):'<div style="padding:20px;text-align:center;color:var(--muted);font-size:.8rem">Keine Benachrichtigungen</div>';
+}
+window.markNotifRead=function(id){const n=notifications.find(n=>n.id===id);if(n)n.read=true;updateNotifBadge();renderNotifPanel();};
+
 /* ── SAISON ── */
 function checkSeasonRollover(){
   if(seasonChecked)return;seasonChecked=true;
@@ -1083,6 +1128,7 @@ function checkSeasonRollover(){
         if(seasons.length>7)seasons.pop();
         localStorage.setItem('rc_seasons_'+userId,JSON.stringify(seasons));
         setTimeout(()=>toast('🏆 Saison '+mn+' abgeschlossen!'),2000);
+        addNotif('🏆','Saison abgeschlossen! '+snap.points+' Punkte · '+snap.title);
       } else if(!last){
         seasons.push(snap);
         localStorage.setItem('rc_seasons_'+userId,JSON.stringify(seasons));
@@ -1247,9 +1293,11 @@ async function runOneBot(bot){
         bot.pts+=150;bot.conquered++;
         txt=`${bot.avatar} ${bot.name} hat dein Gebiet erobert! ⚔️`;
         toast(`⚠️ ${bot.name} hat ein Gebiet übernommen!`);vib([100,50,100]);
+        addNotif('⚔️',bot.name+' hat dein Gebiet erobert!');
       } else {
         bot.pts+=30;
         txt=`${bot.avatar} ${bot.name} greift ein Gebiet an (${(km).toFixed(1)} km)`;
+        addNotif('⚔️',bot.name+' greift dein Gebiet an!');
       }
     } else if(ownBotTerr){
       ownBotTerr.defense=Math.min(100,ownBotTerr.defense+km*6);
@@ -1677,6 +1725,7 @@ function onGPS(pos){
       points+=CFG.LANDMARK_PTS;
       save();renderLandmarks();
       toast('⭐ Wahrzeichen entdeckt: '+lm.name+' +'+CFG.LANDMARK_PTS+' Pts!');beep(880,.1);vib(120);
+      addNotif('⭐','Wahrzeichen entdeckt: '+lm.name);
     }
   });
 }
@@ -1784,6 +1833,7 @@ function processConquest(np,area,d,boosted=false){
     pts+=gainXP;
     const rarLbl=rarity!=='common'?(' · '+RARITY_LABELS[rarity]):'';
     toast('🗺️ Neues Gebiet'+rarLbl+'! +'+gainXP+' XP');
+    addNotif('🗺️','Neues Gebiet erobert! '+RARITY_LABELS[rarity]);
   }else{
     ovl.forEach(t=>{
       let ov=0;try{const inter=turf.intersect(turf.featureCollection([turf.feature(t.polygon),turf.feature(np)]));if(inter)ov=turf.area(inter);}catch(e){}
@@ -1823,6 +1873,7 @@ function processConquest(np,area,d,boosted=false){
           [660,880,1100].forEach((f,i)=>setTimeout(()=>beep(f,.1),i*80));
           const rarLbl=t.rarity&&t.rarity!=='common'?(' · '+RARITY_LABELS[t.rarity]):'';
           toast('🔥 GEBIET EROBERT'+rarLbl+'! +'+conquestXP+' XP');vib([100,50,100]);
+          addNotif('🗺️','Neues Gebiet erobert! '+RARITY_LABELS[t.rarity||'common']);
         }else{
           t.lastDefended=now;
           toast('⚔️ Angriff! Stärke: '+Math.round(t.defense)+'/100 (-'+Math.round(dmg)+')');
@@ -2076,9 +2127,21 @@ function renderSettingsTab(tab){
   const body=$('settingsBody');
   if(tab==='profil'){
     body.innerHTML=`<div class="field"><label>Name</label><input type="text" id="setName" class="modal-input" value="${playerName||''}"></div><div class="field"><label>Avatar</label><div class="avatar-row" id="setAvatarRow"></div></div><button class="btn btn-p" id="saveSetProfil" style="width:100%">Speichern</button>`;
-    let tmpAv=userAvatar;
-    AVATARS.forEach(a=>{const s=document.createElement('span');s.className='av-opt'+(a===tmpAv?' sel':'');s.textContent=a;s.onclick=()=>{document.querySelectorAll('#setAvatarRow .av-opt').forEach(o=>o.classList.remove('sel'));s.classList.add('sel');tmpAv=a};$('setAvatarRow').appendChild(s)});
-    $('saveSetProfil').addEventListener('click',()=>{playerName=$('setName').value.trim()||playerName;userAvatar=tmpAv;editAvatar=tmpAv;saveProfile();updateProfile();toast('Profil gespeichert')});
+    const setAvatarRow=$('setAvatarRow');
+    setAvatarRow.innerHTML=`<div style="display:flex;align-items:center;gap:12px">
+  <div id="setAvatarPreview" style="width:54px;height:54px;border-radius:50%;background:var(--bg2);border:2px solid var(--border);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center">${avatarHTML(54)}</div>
+  <div style="flex:1">
+    <label class="btn" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:.8rem"><i class="fas fa-upload"></i> Bild hochladen<input type="file" accept="image/*" id="avatarFileInput" style="display:none"></label>
+    <div style="font-size:.68rem;color:var(--muted);margin-top:4px">JPG, PNG, GIF · max. 2 MB</div>
+  </div>
+</div>`;
+    document.getElementById('avatarFileInput')?.addEventListener('change',function(){
+      const file=this.files[0];if(!file||file.size>2e6)return toast('Bild zu groß (max. 2 MB)');
+      const reader=new FileReader();
+      reader.onload=e=>{userAvatarImg=e.target.result;$('setAvatarPreview').innerHTML=avatarHTML(54);$('hdrAvatar').innerHTML=avatarHTML(22);};
+      reader.readAsDataURL(file);
+    });
+    $('saveSetProfil').addEventListener('click',()=>{playerName=$('setName').value.trim()||playerName;editAvatar=userAvatar;saveProfile();updateProfile();toast('Profil gespeichert')});
   } else if(tab==='theme'){
     const cur=getActiveTheme();
     const themes=[
@@ -2178,7 +2241,7 @@ function initAdminCharts(){
 
 /* PROFILE */
 function updateProfile(){
-  $('pvAvatar').textContent=userAvatar;$('pvName').textContent=playerName;
+  $('pvAvatar').innerHTML=avatarHTML(54);$('pvName').textContent=playerName;
   const banner=$('pvBanner');banner.style.background=`linear-gradient(135deg,${userColor}44,${userColor}11,var(--bg2))`;banner.style.borderColor=userColor+'55';
   if(history.length){const d=new Date(history[0].date);$('pvSince').textContent='Aktiv seit '+d.toLocaleDateString('de',{month:'long',year:'numeric'});}
   const lvD=getLvlProg(points);
@@ -2282,12 +2345,36 @@ function setupBg(){
 
 /* ONBOARDING */
 function renderOnboarding(){
-  const ad=$('avatarOpts');ad.innerHTML='';
-  AVATARS.forEach(a=>{const s=document.createElement('span');s.className='av-opt'+(a===userAvatar?' sel':'');s.textContent=a;s.onclick=()=>{document.querySelectorAll('.av-opt').forEach(o=>o.classList.remove('sel'));s.classList.add('sel');userAvatar=a};ad.appendChild(s)});
+  const ad=$('avatarOpts');
+  ad.innerHTML=`<div style="display:flex;align-items:center;gap:12px">
+  <div id="obAvatarPreview" style="width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.1);border:2px solid rgba(230,255,85,.2);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center">${avatarHTML(54)}</div>
+  <div style="flex:1">
+    <label class="btn" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:.8rem"><i class="fas fa-upload"></i> Foto hochladen<input type="file" accept="image/*" id="obAvatarFileInput" style="display:none"></label>
+    <div style="font-size:.68rem;color:rgba(255,255,255,.5);margin-top:4px">Optional · JPG, PNG · max. 2 MB</div>
+  </div>
+</div>`;
+  document.getElementById('obAvatarFileInput')?.addEventListener('change',function(){
+    const file=this.files[0];if(!file||file.size>2e6)return;
+    const reader=new FileReader();
+    reader.onload=e=>{userAvatarImg=e.target.result;$('obAvatarPreview').innerHTML=avatarHTML(54);};
+    reader.readAsDataURL(file);
+  });
 }
 function renderEditAvatars(){
-  editAvatar=userAvatar;const ad=$('editAvatarRow');ad.innerHTML='';
-  AVATARS.forEach(a=>{const s=document.createElement('span');s.className='av-opt'+(a===editAvatar?' sel':'');s.textContent=a;s.onclick=()=>{document.querySelectorAll('#editAvatarRow .av-opt').forEach(o=>o.classList.remove('sel'));s.classList.add('sel');editAvatar=a};ad.appendChild(s)});
+  editAvatar=userAvatar;const ad=$('editAvatarRow');
+  ad.innerHTML=`<div style="display:flex;align-items:center;gap:12px">
+  <div id="editAvatarPreview" style="width:54px;height:54px;border-radius:50%;background:var(--bg2);border:2px solid var(--border);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center">${avatarHTML(54)}</div>
+  <div style="flex:1">
+    <label class="btn" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:.8rem"><i class="fas fa-upload"></i> Bild hochladen<input type="file" accept="image/*" id="editAvatarFileInput" style="display:none"></label>
+    <div style="font-size:.68rem;color:var(--muted);margin-top:4px">JPG, PNG, GIF · max. 2 MB</div>
+  </div>
+</div>`;
+  document.getElementById('editAvatarFileInput')?.addEventListener('change',function(){
+    const file=this.files[0];if(!file||file.size>2e6)return toast('Bild zu groß (max. 2 MB)');
+    const reader=new FileReader();
+    reader.onload=e=>{userAvatarImg=e.target.result;$('editAvatarPreview').innerHTML=avatarHTML(54);$('hdrAvatar').innerHTML=avatarHTML(22);};
+    reader.readAsDataURL(file);
+  });
 }
 function toggleTheme(){const i=(THEME_CLASSES.indexOf(getActiveTheme())+1)%THEME_CLASSES.length;applyTheme(THEME_CLASSES[i]);saveProfile();}
 
@@ -2333,6 +2420,15 @@ window.initApp=function(){
   /* Settings modal */
   $('settingsBtn').addEventListener('click',()=>{closeAllModals();$('settingsModal').style.display='flex';renderSettingsTab('profil');document.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.stab==='profil'));});
   $('closeSettingsBtn').addEventListener('click',()=>$('settingsModal').style.display='none');
+  $('notifBtn')?.addEventListener('click',function(e){
+    e.stopPropagation();
+    const panel=$('notifPanel');
+    const isOpen=panel.classList.contains('open');
+    panel.classList.toggle('open',!isOpen);
+    if(!isOpen){notifications.forEach(n=>n.read=true);updateNotifBadge();renderNotifPanel();}
+  });
+  document.addEventListener('click',e=>{if(!e.target.closest('#notifPanel')&&!e.target.closest('#notifBtn'))$('notifPanel')?.classList.remove('open');});
+  $('clearNotifBtn')?.addEventListener('click',()=>{notifications=[];updateNotifBadge();renderNotifPanel();});
   document.querySelectorAll('.stab-btn').forEach(b=>b.addEventListener('click',function(){document.querySelectorAll('.stab-btn').forEach(t=>t.classList.remove('active'));this.classList.add('active');renderSettingsTab(this.dataset.stab);}));
   /* Admin modal */
   $('closeAdminBtn').addEventListener('click',()=>$('adminModal').style.display='none');
