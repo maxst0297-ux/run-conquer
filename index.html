@@ -137,9 +137,10 @@ body{
 .dm-bubble-them{background:var(--card);border:1px solid var(--border);align-self:flex-start;border-radius:16px 16px 16px 4px}
 .follow-btn{font-size:.6rem;border:1px solid var(--border);background:none;color:var(--muted);border-radius:10px;padding:2px 8px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;font-family:'Poppins',sans-serif;white-space:nowrap;transition:.15s}
 .follow-btn.following{border-color:var(--primary);color:var(--primary)}
-/* ═══ SWIPE ARCHIVE ═══ */
+/* ═══ SWIPE ARCHIVE / DELETE ═══ */
 .sw-wrap{position:relative;overflow:hidden;margin-bottom:6px;border-radius:12px}
 .sw-arch{position:absolute;left:0;top:0;height:100%;width:88px;background:linear-gradient(135deg,#10b981,#059669);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:3px;z-index:0;border-radius:12px 0 0 12px}
+.sw-del{position:absolute;right:0;top:0;height:100%;width:88px;background:linear-gradient(135deg,#ef4444,#dc2626);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:3px;z-index:0;border-radius:0 12px 12px 0}
 .sw-content{position:relative;will-change:transform;z-index:1;background:var(--card)}
 .notif-row{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer}
 .notif-row:last-child{border-bottom:none}
@@ -2474,8 +2475,8 @@ async function loadAdminSupportMsgs(container){
         const replied=!!(m.admin_reply?.trim());
         const wasRead=false;
         return`<div class="sw-wrap" style="margin-bottom:8px">
-  <div class="sw-arch"><i class="fas fa-archive" style="font-size:.85rem;color:#fff"></i><span style="font-size:.58rem;color:#fff;font-weight:700;margin-top:2px">Archivieren</span></div>
-  <div class="inbox-card${replied||wasRead?'':' inbox-unread'} sw-content" id="imsg-${m.id}" style="margin-bottom:0;${wasRead&&!replied?'background:var(--bg2)':''}">
+  <div class="sw-arch"><i class="fas fa-archive" style="font-size:.85rem;color:#fff"></i><span style="font-size:.58rem;color:#fff;font-weight:700;margin-top:2px">Archiv</span></div>
+  <div class="inbox-card${replied?'':' inbox-unread'} sw-content" id="imsg-${m.id}" style="margin-bottom:0">
 <div class="inbox-card-hdr" data-toggle="${m.id}">
   <div style="flex:1;min-width:0">
     <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px">
@@ -2493,13 +2494,18 @@ async function loadAdminSupportMsgs(container){
     <textarea id="ireply-${m.id}" class="modal-input" style="flex:1;resize:none;height:70px;font-family:'Poppins',sans-serif;font-size:.8rem;padding:8px" placeholder="${replied?'Antwort aktualisieren…':'Antwort verfassen…'}">${replied?m.admin_reply:''}</textarea>
     <button class="btn btn-p" style="flex-shrink:0;padding:8px 14px;font-size:.8rem;touch-action:manipulation" data-reply="${m.id}">${replied?'✏️':'📨'}</button>
   </div>
-</div></div></div>`;
+</div></div>
+  <div class="sw-del"><i class="fas fa-trash" style="font-size:.85rem;color:#fff"></i><span style="font-size:.58rem;color:#fff;font-weight:700;margin-top:2px">Löschen</span></div>
+</div>`;
       }).join('')+archSupportHint;
     el.querySelectorAll('.sw-wrap').forEach(wrap=>{
       const card=wrap.querySelector('.inbox-card');
       if(!card)return;
       const id=card.id?.replace('imsg-','');
-      if(id)addSwipeArchive(wrap,()=>{archivedSupportIds.add(id);saveArchived();updateDmBadge();});
+      if(id)addSwipeHandlers(wrap,
+        ()=>{archivedSupportIds.add(id);saveArchived();updateDmBadge();},
+        ()=>deleteSupportMsg(id).then(()=>loadAdminSupportMsgs(el))
+      );
     });
     document.getElementById('showArchSupportLink')?.addEventListener('click',()=>loadArchiveView(el));
     _inboxSetHandler(el,function(e){
@@ -2544,20 +2550,45 @@ async function loadInbox(){
   }
 }
 
-function addSwipeArchive(wrapEl,onArchive){
+function addSwipeHandlers(wrapEl,onArchive,onDelete){
   const cont=wrapEl.querySelector('.sw-content');
   const archBtn=wrapEl.querySelector('.sw-arch');
-  if(!cont||!archBtn)return;
+  const delBtn=wrapEl.querySelector('.sw-del');
+  if(!cont)return;
   let sx=0,dx=0,open=false;
+  const collapse=()=>{const h=wrapEl.offsetHeight;wrapEl.style.maxHeight=h+'px';wrapEl.style.overflow='hidden';requestAnimationFrame(()=>{wrapEl.style.transition='max-height .28s,opacity .28s,margin .28s';wrapEl.style.maxHeight='0';wrapEl.style.opacity='0';wrapEl.style.marginBottom='0';});};
   cont.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;cont.style.transition='none';},{passive:true});
-  cont.addEventListener('touchmove',e=>{dx=Math.max(0,Math.min(88,e.touches[0].clientX-sx));cont.style.transform=`translateX(${dx}px)`;},{passive:true});
-  cont.addEventListener('touchend',()=>{cont.style.transition='transform .22s';if(dx>44){cont.style.transform='translateX(88px)';open=true;}else{cont.style.transform='translateX(0)';open=false;}dx=0;});
-  cont.addEventListener('click',()=>{if(open){cont.style.transition='transform .22s';cont.style.transform='translateX(0)';open=false;}});
-  archBtn.addEventListener('click',()=>{
-    const h=wrapEl.offsetHeight;wrapEl.style.maxHeight=h+'px';wrapEl.style.overflow='hidden';
-    requestAnimationFrame(()=>{wrapEl.style.transition='max-height .28s,opacity .28s,margin .28s';wrapEl.style.maxHeight='0';wrapEl.style.opacity='0';wrapEl.style.marginBottom='0';});
-    setTimeout(()=>{wrapEl.remove();onArchive();},310);
+  cont.addEventListener('touchmove',e=>{
+    const raw=e.touches[0].clientX-sx;
+    if(raw>0&&archBtn){dx=Math.min(88,raw);cont.style.transform=`translateX(${dx}px)`;}
+    else if(raw<0&&delBtn){dx=Math.max(-88,raw);cont.style.transform=`translateX(${dx}px)`;}
+  },{passive:true});
+  cont.addEventListener('touchend',()=>{
+    cont.style.transition='transform .22s';
+    if(dx>44){cont.style.transform='translateX(88px)';open=true;}
+    else if(dx<-44){cont.style.transform='translateX(-88px)';open=true;}
+    else{cont.style.transform='translateX(0)';open=false;}
+    dx=0;
   });
+  cont.addEventListener('click',()=>{if(open){cont.style.transition='transform .22s';cont.style.transform='translateX(0)';open=false;}});
+  archBtn?.addEventListener('click',()=>{collapse();setTimeout(()=>{wrapEl.remove();onArchive&&onArchive();},310);});
+  delBtn?.addEventListener('click',()=>{collapse();setTimeout(()=>{wrapEl.remove();onDelete&&onDelete();},310);});
+}
+/* Rückwärtskompatibilität */
+function addSwipeArchive(wrapEl,onArchive){addSwipeHandlers(wrapEl,onArchive,null);}
+
+async function deleteDmConv(uid,reloadEl){
+  if(!sb)return;
+  await sb.from('direct_messages').delete().eq('from_uid',userId).eq('to_uid',uid);
+  await sb.from('direct_messages').delete().eq('from_uid',uid).eq('to_uid',userId);
+  archivedConvs=archivedConvs.filter(a=>a.uid!==uid);
+  saveArchived();updateDmBadge();
+}
+async function deleteSupportMsg(id){
+  if(!sb||!isAdmin)return;
+  const{error}=await sb.from('support_messages').delete().eq('id',id);
+  if(error)toast('❌ '+error.message);
+  else{archivedSupportIds.delete(id);saveArchived();updateDmBadge();}
 }
 
 /* DM-Konversationsliste */
@@ -2586,7 +2617,7 @@ async function loadDmConvList(container){
       el.innerHTML=newBtn+activeConvs.map(c=>{
       const isRead=c.unread===0&&c.last.from_uid!==userId;
       return`<div class="sw-wrap">
-        <div class="sw-arch"><i class="fas fa-archive" style="font-size:.85rem;color:#fff"></i><span style="font-size:.58rem;color:#fff;font-weight:700;margin-top:2px">Archivieren</span></div>
+        <div class="sw-arch"><i class="fas fa-archive" style="font-size:.85rem;color:#fff"></i><span style="font-size:.58rem;color:#fff;font-weight:700;margin-top:2px">Archiv</span></div>
         <div class="dm-conv-row sw-content" data-dmuid="${c.uid}" data-dmname="${encodeURIComponent(c.name)}" style="margin-bottom:0;${isRead?'background:var(--bg2)':''}">
           <div style="width:38px;height:38px;border-radius:50%;background:var(--primary)22;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:${isRead?'400':'700'};color:${isRead?'var(--muted)':'var(--primary)'};flex-shrink:0">${(c.name||'?')[0].toUpperCase()}</div>
           <div style="flex:1;min-width:0">
@@ -2595,6 +2626,7 @@ async function loadDmConvList(container){
           </div>
           ${!isRead?`<span style="background:var(--primary);color:#000;border-radius:50%;min-width:18px;height:18px;font-size:.6rem;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;flex-shrink:0">●</span>`:'<i class="fas fa-chevron-right" style="color:var(--muted);font-size:.7rem;flex-shrink:0"></i>'}
         </div>
+        <div class="sw-del"><i class="fas fa-trash" style="font-size:.85rem;color:#fff"></i><span style="font-size:.58rem;color:#fff;font-weight:700;margin-top:2px">Löschen</span></div>
       </div>`;
     }).join('')+archHint;
     }
@@ -2602,15 +2634,17 @@ async function loadDmConvList(container){
     el.querySelectorAll('.sw-wrap').forEach(wrap=>{
       const row=wrap.querySelector('[data-dmuid]');
       if(!row)return;
-      addSwipeArchive(wrap,()=>{
-        const aUid=row.dataset.dmuid,aName=decodeURIComponent(row.dataset.dmname||'');
-        if(!archivedConvs.some(a=>a.uid===aUid))archivedConvs.push({uid:aUid,name:aName});
-        saveArchived();updateDmBadge();
-        // Refresh archHint after archiving
-        const archHintEl=el.querySelector('#showArchLink');
-        if(archHintEl){archHintEl.textContent=`📦 ${archivedConvs.length} archiviert`;archHintEl.style.display='';}
-        else{const h=document.createElement('div');h.id='showArchLink';h.style.cssText='text-align:center;font-size:.7rem;color:var(--muted);padding:6px 0 2px;cursor:pointer';h.textContent=`📦 ${archivedConvs.length} archiviert`;el.appendChild(h);h.addEventListener('click',()=>loadArchiveView(el));}
-      });
+      const aUid=row.dataset.dmuid,aName=decodeURIComponent(row.dataset.dmname||'');
+      addSwipeHandlers(wrap,
+        ()=>{
+          if(!archivedConvs.some(a=>a.uid===aUid))archivedConvs.push({uid:aUid,name:aName});
+          saveArchived();updateDmBadge();
+          const archHintEl=el.querySelector('#showArchLink');
+          if(archHintEl){archHintEl.textContent=`📦 ${archivedConvs.length} archiviert`;archHintEl.style.display='';}
+          else{const h=document.createElement('div');h.id='showArchLink';h.style.cssText='text-align:center;font-size:.7rem;color:var(--muted);padding:6px 0 2px;cursor:pointer';h.textContent=`📦 ${archivedConvs.length} archiviert`;el.appendChild(h);h.addEventListener('click',()=>loadArchiveView(el));}
+        },
+        ()=>deleteDmConv(aUid)
+      );
     });
     document.getElementById('showArchLink')?.addEventListener('click',()=>loadArchiveView(el));
     el.querySelectorAll('[data-dmuid]').forEach(row=>row.addEventListener('click',()=>openDmThread(row.dataset.dmuid,decodeURIComponent(row.dataset.dmname),()=>loadDmConvList(el))));
