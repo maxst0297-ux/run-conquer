@@ -2061,7 +2061,7 @@ function updateCommunity(){
   const liveNews=botActivities.slice(0,4).map(a=>{const diff=Math.round((Date.now()-a.time)/60000);const t=diff<1?'gerade':diff<60?`vor ${diff} Min.`:`vor ${Math.floor(diff/60)} Std.`;return{icon:'🏃',txt:a.text,t};});
   $('newsList').innerHTML=[...liveNews,...staticNews].slice(0,5).map(n=>`<div class="list-row"><span class="row-icon">${n.icon}</span><span class="row-txt">${n.txt}</span><span class="row-meta">${n.t}</span></div>`).join('');
   $('recordsList').innerHTML=[['🏃','Längster Lauf',fmtDist(Math.max(0,...history.map(r=>r.distance)))],['⚔️','Gebiete erobert',totalConquered],['📐','Größtes Gebiet',Math.round(Math.max(0,...territories.filter(t=>t.owner===userId).map(t=>t.area||0)))+' m²'],['🔥','Streak',streakDays+' Tage']].map(([i,l,v])=>`<div class="list-row"><span class="row-icon">${i}</span><span class="row-txt">${l}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary)">${v}</span></div>`).join('');
-  $('followerList').innerHTML=[{name:'SpeedKing',av:'⚡',txt:'10 km in 45 Min',t:'vor 1 Tag'},{name:'MountainGoat',av:'🤸',txt:'500 Punkte durch Eroberung',t:'vor 3 Std.'},{name:'NightOwl',av:'🏋️',txt:'3 Gebiete verteidigt',t:'vor 6 Std.'}].map(f=>`<div class="list-row"><span class="row-icon">${f.av}</span><div class="row-txt"><b>${f.name}</b>: ${f.txt}</div><span class="row-meta">${f.t}</span></div>`).join('');
+  $('followerList').innerHTML=[{name:'Roter Wolf',av:'🐺',txt:'10 km in 45 Min',t:'vor 1 Tag'},{name:'Eiserne Hand',av:'✊',txt:'500 Punkte durch Eroberung',t:'vor 3 Std.'},{name:'Stahl-Garde',av:'⚔️',txt:'3 Gebiete verteidigt',t:'vor 6 Std.'}].map(f=>`<div class="list-row"><span class="row-icon">${f.av}</span><div class="row-txt"><b>${f.name}</b>: ${f.txt}</div><span class="row-meta">${f.t}</span></div>`).join('');
   renderEvents();
   renderLeaderboard();
   renderSocialFeed();
@@ -2242,9 +2242,9 @@ function renderSocialFeed(){
         return{name:bot.name,av:bot.avatar,txt:a.text.replace(bot.avatar+' '+bot.name+' ',''),t,route:null};
       })
     : [
-        {name:'SpeedKing',av:'⚡',txt:'10 km in 45 Min gelaufen',t:'vor 1 Tag',route:[[48.14,11.57],[48.145,11.575],[48.15,11.58],[48.148,11.585]]},
-        {name:'MountainGoat',av:'🤸',txt:'500 Punkte durch Eroberung',t:'vor 3 Std.',route:null},
-        {name:'NightOwl',av:'🏋️',txt:'3 Gebiete verteidigt',t:'vor 6 Std.',route:[[48.13,11.56],[48.132,11.565],[48.135,11.57]]}
+        {name:'Roter Wolf',av:'🐺',txt:'10 km in 45 Min gelaufen',t:'vor 1 Tag',route:[[48.14,11.57],[48.145,11.575],[48.15,11.58],[48.148,11.585]]},
+        {name:'Eiserne Hand',av:'✊',txt:'500 Punkte durch Eroberung',t:'vor 3 Std.',route:null},
+        {name:'Stahl-Garde',av:'⚔️',txt:'3 Gebiete verteidigt',t:'vor 6 Std.',route:[[48.13,11.56],[48.132,11.565],[48.135,11.57]]}
       ];
   $('followerList').innerHTML=feedItems.map((f,idx)=>`<div class="list-row" style="flex-direction:column;align-items:stretch;gap:8px"><div style="display:flex;align-items:center;gap:10px"><span class="row-icon">${f.av}</span><div class="row-txt"><b>${f.name}</b>: ${f.txt}</div><span class="row-meta">${f.t}</span></div>${f.route?`<div style="display:flex;gap:8px"><canvas id="feedRoute${idx}" width="120" height="70" style="border-radius:10px;border:1px solid var(--border);background:var(--bg2)"></canvas></div>`:''}<button onclick="window.applaudActivity()" style="align-self:flex-end;background:none;border:1px solid var(--border);border-radius:20px;padding:3px 12px;font-size:.7rem;color:var(--muted);cursor:pointer;margin-top:2px">👏 Applaudieren</button></div>`).join('');
   feedItems.forEach((f,idx)=>{if(f.route){const cv=document.getElementById('feedRoute'+idx);if(cv)drawMiniMap(cv,f.route);}});
