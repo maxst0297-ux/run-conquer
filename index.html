@@ -1008,6 +1008,7 @@ let registeredAt=Date.now();
 let starterQuestsDone=[],starterQuestFlags={profileOpened:false};
 let seasonChecked=false;
 let importedLayer=null,impCurrentPath=null,bgLockTs=0;
+let silentHeartbeat=null,bgTipShown=false;
 
 /* ═══ SUPABASE ═══ */
 const SB_URL='https://mlkpryhacihbqnmtgkcg.supabase.co';
@@ -1130,16 +1131,31 @@ function startKeepAlive(){
     silentSrc.connect(silentCtx.destination);
     silentSrc.start(0);
   }catch(e){}
+  /* 3) Herzschlag alle 25s: verhindert iOS-Suspension des AudioContext */
+  clearInterval(silentHeartbeat);
+  silentHeartbeat=setInterval(()=>{
+    if(!isRunning){clearInterval(silentHeartbeat);silentHeartbeat=null;return;}
+    try{
+      if(silentCtx&&silentCtx.state==='suspended')silentCtx.resume();
+      if(silentCtx&&silentCtx.state==='running'){
+        const o=silentCtx.createOscillator(),g=silentCtx.createGain();
+        g.gain.value=0.0001;o.frequency.value=1;
+        o.connect(g);g.connect(silentCtx.destination);
+        o.start();o.stop(silentCtx.currentTime+0.05);
+      }
+    }catch(e){}
+  },25000);
 }
 function stopKeepAlive(){
   try{wakeLockSentinel?.release();wakeLockSentinel=null;}catch(e){}
   try{silentSrc?.stop();silentCtx?.close();silentSrc=null;silentCtx=null;}catch(e){}
+  clearInterval(silentHeartbeat);silentHeartbeat=null;
 }
 function restartBgWatch(){
   if(bgWatchId!==null){navigator.geolocation.clearWatch(bgWatchId);bgWatchId=null;}
   bgWatchId=navigator.geolocation.watchPosition(onGPS,e=>{
     console.warn('GPS:',e.code,e.message);
-  },{enableHighAccuracy:true,maximumAge:2000,timeout:15000});
+  },{enableHighAccuracy:true,maximumAge:0,timeout:30000});
 }
 function fmtDist(m){return m<1000?Math.round(m)+' m':(m/1000).toFixed(2)+' km'}
 function fmtTime(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=Math.floor(s%60);return h>0?`${h}:${pad(m)}:${pad(sc)}`:`${pad(m)}:${pad(sc)}`}
@@ -1588,7 +1604,7 @@ function initMap(){
   if(navigator.geolocation&&!bgWatchId){
     bgWatchId=navigator.geolocation.watchPosition(onGPS,e=>{
       console.warn('GPS-Hintergrund-Fehler:',e.code,e.message);
-    },{enableHighAccuracy:true,maximumAge:2000,timeout:20000});
+    },{enableHighAccuracy:true,maximumAge:2000,timeout:30000});
   }
   mapL.on('moveend',debounce(loadLandmarks,1500));
   mapL.on('click',closeDrawer);
@@ -1835,8 +1851,15 @@ function startRun(){
   startLiveUpdate();
   startKeepAlive();   /* WakeLock + stiller Audio → verhindert Hintergrund-Suspendierung */
   restartBgWatch();   /* frischer Watch beim Laufstart */
-  /* Hinweis: Bildschirm sperren kann GPS auf iOS unterbrechen */
-  setTimeout(()=>toast('💡 Bildschirm aktiv lassen – Sperren unterbricht GPS'),1200);
+  if(!bgTipShown){
+    bgTipShown=true;
+    setTimeout(()=>{
+      if(/iPhone|iPad/.test(navigator.userAgent))
+        toast('💡 iOS: Einstellungen → Anzeige → Auto-Sperre → Nie');
+      else
+        toast('💡 Bildschirm aktiv lassen – GPS pausiert beim Sperren');
+    },1800);
+  }
 }
 function onGPS(pos){
   const acc=pos.coords.accuracy||999;
@@ -3115,11 +3138,23 @@ function setupBg(){
         if(bgLockTs>0){
           const gapSecs=Math.round((Date.now()-bgLockTs)/1000);
           bgLockTs=0;
-          if(gapSecs>5)toast(`📍 GPS fortgesetzt · ${gapSecs}s Lücke`);
-          else toast('📍 GPS wieder aktiv');
+          if(gapSecs>5){
+            /* Dead-Reckoning: fehlende Distanz anhand letzter bekannter Geschwindigkeit schätzen */
+            const spd=gpsSpeed&&gpsSpeed>0.5?gpsSpeed:0;
+            if(spd>0){
+              const estDist=Math.round(spd*gapSecs);
+              dist+=estDist;
+              distLive.textContent=fmtDist(dist);
+              toast(`📍 ~${estDist}m geschätzt · ${gapSecs}s Lücke`);
+            } else {
+              toast(`📍 GPS fortgesetzt · ${gapSecs}s Lücke`);
+            }
+          } else toast('📍 GPS wieder aktiv');
         } else toast('📍 GPS wieder aktiv');
         /* Nach Hintergrund: GPS-Watcher neu starten (Browser kann ihn suspendiert haben) */
         restartBgWatch();
+        /* Sofortiger Einzelfix für schnellste Reaktion */
+        navigator.geolocation.getCurrentPosition(onGPS,()=>{},{enableHighAccuracy:true,maximumAge:0,timeout:10000});
         /* WakeLock nach Hintergrund neu anfordern */
         if('wakeLock' in navigator)navigator.wakeLock.request('screen').then(s=>{wakeLockSentinel=s;}).catch(()=>{});
       }
