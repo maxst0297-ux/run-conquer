@@ -6,6 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
+<meta id="themeColorMeta" name="theme-color" content="#042D22">
 <title>Runners Conquer</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -68,10 +69,10 @@ body.theme-petrol {
   --red:#c03355; --green:#2d7a5e; --cyan:#2277aa;
   --muted:#8a7f70; --text:#1a2832;
 }
-html{height:-webkit-fill-available}
+html{height:-webkit-fill-available;background:var(--bg)}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{
-  font-family:'Poppins',sans-serif;background:transparent;color:var(--text);
+  font-family:'Poppins',sans-serif;background:var(--bg);color:var(--text);
   height:100vh;height:100dvh;min-height:-webkit-fill-available;
   overflow:hidden;display:flex;flex-direction:column;
   transition:background .3s,color .3s;
@@ -371,6 +372,11 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .prank-pos{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:var(--muted);width:22px;text-align:center;flex-shrink:0}
 .prank-pos.me{color:var(--primary)}
 .prank-val{font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary);margin-left:auto}
+/* ═══ CLUB SYSTEM ═══ */
+.club-card-info{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:12px}
+.club-code-box{background:var(--bg2);border:1px dashed var(--primary);border-radius:10px;padding:8px 14px;text-align:center;font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:4px;color:var(--primary);cursor:pointer;margin-bottom:4px;user-select:all}
+.club-badge{background:rgba(var(--primary-rgb),.12);color:var(--primary);border:1px solid rgba(var(--primary-rgb),.3);border-radius:20px;padding:3px 12px;font-size:.68rem;font-weight:700;display:inline-block;margin-top:4px}
+.fraktion-locked{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;font-size:.78rem;color:var(--muted);text-align:center;margin-bottom:10px}
 /* ═══ COMBO TOAST ═══ */
 .combo-flash{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:5000;font-family:'Bebas Neue',sans-serif;font-size:3rem;color:var(--primary);text-shadow:0 0 20px var(--primary);pointer-events:none;animation:comboFlash .8s ease forwards}
 @keyframes comboFlash{0%{opacity:0;transform:translate(-50%,-60%) scale(.7)}20%{opacity:1;transform:translate(-50%,-50%) scale(1.1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-40%) scale(1)}}
@@ -734,7 +740,8 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <div class="comm-card"><h3><i class="fas fa-users"></i> Follower-Aktivität</h3><div id="followerList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-medal"></i> Rangliste</h3><div id="leaderboardList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-crown"></i> Wöchentliche Power-Rankings</h3><div id="powerRankList"></div></div>
-      <div class="comm-card"><h3><i class="fas fa-shield-alt"></i> Team-Rangliste</h3><div id="teamRankList"></div></div>
+      <div class="comm-card"><h3><i class="fas fa-shield-alt"></i> Fraktion-Rangliste</h3><div id="teamRankList"></div></div>
+      <div class="comm-card" id="clubCommunityCard"><h3><i class="fas fa-users-cog"></i> Clubs</h3><div id="clubCommunityList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-map-marked-alt"></i> Größte Gebiete</h3><div id="bigTerrList"></div></div>
       <div class="comm-card">
         <h3><i class="fas fa-location-arrow"></i> Nächste Gebiete</h3>
@@ -921,7 +928,8 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
     <div style="display:flex;gap:4px;margin-bottom:16px;overflow-x:auto;-webkit-overflow-scrolling:touch">
       <button class="stab-btn active" data-stab="profil">Profil</button>
       <button class="stab-btn" data-stab="theme">Theme</button>
-      <button class="stab-btn" data-stab="team">Team</button>
+      <button class="stab-btn" data-stab="fraktion">Fraktion</button>
+      <button class="stab-btn" data-stab="club">Club</button>
       <button class="stab-btn" data-stab="spiel">Spiel</button>
       <button class="stab-btn" data-stab="support">Support</button>
       <button class="stab-btn" data-stab="hilfe">Hilfe</button>
@@ -1069,6 +1077,8 @@ let stravaClientId=localStorage.getItem('rc_strava_cid')||'';
 let dailyChallenges=[],dailyChalDate='',chalStreak=0,lastChalDoneDate='';
 let sessionConquests=0;
 let prevLevelCache=1;
+let userClub=null;           // {code,name,icon,foundedAt}
+let lastFraktionChangeDate=''; // "YYYY-MM" when fraktion was last changed
 
 /* ═══ SUPABASE ═══ */
 const SB_URL='https://mlkpryhacihbqnmtgkcg.supabase.co';
@@ -1253,10 +1263,27 @@ function load(){
 }
 const THEME_CLASSES=['theme-citrus','theme-stone','theme-pine','theme-petrol'];
 function getActiveTheme(){return THEME_CLASSES.find(c=>document.body.classList.contains(c))||'theme-citrus';}
-function applyTheme(name){THEME_CLASSES.forEach(c=>document.body.classList.remove(c));document.body.classList.add(THEME_CLASSES.includes(name)?name:'theme-citrus');setTiles();}
-function saveProfile(){const theme=getActiveTheme();localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam}));$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;syncProfile();}
+function applyTheme(name){
+  THEME_CLASSES.forEach(c=>document.body.classList.remove(c));
+  document.body.classList.add(THEME_CLASSES.includes(name)?name:'theme-citrus');
+  setTiles();
+  // Update theme-color for Android status bar to blend with header
+  requestAnimationFrame(()=>{
+    const bg=getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+    const tcm=document.getElementById('themeColorMeta');if(tcm&&bg)tcm.content=bg;
+  });
+}
+function saveProfile(){
+  const theme=getActiveTheme();
+  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate}));
+  $('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;
+  // Update theme-color meta for Android status bar
+  const bgCol=getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+  const tcm=document.getElementById('themeColorMeta');if(tcm&&bgCol)tcm.content=bgCol;
+  syncProfile();
+}
 function loadProfile(){
-  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
+  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
   return false;
 }
 function closeAllModals(){['profileModal','postRunModal','renameModal','settingsModal','adminModal','inboxModal'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
@@ -1431,6 +1458,22 @@ function renderPowerRankings(){
     return`<div class="prank-section"><div class="prank-title">${title}</div>${rows}</div>`;
   }
   el.innerHTML=rankSection('🏃 Wöchentliche km','wkm',v=>v.toFixed(1)+' km')+rankSection('⚔️ Gebiete diese Woche','wConq',v=>v+' Gebiete')+rankSection('🔥 Längster Streak','streak',v=>v+' Tage');
+}
+
+/* ── CLUB COMMUNITY ── */
+function renderClubCommunity(){
+  const el=$('clubCommunityList');if(!el)return;
+  if(!userClub){
+    el.innerHTML=`<div style="text-align:center;padding:16px;color:var(--muted);font-size:.82rem">Du bist noch in keinem Club.<br><button onclick="document.querySelector('[data-view=profile]')?.click();$('settingsBtn')?.click();setTimeout(()=>{document.querySelector('[data-stab=club]')?.click();},100)" style="margin-top:10px;background:var(--primary);color:var(--bg);border:none;border-radius:8px;padding:6px 16px;cursor:pointer;font-family:'Bebas Neue',sans-serif;font-size:.9rem">Club erstellen / beitreten</button></div>`;
+    return;
+  }
+  // Simuliere Club-Mitglieder (lokale Bots als Platzhalter)
+  const fakeMembers=[
+    {name:playerName,avatar:userAvatar||'🏃',pts:points,km:totalKm.toFixed(1),isMe:true},
+    ...BOTS.slice(0,3).map(b=>({name:b.name,avatar:b.avatar,pts:Math.floor(b.pts*0.3),km:(b.totalKm*0.3).toFixed(1),isMe:false}))
+  ].sort((a,b)=>b.pts-a.pts);
+  const totalPts=fakeMembers.reduce((s,m)=>s+m.pts,0);
+  el.innerHTML=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)"><span style="font-size:2rem">${userClub.icon}</span><div style="flex:1"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem">${userClub.name}</div><div style="font-size:.65rem;color:var(--muted)">${fakeMembers.length} Mitglieder · ${totalPts} Gesamt-Punkte</div></div><span class="club-code-box" style="font-size:.9rem;padding:4px 8px;cursor:pointer" onclick="navigator.clipboard?.writeText('${userClub.code}').then(()=>toast('📋 Code kopiert')).catch(()=>toast('Code: ${userClub.code}'))">${userClub.code}</span></div>${fakeMembers.map((m,i)=>`<div class="list-row"><span style="font-family:'Bebas Neue',sans-serif;width:22px;color:${i===0?'var(--primary)':'var(--muted)'}">${['🥇','🥈','🥉',i+1+'.'][i]||i+1+'.'}</span><span style="font-size:1rem">${m.avatar}</span><span class="row-txt" style="${m.isMe?'font-weight:700;color:var(--primary)':''}">${m.name}${m.isMe?' (Du)':''}</span><span style="font-size:.72rem;color:var(--muted)">${m.km} km</span><span style="font-family:'Bebas Neue',sans-serif;color:var(--primary)">${m.pts}</span></div>`).join('')}`;
 }
 
 /* ── SAISON ── */
@@ -2566,7 +2609,8 @@ function updateCommunity(){
   renderLeaderboard();
   renderSocialFeed();
   renderPowerRankings();
-  // Team-Rangliste
+  renderClubCommunity();
+  // Fraktion-Rangliste
   const teamEl=$('teamRankList');
   if(teamEl){
     const teamStats=TEAMS.map(tm=>{
@@ -2782,10 +2826,39 @@ function renderSettingsTab(tab){
     ];
     body.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${themes.map(th=>`<button class="theme-pick-btn" data-tid="${th.id}" style="padding:14px 10px;border-radius:14px;border:2px solid ${cur===th.id?th.accent:'var(--border)'};background:${th.bg};cursor:pointer;transition:.2s;display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left"><div style="display:flex;gap:6px;align-items:center"><div style="width:18px;height:18px;border-radius:50%;background:${th.accent};box-shadow:0 0 8px ${th.accent}44"></div>${cur===th.id?'<div style="font-size:.6rem;background:'+th.accent+'33;color:'+th.accent+';padding:1px 7px;border-radius:10px;font-weight:700">AKTIV</div>':''}</div><div style="font-weight:700;font-size:.82rem;color:${th.dark?'#fff':th.bg==='#F4E9D4'?'#1a2832':'#1a2e25'}">${th.name}</div><div style="font-size:.6rem;color:${th.dark?'rgba(255,255,255,.5)':'rgba(0,0,0,.4)'}">${th.desc}</div></button>`).join('')}</div>`;
     body.querySelectorAll('.theme-pick-btn').forEach(btn=>{btn.addEventListener('click',()=>{applyTheme(btn.dataset.tid);saveProfile();renderSettingsTab('theme');});});
-  } else if(tab==='team'){
+  } else if(tab==='fraktion'){
     const cur=userTeam;
-    body.innerHTML=`<div style="font-size:.82rem;font-weight:600;margin-bottom:10px">🔥 Wähle dein Team</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${TEAMS.map(tm=>`<button class="team-sel-btn" data-tid="${tm.id}" style="padding:14px 8px;border-radius:14px;border:2px solid ${cur===tm.id?tm.color:'var(--border)'};background:${cur===tm.id?tm.color+'22':'var(--card)'};color:${cur===tm.id?tm.color:'var(--text)'};cursor:pointer;font-weight:700;font-size:.88rem;transition:.2s;font-family:'Poppins',sans-serif;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.6rem">${tm.icon}</span><span>${tm.name}</span>${cur===tm.id?'<span style="font-size:.65rem;color:inherit">✓ Aktiv</span>':''}</button>`).join('')}</div><div style="margin-top:12px;font-size:.72rem;color:var(--muted)">Dein Team beeinflusst deine Farben in der Community und Team-Rangliste.</div>`;
-    body.querySelectorAll('.team-sel-btn').forEach(btn=>{btn.addEventListener('click',()=>{userTeam=btn.dataset.tid;saveProfile();renderSettingsTab('team');updateProfile();toast(TEAMS.find(t=>t.id===userTeam)?.icon+' Team '+TEAMS.find(t=>t.id===userTeam)?.name+' gewählt!');});});
+    const now=new Date();
+    const dayOfMonth=now.getDate();
+    const monthKey=now.getFullYear()+'-'+(now.getMonth()+1).toString().padStart(2,'0');
+    const canChange=(dayOfMonth<=3)&&(lastFraktionChangeDate!==monthKey);
+    const nextWindow=new Date(now.getFullYear(),now.getMonth()+1,1).toLocaleDateString('de',{day:'numeric',month:'long'});
+    let lockInfo='';
+    if(!canChange){
+      if(dayOfMonth>3)lockInfo=`<div class="fraktion-locked">🔒 Wechsel gesperrt — nächstes Fenster: 1.–3. ${nextWindow.split(' ').pop()}<br><span style="font-size:.65rem">Fraktion kann nur an Tag 1–3 eines neuen Monats gewechselt werden</span></div>`;
+      else lockInfo=`<div class="fraktion-locked">✅ Fraktion bereits diesen Monat gewechselt<br><span style="font-size:.65rem">Nächster Wechsel: 1.–3. ${nextWindow.split(' ').pop()}</span></div>`;
+    } else {
+      lockInfo=`<div style="background:rgba(var(--primary-rgb),.07);border:1px solid rgba(var(--primary-rgb),.2);border-radius:10px;padding:8px 10px;font-size:.72rem;color:var(--primary);margin-bottom:10px">🪟 Wechselfenster offen — Tag ${dayOfMonth} von 3</div>`;
+    }
+    body.innerHTML=`<div style="font-size:.82rem;font-weight:600;margin-bottom:10px">⚔️ Wähle deine Fraktion</div>${lockInfo}<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${TEAMS.map(tm=>`<button class="team-sel-btn ${!canChange&&cur!==tm.id?'disabled-frak':''}" data-tid="${tm.id}" style="padding:14px 8px;border-radius:14px;border:2px solid ${cur===tm.id?tm.color:'var(--border)'};background:${cur===tm.id?tm.color+'22':'var(--card)'};color:${cur===tm.id?tm.color:'var(--text)'};cursor:${!canChange&&cur!==tm.id?'not-allowed':'pointer'};opacity:${!canChange&&cur!==tm.id?.5:1};font-weight:700;font-size:.88rem;transition:.2s;font-family:'Poppins',sans-serif;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.6rem">${tm.icon}</span><span>${tm.name}</span>${cur===tm.id?'<span style="font-size:.65rem;color:inherit">✓ Aktiv</span>':''}</button>`).join('')}</div><div style="margin-top:12px;font-size:.72rem;color:var(--muted)">Deine Fraktion beeinflusst deine Farben in der Community und Fraktion-Rangliste.</div>`;
+    body.querySelectorAll('.team-sel-btn').forEach(btn=>{btn.addEventListener('click',()=>{
+      if(!canChange&&btn.dataset.tid!==userTeam){toast('🔒 Fraktionswechsel erst ab dem 1. des Monats möglich');return;}
+      userTeam=btn.dataset.tid;lastFraktionChangeDate=monthKey;saveProfile();renderSettingsTab('fraktion');updateProfile();
+      const tm=TEAMS.find(t=>t.id===userTeam);toast(tm.icon+' Fraktion '+tm.name+' gewählt!');
+    });});
+  } else if(tab==='club'){
+    const CLUB_ICONS=['⚔️','🔥','❄️','⚡','🌑','🦅','🐺','🏔️','🌊','🌟'];
+    if(userClub){
+      body.innerHTML=`<div class="club-card-info"><span style="font-size:2.5rem">${userClub.icon}</span><div style="flex:1"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:1px">${userClub.name}</div><div style="font-size:.68rem;color:var(--muted)">Gegründet ${new Date(userClub.foundedAt).toLocaleDateString('de')}</div></div></div><div style="font-size:.75rem;color:var(--muted);margin-bottom:4px;text-align:center">Club-Code (antippen zum Kopieren)</div><div class="club-code-box" id="clubCodeBox">${userClub.code}</div><div style="font-size:.65rem;color:var(--muted);text-align:center;margin-bottom:14px">Teile diesen Code mit anderen Spielern</div><button class="btn" id="leaveClubBtn" style="width:100%;border-color:var(--red);color:var(--red)"><i class="fas fa-sign-out-alt"></i> Club verlassen</button>`;
+      $('clubCodeBox')?.addEventListener('click',()=>{navigator.clipboard?.writeText(userClub.code).then(()=>toast('📋 Code kopiert: '+userClub.code)).catch(()=>toast('Code: '+userClub.code));});
+      $('leaveClubBtn')?.addEventListener('click',()=>{if(!confirm('Club wirklich verlassen?'))return;userClub=null;saveProfile();renderSettingsTab('club');toast('Club verlassen');});
+    } else {
+      let selIcon=CLUB_ICONS[0];
+      body.innerHTML=`<div style="font-size:.82rem;font-weight:600;margin-bottom:12px">🏰 Club erstellen</div><div style="margin-bottom:8px"><input type="text" id="clubNameInput" class="modal-input" placeholder="Clubname…" maxlength="20"></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="clubIconRow">${CLUB_ICONS.map((ic,i)=>`<button class="club-icon-btn" data-ic="${ic}" style="font-size:1.5rem;padding:6px 10px;border-radius:10px;border:2px solid ${i===0?'var(--primary)':'var(--border)'};background:var(--card);cursor:pointer">${ic}</button>`).join('')}</div><button class="btn btn-p" id="createClubBtn" style="width:100%;margin-bottom:16px"><i class="fas fa-plus"></i> Club gründen</button><div style="height:1px;background:var(--border);margin-bottom:16px"></div><div style="font-size:.82rem;font-weight:600;margin-bottom:8px">🔑 Club beitreten</div><div style="display:flex;gap:8px"><input type="text" id="clubJoinInput" class="modal-input" placeholder="6-stelliger Code…" maxlength="6" style="flex:1;text-transform:uppercase"><button class="btn btn-p" id="joinClubBtn"><i class="fas fa-arrow-right"></i></button></div>`;
+      body.querySelectorAll('.club-icon-btn').forEach(btn=>{btn.addEventListener('click',()=>{selIcon=btn.dataset.ic;body.querySelectorAll('.club-icon-btn').forEach(b=>b.style.borderColor='var(--border)');btn.style.borderColor='var(--primary)';});});
+      $('createClubBtn')?.addEventListener('click',()=>{const n=$('clubNameInput').value.trim();if(n.length<2){toast('Mindestens 2 Zeichen');return;}const code=Math.random().toString(36).toUpperCase().substring(2,8);userClub={code,name:n,icon:selIcon,foundedAt:Date.now()};const allClubs=JSON.parse(localStorage.getItem('rc_clubs_db')||'{}');allClubs[code]={...userClub,founder:playerName};localStorage.setItem('rc_clubs_db',JSON.stringify(allClubs));saveProfile();renderSettingsTab('club');toast('🏰 Club gegründet: '+n);});
+      $('joinClubBtn')?.addEventListener('click',()=>{const code=($('clubJoinInput').value||'').trim().toUpperCase();if(code.length!==6){toast('Ungültiger Code');return;}const allClubs=JSON.parse(localStorage.getItem('rc_clubs_db')||'{}');if(allClubs[code]){userClub={code,name:allClubs[code].name,icon:allClubs[code].icon,foundedAt:allClubs[code].foundedAt};saveProfile();renderSettingsTab('club');toast('🏰 Beigetreten: '+userClub.name);}else toast('❌ Club-Code nicht gefunden');});
+    }
   } else if(tab==='spiel'){
     body.innerHTML=`<div style="display:flex;flex-direction:column;gap:10px"><div style="font-size:.8rem;color:var(--muted);background:var(--card);padding:12px;border-radius:12px;border:1px solid var(--border)"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>⚡ Energie</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${energy}/${CFG.ENERGY_MAX}</span></div><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>🏆 Punkte</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${points}</span></div><div style="display:flex;justify-content:space-between"><span>📐 Gebiete</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${territories.filter(t=>t.owner===userId).length}</span></div></div><button class="btn btn-p" id="setPulsBtn"><i class="fas fa-heartbeat"></i> Pulsmesser koppeln</button><div id="setVersionTap" style="text-align:center;color:var(--muted);font-size:.6rem;margin-top:8px;cursor:pointer;-webkit-user-select:none;user-select:none">v2.0.0 · Runners Conquer</div></div>`;
     $('setPulsBtn').addEventListener('click',connectBT);
@@ -2862,11 +2935,13 @@ function renderSettingsTab(tab){
   </details>
 
   <details style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
-    <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">🔥 Teams</summary>
+    <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">⚔️ Fraktionen &amp; Clubs</summary>
     <div style="margin-top:8px;color:var(--muted);line-height:1.6">
-      Wähle unter Einstellungen → Team eines von 4 Teams:<br>
-      ${TEAMS.map(t=>`<span style="color:${t.color}">${t.icon} ${t.name}</span>`).join('  ')}<br><br>
-      Dein Team beeinflusst die Randfarbe deiner Gebiete und deine Position in der Team-Rangliste.
+      <b style="color:var(--text)">Fraktion:</b> Wähle unter Einstellungen → Fraktion eine von 4 Fraktionen:<br>
+      ${TEAMS.map(t=>`<span style="color:${t.color}">${t.icon} ${t.name}</span>`).join('  ')}<br>
+      <span style="font-size:.72rem">⚠️ Fraktionswechsel nur an Tag 1–3 jedes Monats (einmal pro Monat)</span><br><br>
+      <b style="color:var(--text)">Club:</b> Gründe oder tritt einem Club bei (Einstellungen → Club). Teile deinen Club-Code mit Freunden. Clubs erscheinen in der Community-Übersicht.<br><br>
+      Deine Fraktion beeinflusst die Randfarbe deiner Gebiete und deine Position in der Fraktion-Rangliste.
     </div>
   </details>
 
@@ -3399,14 +3474,15 @@ function updateProfile(){
   $('pvLvXpTxt').textContent=points+' XP · noch '+lvD.xpLeft+' bis Lv.'+(lvD.lv<CFG.LVL_NAMES.length?lvD.lv+1:'MAX');
   const mine=territories.filter(t=>t.owner===userId);
   $('ps-km').textContent=totalKm.toFixed(1);$('ps-runs').textContent=history.length;$('ps-streak').textContent=streakDays===0?'Starte heute deinen ersten Streak!':streakDays+'🔥';$('ps-terr').textContent=mine.length;$('ps-pts').textContent=points;
-  // Herrschertitel + Team-Badge
+  // Herrschertitel + Fraktion + Club-Badges
   const title=getTerritoryTitle();
   const sinceEl=$('pvSince');
   if(sinceEl){
     const oldBadges=sinceEl.parentNode.querySelector('.pv-extra-badges');if(oldBadges)oldBadges.remove();
-    const badgeDiv=document.createElement('div');badgeDiv.className='pv-extra-badges';badgeDiv.style.cssText='text-align:center;margin-top:6px';
+    const badgeDiv=document.createElement('div');badgeDiv.className='pv-extra-badges';badgeDiv.style.cssText='text-align:center;margin-top:6px;display:flex;flex-wrap:wrap;justify-content:center;gap:5px';
     badgeDiv.innerHTML=`<span class="ruler-badge">👑 ${title}</span>`;
-    if(userTeam){const tm=TEAMS.find(t=>t.id===userTeam);if(tm)badgeDiv.innerHTML+=`<span class="team-badge" style="background:${tm.color}22;color:${tm.color};border:1px solid ${tm.color}44;margin-left:6px">${tm.icon} Team ${tm.name}</span>`;}
+    if(userTeam){const tm=TEAMS.find(t=>t.id===userTeam);if(tm)badgeDiv.innerHTML+=`<span class="team-badge" style="background:${tm.color}22;color:${tm.color};border:1px solid ${tm.color}44">${tm.icon} ${tm.name}</span>`;}
+    if(userClub)badgeDiv.innerHTML+=`<span class="club-badge">${userClub.icon} ${userClub.name}</span>`;
     sinceEl.insertAdjacentElement('afterend',badgeDiv);
   }
   // Entdeckungen-Stat + Challenge-Streak (einmalig anhängen)
