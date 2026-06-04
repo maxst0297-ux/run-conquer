@@ -1002,10 +1002,8 @@ async function syncProfile(){
   }catch(e){console.warn('Supabase profile sync:',e);}
 }
 async function loadFromCloud(){
-  if(!sb||!playerName)return false;
+  if(!sb||!playerName||!sbUserId)return false;
   try{
-    await initSupabase();
-    if(!sbUserId)return false;
     const{data}=await sb.from('profiles').select('game_data').eq('id',sbUserId).single();
     if(data?.game_data){
       const d=JSON.parse(data.game_data);
@@ -1878,7 +1876,8 @@ function stopRun(){
   const pSB2=$('panelStartBtn'),pRB2=$('panelRunBox');
   if(pSB2)pSB2.style.display='';
   if(pRB2)pRB2.style.display='none';
-  const elapsed=runSecs;runSecs=elapsed;
+  const pStats=$('panelRunStats');if(pStats)pStats.textContent='– km · 00:00';
+  const elapsed=runSecs;
   if(path.length<3||dist<CFG.MIN_DIST){toast('Zu kurz – mind. '+CFG.MIN_DIST+' m');if(pathLayer)mapL.removeLayer(pathLayer);path=[];dist=0;return}
   const pd=mkPoly();if(!pd)return;
   const{polyGeom,gap}=pd,area=turf.area(polyGeom);
@@ -2759,8 +2758,8 @@ async function sendDm(toUid,toName,content){
 function openDmPicker(container){
   const el=container||$('inboxBody');if(!el)return;
   if(!followedUsers.length){
-    el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><button id="dmPickBack" class="btn" style="width:auto;padding:6px 12px;font-size:.8rem">←</button><div style="font-weight:700;font-size:.9rem">Neue Nachricht</div></div><div style="padding:20px;text-align:center;color:var(--muted);font-size:.82rem">Du folgst noch niemandem.<br><br>Gehe zur <b>Rangliste</b> in der Community und tippe auf <b>+ Folgen</b>, um Spielern zu folgen.</div>`;
-    document.getElementById('dmPickBack')?.addEventListener('click',()=>loadInbox());
+    el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><button id="dmPickBackEmpty" class="btn" style="width:auto;padding:6px 12px;font-size:.8rem">←</button><div style="font-weight:700;font-size:.9rem">Neue Nachricht</div></div><div style="padding:20px;text-align:center;color:var(--muted);font-size:.82rem">Du folgst noch niemandem.<br><br>Gehe zur <b>Rangliste</b> in der Community und tippe auf <b>+ Folgen</b>, um Spielern zu folgen.</div>`;
+    document.getElementById('dmPickBackEmpty')?.addEventListener('click',()=>loadInbox());
     return;
   }
   el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><button id="dmPickBack" class="btn" style="width:auto;padding:6px 12px;font-size:.8rem">←</button><div style="font-weight:700;font-size:.9rem">Spieler wählen</div></div>`
