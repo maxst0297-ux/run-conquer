@@ -130,7 +130,7 @@ body{
 .inbox-card-hdr:active{background:var(--bg2)}
 .inbox-card-body{padding:0 12px 12px}
 /* ═══ DM CHAT ═══ */
-.dm-conv-row{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;border-radius:12px;border:1px solid var(--border);margin-bottom:6px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:background .15s}
+.dm-conv-row{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;border-radius:12px;border:1px solid var(--border);margin-bottom:6px;background:var(--card);touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:background .15s}
 .dm-conv-row:active{background:var(--bg2)}
 .dm-bubble{max-width:78%;padding:8px 12px;font-size:.82rem;line-height:1.5;word-break:break-word}
 .dm-bubble-me{background:var(--primary);color:#000;align-self:flex-end;border-radius:16px 16px 4px 16px}
@@ -140,7 +140,7 @@ body{
 /* ═══ SWIPE ARCHIVE ═══ */
 .sw-wrap{position:relative;overflow:hidden;margin-bottom:6px;border-radius:12px}
 .sw-arch{position:absolute;left:0;top:0;height:100%;width:88px;background:linear-gradient(135deg,#10b981,#059669);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:3px;z-index:0;border-radius:12px 0 0 12px}
-.sw-content{position:relative;will-change:transform;z-index:1}
+.sw-content{position:relative;will-change:transform;z-index:1;background:var(--card)}
 .notif-row{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer}
 .notif-row:last-child{border-bottom:none}
 .notif-row.unread{background:rgba(var(--primary-rgb),.06)}
@@ -2469,7 +2469,7 @@ async function loadAdminSupportMsgs(container){
     const msgs=data.filter(m=>!archivedSupportIds.has(m.id));
     const archCount=data.length-msgs.length;
     const archSupportHint=archCount>0?`<div style="text-align:center;font-size:.7rem;color:var(--muted);padding:6px 0 2px;cursor:pointer" id="showArchSupportLink">📦 ${archCount} archiviert</div>`:'';
-    const unread=msgs.filter(m=>!m.admin_reply).length;
+    const unread=msgs.filter(m=>!m.admin_reply&&!readSupportIds.has(String(m.id))).length;
     el.innerHTML=`<div style="font-size:.65rem;color:var(--muted);padding:0 0 10px;text-transform:uppercase;letter-spacing:1px">${msgs.length} Nachricht${msgs.length===1?'':'en'} · <span style="color:var(--primary)">${unread} neu</span></div>`
       +msgs.map(m=>{
         const d=new Date(m.created_at);
@@ -2478,7 +2478,7 @@ async function loadAdminSupportMsgs(container){
         const wasRead=readSupportIds.has(String(m.id));
         return`<div class="sw-wrap" style="margin-bottom:8px">
   <div class="sw-arch"><i class="fas fa-archive" style="font-size:.85rem;color:#fff"></i><span style="font-size:.58rem;color:#fff;font-weight:700;margin-top:2px">Archivieren</span></div>
-  <div class="inbox-card${replied||wasRead?'':' inbox-unread'} sw-content" id="imsg-${m.id}" style="margin-bottom:0;${wasRead&&!replied?'opacity:.6':''}">
+  <div class="inbox-card${replied||wasRead?'':' inbox-unread'} sw-content" id="imsg-${m.id}" style="margin-bottom:0;${wasRead&&!replied?'background:var(--bg2)':''}">
 <div class="inbox-card-hdr" data-toggle="${m.id}">
   <div style="flex:1;min-width:0">
     <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px">
@@ -2590,13 +2590,13 @@ async function loadDmConvList(container){
       const isRead=c.last.from_uid!==userId&&(dmViewState[c.uid]&&new Date(c.last.created_at).getTime()<=dmViewState[c.uid]);
       return`<div class="sw-wrap">
         <div class="sw-arch"><i class="fas fa-archive" style="font-size:.85rem;color:#fff"></i><span style="font-size:.58rem;color:#fff;font-weight:700;margin-top:2px">Archivieren</span></div>
-        <div class="dm-conv-row sw-content" data-dmuid="${c.uid}" data-dmname="${encodeURIComponent(c.name)}" style="margin-bottom:0;${isRead?'opacity:.5':''}">
-          <div style="width:38px;height:38px;border-radius:50%;background:var(--primary)22;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:${isRead?'400':'700'};color:var(--primary);flex-shrink:0">${(c.name||'?')[0].toUpperCase()}</div>
+        <div class="dm-conv-row sw-content" data-dmuid="${c.uid}" data-dmname="${encodeURIComponent(c.name)}" style="margin-bottom:0;${isRead?'background:var(--bg2)':''}">
+          <div style="width:38px;height:38px;border-radius:50%;background:var(--primary)22;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:${isRead?'400':'700'};color:${isRead?'var(--muted)':'var(--primary)'};flex-shrink:0">${(c.name||'?')[0].toUpperCase()}</div>
           <div style="flex:1;min-width:0">
-            <div style="font-weight:${isRead?'400':'700'};font-size:.82rem">${c.name}</div>
+            <div style="font-weight:${isRead?'400':'700'};font-size:.82rem;color:${isRead?'var(--muted)':'var(--text)'}">${c.name}</div>
             <div style="font-size:.72rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.last.from_uid===userId?'Du: ':''}${c.last.content}</div>
           </div>
-          ${c.unread>0?`<span style="background:var(--primary);color:#000;border-radius:50%;min-width:18px;height:18px;font-size:.6rem;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;flex-shrink:0">${c.unread}</span>`:'<i class="fas fa-chevron-right" style="color:var(--muted);font-size:.7rem;flex-shrink:0"></i>'}
+          ${!isRead?`<span style="background:var(--primary);color:#000;border-radius:50%;min-width:18px;height:18px;font-size:.6rem;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;flex-shrink:0">●</span>`:'<i class="fas fa-chevron-right" style="color:var(--muted);font-size:.7rem;flex-shrink:0"></i>'}
         </div>
       </div>`;
     }).join('')+archHint;
@@ -2699,29 +2699,50 @@ function openDmPicker(container){
   el.querySelectorAll('[data-dmuid]').forEach(row=>row.addEventListener('click',()=>openDmThread(row.dataset.dmuid,decodeURIComponent(row.dataset.dmname))));
 }
 
-function loadArchiveView(container){
+async function loadArchiveView(container){
   const el=container||$('inboxBody');if(!el)return;
-  const backFn=()=>loadDmConvList(el);
-  const archivedList=archivedConvs.map(a=>{
+  const backFn=isAdmin?()=>loadInbox():()=>loadDmConvList(el);
+  /* DM-Konversationen */
+  const dmList=archivedConvs.map(a=>{
     const f=followedUsers.find(u=>u.uid===a.uid);
     const displayName=a.name||(f?f.name:a.uid);
     const initials=(displayName||'?')[0].toUpperCase();
     return`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:6px;cursor:pointer;touch-action:manipulation" data-arch-uid="${a.uid}" data-arch-name="${encodeURIComponent(displayName)}">
       <div style="width:38px;height:38px;border-radius:50%;background:var(--primary)22;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;color:var(--primary);flex-shrink:0">${initials}</div>
-      <div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600">${displayName}</div><div style="font-size:.68rem;color:var(--muted)">📦 Archiviert · Tippen zum Öffnen</div></div>
-      <button class="btn" style="font-size:.65rem;padding:4px 10px;width:auto;flex-shrink:0" data-unarch-uid="${a.uid}">↩</button>
+      <div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600">${displayName}</div><div style="font-size:.68rem;color:var(--muted)">📦 Chat archiviert · Tippen zum Öffnen</div></div>
+      <button class="btn" style="font-size:.65rem;padding:4px 10px;width:auto;flex-shrink:0" data-unarch-uid="${a.uid}" data-unarch-type="dm">↩</button>
     </div>`;
   }).join('');
+  /* Support-Nachrichten (Admin) */
+  let supList='';
+  if(isAdmin&&sb&&archivedSupportIds.size>0){
+    try{
+      const ids=[...archivedSupportIds];
+      const{data}=await sb.from('support_messages').select('id,player_name,subject,created_at').in('id',ids).order('created_at',{ascending:false});
+      supList=(data||[]).map(m=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:6px">
+        <div style="font-size:1.1rem;flex-shrink:0">📨</div>
+        <div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600">${m.player_name||'Unbekannt'}</div><div style="font-size:.68rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.subject||'Kein Betreff'}</div></div>
+        <button class="btn" style="font-size:.65rem;padding:4px 10px;width:auto;flex-shrink:0" data-unarch-uid="${m.id}" data-unarch-type="sup">↩</button>
+      </div>`).join('');
+    }catch(e){}
+  }
+  const hasItems=dmList||supList;
   el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-shrink:0">
     <button class="btn" id="archBackBtn" style="width:auto;padding:6px 12px;font-size:.8rem">←</button>
     <div style="font-weight:700;font-size:.9rem">📦 Archiv</div>
   </div>
-  ${archivedList||'<div style="text-align:center;padding:24px;color:var(--muted);font-size:.82rem">📭 Archiv ist leer</div>'}`;
+  ${dmList?`<div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Chats</div>${dmList}`:''}
+  ${supList?`<div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:8px 0 6px">Support</div>${supList}`:''}
+  ${!hasItems?'<div style="text-align:center;padding:24px;color:var(--muted);font-size:.82rem">📭 Archiv ist leer</div>':''}`;
   document.getElementById('archBackBtn')?.addEventListener('click',backFn);
   el.querySelectorAll('[data-unarch-uid]').forEach(btn=>{
     btn.addEventListener('click',e=>{
       e.stopPropagation();
-      archivedConvs=archivedConvs.filter(a=>a.uid!==btn.dataset.unarchUid);
+      if(btn.dataset.unarchType==='dm'){
+        archivedConvs=archivedConvs.filter(a=>a.uid!==btn.dataset.unarchUid);
+      } else {
+        archivedSupportIds.delete(btn.dataset.unarchUid);
+      }
       saveArchived();loadArchiveView(container);
     });
   });
