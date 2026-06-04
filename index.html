@@ -910,11 +910,11 @@ const COLORS=['#e8ff47','#ff4d6d','#00d4ff','#9b5de5','#ff9f1c'];
 const AVATARS=['🏃','🚴','🏋️','🤸','⚡'];
 const RIVAL_COLORS=['#ff4d6d','#00d4ff','#9b5de5','#ff9f1c','#e67e22'];
 const BOTS=[
-  {id:'bot_speed',name:'SpeedKing',avatar:'⚡',color:'#ff4d6d',pts:8420,totalKm:142.3,streak:14,conquered:47},
-  {id:'bot_mtn',name:'MountainGoat',avatar:'🤸',color:'#00d4ff',pts:7110,totalKm:118.7,streak:9,conquered:31},
-  {id:'bot_night',name:'NightOwl',avatar:'🏋️',color:'#9b5de5',pts:5830,totalKm:96.2,streak:7,conquered:23},
-  {id:'bot_city',name:'CityRunner',avatar:'🏃',color:'#ff9f1c',pts:3210,totalKm:58.1,streak:3,conquered:12},
-  {id:'bot_ultra',name:'UltraMax',avatar:'💪',color:'#10b981',pts:2100,totalKm:41.5,streak:5,conquered:8},
+  {id:'bot_speed',name:'Roter Wolf',avatar:'🐺',color:'#ff4d6d',pts:8420,totalKm:142.3,streak:14,conquered:47},
+  {id:'bot_mtn',name:'Eiserne Hand',avatar:'✊',color:'#00d4ff',pts:7110,totalKm:118.7,streak:9,conquered:31},
+  {id:'bot_night',name:'Stahl-Garde',avatar:'⚔️',color:'#9b5de5',pts:5830,totalKm:96.2,streak:7,conquered:23},
+  {id:'bot_city',name:'Nachtwache',avatar:'🌙',color:'#ff9f1c',pts:3210,totalKm:58.1,streak:3,conquered:12},
+  {id:'bot_ultra',name:'Sturmbrecher',avatar:'⚡',color:'#10b981',pts:2100,totalKm:41.5,streak:5,conquered:8},
 ];
 const WEEKLY_GOAL=10;
 const TEAMS=[
@@ -963,7 +963,9 @@ let botActivities=[];
 let userTeam=null;
 let capturedLandmarks=[],raids=[],totalDiscovered=0;
 let revealedCells=new Set();
-let heatPersonalOnly=false,fogEnabled=false;
+let heatPersonalOnly=false,fogEnabled=true;
+let registeredAt=Date.now();
+let starterQuestsDone=[],starterQuestFlags={profileOpened:false};
 let seasonChecked=false;
 
 /* ═══ SUPABASE ═══ */
@@ -1108,11 +1110,11 @@ function speedToPace(mps){if(!mps||mps<0.3)return'--:--';const p=1000/mps/60;ret
 function debounce(fn,w){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),w)}}
 
 /* PERSIST */
-function save(){localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,energyWeek,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered}))}
+function save(){localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,energyWeek,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered,registeredAt,starterQuestsDone,starterQuestFlags}))}
 function load(){
   try{
     const d=JSON.parse(localStorage.getItem('rc_v4_'+userId));
-    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;
+    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;registeredAt=d.registeredAt||Date.now();starterQuestsDone=d.starterQuestsDone||[];starterQuestFlags=d.starterQuestFlags||{profileOpened:false};
       /* Alte Bot-Gebiete (Blob, <100k m²) entfernen → werden neu als Straßen-Polygon generiert */
       territories=territories.filter(t=>t.owner===userId||t.area>100000);
       /* Überlappende Bot-Gebiete entfernen */
@@ -1331,7 +1333,7 @@ async function genRivals(lat,lng){
       if(overlaps)continue;
       const area=turf.area(poly);
       const age=3600000*(4+bi*3+t*2);
-      const str=CFG.STR_INIT_MIN+Math.floor(Math.random()*(CFG.STR_INIT_MAX-CFG.STR_INIT_MIN));
+      const str=20+Math.floor(Math.random()*61); // NPC Defense: 20-80
       territories.push({id:'rival_'+now+bi+'_'+t,owner:bot.id,color:bot.color,polygon:poly,
         defense:str,maxDefense:CFG.MAX_DEF,createdAt:now-age,lastDefended:now-age/2,
         area,customName:bot.name+'s Revier',attackHistory:{},_lastDecayTs:now,rarity:pickRarity(false)});
@@ -1882,7 +1884,7 @@ function stopRun(){
   const boosted=energy>0;
   const res=processConquest(polyGeom,area,dist,boosted);
   const streakMul=streakDays>0?Math.min(2,1+(streakDays-1)*0.1):1;
-  const kmXP=Math.round((dist/1000)*CFG.XP_PER_KM*streakMul);
+  const kmXP=Math.round(xpForKm(dist/1000,getWeeklyKm())*streakMul);
   const boostMul=boosted?1+CFG.ENERGY_BOOST_PTS:1;
   const totalPts=Math.round((res.pts+kmXP)*boostMul);
   points+=totalPts;
@@ -1924,7 +1926,7 @@ function processConquest(np,area,d,boosted=false){
     const t={id:'u_'+Date.now(),owner:userId,color:userColor,polygon:np.geometry,
       defense:initStr,maxDefense:CFG.MAX_DEF,createdAt:now,lastDefended:now,
       area,landmarkIds:lms,attackHistory:{},_lastDecayTs:now,_lastBonus:0,
-      rarity,firstRunner:userId,firstRunnerName:playerName};
+      rarity,firstRunner:userId,firstRunnerName:playerName,_ownerRegisteredAt:registeredAt};
     if(lms.length){t.defense=Math.min(CFG.MAX_DEF,Math.floor(t.defense*CFG.LM_DEF_BONUS));pts+=CFG.LM_PTS;toast('🏛️ Wahrzeichen! +'+CFG.LM_PTS);}
     territories.push(t);
     totalDiscovered++;
@@ -1950,6 +1952,8 @@ function processConquest(np,area,d,boosted=false){
         const lastBonus=t._lastBonus||0;
         if(dayHeld>=7&&(now-lastBonus)>=7*86400000){pts+=CFG.XP_7DAY;t._lastBonus=now;beep(880,.1);toast('🏆 7-Tage-Halte-Bonus! +'+CFG.XP_7DAY+' XP');}
       }else{
+        // Newcomer-Schutz: Gebiet eines Newcomers kann nicht angegriffen werden
+        if(t._ownerRegisteredAt&&(Date.now()-t._ownerRegisteredAt<14*24*3600000)){toast('🛡️ Dieses Gebiet ist noch unter Newcomer-Schutz');return;}
         // Feindgebiet → Angriff
         let dmg=kmThrough*CFG.STR_DMG_PER_KM*atkBonus;
         // Kritischer Treffer
@@ -1967,7 +1971,7 @@ function processConquest(np,area,d,boosted=false){
           const conquestXP=Math.min(CFG.XP_CONQUER_MAX,CFG.XP_CONQUER_MIN+Math.floor((t.area||0)/500));
           pts+=conquestXP;conquered=true;
           t.owner=userId;t.color=userColor;t.defense=20;t.maxDefense=CFG.MAX_DEF;
-          t.lastDefended=now;t._lastDecayTs=now;t.createdAt=now;t._lastBonus=0;
+          t.lastDefended=now;t._lastDecayTs=now;t.createdAt=now;t._lastBonus=0;t._ownerRegisteredAt=registeredAt;
           if(!t.rarity)t.rarity=pickRarity((t.landmarkIds||[]).length>0);
           [660,880,1100].forEach((f,i)=>setTimeout(()=>beep(f,.1),i*80));
           const rarLbl=t.rarity&&t.rarity!=='common'?(' · '+RARITY_LABELS[t.rarity]):'';
@@ -1984,8 +1988,21 @@ function processConquest(np,area,d,boosted=false){
   return{pts,conquered,defended};
 }
 
+/* STARTER QUESTS */
+const STARTER_QUESTS=[
+  {id:'sq1',title:'Starte deinen ersten Lauf',xp:20,check:()=>history.length>=1},
+  {id:'sq2',title:'Lauf mindestens 500 m am Stück',xp:30,check:()=>history.some(r=>r.distance>=500)},
+  {id:'sq3',title:'Erobere dein erstes Gebiet',xp:50,check:()=>territories.some(t=>t.owner===userId),reward:'shield'},
+  {id:'sq4',title:'Öffne dein Profil',xp:10,check:()=>starterQuestFlags.profileOpened},
+  {id:'sq5',title:'Markiere dein erstes Lieblingsgebiet',xp:20,check:()=>favoriteTerritories&&favoriteTerritories.length>=1},
+];
+function checkStarterQuests(){STARTER_QUESTS.forEach(q=>{if(starterQuestsDone.includes(q.id))return;if(q.check()){starterQuestsDone.push(q.id);points+=q.xp;toast('⭐ Starter-Quest: '+q.title+' +'+q.xp+' XP');save();}});}
+function renderStarterQuests(){
+  const done=starterQuestsDone;
+  return`<div style="margin-top:12px"><div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">⭐ Starter-Quests</div>`+STARTER_QUESTS.map(q=>{const isDone=done.includes(q.id);return`<div class="quest-item" style="opacity:${isDone?0.6:1}"><div class="quest-row"><span>${isDone?'✅':''} ${q.title}</span><span class="quest-pts" style="color:${isDone?'#10b981':'var(--primary)'}">${isDone?'Erledigt':'+'+q.xp+' XP'}</span></div></div>`;}).join('')+'</div>';}
+
 /* QUESTS/ACH */
-function updateQuests(rec){quests.forEach(q=>{if(q.claimed)return;if(q.type==='distance')q.progress=Math.min(q.target,q.progress+rec.distance);if(q.type==='conquer'&&rec.conquered)q.progress++;if(q.type==='defend'&&rec.defended)q.progress++;if(q.progress>=q.target){q.claimed=true;points+=q.reward;toast('✅ '+q.desc+' +'+q.reward);}})}
+function updateQuests(rec){quests.forEach(q=>{if(q.claimed)return;if(q.type==='distance')q.progress=Math.min(q.target,q.progress+rec.distance);if(q.type==='conquer'&&rec.conquered)q.progress++;if(q.type==='defend'&&rec.defended)q.progress++;if(q.progress>=q.target){q.claimed=true;points+=q.reward;toast('✅ '+q.desc+' +'+q.reward);}});checkStarterQuests();}
 function updateAch(){achievements.forEach(a=>{let p=0;if(a.id==='km10'||a.id==='km50')p=totalKm;else if(a.id==='conq5')p=totalConquered;else if(a.id==='def10')p=totalDefended;else if(a.id==='pts1k')p=points;a.progress=p;if(!a.earned&&p>=a.target){a.earned=true;points+=200;toast('🏆 '+a.name+'! +200');}})}
 
 /* POST RUN */
@@ -2009,6 +2026,8 @@ function updateDash(){
   renderGoal();renderQuestsDiv();renderActivityCards();renderWeekChart();
 }
 function getWeeklyKm(){const now=new Date(),dow=(now.getDay()+6)%7,ws=new Date(now);ws.setDate(now.getDate()-dow);ws.setHours(0,0,0,0);return history.filter(r=>r.date>=ws.getTime()).reduce((s,r)=>s+r.distance/1000,0)}
+function xpForKm(km,totalKmThisWeek){const baseXP=km*10;if(totalKmThisWeek<20)return Math.round(baseXP*1.0);if(totalKmThisWeek<50)return Math.round(baseXP*0.7);else return Math.round(baseXP*0.4);}
+function isNewcomer(){return Date.now()-registeredAt<14*24*3600000;}
 function renderGoal(){
   const wkm=getWeeklyKm(),pct=Math.min(100,(wkm/WEEKLY_GOAL)*100);
   $('goalVal').textContent=wkm.toFixed(1)+' / '+WEEKLY_GOAL+' km';$('goalBar').style.width=pct+'%';
@@ -2016,7 +2035,7 @@ function renderGoal(){
   const maxD=Math.max(1,...days.map((_,i)=>{const d=new Date();d.setDate(d.getDate()-today+i);d.setHours(0,0,0,0);return history.filter(r=>new Date(r.date).toDateString()===d.toDateString()).reduce((s,r)=>s+r.distance/1000,0)}));
   $('goalDays').innerHTML=days.map((_,i)=>{const d=new Date();d.setDate(d.getDate()-today+i);d.setHours(0,0,0,0);const km=history.filter(r=>new Date(r.date).toDateString()===d.toDateString()).reduce((s,r)=>s+r.distance/1000,0),h=Math.round((km/maxD)*100)||0,act=i===today;return`<div class="goal-day"><div class="goal-day-bar" style="border:${act?'1px solid var(--primary)':'none'}"><div class="goal-day-fill" style="height:${h}%;opacity:${act?1:.5}"></div></div><div class="goal-day-lbl" style="color:${act?'var(--primary)':'var(--muted)'}">${days[i]}</div></div>`}).join('');
 }
-function renderQuestsDiv(){$('questsDiv').innerHTML=quests.slice(0,3).map(q=>{const p=Math.min(100,Math.round(q.progress/q.target*100));return`<div class="quest-item"><div class="quest-row"><span>${q.icon} ${q.desc}</span><span class="quest-pts" style="color:${q.claimed?'#10b981':'var(--primary)'}">${q.claimed?'✓':q.reward+' pts'}</span></div><div class="q-bar"><div class="q-fill" style="width:${p}%"></div></div></div>`}).join('')}
+function renderQuestsDiv(){$('questsDiv').innerHTML=quests.slice(0,3).map(q=>{const p=Math.min(100,Math.round(q.progress/q.target*100));return`<div class="quest-item"><div class="quest-row"><span>${q.icon} ${q.desc}</span><span class="quest-pts" style="color:${q.claimed?'#10b981':'var(--primary)'}">${q.claimed?'✓':q.reward+' pts'}</span></div><div class="q-bar"><div class="q-fill" style="width:${p}%"></div></div></div>`}).join('')+renderStarterQuests();}
 function renderActivityCards(){
   const el=$('activityList'),rec=history.slice(-6).reverse();
   if(!rec.length){el.innerHTML='<div class="empty-state"><i class="fas fa-running"></i><p>Noch keine Läufe.<br>Starte deinen ersten Run!</p></div>';return}
@@ -2869,6 +2888,7 @@ function initAdminCharts(){
 
 /* PROFILE */
 function updateProfile(){
+  if(!starterQuestFlags.profileOpened){starterQuestFlags.profileOpened=true;checkStarterQuests();save();}
   $('pvAvatar').innerHTML=avatarHTML(54);$('pvName').textContent=playerName;
   const banner=$('pvBanner');banner.style.background=`linear-gradient(135deg,${userColor}44,${userColor}11,var(--bg2))`;banner.style.borderColor=userColor+'55';
   if(history.length){const d=new Date(history[0].date);$('pvSince').textContent='Aktiv seit '+d.toLocaleDateString('de',{month:'long',year:'numeric'});}
@@ -2947,14 +2967,17 @@ function hideEmptySections(){document.querySelectorAll('section,[data-section]')
 function updateUI(){updateStatsUI();renderTerr();if(currentView==='dash')updateDash();if(currentView==='community')updateCommunity();if(currentView==='profile')updateProfile();if(drawer.classList.contains('open'))renderDrawer();hideEmptySections();}
 
 /* BACKGROUND */
+function dailyDecay(territory,daysSinceVisit){return Math.max(0,territory.defense-(2*daysSinceVisit));}
 function applyDecay(){
   const now=Date.now();
   territories=territories.map(t=>{
     if(t.owner===userId)return t;
     const dts=t._lastDecayTs||t.lastDefended;
     const hoursElapsed=(now-dts)/3600000;
-    const decayAmt=hoursElapsed*(CFG.DECAY_PER_DAY/24);
-    if(decayAmt>.01)t.defense=Math.max(0,t.defense-decayAmt);
+    const daysSinceVisit=hoursElapsed/24;
+    // Wende dailyDecay an für tagesbasierte Reduktion
+    if(daysSinceVisit>=1){t.defense=dailyDecay(t,Math.floor(daysSinceVisit));}
+    else{const decayAmt=hoursElapsed*(CFG.DECAY_PER_DAY/24);if(decayAmt>.01)t.defense=Math.max(0,t.defense-decayAmt);}
     t._lastDecayTs=now;
     return t;
   }).filter(t=>t.defense>0||t.owner===userId||(now-t.lastDefended)<CFG.MAX_AGE_H*3600000);
