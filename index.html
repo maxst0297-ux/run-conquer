@@ -958,7 +958,7 @@ const sb=window.supabase?.createClient(SB_URL,SB_KEY);
 let sbUserId=null,isAdmin=false;
 let followedUsers=[],activeDmThread=null;
 let archivedConvs=[],archivedSupportIds=new Set();
-let dmViewState={},readSupportIds=new Set();
+let dmViewState={},readSupportIds=new Set(),supportVisitTs=0;
 
 async function initSupabase(){
   if(!sb)return;
@@ -1119,6 +1119,7 @@ function load(){
   archivedSupportIds=new Set(JSON.parse(localStorage.getItem('rc_arch_sup_'+userId)||'[]'));
   dmViewState=JSON.parse(localStorage.getItem('rc_dmview_'+userId)||'{}');
   readSupportIds=new Set(JSON.parse(localStorage.getItem('rc_rsup_'+userId)||'[]'));
+  supportVisitTs=parseInt(localStorage.getItem('rc_sup_visit_'+userId)||'0');
 }
 const THEME_CLASSES=['theme-citrus','theme-stone','theme-pine','theme-petrol'];
 function getActiveTheme(){return THEME_CLASSES.find(c=>document.body.classList.contains(c))||'theme-citrus';}
@@ -2437,8 +2438,9 @@ async function updateDmBadge(){
       }
     }
     if(isAdmin&&sb){
-      const{data}=await sb.from('support_messages').select('id').is('admin_reply',null);
-      total+=(data||[]).filter(m=>!readSupportIds.has(String(m.id))).length;
+      const since=new Date(supportVisitTs||0).toISOString();
+      const{data}=await sb.from('support_messages').select('id,created_at').is('admin_reply',null).gt('created_at',since);
+      total+=(data||[]).length;
     }
   }catch(e){}
   if(total>0){badge.textContent=total>99?'99+':total;badge.style.display='flex';}else badge.style.display='none';
@@ -2460,6 +2462,10 @@ function _inboxSetHandler(body,fn){_inboxClearHandler(body);body._ih=fn;body.add
 /* Admin Support-Nachrichten */
 async function loadAdminSupportMsgs(container){
   const el=container||$('inboxBody');if(!el)return;
+  /* Besuchszeitpunkt merken → Badge zählt nur Nachrichten nach diesem Zeitpunkt */
+  supportVisitTs=Date.now();
+  localStorage.setItem('rc_sup_visit_'+userId,supportVisitTs);
+  updateDmBadge();
   el.innerHTML='<div style="padding:16px;color:var(--muted);font-size:.8rem;text-align:center">⏳ Lade…</div>';
   try{
     if(!sb)throw new Error('Keine Verbindung');
