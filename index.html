@@ -973,6 +973,8 @@ const BOTS=[
   {id:'bot_ultra',name:'Sturmbrecher',avatar:'⚡',color:'#10b981',pts:2100,totalKm:41.5,streak:5,conquered:8},
 ];
 const WEEKLY_GOAL=10;
+/* ↓ Strava Developer App Client ID — einmalig auf developers.strava.com registrieren (kostenlos) */
+const STRAVA_CLIENT_ID='';
 const TEAMS=[
   {id:'fire',name:'Feuer',color:'#ff4d6d',icon:'🔥'},
   {id:'ice',name:'Eis',color:'#00d4ff',icon:'❄️'},
@@ -2299,11 +2301,9 @@ function checkStravaCallback(){
   }catch(e){}
 }
 function connectStrava(){
-  const cid=(document.getElementById('stravaCidInput')?.value||'').trim()||stravaClientId;
-  if(!cid){document.getElementById('stravaErr')&&(document.getElementById('stravaErr').style.display='');return;}
-  stravaClientId=cid;localStorage.setItem('rc_strava_cid',cid);
+  if(!STRAVA_CLIENT_ID){toast('❌ Strava Client ID nicht konfiguriert');return;}
   const ru=encodeURIComponent(location.origin+location.pathname);
-  location.href=`https://www.strava.com/oauth/authorize?client_id=${cid}&redirect_uri=${ru}&response_type=token&scope=activity:read_all&approval_prompt=auto`;
+  location.href=`https://www.strava.com/oauth/authorize?client_id=${STRAVA_CLIENT_ID}&redirect_uri=${ru}&response_type=token&scope=activity:read_all&approval_prompt=auto`;
 }
 function renderStravaPanel(){
   const pan=$('impPanStrava');if(!pan)return;
@@ -2317,19 +2317,21 @@ function renderStravaPanel(){
       stravaToken=null;localStorage.removeItem('rc_strava_token');renderStravaPanel();
     });
     loadStravaActivitiesUI();
-  }else{
-    pan.innerHTML=`<div style="font-size:.74rem;color:var(--muted);line-height:1.7;margin-bottom:10px">
-      Verbinde dein Strava-Konto, um Läufe direkt zu importieren.<br>
-      Du brauchst eine kostenlose <b style="color:var(--text)">Strava Developer App</b> (einmalig):<br>
-      <a href="https://www.strava.com/settings/api" target="_blank" style="color:var(--primary)">→ strava.com/settings/api → App erstellen → Client ID kopieren</a>
-    </div>
-    <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">Strava Client ID:</div>
-    <input type="number" id="stravaCidInput" class="modal-input" placeholder="z. B. 12345" value="${stravaClientId}" style="margin-bottom:8px">
-    <div id="stravaErr" style="color:#ff4d6d;font-size:.74rem;margin-bottom:6px;display:none">Bitte Client ID eingeben.</div>
-    <button id="stravaConBtn" class="btn btn-p" style="width:100%"><i class="fas fa-link"></i> Mit Strava verbinden</button>
-    <div style="font-size:.68rem;color:var(--muted);margin-top:8px;line-height:1.5">
-      💡 Beim Erstellen der App: „Authorization Callback Domain" auf <b style="color:var(--text)">${location.hostname}</b> setzen.
+  }else if(!STRAVA_CLIENT_ID){
+    /* Admin hat noch keine Client ID eingetragen */
+    pan.innerHTML=`<div style="font-size:.78rem;color:var(--muted);line-height:1.7;text-align:center;padding:16px 8px">
+      <div style="font-size:2rem;margin-bottom:8px">🔧</div>
+      Strava-Integration ist noch nicht eingerichtet.<br>
+      Bitte den Admin kontaktieren.
     </div>`;
+  }else{
+    pan.innerHTML=`<div style="font-size:.78rem;color:var(--muted);line-height:1.6;margin-bottom:14px">
+      Verbinde dein persönliches Strava-Konto, um Läufe direkt zu importieren.
+    </div>
+    <button id="stravaConBtn" class="btn btn-p" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/></svg>
+      Mit Strava verbinden
+    </button>`;
     document.getElementById('stravaConBtn')?.addEventListener('click',connectStrava);
   }
 }
