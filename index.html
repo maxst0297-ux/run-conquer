@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
 <title>Runners Conquer</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -29,7 +32,7 @@
   --sab: env(safe-area-inset-bottom, 0px);
   --sal: env(safe-area-inset-left,   0px);
   --sar: env(safe-area-inset-right,  0px);
-  --hdr-total: calc(var(--hdr-h) + var(--sat));
+  --hdr-total: calc(var(--hdr-h) + max(var(--sat), env(safe-area-inset-top, 0px)));
   --nav-total: calc(var(--nav-h) + var(--sab));
   /* v2 Design-System Aliases */
   --bg-primary:    #0A0E1A;
@@ -119,7 +122,7 @@ body{
 .hdr{
   position:fixed;top:0;left:0;right:0;
   height:var(--hdr-total);
-  padding-top:var(--sat);
+  padding-top:max(var(--sat), env(safe-area-inset-top, 0px));
   padding-left:calc(14px + var(--sal));
   padding-right:calc(14px + var(--sar));
   background:var(--bg);border-bottom:1px solid var(--border);
