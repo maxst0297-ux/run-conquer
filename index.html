@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Runners Conquer</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -31,6 +31,18 @@
   --sar: env(safe-area-inset-right,  0px);
   --hdr-total: calc(var(--hdr-h) + var(--sat));
   --nav-total: calc(var(--nav-h) + var(--sab));
+  /* v2 Design-System Aliases */
+  --bg-primary:    #0A0E1A;
+  --bg-secondary:  #131826;
+  --bg-glass:      rgba(19, 24, 38, 0.7);
+  --accent-gold:   #FFB800;
+  --accent-cyan:   #00D4FF;
+  --accent-blue:   #4A6FA5;
+  --accent-red:    #E63946;
+  --neutral-gray:  #3A3A3A;
+  --text-primary:  #FFFFFF;
+  --text-muted:    #8B95A7;
+  --text-accent:   #FFB800;
 }
 body.theme-stone {
   --bg:#F0EBE9; --bg2:#E8E2DE; --card:#EDE7E4;
@@ -390,6 +402,8 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .dom-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:8px;text-align:center}
 .dom-val{font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary)}
 .dom-lbl{color:var(--muted);font-size:.6rem;margin-top:2px}
+/* v2 Empty-Section */
+.empty-section{display:none !important;}
 </style>
 </head>
 <body class="theme-citrus">
@@ -486,9 +500,9 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
             <div class="live-card"><div class="live-val" id="liveTime">00:00</div><div class="live-lbl">Zeit</div></div>
           </div>
           <div class="live-row">
-            <div class="live-pill"><i class="fas fa-bolt"></i><b id="livePace">--:--</b><span style="font-size:.65rem;color:var(--muted)">/km</span></div>
-            <div class="live-pill"><i class="fas fa-heartbeat"></i><b id="liveHR">--</b><span style="font-size:.65rem;color:var(--muted)">bpm</span></div>
-            <div class="live-pill"><i class="fas fa-shoe-prints"></i><b id="liveCadence">--</b><span style="font-size:.65rem;color:var(--muted)">/min</span></div>
+            <div class="live-pill"><i class="fas fa-bolt"></i><b id="livePace">Pace –</b></div>
+            <div class="live-pill"><i class="fas fa-heartbeat"></i><b id="liveHR">Puls –</b></div>
+            <div class="live-pill"><i class="fas fa-shoe-prints"></i><b id="liveCadence">Schritte –</b></div>
           </div>
           <div style="display:flex;align-items:center;gap:6px;font-size:.68rem;color:var(--muted);margin-top:4px;padding:0 2px" id="liveExtra">
             <span id="liveAlt"></span><span id="liveSrc" style="margin-left:auto"></span>
@@ -520,7 +534,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <div class="map-panel-title">Lauf</div>
         <button id="panelStartBtn"><i class="fas fa-play"></i> START</button>
         <div id="panelRunBox">
-          <div id="panelRunStats">0.00 km · 00:00</div>
+          <div id="panelRunStats">– km · 00:00</div>
           <div class="panel-run-row">
             <button id="panelPauseBtn2"><i class="fas fa-pause"></i> Pause</button>
             <button id="panelStopBtn2"><i class="fas fa-stop"></i> Stop</button>
@@ -902,7 +916,7 @@ const BOTS=[
   {id:'bot_city',name:'CityRunner',avatar:'🏃',color:'#ff9f1c',pts:3210,totalKm:58.1,streak:3,conquered:12},
   {id:'bot_ultra',name:'UltraMax',avatar:'💪',color:'#10b981',pts:2100,totalKm:41.5,streak:5,conquered:8},
 ];
-const WEEKLY_GOAL=30;
+const WEEKLY_GOAL=10;
 const TEAMS=[
   {id:'fire',name:'Feuer',color:'#ff4d6d',icon:'🔥'},
   {id:'ice',name:'Eis',color:'#00d4ff',icon:'❄️'},
@@ -1820,13 +1834,13 @@ function startLiveUpdate(){liveInterval=setInterval(()=>{
   const el=runSecs+Math.floor((Date.now()-runStart)/1000);
   $('liveKm').textContent=(dist/1000).toFixed(2);
   $('liveTime').textContent=fmtTime(el);
-  $('livePace').textContent=gpsSpeed!=null?speedToPace(gpsSpeed):fmtPace(dist,el);
-  $('liveHR').textContent=heartRate;
-  $('liveCadence').textContent=cadence||'--';
+  const pVal=gpsSpeed!=null?speedToPace(gpsSpeed):fmtPace(dist,el);$('livePace').textContent=pVal==='--:--'?'Pace –':(pVal+'/km');
+  $('liveHR').textContent=heartRate&&heartRate>0?heartRate+' bpm':'Puls –';
+  $('liveCadence').textContent=cadence?cadence+'/min':'Schritte –';
   if(gpsAlt!=null)$('liveAlt').textContent='⛰ '+gpsAlt+' m';
   $('liveSrc').textContent=hrSource==='bt'?'💙 BT':'📱 GPS';
   if(hrSource==='sim')simHR();
-  const pStats=$('panelRunStats');if(pStats)pStats.textContent=(dist/1000).toFixed(2)+' km · '+fmtTime(el);
+  const pStats=$('panelRunStats');if(pStats)pStats.textContent=(dist<10?'– km':(dist/1000).toFixed(2)+' km')+' · '+fmtTime(el);
 },1000)}
 function stopLiveUpdate(){clearInterval(liveInterval);liveInterval=null}
 
@@ -2863,7 +2877,7 @@ function updateProfile(){
   $('pvLvBar').style.width=lvD.pct+'%';
   $('pvLvXpTxt').textContent=points+' XP · noch '+lvD.xpLeft+' bis Lv.'+(lvD.lv<CFG.LVL_NAMES.length?lvD.lv+1:'MAX');
   const mine=territories.filter(t=>t.owner===userId);
-  $('ps-km').textContent=totalKm.toFixed(1);$('ps-runs').textContent=history.length;$('ps-streak').textContent=streakDays+'🔥';$('ps-terr').textContent=mine.length;$('ps-pts').textContent=points;
+  $('ps-km').textContent=totalKm.toFixed(1);$('ps-runs').textContent=history.length;$('ps-streak').textContent=streakDays===0?'Starte heute deinen ersten Streak!':streakDays+'🔥';$('ps-terr').textContent=mine.length;$('ps-pts').textContent=points;
   // Herrschertitel + Team-Badge
   const title=getTerritoryTitle();
   const sinceEl=$('pvSince');
@@ -2929,7 +2943,8 @@ function setView(view){
   if(view==='dash')updateDash();if(view==='community')updateCommunity();if(view==='profile')updateProfile();
   if(onMap&&mapL)setTimeout(()=>mapL.invalidateSize(),120);
 }
-function updateUI(){updateStatsUI();renderTerr();if(currentView==='dash')updateDash();if(currentView==='community')updateCommunity();if(currentView==='profile')updateProfile();if(drawer.classList.contains('open'))renderDrawer()}
+function hideEmptySections(){document.querySelectorAll('section,[data-section]').forEach(s=>{const c=s.querySelector('[data-content]')||s;if(c.children.length===0&&c.textContent.trim()==='')s.classList.add('empty-section');else s.classList.remove('empty-section');})}
+function updateUI(){updateStatsUI();renderTerr();if(currentView==='dash')updateDash();if(currentView==='community')updateCommunity();if(currentView==='profile')updateProfile();if(drawer.classList.contains('open'))renderDrawer();hideEmptySections();}
 
 /* BACKGROUND */
 function applyDecay(){
