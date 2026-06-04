@@ -72,6 +72,7 @@ body{
   height:100vh;height:100dvh;min-height:-webkit-fill-available;
   overflow:hidden;display:flex;flex-direction:column;
   transition:background .3s,color .3s;
+  overscroll-behavior:none;touch-action:manipulation;
 }
 
 
@@ -963,7 +964,7 @@ let botActivities=[];
 let userTeam=null;
 let capturedLandmarks=[],raids=[],totalDiscovered=0;
 let revealedCells=new Set();
-let heatPersonalOnly=false,fogEnabled=true;
+let heatPersonalOnly=false,fogEnabled=false;
 let registeredAt=Date.now();
 let starterQuestsDone=[],starterQuestFlags={profileOpened:false};
 let seasonChecked=false;
@@ -1952,7 +1953,7 @@ function processConquest(np,area,d,boosted=false){
         const lastBonus=t._lastBonus||0;
         if(dayHeld>=7&&(now-lastBonus)>=7*86400000){pts+=CFG.XP_7DAY;t._lastBonus=now;beep(880,.1);toast('🏆 7-Tage-Halte-Bonus! +'+CFG.XP_7DAY+' XP');}
       }else{
-        // Newcomer-Schutz: Gebiet eines Newcomers kann nicht angegriffen werden
+        // Newcomer-Schutz
         if(t._ownerRegisteredAt&&(Date.now()-t._ownerRegisteredAt<14*24*3600000)){toast('🛡️ Dieses Gebiet ist noch unter Newcomer-Schutz');return;}
         // Feindgebiet → Angriff
         let dmg=kmThrough*CFG.STR_DMG_PER_KM*atkBonus;
@@ -1994,7 +1995,7 @@ const STARTER_QUESTS=[
   {id:'sq2',title:'Lauf mindestens 500 m am Stück',xp:30,check:()=>history.some(r=>r.distance>=500)},
   {id:'sq3',title:'Erobere dein erstes Gebiet',xp:50,check:()=>territories.some(t=>t.owner===userId),reward:'shield'},
   {id:'sq4',title:'Öffne dein Profil',xp:10,check:()=>starterQuestFlags.profileOpened},
-  {id:'sq5',title:'Markiere dein erstes Lieblingsgebiet',xp:20,check:()=>favoriteTerritories&&favoriteTerritories.length>=1},
+  {id:'sq5',title:'Halte ein Gebiet für 7 Tage',xp:20,check:()=>territories.some(t=>t.owner===userId&&(Date.now()-t.createdAt)>=7*86400000)},
 ];
 function checkStarterQuests(){STARTER_QUESTS.forEach(q=>{if(starterQuestsDone.includes(q.id))return;if(q.check()){starterQuestsDone.push(q.id);points+=q.xp;toast('⭐ Starter-Quest: '+q.title+' +'+q.xp+' XP');save();}});}
 function renderStarterQuests(){
@@ -2964,7 +2965,7 @@ function setView(view){
   if(onMap&&mapL)setTimeout(()=>mapL.invalidateSize(),120);
 }
 function hideEmptySections(){document.querySelectorAll('section,[data-section]').forEach(s=>{const c=s.querySelector('[data-content]')||s;if(c.children.length===0&&c.textContent.trim()==='')s.classList.add('empty-section');else s.classList.remove('empty-section');})}
-function updateUI(){updateStatsUI();renderTerr();if(currentView==='dash')updateDash();if(currentView==='community')updateCommunity();if(currentView==='profile')updateProfile();if(drawer.classList.contains('open'))renderDrawer();hideEmptySections();}
+function updateUI(){updateStatsUI();renderTerr();if(currentView==='dash')updateDash();if(currentView==='community')updateCommunity();if(currentView==='profile')updateProfile();if(drawer.classList.contains('open'))renderDrawer();}
 
 /* BACKGROUND */
 function dailyDecay(territory,daysSinceVisit){return Math.max(0,territory.defense-(2*daysSinceVisit));}
@@ -3158,8 +3159,9 @@ window.initApp=function(){
     const cv=$('fogCanvas');if(cv)cv.style.display=fogEnabled?'block':'none';
     this.classList.toggle('active',fogEnabled);
     this.innerHTML=fogEnabled?'<i class="fas fa-cloud"></i> Nebel aus':'<i class="fas fa-cloud"></i> Nebel ein';
-    if(fogEnabled)drawFog();
-    if(mapL)mapL.on('move',debouncedDrawFog);else mapL?.off('move',debouncedDrawFog);
+    if(fogEnabled){drawFog();if(mapL)mapL.on('move',debouncedDrawFog);}
+    else{if(mapL)mapL.off('move',debouncedDrawFog);}
+    if(cv&&!fogEnabled){cv.style.display='none';}
   });
   /* Panel-Lauf-Buttons */
   $('panelStartBtn')?.addEventListener('click',()=>{startRun();});
