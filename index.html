@@ -2504,7 +2504,7 @@ async function loadAdminSupportMsgs(container){
       const id=card.id?.replace('imsg-','');
       if(id)addSwipeHandlers(wrap,
         ()=>{archivedSupportIds.add(id);saveArchived();updateDmBadge();},
-        ()=>deleteSupportMsg(id).then(()=>loadAdminSupportMsgs(el))
+        ()=>deleteSupportMsg(id)
       );
     });
     document.getElementById('showArchSupportLink')?.addEventListener('click',()=>loadArchiveView(el));
@@ -2572,23 +2572,31 @@ function addSwipeHandlers(wrapEl,onArchive,onDelete){
   });
   cont.addEventListener('click',()=>{if(open){cont.style.transition='transform .22s';cont.style.transform='translateX(0)';open=false;}});
   archBtn?.addEventListener('click',()=>{collapse();setTimeout(()=>{wrapEl.remove();onArchive&&onArchive();},310);});
-  delBtn?.addEventListener('click',()=>{collapse();setTimeout(()=>{wrapEl.remove();onDelete&&onDelete();},310);});
+  delBtn?.addEventListener('click',async()=>{
+    if(!onDelete){collapse();setTimeout(()=>wrapEl.remove(),310);return;}
+    const ok=await onDelete();
+    if(ok===false){cont.style.transition='transform .22s';cont.style.transform='translateX(0)';open=false;return;}
+    collapse();setTimeout(()=>wrapEl.remove(),310);
+  });
 }
 /* Rückwärtskompatibilität */
 function addSwipeArchive(wrapEl,onArchive){addSwipeHandlers(wrapEl,onArchive,null);}
 
-async function deleteDmConv(uid,reloadEl){
-  if(!sb)return;
-  await sb.from('direct_messages').delete().eq('from_uid',userId).eq('to_uid',uid);
-  await sb.from('direct_messages').delete().eq('from_uid',uid).eq('to_uid',userId);
-  archivedConvs=archivedConvs.filter(a=>a.uid!==uid);
-  saveArchived();updateDmBadge();
+async function deleteDmConv(uid){
+  if(!sb)return false;
+  try{
+    const{error:e1}=await sb.from('direct_messages').delete().eq('from_uid',userId).eq('to_uid',uid);
+    const{error:e2}=await sb.from('direct_messages').delete().eq('from_uid',uid).eq('to_uid',userId);
+    if(e1||e2){toast('❌ Löschen fehlgeschlagen');return false;}
+    archivedConvs=archivedConvs.filter(a=>a.uid!==uid);
+    saveArchived();updateDmBadge();return true;
+  }catch(e){toast('❌ '+e.message);return false;}
 }
 async function deleteSupportMsg(id){
-  if(!sb||!isAdmin)return;
+  if(!sb||!isAdmin)return false;
   const{error}=await sb.from('support_messages').delete().eq('id',id);
-  if(error)toast('❌ '+error.message);
-  else{archivedSupportIds.delete(id);saveArchived();updateDmBadge();}
+  if(error){toast('❌ '+error.message);return false;}
+  archivedSupportIds.delete(id);saveArchived();updateDmBadge();return true;
 }
 
 /* DM-Konversationsliste */
@@ -2750,12 +2758,25 @@ async function loadArchiveView(container){
   if(isAdmin&&sb&&archivedSupportIds.size>0){
     try{
       const ids=[...archivedSupportIds];
-      const{data}=await sb.from('support_messages').select('id,player_name,subject,created_at').in('id',ids).order('created_at',{ascending:false});
-      supList=(data||[]).map(m=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:6px">
-        <div style="font-size:1.1rem;flex-shrink:0">📨</div>
-        <div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600">${m.player_name||'Unbekannt'}</div><div style="font-size:.68rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.subject||'Kein Betreff'}</div></div>
-        <button class="btn" style="font-size:.65rem;padding:4px 10px;width:auto;flex-shrink:0" data-unarch-uid="${m.id}" data-unarch-type="sup">↩</button>
-      </div>`).join('');
+      const{data}=await sb.from('support_messages').select('id,player_name,subject,message,admin_reply,created_at').in('id',ids).order('created_at',{ascending:false});
+      supList=(data||[]).map(m=>{
+        const d=new Date(m.created_at);
+        const ds=d.toLocaleDateString('de',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('de',{hour:'2-digit',minute:'2-digit'});
+        return`<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:6px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer" data-sup-arch-toggle="${m.id}">
+            <div style="font-size:1.1rem;flex-shrink:0">📨</div>
+            <div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600">${m.player_name||'Unbekannt'}</div><div style="font-size:.7rem;font-weight:600;color:var(--primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.subject||'Kein Betreff'}</div><div style="font-size:.62rem;color:var(--muted)">${ds}</div></div>
+            <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+              <button class="btn" style="font-size:.65rem;padding:4px 10px;width:auto" data-unarch-uid="${m.id}" data-unarch-type="sup">↩</button>
+              <i class="fas fa-chevron-down" style="font-size:.6rem;color:var(--muted)"></i>
+            </div>
+          </div>
+          <div id="sup-arch-body-${m.id}" style="display:none;padding:0 12px 12px">
+            <div style="font-size:.8rem;color:var(--text);line-height:1.6;background:var(--bg2);padding:10px;border-radius:8px;margin-bottom:${m.admin_reply?'8px':'0'};white-space:pre-line">${m.message||''}</div>
+            ${m.admin_reply?`<div style="font-size:.75rem;color:#10b981;background:#10b98111;border:1px solid #10b98133;border-radius:8px;padding:8px 10px"><b>Antwort:</b><br><span style="white-space:pre-line">${m.admin_reply}</span></div>`:''}
+          </div>
+        </div>`;
+      }).join('');
     }catch(e){}
   }
   const hasItems=dmList||supList;
@@ -2767,6 +2788,14 @@ async function loadArchiveView(container){
   ${supList?`<div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:8px 0 6px">Support</div>${supList}`:''}
   ${!hasItems?'<div style="text-align:center;padding:24px;color:var(--muted);font-size:.82rem">📭 Archiv ist leer</div>':''}`;
   document.getElementById('archBackBtn')?.addEventListener('click',backFn);
+  el.querySelectorAll('[data-sup-arch-toggle]').forEach(hdr=>{
+    hdr.addEventListener('click',e=>{
+      if(e.target.closest('[data-unarch-uid]'))return;
+      const id=hdr.dataset.supArchToggle;
+      const body=document.getElementById('sup-arch-body-'+id);
+      if(body){const o=body.style.display!=='none';body.style.display=o?'none':'block';const ic=hdr.querySelector('.fa-chevron-down');if(ic)ic.style.transform=o?'':'rotate(180deg)';}
+    });
+  });
   el.querySelectorAll('[data-unarch-uid]').forEach(btn=>{
     btn.addEventListener('click',e=>{
       e.stopPropagation();
