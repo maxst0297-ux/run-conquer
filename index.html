@@ -821,7 +821,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
     <div class="modal-title">AKTIVITÄT HINZUFÜGEN</div>
     <div style="display:flex;gap:0;margin-bottom:14px;border-radius:8px;overflow:hidden;border:1px solid var(--border)">
       <button class="imp-tab active" id="impTabManual">✏️ Manuell</button>
-      <button class="imp-tab" id="impTabGpx">📂 GPX-Import</button>
+      <button class="imp-tab" id="impTabGpx">📂 Datei-Import</button>
     </div>
     <div id="impPanManual">
       <div class="field"><label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:4px">Datum</label><input type="date" id="impDate" class="modal-input" style="margin-bottom:10px"></div>
@@ -831,12 +831,24 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       </div>
     </div>
     <div id="impPanGpx" style="display:none">
-      <label class="btn" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:8px;justify-content:center">
-        <i class="fas fa-file-upload"></i> GPX-Datei auswählen
-        <input type="file" id="gpxFileInput" accept=".gpx,application/gpx+xml,text/xml" style="display:none">
+      <label class="btn" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:6px;justify-content:center">
+        <i class="fas fa-file-upload"></i> GPX / TCX / KML auswählen
+        <input type="file" id="gpxFileInput" accept=".gpx,.tcx,.kml,.fit,application/gpx+xml,text/xml,application/xml" style="display:none">
       </label>
-      <div id="gpxFileName" style="font-size:.75rem;color:var(--muted);margin-bottom:8px;text-align:center"></div>
-      <textarea id="gpxText" class="modal-input" rows="5" placeholder="Oder GPX-Inhalt hier einfügen…" style="resize:none;font-size:.68rem;font-family:monospace;margin-bottom:6px"></textarea>
+      <div id="gpxFileName" style="font-size:.75rem;color:var(--muted);margin-bottom:6px;text-align:center"></div>
+      <details style="margin-bottom:8px">
+        <summary style="font-size:.72rem;color:var(--muted);cursor:pointer;list-style:none;display:flex;align-items:center;gap:4px"><i class="fas fa-question-circle"></i> Wie exportieren?</summary>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:6px;line-height:1.7;background:var(--card);border-radius:8px;padding:8px 10px">
+          <b style="color:var(--text)">Strava:</b> App → Aktivität → ⋮ → „GPX exportieren"<br>
+          <b style="color:var(--text)">Garmin Connect:</b> Aktivität → Export → Original oder GPX/TCX<br>
+          <b style="color:var(--text)">Apple Watch:</b> WorkOutDoors/HealthFit-App → Export GPX<br>
+          <b style="color:var(--text)">Polar Flow:</b> Aktivität → Export → GPX/TCX<br>
+          <b style="color:var(--text)">Suunto App:</b> Aktivität → Teilen → GPX<br>
+          <b style="color:var(--text)">Wahoo:</b> Aktivität → Export → FIT/GPX<br>
+          <span style="color:#ff9900">⚠ .FIT-Dateien: bitte als GPX aus der App exportieren</span>
+        </div>
+      </details>
+      <textarea id="gpxText" class="modal-input" rows="4" placeholder="Oder GPX/TCX/KML-Inhalt hier einfügen…" style="resize:none;font-size:.68rem;font-family:monospace;margin-bottom:6px"></textarea>
     </div>
     <div id="impPreview" style="display:none;margin:8px 0 10px">
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center;margin-bottom:8px" id="impPreviewStats"></div>
@@ -2107,7 +2119,8 @@ function renderActivityCards(){
   el.innerHTML=rec.map((r,i)=>{
     const d=new Date(r.date),now=new Date(),diff=Math.floor((now-d)/86400000);
     const ds=diff===0?'Heute':diff===1?'Gestern':d.toLocaleDateString('de',{weekday:'short',day:'numeric',month:'short'});
-    const b=r.imported?{t:'📥 Import',c:'#10b981'}:r.conquered?{t:'⚔️ Gebiet',c:'#ff4d6d'}:r.defended?{t:'🛡️ Verteidigt',c:'#10b981'}:{t:'🏃 Lauf',c:'var(--muted)'};
+    const importLabel=r.importSource==='tcx'?'📥 TCX':r.importSource==='kml'?'📥 KML':r.importSource==='manuell'?'✏️ Manuell':'📥 GPX';
+    const b=r.imported?{t:importLabel,c:'#10b981'}:r.conquered?{t:'⚔️ Gebiet',c:'#ff4d6d'}:r.defended?{t:'🛡️ Verteidigt',c:'#10b981'}:{t:'🏃 Lauf',c:'var(--muted)'};
     return`<div class="activity-card"><div class="ac-hdr"><span class="ac-date"><i class="fas fa-clock"></i> ${ds}</span><span class="ac-badge" style="color:${b.c};border-color:${b.c}">${b.t}</span></div><div class="ac-body"><canvas class="ac-canvas" id="ac-${i}" width="80" height="80"></canvas><div class="ac-info"><div class="ac-stats-row"><div class="ac-stat"><div class="ac-val">${(r.distance/1000).toFixed(2)}</div><div class="ac-lbl">km</div></div><div class="ac-stat"><div class="ac-val">${fmtTime(r.duration)}</div><div class="ac-lbl">Zeit</div></div><div class="ac-stat"><div class="ac-val">${fmtPace(r.distance,r.duration)}</div><div class="ac-lbl">Pace</div></div></div><div class="ac-foot"><span><i class="fas fa-fire-alt"></i> ${r.kcal||0} kcal</span><span class="ac-pts">+${r.pts} Pts</span></div></div></div></div>`;
   }).join('');
   rec.forEach((r,i)=>{const c=document.getElementById('ac-'+i);if(c&&r.path?.length>=2)drawMiniMap(c,r.path)});
@@ -2134,28 +2147,95 @@ function parseGpx(str){
     if(doc.querySelector('parsererror'))return null;
     const trkpts=doc.querySelectorAll('trkpt');
     if(!trkpts.length)return null;
-    const path=[];
+    const path=[];let totalHR=0,hrCount=0;
     trkpts.forEach(pt=>{
       const lat=parseFloat(pt.getAttribute('lat')),lng=parseFloat(pt.getAttribute('lon'));
       if(!isNaN(lat)&&!isNaN(lng))path.push([lat,lng]);
+      /* HR aus gpxtpx:hr oder ns3:hr */
+      const hrEl=pt.querySelector('hr')||pt.querySelector('[localName="hr"]');
+      const hr=parseInt(hrEl?.textContent||'');
+      if(!isNaN(hr)&&hr>30&&hr<250){totalHR+=hr;hrCount++;}
     });
     if(path.length<2)return null;
-    // Estimate duration from time elements if present
     const times=doc.querySelectorAll('time');
     let durSecs=0;
     if(times.length>=2){
       const t0=new Date(times[0].textContent),t1=new Date(times[times.length-1].textContent);
       if(!isNaN(t0)&&!isNaN(t1))durSecs=Math.round((t1-t0)/1000);
     }
-    return{path,distM:calcPathDist(path),durSecs:durSecs||Math.round(path.length*3)};
+    const avgHR=hrCount>0?Math.round(totalHR/hrCount):0;
+    return{path,distM:calcPathDist(path),durSecs:durSecs||Math.round(path.length*3),avgHR,format:'gpx'};
   }catch(e){return null;}
 }
-function showImpPreview(distM,path,durSecs){
+function parseTcx(str){
+  try{
+    const parser=new DOMParser(),doc=parser.parseFromString(str.trim(),'application/xml');
+    if(doc.querySelector('parsererror'))return null;
+    const trkpts=doc.querySelectorAll('Trackpoint');
+    if(!trkpts.length)return null;
+    const path=[];let totalHR=0,hrCount=0;
+    trkpts.forEach(tp=>{
+      const lat=parseFloat(tp.querySelector('LatitudeDegrees')?.textContent||'');
+      const lng=parseFloat(tp.querySelector('LongitudeDegrees')?.textContent||'');
+      if(!isNaN(lat)&&!isNaN(lng))path.push([lat,lng]);
+      const hr=parseInt(tp.querySelector('Value')?.textContent||'');
+      if(!isNaN(hr)&&hr>30&&hr<250){totalHR+=hr;hrCount++;}
+    });
+    if(path.length<2)return null;
+    let durSecs=0;
+    doc.querySelectorAll('TotalTimeSeconds').forEach(el=>{const v=parseFloat(el.textContent);if(!isNaN(v))durSecs+=v;});
+    let distM=0;
+    const firstDist=doc.querySelector('DistanceMeters');
+    if(firstDist){const v=parseFloat(firstDist.textContent);if(!isNaN(v)&&v>0)distM=v;}
+    if(!distM)distM=calcPathDist(path);
+    if(!durSecs)durSecs=Math.round(path.length*3);
+    const avgHR=hrCount>0?Math.round(totalHR/hrCount):0;
+    return{path,distM,durSecs,avgHR,format:'tcx'};
+  }catch(e){return null;}
+}
+function parseKml(str){
+  try{
+    const parser=new DOMParser(),doc=parser.parseFromString(str.trim(),'application/xml');
+    if(doc.querySelector('parsererror'))return null;
+    const coordEls=doc.querySelectorAll('coordinates');
+    if(!coordEls.length)return null;
+    const path=[];
+    coordEls.forEach(el=>{
+      el.textContent.trim().split(/[\s,]+(?=[-\d])|\s+/).forEach(seg=>{
+        const parts=seg.trim().split(',');
+        if(parts.length>=2){
+          const lng=parseFloat(parts[0]),lat=parseFloat(parts[1]);
+          if(!isNaN(lat)&&!isNaN(lng)&&Math.abs(lat)<=90&&Math.abs(lng)<=180)path.push([lat,lng]);
+        }
+      });
+    });
+    if(path.length<2)return null;
+    return{path,distM:calcPathDist(path),durSecs:Math.round(path.length*3),avgHR:0,format:'kml'};
+  }catch(e){return null;}
+}
+function detectAndParseFile(str,fileName){
+  const ext=(fileName||'').split('.').pop().toLowerCase();
+  let res=null;
+  if(ext==='tcx'||str.includes('<TrainingCenterDatabase')||str.includes('<Trackpoint>'))
+    res=parseTcx(str);
+  else if(ext==='kml'||str.includes('<kml')||str.includes('<Document>'))
+    res=parseKml(str);
+  else
+    res=parseGpx(str);
+  /* Fallback: try all parsers */
+  if(!res)res=parseGpx(str)||parseTcx(str)||parseKml(str);
+  return res;
+}
+function showImpPreview(distM,path,durSecs,avgHR){
   const kcal=calcKcal(distM,durSecs||1800);
+  const pts=Math.round(xpForKm(distM/1000,getWeeklyKm()));
+  const hrCell=avgHR>0
+    ?`<div><div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:#ff4d6d">${avgHR}</div><div style="font-size:.68rem;color:var(--muted)">⛔ bpm</div></div>`
+    :`<div><div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--primary)">+${pts}</div><div style="font-size:.68rem;color:var(--muted)">Pts</div></div>`;
   $('impPreviewStats').innerHTML=
     `<div><div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--primary)">${(distM/1000).toFixed(2)}</div><div style="font-size:.68rem;color:var(--muted)">km</div></div>`+
     `<div><div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--primary)">${kcal}</div><div style="font-size:.68rem;color:var(--muted)">kcal</div></div>`+
-    `<div><div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--primary)">+${Math.round(xpForKm(distM/1000,getWeeklyKm()))}</div><div style="font-size:.68rem;color:var(--muted)">Pts</div></div>`;
+    hrCell;
   const cv=$('impMapCanvas');
   if(path&&path.length>=2){cv.style.display='block';drawMiniMap(cv,path);}
   else cv.style.display='none';
@@ -2168,19 +2248,19 @@ function openImportModal(){
   $('gpxText').value='';$('gpxFileName').textContent='';
   $('impPreview').style.display='none';
   $('impError').style.display='none';
-  impCurrentPath=null;
+  impCurrentPath=null; /* reset parsed file result */
   $('impTabManual').classList.add('active');$('impTabGpx').classList.remove('active');
   $('impPanManual').style.display='';$('impPanGpx').style.display='none';
   $('importModal').style.display='flex';
 }
-function importActivity(distM,durSecs,dateMs,path,source){
+function importActivity(distM,durSecs,dateMs,path,source,avgHR){
   const kcal=calcKcal(distM,durSecs);
   const kmXP=Math.round(xpForKm(distM/1000,getWeeklyKm()));
   const rec={
     date:dateMs,distance:distM,area:0,pts:kmXP,
     path:path?path.filter((_,i)=>i%3===0):[],
     conquered:false,defended:false,
-    duration:durSecs,gap:0,kcal,avgHR:0,splits:[],
+    duration:durSecs,gap:0,kcal,avgHR:avgHR||0,splits:[],
     imported:true,importSource:source||'manuell'
   };
   history.push(rec);if(history.length>30)history.shift();
@@ -3255,42 +3335,47 @@ window.initApp=function(){
   });
   ['impKm','impMin'].forEach(id=>$(id)?.addEventListener('input',()=>{
     const km=parseFloat($('impKm').value),min=parseFloat($('impMin').value);
-    if(km>0&&min>0)showImpPreview(km*1000,null,min*60);
+    if(km>0&&min>0)showImpPreview(km*1000,null,min*60,0);
   }));
   $('gpxFileInput')?.addEventListener('change',function(){
     const file=this.files[0];if(!file)return;
     $('gpxFileName').textContent=file.name;
     const reader=new FileReader();
     reader.onload=e=>{
-      $('gpxText').value=e.target.result;
-      const res=parseGpx(e.target.result);
-      if(res){impCurrentPath=res.path;showImpPreview(res.distM,res.path,res.durSecs);$('impError').style.display='none';}
-      else{$('impError').textContent='GPX konnte nicht gelesen werden.';$('impError').style.display='';}
+      const str=e.target.result;
+      $('gpxText').value=str;
+      const res=detectAndParseFile(str,file.name);
+      if(res){impCurrentPath=res;showImpPreview(res.distM,res.path,res.durSecs,res.avgHR||0);$('impError').style.display='none';}
+      else{$('impError').textContent='Datei konnte nicht gelesen werden. Bitte als GPX oder TCX exportieren.';$('impError').style.display='';}
     };
     reader.readAsText(file);
   });
   $('gpxText')?.addEventListener('input',function(){
     if(this.value.length<20)return;
-    const res=parseGpx(this.value);
-    if(res){impCurrentPath=res.path;showImpPreview(res.distM,res.path,res.durSecs);$('impError').style.display='none';}
-    else if(this.value.length>100){$('impError').textContent='Ungültiges GPX-Format.';$('impError').style.display='';}
+    const res=detectAndParseFile(this.value,'');
+    if(res){impCurrentPath=res;showImpPreview(res.distM,res.path,res.durSecs,res.avgHR||0);$('impError').style.display='none';}
+    else if(this.value.length>100){$('impError').textContent='Format nicht erkannt (GPX, TCX oder KML erwartet).';$('impError').style.display='';}
   });
   $('impConfirmBtn')?.addEventListener('click',()=>{
     $('impError').style.display='none';
-    const isGpx=$('impTabGpx').classList.contains('active');
+    const isFile=$('impTabGpx').classList.contains('active');
     const dateMs=new Date($('impDate').value||new Date()).getTime()||Date.now();
-    if(isGpx){
-      const gpxStr=$('gpxText').value.trim();
-      const res=impCurrentPath?{path:impCurrentPath,distM:calcPathDist(impCurrentPath),durSecs:impCurrentPath.length*3}:(gpxStr?parseGpx(gpxStr):null);
-      if(!res||!res.path||res.path.length<2){$('impError').textContent='Bitte gültige GPX-Datei auswählen oder einfügen.';$('impError').style.display='';return;}
-      importActivity(res.distM,res.durSecs||1800,dateMs,res.path,'gpx');
+    if(isFile){
+      let res=impCurrentPath;
+      if(!res){
+        const str=$('gpxText').value.trim();
+        if(!str){$('impError').textContent='Bitte Datei auswählen oder Inhalt einfügen.';$('impError').style.display='';return;}
+        res=detectAndParseFile(str,'');
+      }
+      if(!res||!res.path||res.path.length<2){$('impError').textContent='Datei konnte nicht importiert werden.';$('impError').style.display='';return;}
+      importActivity(res.distM,res.durSecs||1800,dateMs,res.path,res.format||'gpx',res.avgHR||0);
       $('importModal').style.display='none';
     } else {
       const km=parseFloat($('impKm').value);
       const min=parseFloat($('impMin').value);
       if(!km||km<=0){$('impError').textContent='Bitte gültige Distanz eingeben.';$('impError').style.display='';return;}
       if(!min||min<=0){$('impError').textContent='Bitte gültige Dauer eingeben.';$('impError').style.display='';return;}
-      importActivity(km*1000,min*60,dateMs,null,'manuell');
+      importActivity(km*1000,min*60,dateMs,null,'manuell',0);
       $('importModal').style.display='none';
     }
   });
