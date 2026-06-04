@@ -343,6 +343,8 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .split-row span:first-child{color:var(--primary);font-family:'Bebas Neue',sans-serif;font-size:.95rem}
 .imp-tab{flex:1;padding:9px 4px;background:none;border:none;color:var(--muted);cursor:pointer;font-family:'Poppins',sans-serif;font-size:.8rem;transition:all .2s}
 .imp-tab.active{background:var(--primary);color:#000;font-weight:700}
+.strava-act-row{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--border)}
+.strava-act-row:last-child{border-bottom:none}
 
 /* ═══ TOAST ═══ */
 #toast{position:fixed;bottom:calc(var(--nav-h) + 14px);left:50%;transform:translateX(-50%);background:var(--primary);color:var(--bg);padding:9px 22px;border-radius:40px;z-index:2000;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;font-size:.82rem;font-weight:700}
@@ -821,7 +823,8 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
     <div class="modal-title">AKTIVITÄT HINZUFÜGEN</div>
     <div style="display:flex;gap:0;margin-bottom:14px;border-radius:8px;overflow:hidden;border:1px solid var(--border)">
       <button class="imp-tab active" id="impTabManual">✏️ Manuell</button>
-      <button class="imp-tab" id="impTabGpx">📂 Datei-Import</button>
+      <button class="imp-tab" id="impTabGpx">📂 Datei</button>
+      <button class="imp-tab" id="impTabStrava">🔴 Strava</button>
     </div>
     <div id="impPanManual">
       <div class="field"><label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:4px">Datum</label><input type="date" id="impDate" class="modal-input" style="margin-bottom:10px"></div>
@@ -850,6 +853,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       </details>
       <textarea id="gpxText" class="modal-input" rows="4" placeholder="Oder GPX/TCX/KML-Inhalt hier einfügen…" style="resize:none;font-size:.68rem;font-family:monospace;margin-bottom:6px"></textarea>
     </div>
+    <div id="impPanStrava" style="display:none"></div>
     <div id="impPreview" style="display:none;margin:8px 0 10px">
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center;margin-bottom:8px" id="impPreviewStats"></div>
       <canvas id="impMapCanvas" width="300" height="110" style="width:100%;border-radius:8px;border:1px solid var(--border);display:block"></canvas>
@@ -1021,6 +1025,8 @@ let starterQuestsDone=[],starterQuestFlags={profileOpened:false};
 let seasonChecked=false;
 let importedLayer=null,impCurrentPath=null,bgLockTs=0;
 let silentHeartbeat=null,bgTipShown=false;
+let stravaToken=localStorage.getItem('rc_strava_token')||null;
+let stravaClientId=localStorage.getItem('rc_strava_cid')||'';
 
 /* ═══ SUPABASE ═══ */
 const SB_URL='https://mlkpryhacihbqnmtgkcg.supabase.co';
@@ -2119,7 +2125,7 @@ function renderActivityCards(){
   el.innerHTML=rec.map((r,i)=>{
     const d=new Date(r.date),now=new Date(),diff=Math.floor((now-d)/86400000);
     const ds=diff===0?'Heute':diff===1?'Gestern':d.toLocaleDateString('de',{weekday:'short',day:'numeric',month:'short'});
-    const importLabel=r.importSource==='tcx'?'📥 TCX':r.importSource==='kml'?'📥 KML':r.importSource==='manuell'?'✏️ Manuell':'📥 GPX';
+    const importLabel=r.importSource==='strava'?'🔴 Strava':r.importSource==='tcx'?'📥 TCX':r.importSource==='kml'?'📥 KML':r.importSource==='manuell'?'✏️ Manuell':'📥 GPX';
     const b=r.imported?{t:importLabel,c:'#10b981'}:r.conquered?{t:'⚔️ Gebiet',c:'#ff4d6d'}:r.defended?{t:'🛡️ Verteidigt',c:'#10b981'}:{t:'🏃 Lauf',c:'var(--muted)'};
     return`<div class="activity-card"><div class="ac-hdr"><span class="ac-date"><i class="fas fa-clock"></i> ${ds}</span><span class="ac-badge" style="color:${b.c};border-color:${b.c}">${b.t}</span></div><div class="ac-body"><canvas class="ac-canvas" id="ac-${i}" width="80" height="80"></canvas><div class="ac-info"><div class="ac-stats-row"><div class="ac-stat"><div class="ac-val">${(r.distance/1000).toFixed(2)}</div><div class="ac-lbl">km</div></div><div class="ac-stat"><div class="ac-val">${fmtTime(r.duration)}</div><div class="ac-lbl">Zeit</div></div><div class="ac-stat"><div class="ac-val">${fmtPace(r.distance,r.duration)}</div><div class="ac-lbl">Pace</div></div></div><div class="ac-foot"><span><i class="fas fa-fire-alt"></i> ${r.kcal||0} kcal</span><span class="ac-pts">+${r.pts} Pts</span></div></div></div></div>`;
   }).join('');
@@ -2249,8 +2255,10 @@ function openImportModal(){
   $('impPreview').style.display='none';
   $('impError').style.display='none';
   impCurrentPath=null; /* reset parsed file result */
-  $('impTabManual').classList.add('active');$('impTabGpx').classList.remove('active');
-  $('impPanManual').style.display='';$('impPanGpx').style.display='none';
+  ['impTabGpx','impTabStrava'].forEach(id=>$(id)?.classList.remove('active'));
+  $('impTabManual').classList.add('active');
+  $('impPanManual').style.display='';
+  ['impPanGpx','impPanStrava'].forEach(id=>{const el=$(id);if(el)el.style.display='none';});
   $('importModal').style.display='flex';
 }
 function importActivity(distM,durSecs,dateMs,path,source,avgHR){
@@ -2276,6 +2284,105 @@ function importActivity(distM,durSecs,dateMs,path,source,avgHR){
   }
   toast('✅ Importiert · '+fmtDist(distM)+' · +'+kmXP+' Pts');
   updateUI();
+}
+
+/* ── STRAVA INTEGRATION ── */
+function checkStravaCallback(){
+  try{
+    const hash=new URLSearchParams(location.hash.replace(/^#/,''));
+    const token=hash.get('access_token');
+    if(!token)return;
+    stravaToken=token;
+    localStorage.setItem('rc_strava_token',token);
+    history.replaceState(null,'',location.pathname+location.search);
+    window._openStravaOnInit=true;
+  }catch(e){}
+}
+function connectStrava(){
+  const cid=(document.getElementById('stravaCidInput')?.value||'').trim()||stravaClientId;
+  if(!cid){document.getElementById('stravaErr')&&(document.getElementById('stravaErr').style.display='');return;}
+  stravaClientId=cid;localStorage.setItem('rc_strava_cid',cid);
+  const ru=encodeURIComponent(location.origin+location.pathname);
+  location.href=`https://www.strava.com/oauth/authorize?client_id=${cid}&redirect_uri=${ru}&response_type=token&scope=activity:read_all&approval_prompt=auto`;
+}
+function renderStravaPanel(){
+  const pan=$('impPanStrava');if(!pan)return;
+  if(stravaToken){
+    pan.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:.8rem">
+      <span style="color:#10b981">✅ Mit Strava verbunden</span>
+      <button id="stravaDisconBtn" class="btn" style="margin-left:auto;font-size:.7rem;padding:3px 9px">Trennen</button>
+    </div>
+    <div id="stravaActList" style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:10px"></div>`;
+    document.getElementById('stravaDisconBtn')?.addEventListener('click',()=>{
+      stravaToken=null;localStorage.removeItem('rc_strava_token');renderStravaPanel();
+    });
+    loadStravaActivitiesUI();
+  }else{
+    pan.innerHTML=`<div style="font-size:.74rem;color:var(--muted);line-height:1.7;margin-bottom:10px">
+      Verbinde dein Strava-Konto, um Läufe direkt zu importieren.<br>
+      Du brauchst eine kostenlose <b style="color:var(--text)">Strava Developer App</b> (einmalig):<br>
+      <a href="https://www.strava.com/settings/api" target="_blank" style="color:var(--primary)">→ strava.com/settings/api → App erstellen → Client ID kopieren</a>
+    </div>
+    <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">Strava Client ID:</div>
+    <input type="number" id="stravaCidInput" class="modal-input" placeholder="z. B. 12345" value="${stravaClientId}" style="margin-bottom:8px">
+    <div id="stravaErr" style="color:#ff4d6d;font-size:.74rem;margin-bottom:6px;display:none">Bitte Client ID eingeben.</div>
+    <button id="stravaConBtn" class="btn btn-p" style="width:100%"><i class="fas fa-link"></i> Mit Strava verbinden</button>
+    <div style="font-size:.68rem;color:var(--muted);margin-top:8px;line-height:1.5">
+      💡 Beim Erstellen der App: „Authorization Callback Domain" auf <b style="color:var(--text)">${location.hostname}</b> setzen.
+    </div>`;
+    document.getElementById('stravaConBtn')?.addEventListener('click',connectStrava);
+  }
+}
+async function loadStravaActivitiesUI(){
+  const list=$('stravaActList');if(!list)return;
+  list.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted)">⏳ Lädt…</div>';
+  try{
+    const r=await fetch('https://www.strava.com/api/v3/athlete/activities?per_page=25',
+      {headers:{Authorization:`Bearer ${stravaToken}`}});
+    if(r.status===401){stravaToken=null;localStorage.removeItem('rc_strava_token');renderStravaPanel();return;}
+    const acts=await r.json();
+    const runs=acts.filter(a=>['Run','TrailRun','VirtualRun'].includes(a.sport_type||a.type));
+    if(!runs.length){list.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted)">Keine Läufe gefunden</div>';return;}
+    list.innerHTML=runs.map(a=>{
+      const d=new Date(a.start_date_local||a.start_date);
+      const ds=d.toLocaleDateString('de',{day:'numeric',month:'short',year:'2-digit'});
+      const km=(a.distance/1000).toFixed(2);
+      const t=fmtTime(a.moving_time);
+      const hr=a.average_heartrate?`· ♥ ${Math.round(a.average_heartrate)} bpm`:'';
+      return`<div class="strava-act-row" data-id="${a.id}" data-dist="${a.distance}" data-dur="${a.moving_time}" data-date="${new Date(a.start_date).getTime()}" data-hr="${Math.round(a.average_heartrate||0)}">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.8rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.name||'Lauf'}</div>
+          <div style="font-size:.68rem;color:var(--muted)">${ds} · ${km} km · ${t} ${hr}</div>
+        </div>
+        <button class="btn btn-p strava-imp-btn" style="font-size:.7rem;padding:5px 10px;flex-shrink:0">Import</button>
+      </div>`;
+    }).join('');
+    list.querySelectorAll('.strava-imp-btn').forEach(btn=>{
+      btn.addEventListener('click',async function(){
+        const row=this.closest('.strava-act-row');
+        this.disabled=true;this.textContent='⏳';
+        await importStravaActivity(
+          row.dataset.id,parseFloat(row.dataset.dist),
+          parseInt(row.dataset.dur),parseInt(row.dataset.date),
+          parseFloat(row.dataset.hr)||0
+        );
+        $('importModal').style.display='none';
+      });
+    });
+  }catch(e){
+    list.innerHTML='<div style="text-align:center;padding:16px;color:#ff4d6d">Fehler beim Laden – bitte neu verbinden.</div>';
+  }
+}
+async function importStravaActivity(id,distM,durSecs,dateMs,avgHR){
+  let path=[];
+  try{
+    const sr=await fetch(
+      `https://www.strava.com/api/v3/activities/${id}/streams?keys=latlng,heartrate&key_by_type=true`,
+      {headers:{Authorization:`Bearer ${stravaToken}`}}
+    );
+    if(sr.ok){const sd=await sr.json();if(sd.latlng?.data)path=sd.latlng.data;}
+  }catch(e){}
+  importActivity(distM,durSecs,dateMs,path,'strava',avgHR);
 }
 
 /* COMMUNITY */
@@ -3291,7 +3398,7 @@ window.initApp=function(){
     saveProfile();
     $('onboarding').style.display='none';$('app').style.display='flex';
     window._hideCityBg?.();
-    initMap();setTimeout(()=>{load();updateUI();mapL?.invalidateSize();showInboxBtn();},150);setupBg();initSteps();
+    initMap();setTimeout(()=>{load();updateUI();mapL?.invalidateSize();showInboxBtn();if(window._openStravaOnInit){window._openStravaOnInit=false;setTimeout(()=>{openImportModal();$('impTabStrava')?.click();},400);}},150);setupBg();initSteps();
     initSupabase().then(async()=>{const restored=await loadFromCloud();if(!restored&&territories.filter(t=>t.owner!==userId).length===0){await genRivals();}renderTerr();updateUI();syncProfile();updateDmBadge();});
   });
   startBtn.addEventListener('click',startRun);
@@ -3330,8 +3437,17 @@ window.initApp=function(){
     $('impPanManual').style.display='';$('impPanGpx').style.display='none';
   });
   $('impTabGpx')?.addEventListener('click',()=>{
-    $('impTabGpx').classList.add('active');$('impTabManual').classList.remove('active');
-    $('impPanGpx').style.display='';$('impPanManual').style.display='none';
+    ['impTabManual','impTabStrava'].forEach(id=>$(id)?.classList.remove('active'));
+    $('impTabGpx').classList.add('active');
+    $('impPanGpx').style.display='';
+    ['impPanManual','impPanStrava'].forEach(id=>{const el=$(id);if(el)el.style.display='none';});
+  });
+  $('impTabStrava')?.addEventListener('click',()=>{
+    ['impTabManual','impTabGpx'].forEach(id=>$(id)?.classList.remove('active'));
+    $('impTabStrava').classList.add('active');
+    $('impPanStrava').style.display='';
+    ['impPanManual','impPanGpx'].forEach(id=>{const el=$(id);if(el)el.style.display='none';});
+    renderStravaPanel();
   });
   ['impKm','impMin'].forEach(id=>$(id)?.addEventListener('input',()=>{
     const km=parseFloat($('impKm').value),min=parseFloat($('impMin').value);
@@ -3504,6 +3620,7 @@ window._hideCityBg=function(){
 };
 
 /* BOOT */
+checkStravaCallback(); /* Strava OAuth-Rückkehr prüfen (liest URL-Hash) */
 setTimeout(()=>{
   const sp=$('splash');
   if(sp){sp.style.opacity='0';setTimeout(()=>{sp.style.display='none';},600);}
