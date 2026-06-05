@@ -7,6 +7,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
 <meta id="themeColorMeta" name="theme-color" content="#042D22">
+<meta name="apple-mobile-web-app-title" content="RunConquer">
+<link rel="apple-touch-icon" href="/icons/icon-180.png">
+<link rel="manifest" href="/manifest.json">
 <title>Runners Conquer</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -117,6 +120,24 @@ body{
 .ob-card input{width:100%;padding:13px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:12px;color:#fff;font-size:.95rem;margin-bottom:14px;outline:none;font-family:'Poppins',sans-serif}
 .ob-card input::placeholder{color:rgba(255,255,255,.3)}
 .ob-card input:focus{border-color:rgba(255,255,255,.32);background:rgba(255,255,255,.12)}
+/* Auth screen extras */
+.ob-check-row{display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;text-align:left}
+.ob-check-row input[type=checkbox]{width:18px;height:18px;margin-top:2px;flex-shrink:0;accent-color:var(--primary);cursor:pointer}
+.ob-check-row label{font-size:.72rem;color:rgba(255,255,255,.65);line-height:1.4;cursor:pointer}
+.ob-check-row a{color:rgba(255,255,255,.85);text-decoration:underline}
+.ob-err{font-size:.75rem;text-align:center;margin:0 0 8px;min-height:18px;display:none}
+.ob-err.err{color:#ff6b8a}
+.ob-err.ok{color:#4ade80}
+.ob-link{font-size:.72rem;color:rgba(255,255,255,.45);text-align:center;margin-top:10px;cursor:pointer;text-decoration:underline;background:none;border:none;width:100%;font-family:'Poppins',sans-serif}
+/* GPS consent modal */
+#gpsConsentModal{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:3500;display:flex;align-items:center;justify-content:center;padding:20px}
+.consent-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;max-width:340px;width:100%;text-align:center}
+.consent-title{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:1px;color:var(--primary);margin-bottom:10px}
+.consent-body{font-size:.78rem;color:var(--muted);line-height:1.6;margin-bottom:18px;text-align:left}
+.consent-btns{display:flex;gap:8px}
+/* Impressum modal */
+#impressumModal{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:3500;align-items:center;justify-content:center;padding:20px;display:none}
+.impressum-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;max-width:360px;width:100%;font-size:.8rem;color:var(--muted);line-height:1.8}
 
 /* ═══ SHELL ═══ */
 #app{display:none;flex-direction:column;height:100%;position:relative;background:var(--bg)}
@@ -483,22 +504,81 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
     <div class="ob-title">RUNNERS CONQUER</div>
     <div class="ob-sub">Lauf · Erobere · Herrsche</div>
     <div class="ob-tabs">
-      <button class="ob-tab active" id="obTabPlayer">🎮 Als Spieler</button>
-      <button class="ob-tab" id="obTabAdmin">🔐 Admin Login</button>
+      <button class="ob-tab active" id="obTabReg">📝 Registrieren</button>
+      <button class="ob-tab" id="obTabLogin">🔑 Anmelden</button>
+      <button class="ob-tab" id="obTabAdmin">🔐 Admin</button>
     </div>
-    <!-- Player form -->
-    <div id="obPlayerForm">
-      <div class="field"><label>Dein Name</label><input type="text" id="nameInput" placeholder="z.B. SpeedRunner" maxlength="20"></div>
-      <div class="field"><label>Avatar</label><div class="avatar-row" id="avatarOpts"></div></div>
-      <button class="btn-start" id="startBtn">LOS GEHT'S →</button>
+    <!-- Register form -->
+    <div id="obRegForm">
+      <div class="field"><label>Name</label><input type="text" id="regName" placeholder="z.B. SpeedRunner" maxlength="20" autocomplete="nickname"></div>
+      <div class="field"><label>E-Mail</label><input type="email" id="regEmail" placeholder="deine@email.de" autocomplete="email"></div>
+      <div class="field"><label>Passwort</label><input type="password" id="regPw" placeholder="Mindestens 8 Zeichen" autocomplete="new-password"></div>
+      <div class="field"><label>Passwort bestätigen</label><input type="password" id="regPw2" placeholder="Passwort wiederholen" autocomplete="new-password"></div>
+      <div class="ob-check-row"><input type="checkbox" id="regAge"><label for="regAge">Ich bin mindestens 16 Jahre alt.</label></div>
+      <div class="ob-check-row"><input type="checkbox" id="regPrivacy"><label for="regPrivacy">Ich habe die <a href="/privacy.html" target="_blank">Datenschutzerklärung</a> gelesen und stimme der Verarbeitung meiner GPS- und Aktivitätsdaten zu.</label></div>
+      <div class="ob-err" id="regErr"></div>
+      <button class="btn-start" id="regBtn">KONTO ERSTELLEN →</button>
+    </div>
+    <!-- Login form -->
+    <div id="obLoginForm" style="display:none">
+      <div class="field"><label>E-Mail</label><input type="email" id="loginEmail" placeholder="deine@email.de" autocomplete="email"></div>
+      <div class="field"><label>Passwort</label><input type="password" id="loginPw" placeholder="Dein Passwort" autocomplete="current-password"></div>
+      <div class="ob-err" id="loginErr"></div>
+      <button class="btn-start" id="loginBtn">ANMELDEN →</button>
+      <button class="ob-link" id="forgotPwLink">Passwort vergessen?</button>
     </div>
     <!-- Admin form -->
     <div id="obAdminForm" style="display:none">
-      <div class="field"><label>E-Mail</label><input type="email" id="adminEmail" class="modal-input" placeholder="E-Mail Adresse…"></div>
-      <div class="field"><label>Passwort</label><input type="password" id="adminPwd" class="modal-input" placeholder="Passwort…"></div>
+      <div class="field"><label>E-Mail</label><input type="email" id="adminEmail" class="modal-input" placeholder="E-Mail Adresse…" autocomplete="email"></div>
+      <div class="field"><label>Passwort</label><input type="password" id="adminPwd" class="modal-input" placeholder="Passwort…" autocomplete="current-password"></div>
       <button class="btn-start" id="adminLoginBtn">ADMIN LOGIN →</button>
       <div id="adminLoginStatus" style="text-align:center;margin-top:10px;font-size:.8rem"></div>
     </div>
+    <div style="margin-top:14px;text-align:center;font-size:.63rem;color:rgba(255,255,255,.3)">
+      <a href="/privacy.html" target="_blank" style="color:rgba(255,255,255,.35);text-decoration:none">Datenschutz</a>
+      &nbsp;·&nbsp;
+      <span id="obImpressumLink" style="cursor:pointer;color:rgba(255,255,255,.35)">Impressum</span>
+    </div>
+  </div>
+</div>
+
+<!-- GPS-Einwilligungsmodal -->
+<div id="gpsConsentModal" style="display:none">
+  <div class="consent-card">
+    <div class="consent-title">📍 GPS-Zugriff</div>
+    <div class="consent-body">
+      <b>Wofür nutzen wir GPS?</b><br>
+      Deine Laufroute wird aufgezeichnet, um Gebiete zu erobern und deine Laufstrecke anzuzeigen.
+      Gesundheitsdaten (Kalorien, Schritte) werden lokal auf deinem Gerät berechnet.<br><br>
+      <b>Was wir nicht tun:</b><br>
+      GPS-Daten werden nicht im Hintergrund getrackt und nicht an Werbetreibende weitergegeben.<br><br>
+      Du kannst deine Einwilligung jederzeit in den Einstellungen widerrufen.
+    </div>
+    <div class="consent-btns">
+      <button class="btn" id="consentDenyBtn" style="flex:1;border-color:var(--border);color:var(--muted)">Ablehnen</button>
+      <button class="btn btn-p" id="consentAcceptBtn" style="flex:2">✓ Zustimmen &amp; GPS nutzen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Impressum-Modal -->
+<div id="impressumModal">
+  <div class="impressum-card">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:1px;color:var(--primary);margin-bottom:12px">Impressum</div>
+    <div style="font-size:.8rem;line-height:1.8">
+      Angaben gemäß § 5 TMG:<br><br>
+      <b>[Vor- und Nachname / Firmenname]</b><br>
+      [Straße, Hausnummer]<br>
+      [PLZ, Ort]<br>
+      Deutschland<br><br>
+      Kontakt:<br>
+      E-Mail: maxst0297@gmail.com<br><br>
+      <span style="font-size:.68rem;color:var(--muted)">
+        Verantwortlich für den Inhalt nach § 55 Abs. 2 RStV:<br>
+        [Vor- und Nachname, Adresse wie oben]
+      </span>
+    </div>
+    <button class="btn btn-p" id="impressumCloseBtn" style="width:100%;margin-top:16px">Schließen</button>
   </div>
 </div>
 
@@ -932,6 +1012,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <button class="stab-btn" data-stab="club">Club</button>
       <button class="stab-btn" data-stab="spiel">Spiel</button>
       <button class="stab-btn" data-stab="support">Support</button>
+      <button class="stab-btn" data-stab="datenschutz">🔒 Datenschutz</button>
       <button class="stab-btn" data-stab="hilfe">Hilfe</button>
     </div>
     <div id="settingsBody"></div>
@@ -1090,15 +1171,16 @@ let archivedConvs=[],archivedSupportIds=new Set();
 let supportVisitTs=0;
 
 async function initSupabase(){
-  if(!sb)return;
+  if(!sb)return null;
   try{
     const{data:{session}}=await sb.auth.getSession();
     if(session){
       sbUserId=session.user.id;
-      if(session.user.email==='maxst0297@gmail.com'){isAdmin=true;setTimeout(showInboxIfAdmin,800);}
+      if(session.user.email==='maxst0297@gmail.com'){isAdmin=true;}
+      return session;
     }
-    else{const{data,error}=await sb.auth.signInAnonymously();if(data?.user)sbUserId=data.user.id;}
-  }catch(e){console.warn('Supabase auth:',e);}
+    return null;
+  }catch(e){console.warn('Supabase auth:',e);return null;}
 }
 async function syncProfile(){
   if(!sb||!sbUserId||!playerName)return;
@@ -1815,8 +1897,8 @@ function initMap(){
     }
     loadLandmarks();
   });
-  /* Persistenter GPS-Watcher: Marker immer aktuell, auch außerhalb eines Laufs */
-  if(navigator.geolocation&&!bgWatchId){
+  /* Persistenter GPS-Watcher: nur starten wenn GPS-Einwilligung vorliegt */
+  if(navigator.geolocation&&!bgWatchId&&localStorage.getItem('rc_gps_consent')==='1'){
     bgWatchId=navigator.geolocation.watchPosition(onGPS,e=>{
       console.warn('GPS-Hintergrund-Fehler:',e.code,e.message);
     },{enableHighAccuracy:true,maximumAge:2000,timeout:30000});
@@ -2050,6 +2132,7 @@ function drawMiniMap(canvas,pts){
 /* RUN */
 function startRun(){
   if(isRunning)return;
+  if(localStorage.getItem('rc_gps_consent')!=='1'){showGpsConsent(startRun);return;}
   isRunning=true;isPaused=false;beep(440);
   runStart=Date.now();runSecs=0;path=[];lastPos=null;dist=0;kmSplits=[];lastSplitKm=0;lastSplitSecs=0;
   gpsSpeed=null;gpsAlt=null;cadence=0;
@@ -2966,17 +3049,42 @@ function renderSettingsTab(tab){
     </div>
   </details>
 </div>`;
+  } else if(tab==='datenschutz'){
+    const gpsGranted=localStorage.getItem('rc_gps_consent')==='1';
+    body.innerHTML=`<div style="display:flex;flex-direction:column;gap:10px">
+<div style="font-size:.75rem;color:var(--muted);background:var(--card);padding:12px;border-radius:12px;border:1px solid var(--border);line-height:1.6">
+  <div style="font-weight:700;font-size:.85rem;color:var(--text);margin-bottom:6px">🔒 Deine Daten (DSGVO)</div>
+  Du hast das Recht, deine Daten zu exportieren oder dein Konto zu löschen.<br>
+  GPS-Einwilligung: <b style="color:${gpsGranted?'var(--green)':'var(--red)'}">${gpsGranted?'✅ Erteilt':'❌ Nicht erteilt'}</b>
+  ${gpsGranted?`<br><button style="background:none;border:none;color:var(--muted);font-size:.7rem;cursor:pointer;padding:2px 0;font-family:'Poppins',sans-serif;text-decoration:underline" id="revokeGpsBtn">GPS-Einwilligung widerrufen</button>`:''}
+</div>
+<button class="btn btn-p" id="dataExportBtn" style="width:100%"><i class="fas fa-download"></i> Meine Daten exportieren</button>
+<button class="btn" id="deleteAccBtn" style="width:100%;border-color:var(--red);color:var(--red)"><i class="fas fa-trash-alt"></i> Konto löschen</button>
+<div style="height:1px;background:var(--border)"></div>
+<button class="btn" id="showPrivacyBtn" style="width:100%"><i class="fas fa-file-alt"></i> Datenschutzerklärung</button>
+<button class="btn" id="showImpressumBtn2" style="width:100%"><i class="fas fa-info-circle"></i> Impressum</button>
+</div>`;
+    document.getElementById('dataExportBtn')?.addEventListener('click',downloadDataExport);
+    document.getElementById('deleteAccBtn')?.addEventListener('click',deleteAccount);
+    document.getElementById('showPrivacyBtn')?.addEventListener('click',()=>window.open('/privacy.html','_blank'));
+    document.getElementById('showImpressumBtn2')?.addEventListener('click',showImpressum);
+    document.getElementById('revokeGpsBtn')?.addEventListener('click',()=>{
+      localStorage.removeItem('rc_gps_consent');
+      if(bgWatchId!==null){navigator.geolocation.clearWatch(bgWatchId);bgWatchId=null;}
+      toast('GPS-Einwilligung widerrufen. Lauf-Funktion deaktiviert.');
+      renderSettingsTab('datenschutz');
+    });
   }
 }
 
 /* ── ADMIN PANEL ── */
 let adminCharts=[];
 function openAdminLogin(){
-  // Admin login is in the onboarding screen
   $('app').style.display='none';
   $('onboarding').style.display='flex';
-  $('obTabAdmin')?.classList.add('active');$('obTabPlayer')?.classList.remove('active');
-  $('obAdminForm').style.display='';$('obPlayerForm').style.display='none';
+  ['obTabReg','obTabLogin','obTabAdmin'].forEach(id=>$(id)?.classList.remove('active'));
+  $('obTabAdmin')?.classList.add('active');
+  $('obRegForm').style.display='none';$('obLoginForm').style.display='none';$('obAdminForm').style.display='';
   const s=$('adminLoginStatus');if(s)s.textContent='';
 }
 function openAdminPanel(){
@@ -3429,6 +3537,92 @@ async function logoutUser(){
   location.reload();
 }
 
+async function launchAppFromSession(user){
+  sbUserId=user.id;
+  userId=user.id;
+  if(user.email==='maxst0297@gmail.com'){isAdmin=true;}
+  const meta=user.user_metadata||{};
+  playerName=meta.playerName||'';
+  loadProfile();
+  if(!playerName)playerName=meta.playerName||user.email?.split('@')[0]||'Läufer';
+  saveProfile();
+  $('onboarding').style.display='none';
+  $('app').style.display='flex';
+  window._hideCityBg?.();
+  if(!mapL){
+    initMap();
+    setTimeout(async()=>{
+      load();updateUI();mapL?.invalidateSize();showInboxBtn();
+      if(window._openStravaOnInit){window._openStravaOnInit=false;setTimeout(()=>{openImportModal();$('impTabStrava')?.click();},400);}
+      const restored=await loadFromCloud();
+      if(!restored&&territories.filter(t=>t.owner!==userId).length===0){await genRivals();}
+      renderTerr();updateUI();syncProfile();updateDmBadge();
+      if(isAdmin)setTimeout(showInboxIfAdmin,800);
+    },150);
+    setupBg();initSteps();
+  }
+}
+
+function showGpsConsent(onAccept){
+  const modal=$('gpsConsentModal');
+  if(!modal)return;
+  modal.style.display='flex';
+  $('consentAcceptBtn').onclick=()=>{
+    localStorage.setItem('rc_gps_consent','1');
+    modal.style.display='none';
+    if(bgWatchId===null&&navigator.geolocation){
+      bgWatchId=navigator.geolocation.watchPosition(onGPS,e=>console.warn('GPS:',e.code),{enableHighAccuracy:true,maximumAge:2000,timeout:30000});
+    }
+    if(typeof onAccept==='function')onAccept();
+  };
+  $('consentDenyBtn').onclick=()=>{
+    modal.style.display='none';
+    toast('GPS abgelehnt – Lauf-Funktion nicht verfügbar');
+  };
+}
+
+async function downloadDataExport(){
+  try{
+    const runs=sb&&sbUserId?(await sb.from('runs').select('*').eq('user_id',sbUserId))?.data||[]:[];
+    const profile=sb&&sbUserId?(await sb.from('profiles').select('*').eq('id',sbUserId).single())?.data||null:null;
+    const localData=JSON.parse(localStorage.getItem('rc_v4_'+userId)||'{}');
+    const export_={
+      exportDate:new Date().toISOString(),
+      profile:{playerName,userId,...profile},
+      runs,
+      localGameData:localData
+    };
+    const blob=new Blob([JSON.stringify(export_,null,2)],{type:'application/json'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='meine-runconquer-daten.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('📦 Daten werden heruntergeladen…');
+  }catch(e){toast('❌ Export fehlgeschlagen: '+(e.message||''));}
+}
+
+async function deleteAccount(){
+  if(!confirm('Konto wirklich löschen?\n\nAlle deine Spielstände, Läufe und das Konto werden unwiderruflich gelöscht.\n\nFortfahren?'))return;
+  try{
+    if(sb&&sbUserId){
+      await sb.from('runs').delete().eq('user_id',sbUserId);
+      await sb.from('profiles').delete().eq('id',sbUserId);
+      await sb.from('support_messages').insert({user_id:sbUserId,subject:'KONTO-LÖSCHANTRAG DSGVO Art.17',message:'Nutzer hat Konto-Löschung beantragt.',email:userId});
+    }
+    ['rc_v4_','rc_profile_','rc_seasons_','rc_follows_','rc_arch_dm_','rc_arch_sup_','rc_sup_visit_'].forEach(k=>localStorage.removeItem(k+userId));
+    localStorage.removeItem('rc_gps_consent');localStorage.removeItem('rc_strava_token');localStorage.removeItem('rc_strava_cid');
+    try{if(sb)await sb.auth.signOut();}catch(e){}
+    alert('Konto gelöscht. Dein Supabase-Account wird innerhalb von 30 Tagen vollständig entfernt (DSGVO Art. 17).');
+    location.reload();
+  }catch(e){toast('❌ Fehler: '+(e.message||'Bitte versuche es erneut'));}
+}
+
+function showImpressum(){
+  const m=$('impressumModal');
+  if(m){m.style.display='flex';}
+}
+
 function showSqlHint(type,container){
   const sql=type==='support'
     ?`ALTER TABLE support_messages\n  ADD COLUMN IF NOT EXISTS admin_reply TEXT,\n  ADD COLUMN IF NOT EXISTS replied_at TIMESTAMPTZ;`
@@ -3641,18 +3835,77 @@ function toggleTheme(){const i=(THEME_CLASSES.indexOf(getActiveTheme())+1)%THEME
 
 /* INIT */
 window.initApp=function(){
-  renderOnboarding();
-  $('startBtn').addEventListener('click',()=>{
-    const name=($('nameInput').value.trim())||'Läufer'+Math.floor(Math.random()*9000+1000);
-    playerName=name;userId='u_'+name.replace(/\s/g,'_');
-    loadProfile(); // restore avatar/color for returning user (if exists)
-    playerName=name; // always use the typed name
-    saveProfile();
-    $('onboarding').style.display='none';$('app').style.display='flex';
-    window._hideCityBg?.();
-    initMap();setTimeout(()=>{load();updateUI();mapL?.invalidateSize();showInboxBtn();if(window._openStravaOnInit){window._openStravaOnInit=false;setTimeout(()=>{openImportModal();$('impTabStrava')?.click();},400);}},150);setupBg();initSteps();
-    initSupabase().then(async()=>{const restored=await loadFromCloud();if(!restored&&territories.filter(t=>t.owner!==userId).length===0){await genRivals();}renderTerr();updateUI();syncProfile();updateDmBadge();});
+  /* Auth-Tab-Umschalter */
+  const switchAuthTab=tab=>{
+    ['obTabReg','obTabLogin','obTabAdmin'].forEach(id=>$(id)?.classList.remove('active'));
+    $(tab)?.classList.add('active');
+    $('obRegForm').style.display=tab==='obTabReg'?'':'none';
+    $('obLoginForm').style.display=tab==='obTabLogin'?'':'none';
+    $('obAdminForm').style.display=tab==='obTabAdmin'?'':'none';
+  };
+  $('obTabReg')?.addEventListener('click',()=>switchAuthTab('obTabReg'));
+  $('obTabLogin')?.addEventListener('click',()=>switchAuthTab('obTabLogin'));
+  $('obTabAdmin')?.addEventListener('click',()=>switchAuthTab('obTabAdmin'));
+  /* Registrieren */
+  $('regBtn')?.addEventListener('click',async()=>{
+    const name=($('regName')?.value||'').trim();
+    const email=($('regEmail')?.value||'').trim().toLowerCase();
+    const pw=$('regPw')?.value||'';
+    const pw2=$('regPw2')?.value||'';
+    const errEl=$('regErr');
+    const showErr=msg=>{errEl.className='ob-err err';errEl.textContent=msg;errEl.style.display='block';};
+    errEl.style.display='none';
+    if(!name){showErr('Bitte Namen eingeben');return;}
+    if(!email||!/\S+@\S+\.\S+/.test(email)){showErr('Ungültige E-Mail-Adresse');return;}
+    if(pw.length<8){showErr('Passwort muss mindestens 8 Zeichen haben');return;}
+    if(pw!==pw2){showErr('Passwörter stimmen nicht überein');return;}
+    if(!$('regAge')?.checked){showErr('Bitte Altersbestätigung setzen');return;}
+    if(!$('regPrivacy')?.checked){showErr('Bitte Datenschutzbestimmungen zustimmen');return;}
+    $('regBtn').disabled=true;$('regBtn').textContent='⏳ Konto wird erstellt…';
+    try{
+      if(!sb)throw new Error('Supabase nicht verfügbar');
+      const{data,error}=await sb.auth.signUp({email,password:pw,options:{data:{playerName:name}}});
+      if(error)throw error;
+      if(data?.session){
+        await launchAppFromSession(data.user);
+      } else {
+        errEl.className='ob-err ok';errEl.textContent='✅ Bestätigungs-E-Mail gesendet! Bitte E-Mail bestätigen, dann anmelden.';errEl.style.display='block';
+        setTimeout(()=>switchAuthTab('obTabLogin'),2200);
+      }
+    }catch(e){showErr('❌ '+(e.message||'Fehler beim Registrieren'));}
+    finally{$('regBtn').disabled=false;$('regBtn').textContent='KONTO ERSTELLEN →';}
   });
+  /* Anmelden */
+  $('loginBtn')?.addEventListener('click',async()=>{
+    const email=($('loginEmail')?.value||'').trim().toLowerCase();
+    const pw=$('loginPw')?.value||'';
+    const errEl=$('loginErr');
+    const showErr=msg=>{errEl.className='ob-err err';errEl.textContent=msg;errEl.style.display='block';};
+    errEl.style.display='none';
+    if(!email||!pw){showErr('E-Mail und Passwort eingeben');return;}
+    $('loginBtn').disabled=true;$('loginBtn').textContent='⏳ Wird eingeloggt…';
+    try{
+      if(!sb)throw new Error('Supabase nicht verfügbar');
+      const{data,error}=await sb.auth.signInWithPassword({email,password:pw});
+      if(error)throw error;
+      await launchAppFromSession(data.user);
+    }catch(e){showErr('❌ E-Mail oder Passwort falsch');}
+    finally{$('loginBtn').disabled=false;$('loginBtn').textContent='ANMELDEN →';}
+  });
+  /* Passwort vergessen */
+  $('forgotPwLink')?.addEventListener('click',async()=>{
+    const email=($('loginEmail')?.value||'').trim().toLowerCase();
+    const errEl=$('loginErr');
+    if(!email){errEl.className='ob-err err';errEl.textContent='Bitte zuerst E-Mail eingeben';errEl.style.display='block';return;}
+    try{
+      await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+      errEl.className='ob-err ok';errEl.textContent='📧 Reset-E-Mail wurde gesendet';errEl.style.display='block';
+    }catch(e){errEl.className='ob-err err';errEl.textContent='❌ '+(e.message||'Fehler');errEl.style.display='block';}
+  });
+  /* Impressum im Onboarding */
+  $('obImpressumLink')?.addEventListener('click',showImpressum);
+  /* Impressum-Modal schließen */
+  $('impressumCloseBtn')?.addEventListener('click',()=>{const m=$('impressumModal');if(m)m.style.display='none';});
   startBtn.addEventListener('click',startRun);
   pauseBtn.addEventListener('click',()=>{isPaused?resumeRun():pauseRun();});
   stopBtn.addEventListener('click',stopRun);
@@ -3775,17 +4028,8 @@ window.initApp=function(){
   $('closeAdminBtn2').addEventListener('click',()=>$('adminModal').style.display='none');
   /* Admin tab buttons in admin panel */
   document.querySelectorAll('[data-atab]').forEach(b=>b.addEventListener('click',function(){renderAdminTab(this.dataset.atab);}));
-  /* Onboarding: player / admin tab switch */
-  $('obTabPlayer')?.addEventListener('click',()=>{
-    $('obTabPlayer').classList.add('active');$('obTabAdmin').classList.remove('active');
-    $('obPlayerForm').style.display='';$('obAdminForm').style.display='none';
-  });
-  $('obTabAdmin')?.addEventListener('click',()=>{
-    $('obTabAdmin').classList.add('active');$('obTabPlayer').classList.remove('active');
-    $('obAdminForm').style.display='';$('obPlayerForm').style.display='none';
-  });
-  /* Onboarding: admin login */
-  $('adminLoginBtn').addEventListener('click',async()=>{
+  /* Admin Login */
+  $('adminLoginBtn')?.addEventListener('click',async()=>{
     const email=($('adminEmail')?.value||'').trim();
     const pwd=$('adminPwd')?.value||'';
     const statusEl=$('adminLoginStatus');
@@ -3796,12 +4040,7 @@ window.initApp=function(){
       const{data,error}=await sb.auth.signInWithPassword({email,password:pwd});
       if(error)throw error;
       if(data?.user?.email==='maxst0297@gmail.com'){
-        isAdmin=true;sbUserId=data.user.id;
-        playerName='Admin';userId='u_Admin';saveProfile();
-        $('onboarding').style.display='none';$('app').style.display='flex';
-        window._hideCityBg?.();
-        if(!mapL){initMap();setTimeout(()=>{load();updateUI();mapL?.invalidateSize()},150);setupBg();initSteps();}
-        setTimeout(showInboxIfAdmin,400);
+        await launchAppFromSession(data.user);
         toast('✅ Admin eingeloggt');
       } else {
         await sb.auth.signOut();
@@ -3876,15 +4115,29 @@ checkStravaCallback(); /* Strava OAuth-Rückkehr prüfen (liest URL-Hash) */
 setTimeout(()=>{
   const sp=$('splash');
   if(sp){sp.style.opacity='0';setTimeout(()=>{sp.style.display='none';},600);}
-  startBgVideo(); /* Video erst nach Splash starten – kein Play-Button über Splash */
+  startBgVideo();
   setTimeout(async()=>{
     try{
-      await initSupabase();
-      $('onboarding').style.display='flex';
+      const session=await initSupabase();
       if(typeof window.initApp==='function')window.initApp();
-    }catch(e){console.error('Boot error:',e);$('onboarding').style.display='flex';if(typeof window.initApp==='function')window.initApp();}
+      if(session){
+        /* Bestehende Session → App direkt starten */
+        await launchAppFromSession(session.user);
+      } else {
+        /* Kein Login → Auth-Screen */
+        $('onboarding').style.display='flex';
+      }
+    }catch(e){
+      console.error('Boot error:',e);
+      if(typeof window.initApp==='function')window.initApp();
+      $('onboarding').style.display='flex';
+    }
   },400);
 },2800);
+/* Service Worker registrieren (PWA-Installierbarkeit) */
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
+}
 
 })();
 </script>

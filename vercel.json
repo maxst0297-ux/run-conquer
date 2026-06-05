@@ -2,6 +2,11 @@
   "version": 2,
   "routes": [
     { "src": "/bg.mp4", "dest": "/bg.mp4" },
+    { "src": "/sw.js", "dest": "/sw.js" },
+    { "src": "/manifest.json", "dest": "/manifest.json" },
+    { "src": "/privacy.html", "dest": "/privacy.html" },
+    { "src": "/icons/(.*)", "dest": "/icons/$1" },
+    { "src": "/screenshots/(.*)", "dest": "/screenshots/$1" },
     { "src": "/(.*)", "dest": "/index.html" }
   ],
   "headers": [
@@ -11,6 +16,22 @@
         { "key": "Content-Type", "value": "video/mp4" },
         { "key": "Accept-Ranges", "value": "bytes" },
         { "key": "Cache-Control", "value": "public, max-age=86400" }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "geolocation=(self), camera=(), microphone=()" }
+      ]
+    },
+    {
+      "source": "/sw.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache" },
+        { "key": "Service-Worker-Allowed", "value": "/" }
       ]
     }
   ]
