@@ -1,0 +1,17 @@
+{
+  "appId": "com.runconquer.app",
+  "appName": "RunConquer",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "BackgroundGeolocation": {
+      "backgroundMessage": "RunConquer zeichnet deinen Lauf auf",
+      "backgroundTitle": "Lauf aktiv",
+      "requestPermissions": true,
+      "stale": false,
+      "distanceFilter": 5
+    }
+  }
+}

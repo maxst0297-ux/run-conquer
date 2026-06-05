@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">RunConquer</string>
+    <string name="title_activity_main">RunConquer</string>
+    <string name="package_name">com.runconquer.app</string>
+    <string name="custom_url_scheme">com.runconquer.app</string>
+</resources>

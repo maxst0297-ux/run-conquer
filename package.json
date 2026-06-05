@@ -1,0 +1,19 @@
+{
+  "name": "run-conquer",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "sync:android": "npx cap sync android",
+    "sync:ios": "npx cap sync ios",
+    "open:android": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/ios": "^6.0.0",
+    "@capacitor-community/background-geolocation": "^1.2.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0"
+  }
+}

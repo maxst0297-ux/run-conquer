@@ -1120,7 +1120,8 @@ function getLvlProg(pts){const lv=getLevel(pts),cur=CFG.LVL_XP[lv-1]||0,nx=CFG.L
 
 /* STATE */
 let mapL,userMarker,pathLayer,terrLayer,heatLayer,landmarkLayer,heatPts=[];
-let isRunning=false,watchId=null,bgWatchId=null;
+let isRunning=false,watchId=null,bgWatchId=null,bgGeoWatcher=null;
+const isNative=typeof window.Capacitor!=='undefined'&&!!window.Capacitor.isNativePlatform?.();
 let wakeLockSentinel=null,silentCtx=null,silentSrc=null;
 let path=[],lastPos=null,dist=0;
 let territories=[],points=0;
@@ -1304,10 +1305,18 @@ function stopKeepAlive(){
   clearInterval(silentHeartbeat);silentHeartbeat=null;
 }
 function restartBgWatch(){
-  if(bgWatchId!==null){navigator.geolocation.clearWatch(bgWatchId);bgWatchId=null;}
-  bgWatchId=navigator.geolocation.watchPosition(onGPS,e=>{
-    console.warn('GPS:',e.code,e.message);
-  },{enableHighAccuracy:true,maximumAge:0,timeout:30000});
+  if(isNative){
+    if(bgGeoWatcher!==null){BackgroundGeolocation.removeWatcher({id:bgGeoWatcher});bgGeoWatcher=null;}
+    BackgroundGeolocation.addWatcher({backgroundMessage:'RunConquer – Lauf aktiv',backgroundTitle:'GPS läuft',requestPermissions:true,stale:false,distanceFilter:3},(loc,err)=>{
+      if(err){console.warn('BG-GPS:',err);return;}
+      onGPS({coords:{latitude:loc.latitude,longitude:loc.longitude,accuracy:loc.accuracy,speed:loc.speed,altitude:loc.altitude}});
+    }).then(id=>{bgGeoWatcher=id;}).catch(e=>console.warn('BG-GPS init:',e));
+  }else{
+    if(bgWatchId!==null){navigator.geolocation.clearWatch(bgWatchId);bgWatchId=null;}
+    bgWatchId=navigator.geolocation.watchPosition(onGPS,e=>{
+      console.warn('GPS:',e.code,e.message);
+    },{enableHighAccuracy:true,maximumAge:0,timeout:30000});
+  }
 }
 function fmtDist(m){return m<1000?Math.round(m)+' m':(m/1000).toFixed(2)+' km'}
 function fmtTime(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=Math.floor(s%60);return h>0?`${h}:${pad(m)}:${pad(sc)}`:`${pad(m)}:${pad(sc)}`}
@@ -1898,10 +1907,17 @@ function initMap(){
     loadLandmarks();
   });
   /* Persistenter GPS-Watcher: nur starten wenn GPS-Einwilligung vorliegt */
-  if(navigator.geolocation&&!bgWatchId&&localStorage.getItem('rc_gps_consent')==='1'){
-    bgWatchId=navigator.geolocation.watchPosition(onGPS,e=>{
-      console.warn('GPS-Hintergrund-Fehler:',e.code,e.message);
-    },{enableHighAccuracy:true,maximumAge:2000,timeout:30000});
+  if(localStorage.getItem('rc_gps_consent')==='1'){
+    if(isNative){
+      if(!bgGeoWatcher)BackgroundGeolocation.addWatcher({backgroundMessage:'RunConquer – Lauf aktiv',backgroundTitle:'GPS läuft',requestPermissions:true,stale:false,distanceFilter:3},(loc,err)=>{
+        if(err){console.warn('BG-GPS:',err);return;}
+        onGPS({coords:{latitude:loc.latitude,longitude:loc.longitude,accuracy:loc.accuracy,speed:loc.speed,altitude:loc.altitude}});
+      }).then(id=>{bgGeoWatcher=id;}).catch(e=>console.warn('BG-GPS init:',e));
+    }else if(navigator.geolocation&&!bgWatchId){
+      bgWatchId=navigator.geolocation.watchPosition(onGPS,e=>{
+        console.warn('GPS-Hintergrund-Fehler:',e.code,e.message);
+      },{enableHighAccuracy:true,maximumAge:2000,timeout:30000});
+    }
   }
   mapL.on('moveend',debounce(loadLandmarks,1500));
   mapL.on('click',closeDrawer);
@@ -3070,7 +3086,8 @@ function renderSettingsTab(tab){
     document.getElementById('showImpressumBtn2')?.addEventListener('click',showImpressum);
     document.getElementById('revokeGpsBtn')?.addEventListener('click',()=>{
       localStorage.removeItem('rc_gps_consent');
-      if(bgWatchId!==null){navigator.geolocation.clearWatch(bgWatchId);bgWatchId=null;}
+      if(isNative){if(bgGeoWatcher!==null){BackgroundGeolocation.removeWatcher({id:bgGeoWatcher});bgGeoWatcher=null;}}
+      else if(bgWatchId!==null){navigator.geolocation.clearWatch(bgWatchId);bgWatchId=null;}
       toast('GPS-Einwilligung widerrufen. Lauf-Funktion deaktiviert.');
       renderSettingsTab('datenschutz');
     });
@@ -3570,7 +3587,9 @@ function showGpsConsent(onAccept){
   $('consentAcceptBtn').onclick=()=>{
     localStorage.setItem('rc_gps_consent','1');
     modal.style.display='none';
-    if(bgWatchId===null&&navigator.geolocation){
+    if(isNative){
+      if(!bgGeoWatcher)BackgroundGeolocation.addWatcher({backgroundMessage:'RunConquer – Lauf aktiv',backgroundTitle:'GPS läuft',requestPermissions:true,stale:false,distanceFilter:3},(loc,err)=>{if(err){console.warn('BG-GPS:',err);return;}onGPS({coords:{latitude:loc.latitude,longitude:loc.longitude,accuracy:loc.accuracy,speed:loc.speed,altitude:loc.altitude}});}).then(id=>{bgGeoWatcher=id;}).catch(e=>console.warn('BG-GPS init:',e));
+    }else if(bgWatchId===null&&navigator.geolocation){
       bgWatchId=navigator.geolocation.watchPosition(onGPS,e=>console.warn('GPS:',e.code),{enableHighAccuracy:true,maximumAge:2000,timeout:30000});
     }
     if(typeof onAccept==='function')onAccept();
@@ -3786,8 +3805,8 @@ function setupBg(){
         } else toast('📍 GPS wieder aktiv');
         /* Nach Hintergrund: GPS-Watcher neu starten (Browser kann ihn suspendiert haben) */
         restartBgWatch();
-        /* Sofortiger Einzelfix für schnellste Reaktion */
-        navigator.geolocation.getCurrentPosition(onGPS,()=>{},{enableHighAccuracy:true,maximumAge:0,timeout:10000});
+        /* Sofortiger Einzelfix für schnellste Reaktion (nur PWA, native GPS läuft kontinuierlich) */
+        if(!isNative)navigator.geolocation.getCurrentPosition(onGPS,()=>{},{enableHighAccuracy:true,maximumAge:0,timeout:10000});
         /* WakeLock nach Hintergrund neu anfordern */
         if('wakeLock' in navigator)navigator.wakeLock.request('screen').then(s=>{wakeLockSentinel=s;}).catch(()=>{});
       }

@@ -500,6 +500,22 @@
   }
   #s8.active .s8-icons{opacity:1}
   .s8-icon{font-size:1.5rem;opacity:.6}
+  .s8-download{
+    margin-top:20px;display:flex;flex-direction:column;align-items:center;gap:10px;
+    opacity:0;transition:opacity .6s ease 1.5s;
+  }
+  #s8.active .s8-download{opacity:1}
+  .s8-dl-row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+  .s8-dl-btn{
+    display:flex;align-items:center;gap:8px;
+    background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);
+    color:#fff;text-decoration:none;
+    font-family:'Poppins',sans-serif;font-size:.75rem;letter-spacing:1px;
+    padding:10px 20px;border-radius:40px;cursor:pointer;transition:all .2s;
+  }
+  .s8-dl-btn:hover{background:rgba(255,255,255,.14);border-color:rgba(232,255,71,.4);color:#e8ff47}
+  .s8-dl-btn i{font-size:1rem;opacity:.8}
+  .s8-dl-label{font-size:.6rem;color:rgba(255,255,255,.45);letter-spacing:1.5px;margin-top:2px}
 
   /* ── SKIP BUTTON ── */
   #skipBtn{
@@ -951,6 +967,17 @@
     <div class="s8-logo">RUN &<br>CONQUER</div>
     <div class="s8-tagline">Lauf · Erobere · Verteidige</div>
     <button class="s8-cta" onclick="window.location='index.html'">JETZT SPIELEN →</button>
+    <div class="s8-download">
+      <div class="s8-dl-label">NATIVE APP MIT HINTERGRUND-GPS</div>
+      <div class="s8-dl-row">
+        <a class="s8-dl-btn" href="/download/RunConquer.apk" download>
+          <i class="fas fa-android"></i> Android APK
+        </a>
+        <a class="s8-dl-btn" href="altstore://source?url=https://run-conquer.vercel.app/altstore-source.json">
+          <i class="fas fa-apple-alt"></i> iOS via AltStore
+        </a>
+      </div>
+    </div>
     <div class="s8-icons">
       <span class="s8-icon">🛰️</span>
       <span class="s8-icon">🗺️</span>
