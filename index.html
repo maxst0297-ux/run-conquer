@@ -2970,21 +2970,10 @@ function renderSettingsTab(tab){
     body.innerHTML=`
 <div style="display:flex;flex-direction:column;gap:10px;font-size:.82rem">
 
-  <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden">
-    <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border)">
-      <span style="background:#e8ff47;color:#09090f;font-size:.6rem;font-weight:700;letter-spacing:1.5px;padding:3px 9px;border-radius:20px;flex-shrink:0">PROMO</span>
-      <span style="font-size:.82rem;font-weight:600">RunConquer – Offizieller Trailer</span>
-    </div>
-    <div id="promoWrap" style="position:relative;width:100%;background:#09090f;overflow:hidden">
-      <div style="padding-top:177.8%"></div>
-      <iframe id="promoIframe" src="/videos/runconquer-promo/index.html"
-        scrolling="no" frameborder="0"
-        style="position:absolute;top:0;left:0;border:none;transform-origin:top left;pointer-events:none;width:1080px;height:1920px;transform:scale(0.296)">
-      </iframe>
-    </div>
+  <div style="display:flex;align-items:center;justify-content:space-between">
+    <div style="font-weight:700;font-size:1rem;color:var(--primary)">📖 Spielanleitung</div>
+    <button id="promoPlayBtn" style="display:flex;align-items:center;gap:6px;background:#e8ff47;color:#09090f;border:none;border-radius:20px;padding:5px 13px;font-size:.7rem;font-weight:700;letter-spacing:1px;cursor:pointer;font-family:'Poppins',sans-serif"><i class="fas fa-play" style="font-size:.6rem"></i> PROMO</button>
   </div>
-
-  <div style="font-weight:700;font-size:1rem;color:var(--primary)">📖 Spielanleitung</div>
 
   <details open style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
     <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">🗺️ Gebiete erobern</summary>
@@ -3080,15 +3069,23 @@ function renderSettingsTab(tab){
     </div>
   </details>
 </div>`;
-    // Scale promo iframe to fit container width
-    (function scalePromo(attempt){
-      const wrap=document.getElementById('promoWrap');
-      const fr=document.getElementById('promoIframe');
-      if(!wrap||!fr)return;
-      const w=wrap.offsetWidth;
-      if(!w&&attempt<10){setTimeout(()=>scalePromo(attempt+1),50);return;}
-      fr.style.transform=`scale(${(w||320)/1080})`;
-    })(0);
+    document.getElementById('promoPlayBtn')?.addEventListener('click',()=>{
+      const ov=document.createElement('div');
+      ov.style.cssText='position:fixed;inset:0;z-index:99999;background:#000;display:flex;align-items:center;justify-content:center';
+      const close=document.createElement('button');
+      close.innerHTML='<i class="fas fa-times"></i>';
+      close.style.cssText='position:absolute;top:16px;right:16px;background:#fff2;color:#fff;border:none;border-radius:50%;width:38px;height:38px;font-size:1.1rem;cursor:pointer;z-index:1';
+      close.onclick=()=>ov.remove();
+      const h=window.innerHeight,w=window.innerWidth;
+      const scale=Math.min(w/1080,h/1920);
+      const fr=document.createElement('iframe');
+      fr.src='/videos/runconquer-promo/index.html';
+      fr.style.cssText=`width:1080px;height:1920px;border:none;transform:scale(${scale});transform-origin:center center;flex-shrink:0`;
+      fr.scrolling='no';
+      ov.appendChild(fr);
+      ov.appendChild(close);
+      document.body.appendChild(ov);
+    });
   } else if(tab==='datenschutz'){
     const gpsGranted=localStorage.getItem('rc_gps_consent')==='1';
     body.innerHTML=`<div style="display:flex;flex-direction:column;gap:10px">
