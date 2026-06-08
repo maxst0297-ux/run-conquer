@@ -401,6 +401,10 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 /* ═══ COMBO TOAST ═══ */
 .combo-flash{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:5000;font-family:'Bebas Neue',sans-serif;font-size:3rem;color:var(--primary);text-shadow:0 0 20px var(--primary);pointer-events:none;animation:comboFlash .8s ease forwards}
 @keyframes comboFlash{0%{opacity:0;transform:translate(-50%,-60%) scale(.7)}20%{opacity:1;transform:translate(-50%,-50%) scale(1.1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-40%) scale(1)}}
+/* ═══ DAILY REWARD ═══ */
+@keyframes claimPulse{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
+@keyframes particleRise{0%{opacity:1;transform:translateY(0) translateX(0)}100%{opacity:0;transform:translateY(-120px) translateX(var(--px,0px))}}
+.dr-streak-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:0}
 
 /* ═══ TOAST ═══ */
 #toast{position:fixed;bottom:calc(var(--nav-h) + 14px);left:50%;transform:translateX(-50%);background:var(--primary);color:var(--bg);padding:9px 22px;border-radius:40px;z-index:2000;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;font-size:.82rem;font-weight:700}
@@ -850,6 +854,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <div class="pv-stat"><div class="pv-sv" id="ps-terr">0</div><div class="pv-sl">Gebiete</div></div>
         <div class="pv-stat"><div class="pv-sv" id="ps-pts">0</div><div class="pv-sl">Punkte</div></div>
       </div>
+      <div class="section-card" id="pvDailyStreak" style="display:none"></div>
       <div class="section-card">
         <div class="section-title"><i class="fas fa-layer-group"></i> Spielsystem</div>
         <div id="lvlBreakdown"></div>
@@ -1161,6 +1166,7 @@ let sessionConquests=0;
 let prevLevelCache=1;
 let userClub=null;           // {code,name,icon,foundedAt}
 let lastFraktionChangeDate=''; // "YYYY-MM" when fraktion was last changed
+let dailyLoginDate='',dailyLoginStreak=0,streakShields=0,recentQuoteIds=[];
 
 /* ═══ SUPABASE ═══ */
 const SB_URL='https://mlkpryhacihbqnmtgkcg.supabase.co';
@@ -1326,11 +1332,11 @@ function speedToPace(mps){if(!mps||mps<0.3)return'--:--';const p=1000/mps/60;ret
 function debounce(fn,w){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),w)}}
 
 /* PERSIST */
-function save(){localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,energyWeek,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered,registeredAt,starterQuestsDone,starterQuestFlags,heatPersonalOnly,fogEnabled,dailyChallenges,dailyChalDate,chalStreak,lastChalDoneDate}))}
+function save(){localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,energyWeek,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered,registeredAt,starterQuestsDone,starterQuestFlags,heatPersonalOnly,fogEnabled,dailyChallenges,dailyChalDate,chalStreak,lastChalDoneDate,dailyLoginDate,dailyLoginStreak,streakShields,recentQuoteIds}))}
 function load(){
   try{
     const d=JSON.parse(localStorage.getItem('rc_v4_'+userId));
-    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;registeredAt=d.registeredAt||Date.now();starterQuestsDone=d.starterQuestsDone||[];starterQuestFlags=d.starterQuestFlags||{profileOpened:false};heatPersonalOnly=d.heatPersonalOnly||false;fogEnabled=d.fogEnabled||false;dailyChallenges=d.dailyChallenges||[];dailyChalDate=d.dailyChalDate||'';chalStreak=d.chalStreak||0;lastChalDoneDate=d.lastChalDoneDate||'';
+    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;registeredAt=d.registeredAt||Date.now();starterQuestsDone=d.starterQuestsDone||[];starterQuestFlags=d.starterQuestFlags||{profileOpened:false};heatPersonalOnly=d.heatPersonalOnly||false;fogEnabled=d.fogEnabled||false;dailyChallenges=d.dailyChallenges||[];dailyChalDate=d.dailyChalDate||'';chalStreak=d.chalStreak||0;lastChalDoneDate=d.lastChalDoneDate||'';dailyLoginDate=d.dailyLoginDate||'';dailyLoginStreak=d.dailyLoginStreak||0;streakShields=d.streakShields||0;recentQuoteIds=d.recentQuoteIds||[];
       /* Alte Bot-Gebiete (Blob, <100k m²) entfernen → werden neu als Straßen-Polygon generiert */
       territories=territories.filter(t=>t.owner===userId||t.area>100000);
       /* Überlappende Bot-Gebiete entfernen */
@@ -1590,6 +1596,180 @@ function checkSeasonRollover(){
       }
     }
   }catch(e){}
+}
+
+/* ── DAILY MOTIVATION ── */
+const DAILY_QUOTES=[
+  {id:0,text:"Impossible is nothing.",author:"Muhammad Ali"},
+  {id:1,text:"I've failed over and over again in my life. And that is why I succeed.",author:"Michael Jordan"},
+  {id:2,text:"Pain is temporary. Quitting lasts forever.",author:"Lance Armstrong"},
+  {id:3,text:"Champions keep playing until they get it right.",author:"Billie Jean King"},
+  {id:4,text:"You have to expect things of yourself before you can do them.",author:"Michael Jordan"},
+  {id:5,text:"The more difficult the victory, the greater the happiness in winning.",author:"Pelé"},
+  {id:6,text:"You don't have to be great to start, but you have to start to be great.",author:"Joe Sabah"},
+  {id:7,text:"The moment you give up is the moment you let someone else win.",author:"Kobe Bryant"},
+  {id:8,text:"Hard work beats talent when talent doesn't work hard.",author:"Tim Notke"},
+  {id:9,text:"Gold medals aren't really made of gold. They're made of sweat, determination, and a hard-to-find alloy called guts.",author:"Dan Gable"},
+  {id:10,text:"If you can't outplay them, outwork them.",author:"Ben Hogan"},
+  {id:11,text:"The will to win is important, but the will to prepare is vital.",author:"Joe Paterno"},
+  {id:12,text:"Champions aren't made in the gyms. Champions are made from something they have deep inside them.",author:"Muhammad Ali"},
+  {id:13,text:"I am building a fire, and every day I train, I add more fuel.",author:"Mia Hamm"},
+  {id:14,text:"An athlete cannot run with money in his pockets. He must run with hope in his heart.",author:"Emil Zátopek"},
+  {id:15,text:"You miss 100% of the shots you don't take.",author:"Wayne Gretzky"},
+  {id:16,text:"The more I practice, the luckier I get.",author:"Gary Player"},
+  {id:17,text:"Never let the fear of striking out keep you from playing the game.",author:"Babe Ruth"},
+  {id:18,text:"The body achieves what the mind believes.",author:"Jim Evans"},
+  {id:19,text:"You have to believe in yourself when no one else does.",author:"Serena Williams"},
+  {id:20,text:"Set your goals high, and don't stop till you get there.",author:"Bo Jackson"},
+  {id:21,text:"If you are afraid of failure you don't deserve to be successful.",author:"Charles Barkley"},
+  {id:22,text:"Don't measure yourself by what you have accomplished, but by what you should have accomplished.",author:"John Wooden"},
+  {id:23,text:"There may be people that have more talent than you, but there's no excuse for anyone to work harder than you do.",author:"Derek Jeter"},
+  {id:24,text:"A trophy carries dust. Memories last forever.",author:"Mary Lou Retton"},
+  {id:25,text:"I hated every minute of training, but I said, don't quit. Suffer now and live the rest of your life as a champion.",author:"Muhammad Ali"},
+  {id:26,text:"Age is no barrier. It's a limitation you put on your mind.",author:"Jackie Joyner-Kersee"},
+  {id:27,text:"It's not whether you get knocked down; it's whether you get up.",author:"Vince Lombardi"},
+  {id:28,text:"If winning isn't everything, why do they keep score?",author:"Vince Lombardi"},
+  {id:29,text:"Always make a total effort, even when the odds are against you.",author:"Arnold Palmer"},
+  {id:30,text:"You have to be hungry. You have to want it so bad that you can taste it.",author:"Usain Bolt"},
+  {id:31,text:"I know what I can do. That's why it doesn't bother me when people doubt me.",author:"Roger Federer"},
+  {id:32,text:"The pain you feel today will be the strength you feel tomorrow.",author:"Arnold Schwarzenegger"},
+  {id:33,text:"Hard work beats talent every time.",author:"Cristiano Ronaldo"},
+  {id:34,text:"Talent wins games, but teamwork and intelligence win championships.",author:"Michael Jordan"},
+  {id:35,text:"Running is the greatest metaphor for life, because you get out of it what you put into it.",author:"Oprah Winfrey"},
+  {id:36,text:"If you don't have confidence, you'll always find a way not to win.",author:"Carl Lewis"},
+  {id:37,text:"Today I will do what others won't, so tomorrow I can accomplish what others can't.",author:"Jerry Rice"},
+  {id:38,text:"Do not let what you cannot do interfere with what you can do.",author:"John Wooden"},
+  {id:39,text:"When you're good at something, you'll tell everyone. When you're great at something, they'll tell you.",author:"Walter Payton"},
+  {id:40,text:"I run on the road, long before I dance under the lights.",author:"Muhammad Ali"},
+  {id:41,text:"You can always become better.",author:"Tiger Woods"},
+  {id:42,text:"I don't count my sit-ups. I only start counting when it starts hurting.",author:"Muhammad Ali"},
+  {id:43,text:"The only place where success comes before work is in the dictionary.",author:"Vidal Sassoon"},
+  {id:44,text:"Ask not what your teammates can do for you. Ask what you can do for your teammates.",author:"Magic Johnson"},
+  {id:45,text:"Go as hard as you can, as long as you can.",author:"Carl Lewis"},
+  {id:46,text:"Excellence is not a singular act, but a habit. You are what you repeatedly do.",author:"Shaquille O'Neal"},
+  {id:47,text:"Never let your head hang down. Never give up and sit down and grieve.",author:"Satchel Paige"},
+  {id:48,text:"If you train hard, you'll not only be hard, you'll be hard to beat.",author:"Herschel Walker"},
+  {id:49,text:"Do you know what my favorite part of the game is? The opportunity to play.",author:"Mike Singletary"},
+  {id:50,text:"Success is no accident. It is hard work, perseverance, learning, studying, sacrifice, and most of all, love of what you are doing.",author:"Pelé"},
+  {id:51,text:"It always seems impossible until it's done.",author:"Nelson Mandela"},
+  {id:52,text:"Winning means you're willing to go longer, work harder, and give more than anyone else.",author:"Vince Lombardi"},
+  {id:53,text:"No matter what, I will find a way.",author:"Yuna Kim"},
+  {id:54,text:"Push yourself again and again. Don't give an inch until the final buzzer sounds.",author:"Larry Bird"},
+  {id:55,text:"Adversity causes some men to break; others to break records.",author:"William A. Ward"},
+  {id:56,text:"The difference between ordinary and extraordinary is that little extra.",author:"Jimmy Johnson"},
+  {id:57,text:"Most people give up just when they're about to achieve success.",author:"Ross Perot"},
+  {id:58,text:"In training, you listen to your body. In competition, you tell your body to shut up.",author:"Rich Froning Jr."},
+  {id:59,text:"To uncover your true potential you must first find your own limits and then you have to have the courage to blow past them.",author:"Picabo Street"},
+  {id:60,text:"What makes something special is not just what you have to gain, but what you feel there is to lose.",author:"Andre Agassi"},
+  {id:61,text:"One man practicing sportsmanship is far better than a hundred teaching it.",author:"Knute Rockne"},
+  {id:62,text:"Somewhere behind the athlete you've become and the hours of practice and the coaches who have pushed you is a little girl who fell in love with the game and never looked back.",author:"Mia Hamm"},
+  {id:63,text:"Never give up, never give in, and when the upper hand is ours, may we have the ability to handle the win with the dignity that we absorbed the loss.",author:"Doug Williams"},
+  {id:64,text:"Show me a person who has never made a mistake and I'll show you someone who has never achieved much.",author:"Joan Benoit Samuelson"},
+  {id:65,text:"I always felt that my greatest asset was not my physical ability, it was my mental ability.",author:"Bruce Jenner"},
+  {id:66,text:"Sieg ist nie endgültig, Niederlage ist nie fatal. Was zählt, ist der Mut weiterzumachen.",author:"Winston Churchill"},
+  {id:67,text:"If you only ever give 90% in training then you will only ever give 90% when it matters.",author:"Michael Owen"},
+  {id:68,text:"I've worked too hard and too long to let anything stand in the way of my goals.",author:"Mia Hamm"},
+  {id:69,text:"The only way to prove that you're a good sport is to lose.",author:"Ernie Banks"},
+  {id:70,text:"Every champion was once a contender that refused to give up.",author:"Rocky Balboa"},
+  {id:71,text:"You were born to be a player. You were meant to be here.",author:"Herb Brooks"},
+  {id:72,text:"Without ambition, one starts nothing. Without work, one finishes nothing.",author:"Ralph Waldo Emerson"},
+  {id:73,text:"I am not the richest, smartest or most talented person in the world, but I succeed because I keep going.",author:"Sylvester Stallone"},
+  {id:74,text:"You have competition every day because you set such high standards for yourself.",author:"Michael Jordan"},
+  {id:75,text:"The road to Easy Street goes through the sewer.",author:"John Madden"},
+  {id:76,text:"It's easier to go down a hill than up it but the view is much better at the top.",author:"Henry Ward Beecher"},
+  {id:77,text:"Pain is temporary. It may last a minute, or an hour, or a day, or a year, but eventually it will subside.",author:"Lance Armstrong"},
+  {id:78,text:"You miss every shot you don't take — and every kilometer you don't run.",author:"Wayne Gretzky"},
+  {id:79,text:"Der Unterschied zwischen dem Möglichen und dem Unmöglichen liegt im Willen eines Menschen.",author:"Tommy Lasorda"}
+];
+
+function getDailyReward(streak){
+  const s=streak;
+  const xp=s>=100?500:s>=51?400:s>=31?300:s>=15?250:s>=8?150:100;
+  const sp=s>=100?150:s>=51?125:s>=31?100:s>=15?75:s>=8?50:25;
+  const MS={7:'🥉 Bronze-Kiste',14:'🥈 Silber-Kiste',30:'🥇 Gold-Kiste + Profilrahmen',50:'Titel „Beständig“',75:'Exklusives Banner',100:'Titel „Unaufhaltsam“',180:'Goldener Kartenmarker',365:'Titel „Der Unermüdliche“ + Legendäre Kiste',730:'Titel „Die Legende“'};
+  const milestone=MS[s]||null;
+  const msDays=Object.keys(MS).map(Number).sort((a,b)=>a-b);
+  const nextMs=msDays.find(d=>d>s)||null;
+  const nextMsName=nextMs?MS[nextMs]:null;
+  return{xp,sp,milestone,nextMs,nextMsName,daysLeft:nextMs?nextMs-s:null};
+}
+
+function checkDailyReward(){
+  const today=new Date().toDateString();
+  if(dailyLoginDate===today)return;
+  let shieldUsed=false;
+  if(dailyLoginDate!==''){
+    const yesterday=new Date(Date.now()-86400000).toDateString();
+    if(dailyLoginDate!==yesterday){
+      if(streakShields>0){streakShields--;shieldUsed=true;}
+      else{dailyLoginStreak=0;}
+    }
+  }
+  showDailyRewardOverlay(shieldUsed);
+}
+
+function showDailyRewardOverlay(shieldUsed){
+  const today=new Date().toDateString();
+  const newStreak=dailyLoginStreak+1;
+  const reward=getDailyReward(newStreak);
+  const pool=DAILY_QUOTES.filter(q=>!recentQuoteIds.includes(q.id));
+  const quote=(pool.length>0?pool:DAILY_QUOTES)[Math.floor(Math.random()*Math.max(1,(pool.length||DAILY_QUOTES.length)))];
+  const tm=userTeam?TEAMS.find(t=>t.id===userTeam):null;
+  const btnBg=tm?tm.color:'var(--primary)';
+  const btnTxt=tm?'#fff':'#09090f';
+  const prevMs=[7,14,30,50,75,100,180,365,730].filter(d=>d<=newStreak-1).pop()||0;
+  const endDay=reward.nextMs||newStreak+1;
+  const pct=endDay>prevMs?Math.round((newStreak-prevMs)/(endDay-prevMs)*100):100;
+  const ov=document.createElement('div');
+  ov.id='dailyRewardOv';
+  ov.style.cssText='position:fixed;inset:0;z-index:9500;display:flex;align-items:flex-start;justify-content:center;background:rgba(0,0,0,.9);backdrop-filter:blur(10px);padding:20px 16px;box-sizing:border-box;overflow-y:auto';
+  ov.innerHTML=`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:24px;padding:22px;max-width:360px;width:100%;animation:modalIn .35s cubic-bezier(.34,1.2,.64,1);position:relative;margin:auto">
+    <div style="text-align:center;margin-bottom:10px">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:2.6rem;color:var(--primary);letter-spacing:1px;line-height:1.1">🔥 ${newStreak} ${newStreak===1?'Tag':'Tage'} in Folge</div>
+    </div>
+    ${reward.nextMs?`<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:.65rem;color:var(--muted);margin-bottom:4px"><span>Tag ${newStreak}</span><span>Meilenstein: Tag ${reward.nextMs}</span></div><div style="height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:var(--primary);border-radius:3px"></div></div></div>`:''}
+    ${shieldUsed?`<div style="background:rgba(155,93,229,.15);border:1px solid rgba(155,93,229,.4);border-radius:12px;padding:8px 12px;margin-bottom:10px;font-size:.78rem;color:#c084fc;text-align:center">🛡️ Streak geschützt · Verbleibende Schutzpunkte: ${streakShields}</div>`:''}
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px 16px;margin-bottom:12px;text-align:center">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--primary);line-height:1.35;margin-bottom:8px">&bdquo;${quote.text}&ldquo;</div>
+      <div style="font-size:.68rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;font-weight:700">— ${quote.author}</div>
+    </div>
+    <div id="drRewardBox" style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:10px;text-align:center">
+      <div style="font-size:.6rem;font-weight:700;letter-spacing:1.5px;color:var(--muted);margin-bottom:6px">🎁 TAGESBELOHNUNG</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--primary);line-height:1.1">+${reward.xp}&nbsp;XP &nbsp;·&nbsp; +${reward.sp}&nbsp;SP</div>
+      ${reward.milestone?`<div style="font-size:.82rem;color:var(--primary);margin-top:6px;font-weight:700">🎉 ${reward.milestone}</div>`:''}
+      <div id="drCheck" style="display:none;font-size:2rem;margin-top:8px">✅</div>
+    </div>
+    ${reward.daysLeft!==null?`<div style="font-size:.72rem;color:var(--muted);text-align:center;margin-bottom:12px">🏆 Noch ${reward.daysLeft} ${reward.daysLeft===1?'Tag':'Tage'} bis ${reward.nextMsName||'zum nächsten Meilenstein'}</div>`:''}
+    <button id="drClaimBtn" style="width:100%;padding:14px;background:${btnBg};color:${btnTxt};border:none;border-radius:14px;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;cursor:pointer">BELOHNUNG EINSAMMELN</button>
+  </div>`;
+  document.body.appendChild(ov);
+  document.getElementById('drClaimBtn').addEventListener('click',()=>{
+    const btn=document.getElementById('drClaimBtn');
+    if(btn.disabled)return;
+    btn.disabled=true;btn.style.opacity='.45';
+    const box=document.getElementById('drRewardBox');
+    box.style.animation='claimPulse .4s ease';
+    const card=ov.querySelector('div');
+    for(let i=0;i<10;i++){
+      const p=document.createElement('span');
+      const px=(Math.random()*160-80);
+      p.style.cssText=`position:absolute;bottom:70px;left:${40+Math.random()*20}%;width:7px;height:7px;border-radius:50%;background:var(--primary);--px:${px}px;animation:particleRise .9s ease forwards;animation-delay:${(Math.random()*.25).toFixed(2)}s;pointer-events:none;z-index:1`;
+      card.appendChild(p);
+    }
+    setTimeout(()=>{
+      document.getElementById('drCheck').style.display='block';
+      points+=reward.xp+reward.sp;
+      if(newStreak===14||newStreak===30)streakShields=Math.min(3,streakShields+(newStreak===30?2:1));
+      dailyLoginDate=today;
+      dailyLoginStreak=newStreak;
+      recentQuoteIds=[quote.id,...recentQuoteIds].slice(0,60);
+      save();updateUI();
+    },450);
+    setTimeout(()=>{
+      ov.style.transition='opacity .35s';ov.style.opacity='0';
+      setTimeout(()=>ov.remove(),350);
+    },1300);
+  });
 }
 
 /* ── NEBEL DES KRIEGES ── */
@@ -3590,7 +3770,7 @@ async function launchAppFromSession(user){
   if(!mapL){
     initMap();
     setTimeout(async()=>{
-      load();updateUI();mapL?.invalidateSize();showInboxBtn();
+      load();updateUI();mapL?.invalidateSize();showInboxBtn();setTimeout(checkDailyReward,600);
       if(window._openStravaOnInit){window._openStravaOnInit=false;setTimeout(()=>{openImportModal();$('impTabStrava')?.click();},400);}
       const restored=await loadFromCloud();
       if(!restored&&territories.filter(t=>t.owner!==userId).length===0){await genRivals();}
@@ -3726,6 +3906,28 @@ function updateProfile(){
     const csStat=statsRow.querySelector('.chal-streak-stat');
     if(!csStat){const csEl=document.createElement('div');csEl.className='pv-stat chal-streak-stat';csEl.innerHTML=`<div class="pv-sv">${chalStreak}</div><div class="pv-sl">🎯 Streak</div>`;statsRow.appendChild(csEl);}
     else{csStat.querySelector('.pv-sv').textContent=chalStreak;}
+  }
+  // Daily streak card
+  const dsEl=document.getElementById('pvDailyStreak');
+  if(dsEl){
+    if(dailyLoginStreak>0){
+      const dr=getDailyReward(dailyLoginStreak);
+      const msHistory=[7,14,30,50,75,100,180,365,730];
+      const earned=msHistory.filter(d=>d<=dailyLoginStreak);
+      const msLabels={7:'Bronze-Kiste',14:'Silber-Kiste',30:'Gold-Kiste',50:'Titel „Beständig"',75:'Exklusives Banner',100:'Titel „Unaufhaltsam"',180:'Goldener Kartenmarker',365:'Legendäre Kiste',730:'Titel „Die Legende"'};
+      const prevMs=[7,14,30,50,75,100,180,365,730].filter(d=>d<=dailyLoginStreak).pop()||0;
+      const endDay=dr.nextMs||dailyLoginStreak+1;
+      const pct=endDay>prevMs?Math.round((dailyLoginStreak-prevMs)/(endDay-prevMs)*100):100;
+      dsEl.style.display='';
+      dsEl.innerHTML=`<div class="section-title"><i class="fas fa-fire"></i> Tägliche Serie</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--primary)">${dailyLoginStreak} Tage 🔥</div>
+        ${dr.nextMs?`<div style="font-size:.72rem;color:var(--muted);margin-bottom:6px">Nächste Belohnung: <b style="color:var(--primary)">${dr.nextMsName}</b> · Noch ${dr.daysLeft} ${dr.daysLeft===1?'Tag':'Tage'}</div>
+        <div style="height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;margin-bottom:10px"><div style="height:100%;width:${pct}%;background:var(--primary);border-radius:3px"></div></div>`:'<div style="font-size:.72rem;color:var(--muted);margin-bottom:10px">Alle Meilensteine erreicht! 🏆</div>'}
+        ${streakShields>0?`<div style="font-size:.72rem;color:#c084fc;margin-bottom:10px">🛡️ Streak-Schutz: ${streakShields}/3</div>`:''}
+        ${earned.length?`<div style="font-size:.68rem;color:var(--muted)">${earned.map(d=>`✅ ${msLabels[d]} (Tag ${d})`).join(' &nbsp; ')}</div>`:''}`;
+    }else{
+      dsEl.style.display='none';
+    }
   }
   $('lvlBreakdown').innerHTML=`<div class="dominion-grid">${[['⚔️ Angriff','+'+Math.round((1+(lvD.lv-1)*CFG.ATK_BONUS_LVL-1)*100)+'%'],['🛡️ Verteidigung','+'+Math.round((1+(lvD.lv-1)*CFG.DEF_REGEN_LVL-1)*100)+'%'],['🔥 Streak',streakDays>0?streakDays+' Tage':'Inaktiv'],['⚡ Energie',energy+'/'+CFG.ENERGY_MAX]].map(([l,v])=>`<div class="dom-card"><div class="dom-val">${v}</div><div class="dom-lbl">${l}</div></div>`).join('')}</div>`;
   // Herrschafts-Abschnitt
