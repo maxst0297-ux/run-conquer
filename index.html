@@ -329,7 +329,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .ach-badge.earned .ach-badge-prog{color:var(--primary)}
 
 /* ═══ BOTTOM NAV ═══ */
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;height:var(--nav-total);background:var(--bg);border-top:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-around;padding:4px calc(8px + var(--sal)) var(--sab) calc(8px + var(--sar));z-index:500}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;height:var(--nav-total);background:var(--bg);border-top:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-around;padding:4px calc(8px + var(--sal)) var(--sab) calc(8px + var(--sar));z-index:710}
 .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--muted);font-size:.6rem;cursor:pointer;transition:color .25s;padding:8px 0;position:relative;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .nav-item i{font-size:1.35rem;transition:transform .25s}
 .nav-item.active{color:var(--primary)}
@@ -343,7 +343,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .drawer-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px 4px;cursor:pointer;-webkit-user-select:none;user-select:none;flex-shrink:0}
 .drawer-handle{width:36px;height:4px;background:var(--border);border-radius:4px;margin:0 auto}
 .drawer-close-btn{background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;padding:4px 6px;line-height:1}
-#drawerOverlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.35);z-index:699;display:none;-webkit-tap-highlight-color:transparent}
+#drawerOverlay{position:fixed;top:0;left:0;right:0;bottom:var(--nav-total);background:rgba(0,0,0,.35);z-index:699;display:none;-webkit-tap-highlight-color:transparent}
 #drawerOverlay.open{display:block}
 .drawer-tabs{display:flex;gap:4px;padding:10px 14px 0;overflow-x:auto}
 .tab-btn{padding:6px 14px;border-radius:40px;border:none;background:var(--card);color:var(--muted);font-weight:600;font-size:.72rem;cursor:pointer;white-space:nowrap;transition:all .2s}
@@ -822,7 +822,9 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <div class="comm-card"><h3><i class="fas fa-users"></i> Follower-Aktivität</h3><div id="followerList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-medal"></i> Rangliste</h3><div id="leaderboardList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-crown"></i> Wöchentliche Power-Rankings</h3><div id="powerRankList"></div></div>
+      <div class="comm-card"><h3><i class="fas fa-user-friends"></i> Freunde</h3><div id="friendsList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-shield-alt"></i> Fraktion-Rangliste</h3><div id="teamRankList"></div></div>
+      <div class="comm-card"><h3><i class="fas fa-swords"></i> Club Wars <span style="font-size:.62rem;color:var(--muted);font-weight:400">— diese Woche</span></h3><div id="clubWarsList"></div></div>
       <div class="comm-card" id="clubCommunityCard"><h3><i class="fas fa-users-cog"></i> Clubs</h3><div id="clubCommunityList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-map-marked-alt"></i> Größte Gebiete</h3><div id="bigTerrList"></div></div>
       <div class="comm-card">
@@ -853,6 +855,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <div class="pv-stat"><div class="pv-sv" id="ps-pts">0</div><div class="pv-sl">Punkte</div></div>
       </div>
       <div class="section-card" id="pvDailyStreak" style="display:none"></div>
+      <div class="section-card" id="pvBattlePass"></div>
       <div class="section-card">
         <div class="section-title"><i class="fas fa-layer-group"></i> Spielsystem</div>
         <div id="lvlBreakdown"></div>
@@ -937,7 +940,8 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
     <div id="postSong"></div>
     <div style="display:flex;gap:8px;margin-top:14px">
       <button class="btn btn-p" id="closePostBtn" style="flex:1">WEITER →</button>
-      <button class="btn" id="shareRunBtn" style="padding:0 16px"><i class="fas fa-share-alt"></i></button>
+      <button class="btn" id="shareRunBtn" style="padding:0 14px"><i class="fas fa-share-alt"></i></button>
+      <button class="btn" id="cardRunBtn" style="padding:0 14px" title="Laufkarte"><i class="fas fa-image"></i></button>
     </div>
   </div>
 </div>
@@ -1165,6 +1169,11 @@ let prevLevelCache=1;
 let userClub=null;           // {code,name,icon,foundedAt}
 let lastFraktionChangeDate=''; // "YYYY-MM" when fraktion was last changed
 let dailyLoginDate='',dailyLoginStreak=0,streakShields=0,recentQuoteIds=[];
+let weeklyChals=[],weekChalKey='';
+let personalRecords={};
+let battlePassClaimed=[];
+let friends=[];
+let totalRaids=0,totalBoosts=0,weeklyAchsDone=0,seasonXp=0;
 
 /* ═══ SUPABASE ═══ */
 const SB_URL='https://mlkpryhacihbqnmtgkcg.supabase.co';
@@ -1330,11 +1339,11 @@ function speedToPace(mps){if(!mps||mps<0.3)return'--:--';const p=1000/mps/60;ret
 function debounce(fn,w){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),w)}}
 
 /* PERSIST */
-function save(){localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,energyWeek,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered,registeredAt,starterQuestsDone,starterQuestFlags,heatPersonalOnly,fogEnabled,dailyChallenges,dailyChalDate,chalStreak,lastChalDoneDate,dailyLoginDate,dailyLoginStreak,streakShields,recentQuoteIds}))}
+function save(){localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,energyWeek,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered,registeredAt,starterQuestsDone,starterQuestFlags,heatPersonalOnly,fogEnabled,dailyChallenges,dailyChalDate,chalStreak,lastChalDoneDate,dailyLoginDate,dailyLoginStreak,streakShields,recentQuoteIds,weeklyChals,weekChalKey,personalRecords,battlePassClaimed,totalRaids,totalBoosts,weeklyAchsDone,seasonXp}))}
 function load(){
   try{
     const d=JSON.parse(localStorage.getItem('rc_v4_'+userId));
-    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;registeredAt=d.registeredAt||Date.now();starterQuestsDone=d.starterQuestsDone||[];starterQuestFlags=d.starterQuestFlags||{profileOpened:false};heatPersonalOnly=d.heatPersonalOnly||false;fogEnabled=d.fogEnabled||false;dailyChallenges=d.dailyChallenges||[];dailyChalDate=d.dailyChalDate||'';chalStreak=d.chalStreak||0;lastChalDoneDate=d.lastChalDoneDate||'';dailyLoginDate=d.dailyLoginDate||'';dailyLoginStreak=d.dailyLoginStreak||0;streakShields=d.streakShields||0;recentQuoteIds=d.recentQuoteIds||[];
+    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;registeredAt=d.registeredAt||Date.now();starterQuestsDone=d.starterQuestsDone||[];starterQuestFlags=d.starterQuestFlags||{profileOpened:false};heatPersonalOnly=d.heatPersonalOnly||false;fogEnabled=d.fogEnabled||false;dailyChallenges=d.dailyChallenges||[];dailyChalDate=d.dailyChalDate||'';chalStreak=d.chalStreak||0;lastChalDoneDate=d.lastChalDoneDate||'';dailyLoginDate=d.dailyLoginDate||'';dailyLoginStreak=d.dailyLoginStreak||0;streakShields=d.streakShields||0;recentQuoteIds=d.recentQuoteIds||[];weeklyChals=d.weeklyChals||[];weekChalKey=d.weekChalKey||'';personalRecords=d.personalRecords||{};battlePassClaimed=d.battlePassClaimed||[];totalRaids=d.totalRaids||0;totalBoosts=d.totalBoosts||0;weeklyAchsDone=d.weeklyAchsDone||0;seasonXp=d.seasonXp||0;
       /* Alte Bot-Gebiete (Blob, <100k m²) entfernen → werden neu als Straßen-Polygon generiert */
       territories=territories.filter(t=>t.owner===userId||t.area>100000);
       /* Überlappende Bot-Gebiete entfernen */
@@ -1370,7 +1379,7 @@ function applyTheme(name){
 }
 function saveProfile(){
   const theme=getActiveTheme();
-  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate}));
+  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,friends}));
   $('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;
   // Update theme-color meta for Android status bar
   const bgCol=getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
@@ -1378,7 +1387,7 @@ function saveProfile(){
   syncProfile();
 }
 function loadProfile(){
-  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
+  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';friends=p.friends||[];const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
   return false;
 }
 function closeAllModals(){['profileModal','postRunModal','renameModal','settingsModal','adminModal','inboxModal'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
@@ -1456,6 +1465,45 @@ const CHAL_POOL=[
   {id:'run30',icon:'⏱️',desc:'30 Minuten am Stück laufen',target:1800,key:'duration',reward:90},
   {id:'run60',icon:'⏱️',desc:'60 Minuten am Stück laufen',target:3600,key:'duration',reward:200},
 ];
+const WEEKLY_POOL=[
+  {id:'wkm15',icon:'🏃',desc:'15 km diese Woche laufen',target:15,key:'km',reward:300},
+  {id:'wrun4',icon:'📅',desc:'4× diese Woche laufen',target:4,key:'runs',reward:250},
+  {id:'wconq3',icon:'⚔️',desc:'3 Gebiete diese Woche erobern',target:3,key:'conq',reward:200},
+  {id:'wdef2',icon:'🛡️',desc:'2 Gebiete verteidigen',target:2,key:'def',reward:150},
+  {id:'wlm2',icon:'⭐',desc:'2 Wahrzeichen entdecken',target:2,key:'lm',reward:200},
+  {id:'wkm30',icon:'🔥',desc:'30 km diese Woche laufen',target:30,key:'km',reward:500},
+  {id:'wrun6',icon:'💪',desc:'6× diese Woche laufen',target:6,key:'runs',reward:400},
+  {id:'wstrk',icon:'🗓️',desc:'3 Tage hintereinander laufen',target:3,key:'streak',reward:300},
+];
+const BATTLE_PASS_REWARDS=[
+  {lv:1,icon:'⚡',name:'+50 Bonus-XP',type:'xp',val:50},
+  {lv:2,icon:'🎁',name:'Tägliche XP +10%',type:'xpbonus',val:10},
+  {lv:3,icon:'🛡️',name:'Streak-Schutz',type:'shield',val:1},
+  {lv:4,icon:'🎨',name:'Farbe: Türkis',type:'color',val:'#00d4ff'},
+  {lv:5,icon:'🏅',name:'Titel: Aufsteiger',type:'title',val:'Aufsteiger'},
+  {lv:6,icon:'⚡',name:'+100 Bonus-XP',type:'xp',val:100},
+  {lv:7,icon:'🛡️',name:'Streak-Schutz ×2',type:'shield',val:2},
+  {lv:8,icon:'🎨',name:'Farbe: Lila',type:'color',val:'#9b5de5'},
+  {lv:9,icon:'🎁',name:'Energie-Boost',type:'energy',val:1},
+  {lv:10,icon:'🏴',name:'Banner: Krieger',type:'banner',val:'krieger'},
+  {lv:11,icon:'⚡',name:'+150 Bonus-XP',type:'xp',val:150},
+  {lv:12,icon:'🎨',name:'Farbe: Rot',type:'color',val:'#ff4d6d'},
+  {lv:13,icon:'🛡️',name:'Streak-Schutz',type:'shield',val:1},
+  {lv:14,icon:'🎁',name:'Energie-Boost ×2',type:'energy',val:2},
+  {lv:15,icon:'👑',name:'Titel: Veteran',type:'title',val:'Veteran'},
+  {lv:16,icon:'⚡',name:'+200 Bonus-XP',type:'xp',val:200},
+  {lv:17,icon:'🎨',name:'Farbe: Gold',type:'color',val:'#ffd700'},
+  {lv:18,icon:'🛡️',name:'Streak-Schutz ×3',type:'shield',val:3},
+  {lv:19,icon:'🗺️',name:'Marker: Goldener Stern',type:'marker',val:'goldstar'},
+  {lv:20,icon:'🏆',name:'Titel: Unaufhaltsam',type:'title',val:'Unaufhaltsam'},
+];
+function genWeeklyChallenges(){const wk=getWeekKey();if(weekChalKey===wk&&weeklyChals.length===4)return;weekChalKey=wk;const seed=new Date().getDate()+new Date().getMonth()*31;const pool=[...WEEKLY_POOL];const sel=[];for(let i=0;i<4;i++){const idx=Math.abs(seed*(i+7)*1009)%pool.length;sel.push({...pool[idx],progress:0,done:false});pool.splice(idx,1);}weeklyChals=sel;save();}
+function updateWeeklyChallenges(rec){const wk=getWeekKey();if(weekChalKey!==wk)genWeeklyChallenges();weeklyChals.forEach(c=>{if(c.done)return;const prev=c.progress||0;if(c.key==='km')c.progress=Math.min(c.target,prev+rec.distance/1000);else if(c.key==='runs')c.progress=Math.min(c.target,prev+1);else if(c.key==='conq'&&rec.conquered)c.progress=Math.min(c.target,prev+1);else if(c.key==='def'&&rec.defended)c.progress=Math.min(c.target,prev+1);else if(c.key==='lm')c.progress=Math.min(c.target,capturedLandmarks.length);if(!c.done&&c.progress>=c.target){c.done=true;weeklyAchsDone++;points+=c.reward;toast('🎯 Wochen-Challenge: '+c.desc+' +'+c.reward+' XP');}});save();}
+function trackPersonalRecords(rec,totalPts,area){const pr=personalRecords;let newPR=false;if(!pr.longestRun||rec.distance>pr.longestRun.dist){pr.longestRun={dist:rec.distance,date:rec.date};newPR=true;}if(rec.splits&&rec.splits.length&&(!pr.fastestKm||rec.splits[0].splitSecs<pr.fastestKm.secs)){pr.fastestKm={secs:rec.splits[0].splitSecs,date:rec.date};newPR=true;}if(!pr.mostXp||totalPts>pr.mostXp.pts){pr.mostXp={pts:totalPts,date:rec.date};newPR=true;}if(!pr.mostArea||area>pr.mostArea.area){pr.mostArea={area,date:rec.date};newPR=true;}if(newPR)toast('🏆 Neue Persönliche Bestleistung!');}
+function generateRunCard(rec,runPath){const cv=document.createElement('canvas');cv.width=360;cv.height=640;const ctx=cv.getContext('2d');const tm=TEAMS.find(t=>t.id===userTeam)||{color:'#e8ff47',icon:'🏃',name:''};const col=tm.color||'#e8ff47';const g=ctx.createLinearGradient(0,0,0,640);g.addColorStop(0,'#09090f');g.addColorStop(1,'#1a1a2e');ctx.fillStyle=g;ctx.fillRect(0,0,360,640);ctx.fillStyle=col+'22';ctx.fillRect(0,0,360,200);ctx.font='bold 13px sans-serif';ctx.fillStyle=col;ctx.textAlign='left';ctx.fillText('RUNCONQUER',20,32);ctx.font='11px sans-serif';ctx.fillStyle='rgba(255,255,255,.4)';ctx.fillText(new Date(rec.date).toLocaleDateString('de'),20,50);ctx.font='54px serif';ctx.textAlign='center';ctx.fillText(tm.icon||'🏃',180,130);ctx.font='bold 20px sans-serif';ctx.fillStyle='#fff';ctx.textAlign='center';ctx.fillText(playerName||'Läufer',180,162);ctx.strokeStyle=col+'44';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(20,178);ctx.lineTo(340,178);ctx.stroke();const stats=[['DISTANZ',fmtDist(rec.distance)],['ZEIT',fmtTime(rec.duration)],['PACE',fmtPace(rec.distance,rec.duration)],['PUNKTE','+'+rec.pts]];stats.forEach((s,i)=>{const x=i%2===0?90:270,y=220+Math.floor(i/2)*100;ctx.font='10px sans-serif';ctx.fillStyle='rgba(255,255,255,.4)';ctx.textAlign='center';ctx.fillText(s[0],x,y-12);ctx.font='bold 28px sans-serif';ctx.fillStyle=col;ctx.fillText(s[1],x,y+18);});if(runPath&&runPath.length>1){const lats=runPath.map(p=>p[0]),lngs=runPath.map(p=>p[1]);const minLat=Math.min(...lats),maxLat=Math.max(...lats),minLng=Math.min(...lngs),maxLng=Math.max(...lngs);const pw=280,ph=150,px=40,py=440;const lrng=maxLat-minLat||0.001,lgrng=maxLng-minLng||0.001;const sc=Math.min(pw/lgrng,ph/lrng)*0.82;const cx0=(minLng+maxLng)/2,cy0=(minLat+maxLat)/2;ctx.strokeStyle=col;ctx.lineWidth=3;ctx.lineCap='round';ctx.lineJoin='round';ctx.shadowColor=col;ctx.shadowBlur=8;ctx.beginPath();runPath.forEach((p,i)=>{const cx=px+pw/2+(p[1]-cx0)*sc,cy=py+ph/2-(p[0]-cy0)*sc;i===0?ctx.moveTo(cx,cy):ctx.lineTo(cx,cy);});ctx.stroke();ctx.shadowBlur=0;const sp=runPath[0],ep=runPath[runPath.length-1];ctx.fillStyle='#10b981';ctx.beginPath();ctx.arc(px+pw/2+(sp[1]-cx0)*sc,py+ph/2-(sp[0]-cy0)*sc,5,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ef4444';ctx.beginPath();ctx.arc(px+pw/2+(ep[1]-cx0)*sc,py+ph/2-(ep[0]-cy0)*sc,5,0,Math.PI*2);ctx.fill();}ctx.font='9px sans-serif';ctx.fillStyle='rgba(255,255,255,.2)';ctx.textAlign='center';ctx.fillText('runconquer.app',180,630);return cv;}
+function shareRunCard(rec,runPath){const cv=generateRunCard(rec,runPath);cv.toBlob(blob=>{if(navigator.share&&blob){const f=new File([blob],'run.png',{type:'image/png'});navigator.share({files:[f],title:'Mein Lauf bei RunConquer'}).catch(()=>{const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='runconquer-lauf.png';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);});return;}const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='runconquer-lauf.png';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);},'image/png');}
+function requestNotificationPermission(){if(!('Notification' in window)||Notification.permission!=='default')return;setTimeout(()=>{Notification.requestPermission().then(p=>{if(p==='granted')toast('🔔 Benachrichtigungen aktiviert!');});},2000);}
+function showLocalNotification(title,body){if(Notification.permission==='granted'){new Notification(title,{body,icon:'/favicon.ico'});}}
 function genDailyChallenges(){
   const today=new Date().toDateString();
   if(dailyChalDate===today&&dailyChallenges.length===3)return;
@@ -1938,6 +1986,7 @@ function drawFog(){
 function startRaid(terrId){
   if(raids.find(r=>r.terrId===terrId)){toast('⚔️ Raid läuft bereits!');return;}
   raids.push({terrId,attackedAt:Date.now(),attackerName:playerName});
+  totalRaids++;
   save();renderTerr();
   toast('⚔️ Raid gestartet! 24 Stunden laufen…');beep(660,.12);vib(150);
 }
@@ -2203,7 +2252,7 @@ function mkNaturalPoly(lat,lng,radiusM){
   }catch(e){return mkCircle(lat,lng,radiusM);}
 }
 function genQuests(){quests=[{id:'q1',icon:'🏃',desc:'Laufe 2 km',target:2000,progress:0,reward:100,type:'distance',claimed:false},{id:'q2',icon:'⚔️',desc:'Erobere 1 Gebiet',target:1,progress:0,reward:150,type:'conquer',claimed:false},{id:'q3',icon:'🛡️',desc:'Verteidige 2 Gebiete',target:2,progress:0,reward:100,type:'defend',claimed:false},{id:'q4',icon:'🗺️',desc:'Laufe 5 km',target:5000,progress:0,reward:250,type:'distance',claimed:false}]}
-function initAch(){achievements=[{id:'km10',name:'10 km',icon:'👟',target:10,progress:0,earned:false},{id:'km50',name:'50 km',icon:'🏃',target:50,progress:0,earned:false},{id:'conq5',name:'Eroberer',icon:'⚔️',target:5,progress:0,earned:false},{id:'def10',name:'Verteidiger',icon:'🛡️',target:10,progress:0,earned:false},{id:'pts1k',name:'1000 Pts',icon:'⭐',target:1000,progress:0,earned:false}]}
+function initAch(){achievements=[{id:'km10',name:'10 km',icon:'👟',target:10,progress:0,earned:false,cat:'run'},{id:'km50',name:'50 km',icon:'🏃',target:50,progress:0,earned:false,cat:'run'},{id:'km100',name:'100 km',icon:'🏅',target:100,progress:0,earned:false,cat:'run'},{id:'km500',name:'Marathon-König',icon:'🥇',target:500,progress:0,earned:false,cat:'run'},{id:'run10',name:'10 Läufe',icon:'📍',target:10,progress:0,earned:false,cat:'run'},{id:'run50',name:'50 Läufe',icon:'🏃',target:50,progress:0,earned:false,cat:'run'},{id:'run100',name:'100 Läufe',icon:'💯',target:100,progress:0,earned:false,cat:'run'},{id:'conq5',name:'5 Eroberungen',icon:'⚔️',target:5,progress:0,earned:false,cat:'terr'},{id:'conq20',name:'20 Gebiete',icon:'🗡️',target:20,progress:0,earned:false,cat:'terr'},{id:'conq50',name:'Imperator',icon:'👑',target:50,progress:0,earned:false,cat:'terr'},{id:'def10',name:'Verteidiger',icon:'🛡️',target:10,progress:0,earned:false,cat:'terr'},{id:'def50',name:'Wächter',icon:'🏰',target:50,progress:0,earned:false,cat:'terr'},{id:'terr10',name:'10 Gebiete',icon:'🗺️',target:10,progress:0,earned:false,cat:'terr'},{id:'terr50',name:'Landbesitzer',icon:'🏯',target:50,progress:0,earned:false,cat:'terr'},{id:'pts1k',name:'1000 Punkte',icon:'⭐',target:1000,progress:0,earned:false,cat:'pts'},{id:'pts5k',name:'5000 Punkte',icon:'🌟',target:5000,progress:0,earned:false,cat:'pts'},{id:'pts20k',name:'20000 Punkte',icon:'💫',target:20000,progress:0,earned:false,cat:'pts'},{id:'lm5',name:'5 Wahrzeichen',icon:'📍',target:5,progress:0,earned:false,cat:'disc'},{id:'lm20',name:'Entdecker',icon:'🗺️',target:20,progress:0,earned:false,cat:'disc'},{id:'str7',name:'7-Tage-Serie',icon:'🔥',target:7,progress:0,earned:false,cat:'streak'},{id:'str30',name:'Monats-Serie',icon:'💫',target:30,progress:0,earned:false,cat:'streak'},{id:'login30',name:'30 Tage Login',icon:'📅',target:30,progress:0,earned:false,cat:'streak'},{id:'login100',name:'100 Tage Login',icon:'🏆',target:100,progress:0,earned:false,cat:'streak'},{id:'raid10',name:'10 Raids',icon:'⚔️',target:10,progress:0,earned:false,cat:'battle'},{id:'boost20',name:'20 Boosts',icon:'⚡',target:20,progress:0,earned:false,cat:'battle'}];}
 
 /* MAP */
 function initMap(){
@@ -2597,7 +2646,9 @@ function stopRun(){
   const rec={date:Date.now(),distance:dist,area,pts:res.pts,path:path.filter((_,i)=>i%3===0),conquered:res.conquered,defended:res.defended,duration:elapsed,gap,kcal,avgHR:heartRate,splits:[...kmSplits]};
   history.push(rec);if(history.length>30)history.shift();
   totalKm+=dist/1000;if(res.conquered)totalConquered++;if(res.defended)totalDefended++;
-  updateQuests(rec);updateAch();updateDailyChallenges(rec);
+  updateQuests(rec);updateAch();updateDailyChallenges(rec);updateWeeklyChallenges(rec);trackPersonalRecords(rec,totalPts,area);
+  if(boosted)totalBoosts++;seasonXp+=totalPts;
+  if(!localStorage.getItem('rc_notif_asked_'+userId)){localStorage.setItem('rc_notif_asked_'+userId,'1');requestNotificationPermission();}
   if(pathLayer)mapL.removeLayer(pathLayer);path=[];dist=0;sessionConquests=0;
   statusTxt.textContent='Bereit';save();updateUI();showPostRun(rec);
   syncRun(rec);syncProfile();
@@ -2716,7 +2767,7 @@ function renderStarterQuests(){
 
 /* QUESTS/ACH */
 function updateQuests(rec){quests.forEach(q=>{if(q.claimed)return;if(q.type==='distance')q.progress=Math.min(q.target,q.progress+rec.distance);if(q.type==='conquer'&&rec.conquered)q.progress++;if(q.type==='defend'&&rec.defended)q.progress++;if(q.progress>=q.target){q.claimed=true;points+=q.reward;toast('✅ '+q.desc+' +'+q.reward);}});checkStarterQuests();}
-function updateAch(){achievements.forEach(a=>{let p=0;if(a.id==='km10'||a.id==='km50')p=totalKm;else if(a.id==='conq5')p=totalConquered;else if(a.id==='def10')p=totalDefended;else if(a.id==='pts1k')p=points;a.progress=p;if(!a.earned&&p>=a.target){a.earned=true;points+=200;toast('🏆 '+a.name+'! +200');}})}
+function updateAch(){const terrCount=territories.filter(t=>t.owner===userId).length;achievements.forEach(a=>{let p=0;if(a.cat==='run'&&(a.id.startsWith('km')))p=totalKm;else if(a.cat==='run'&&a.id.startsWith('run'))p=history.length;else if(a.id==='conq5'||a.id==='conq20'||a.id==='conq50')p=totalConquered;else if(a.id==='def10'||a.id==='def50')p=totalDefended;else if(a.id==='terr10'||a.id==='terr50')p=terrCount;else if(a.cat==='pts')p=points;else if(a.id==='lm5'||a.id==='lm20')p=capturedLandmarks.length;else if(a.id==='str7'||a.id==='str30')p=streakDays;else if(a.id==='login30'||a.id==='login100')p=dailyLoginStreak;else if(a.id==='raid10')p=totalRaids;else if(a.id==='boost20')p=totalBoosts;a.progress=p;if(!a.earned&&p>=a.target){a.earned=true;points+=200;toast('🏆 Abzeichen: '+a.name+' +200 XP');}})}
 
 /* POST RUN */
 function showPostRun(rec){
@@ -2726,6 +2777,7 @@ function showPostRun(rec){
   $('postSong').innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--card);border-radius:12px;color:var(--muted);font-size:.82rem"><i class="fas fa-music" style="color:var(--primary)"></i> Song wird analysiert…</div>`;
   setTimeout(()=>{const s=fallbackSong();$('postSong').innerHTML=`<div style="background:var(--card);border-radius:12px;padding:14px"><div style="font-size:.6rem;text-transform:uppercase;letter-spacing:2px;color:var(--primary);margin-bottom:6px">🎵 Dein Lauf-Song</div><div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem">${s.title}</div><div style="color:var(--muted);font-size:.75rem;margin-bottom:6px">${s.artist} · ${s.bpm} BPM</div><div style="font-size:.72rem;color:var(--muted)">${s.reason}</div></div>`;},1200);
   $('postRunModal').style.display='flex';
+  document.getElementById('cardRunBtn')?.addEventListener('click',()=>{shareRunCard(rec,rec.path||[]);},{ once:true });
 }
 function fallbackSong(){const s=[{title:'Eye of the Tiger',artist:'Survivor',bpm:109,reason:'Dein Lauf hatte diese unnachgiebige Energie.'},{title:'Titanium',artist:'David Guetta ft. Sia',bpm:126,reason:'Nichts konnte dich aufhalten.'},{title:'Blinding Lights',artist:'The Weeknd',bpm:171,reason:'Freier Flow durch deine Straßen.'},{title:'Run the World',artist:'Beyoncé',bpm:130,reason:'Heute gehören die Straßen dir.'},{title:'Harder Better Faster',artist:'Daft Punk',bpm:123,reason:'Deine Pace war wie ein perfekter Rhythmus.'}];return s[Math.floor(Math.random()*s.length)]}
 
@@ -3015,6 +3067,45 @@ async function importStravaActivity(id,distM,durSecs,dateMs,avgHR){
   importActivity(distM,durSecs,dateMs,path,'strava',avgHR);
 }
 
+/* FREUNDE */
+async function renderFriends(){
+  const el=$('friendsList');if(!el)return;
+  const addRow=`<div style="display:flex;gap:8px;margin-bottom:10px"><input type="text" id="friendSearchInput" class="modal-input" placeholder="Name suchen…" style="flex:1;font-size:.8rem"><button class="btn btn-p" id="friendSearchBtn" style="padding:6px 12px;flex-shrink:0"><i class="fas fa-search"></i></button></div>`;
+  let html=addRow;
+  if(friends.length===0){html+='<div style="color:var(--muted);font-size:.78rem;padding:6px 0">Noch keine Freunde. Suche nach Spieler-Namen.</div>';}
+  else{html+='<div style="display:flex;flex-direction:column;gap:6px" id="friendsRankList"><div style="padding:8px;text-align:center;color:var(--muted);font-size:.75rem">⏳ Lade…</div></div>';}
+  el.innerHTML=html;
+  document.getElementById('friendSearchBtn')?.addEventListener('click',async()=>{
+    const name=(document.getElementById('friendSearchInput')?.value||'').trim();if(name.length<2)return;
+    try{const{data}=await sb.from('profiles').select('id,player_name,points').ilike('player_name',name).limit(5);
+    if(!data?.length){toast('Spieler nicht gefunden');return;}
+    const r=data[0];if(r.id===sbUserId){toast('Das bist du 😄');return;}
+    if(friends.some(f=>f.uid===r.id)){toast('Bereits befreundet');return;}
+    friends.push({uid:r.id,name:r.player_name||name});saveProfile();toast('✅ '+r.player_name+' hinzugefügt!');renderFriends();}catch(e){toast('Suche fehlgeschlagen');}
+  });
+  if(friends.length&&sb){
+    try{const{data}=await sb.from('profiles').select('id,player_name,points,user_team').in('id',friends.map(f=>f.uid));
+    const ranked=(data||[]).sort((a,b)=>(b.points||0)-(a.points||0));
+    const rl=document.getElementById('friendsRankList');
+    if(rl)rl.innerHTML=ranked.map((f,i)=>{const tm=TEAMS.find(t=>t.id===f.user_team);return`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)"><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--muted);width:20px">${i+1}</span><div style="width:32px;height:32px;border-radius:50%;background:${tm?tm.color+'22':'var(--card)'};display:flex;align-items:center;justify-content:center;font-size:.9rem">${tm?tm.icon:'👤'}</div><span style="flex:1;font-size:.82rem">${f.player_name||'?'}</span><span style="font-family:'Bebas Neue',sans-serif;color:var(--primary)">${f.points||0} Pts</span><button class="btn" style="padding:3px 8px;font-size:.62rem;color:var(--muted);border-color:var(--muted)" onclick="friends=friends.filter(x=>x.uid!=='${f.id}');saveProfile();renderFriends()">✕</button></div>`;}).join('')||'<div style="color:var(--muted);font-size:.75rem;padding:8px">Freunde-Daten nicht verfügbar</div>';}catch(e){}}
+}
+/* CLUB WARS */
+async function renderClubWars(){
+  const el=$('clubWarsList');if(!el)return;
+  const allClubs=JSON.parse(localStorage.getItem('rc_clubs_db')||'{}');
+  const clubCodes=Object.keys(allClubs);
+  if(!clubCodes.length){el.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:6px">Noch keine Clubs bekannt. Gründe oder tritt einem Club bei.</div>';return;}
+  el.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:6px">⏳ Lade Club-Daten…</div>';
+  try{
+    const{data}=await sb.from('profiles').select('player_name,points,club_code').in('club_code',clubCodes.slice(0,20));
+    const wars={};
+    (data||[]).forEach(p=>{if(!p.club_code)return;if(!wars[p.club_code]){const cl=allClubs[p.club_code];wars[p.club_code]={name:cl?.name||p.club_code,code:p.club_code,totalPts:0,members:0};}wars[p.club_code].totalPts+=p.points||0;wars[p.club_code].members++;});
+    // Add own club if not already
+    if(userClub&&!wars[userClub.code]){wars[userClub.code]={name:userClub.name,code:userClub.code,totalPts:points,members:1};}
+    const sorted=Object.values(wars).sort((a,b)=>b.totalPts-a.totalPts).slice(0,8);
+    el.innerHTML=sorted.length?sorted.map((c,i)=>`<div class="list-row" style="gap:8px"><span style="font-family:'Bebas Neue',sans-serif;color:var(--muted);width:20px">${i+1}</span><span style="flex:1;font-size:.82rem;font-weight:${c.code===userClub?.code?700:400}">${c.name}${c.code===userClub?.code?' 👈':''}</span><span style="font-size:.68rem;color:var(--muted)">${c.members} Mitgl.</span><span style="font-family:'Bebas Neue',sans-serif;color:var(--primary)">${c.totalPts.toLocaleString()} Pts</span></div>`).join(''):'<div style="color:var(--muted);font-size:.75rem">Keine Daten verfügbar</div>';
+  }catch(e){el.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:6px">Club Wars nicht verfügbar</div>';}
+}
 /* COMMUNITY */
 function updateCommunity(){
   const staticNews=[{icon:'📰',txt:'Neuer Wochenrekord gebrochen!',t:'vor 2 Std.'},{icon:'🏆',txt:'Kampf um den Stadtpark!',t:'vor 1 Std.'}];
@@ -3027,6 +3118,10 @@ function updateCommunity(){
   renderSocialFeed();
   renderPowerRankings();
   renderClubCommunity();
+  // Freunde
+  renderFriends();
+  // Club Wars
+  renderClubWars();
   // Fraktion-Rangliste
   const teamEl=$('teamRankList');
   if(teamEl){
@@ -3288,6 +3383,8 @@ function renderSettingsTab(tab){
       $('clubCodeBox')?.addEventListener('click',()=>{navigator.clipboard?.writeText(userClub.code).then(()=>toast('📋 Code kopiert: '+userClub.code)).catch(()=>toast('Code: '+userClub.code));});
       $('leaveClubBtn')?.addEventListener('click',()=>{if(!confirm('Club wirklich verlassen?'))return;userClub=null;saveProfile();renderSettingsTab('club');toast('Club verlassen');});
       loadClubMembers(userClub.code,document.getElementById('clubMemberList'));
+      // Club Activity Feed
+      if(sb){(async()=>{try{const{data}=await sb.from('profiles').select('player_name,points,updated_at,user_team').eq('club_code',userClub.code).order('updated_at',{ascending:false}).limit(8);const feedEl=document.getElementById('clubMemberList');if(!feedEl||!data?.length)return;const feedDiv=document.createElement('div');feedDiv.style.cssText='margin-top:12px;border-top:1px solid var(--border);padding-top:10px';feedDiv.innerHTML='<div style="font-size:.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700;margin-bottom:6px">⚡ Letzte Aktivitäten</div>'+data.map(p=>{const tm=TEAMS.find(t=>t.id===p.user_team);const diff=Math.round((Date.now()-new Date(p.updated_at).getTime())/60000);const t=diff<1?'gerade':diff<60?`vor ${diff} Min.`:diff<1440?`vor ${Math.floor(diff/60)} Std.`:`vor ${Math.floor(diff/1440)} T.`;return`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:.75rem"><span>${tm?tm.icon:'👤'}</span><span style="flex:1">${p.player_name||'?'}</span><span style="color:var(--muted);font-size:.65rem">${t}</span></div>`;}).join('');feedEl.appendChild(feedDiv);}catch(e){}})();}
     } else {
       let wappenCfg={shape:'shield',borderColor:'#e8ff47',pattern:'solid',patternColor:'#e8ff47',bg:'#09090f'};
       const shapeOpts=[{v:'shield',l:'🛡 Schild'},{v:'round',l:'⭕ Rund'},{v:'diamond',l:'◆ Raute'},{v:'hexa',l:'⬡ Hexa'}];
@@ -3670,7 +3767,7 @@ function addSwipeHandlers(wrapEl,onArchive,onDelete){
     else{cont.style.transform='translateX(0)';open=false;}
     dx=0;
   });
-  cont.addEventListener('click',()=>{if(open){cont.style.transition='transform .22s';cont.style.transform='translateX(0)';open=false;}});
+  cont.addEventListener('click',(e)=>{if(open){e.stopPropagation();cont.style.transition='transform .22s';cont.style.transform='translateX(0)';open=false;}});
   archBtn?.addEventListener('click',()=>{collapse();setTimeout(()=>{wrapEl.remove();onArchive&&onArchive();},310);});
   delBtn?.addEventListener('click',async()=>{
     if(!onDelete){collapse();setTimeout(()=>wrapEl.remove(),310);return;}
@@ -3727,9 +3824,9 @@ async function loadDmConvList(container){
       return`<div class="sw-wrap">
         <div class="sw-arch"><i class="fas fa-archive" style="font-size:.85rem;color:#fff"></i><span style="font-size:.58rem;color:#fff;font-weight:700;margin-top:2px">Archiv</span></div>
         <div class="dm-conv-row sw-content" data-dmuid="${c.uid}" data-dmname="${encodeURIComponent(c.name)}" style="margin-bottom:0">
-          <div style="width:38px;height:38px;border-radius:50%;background:var(--primary)22;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;color:var(--primary);flex-shrink:0">${(c.name||'?')[0].toUpperCase()}</div>
+          <div style="width:38px;height:38px;border-radius:50%;background:${hasUnread?'var(--primary)22':'rgba(255,255,255,.06)'};display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;color:${hasUnread?'var(--primary)':'var(--muted)'};flex-shrink:0">${(c.name||'?')[0].toUpperCase()}</div>
           <div style="flex:1;min-width:0">
-            <div style="font-size:.82rem;color:var(--text)">${c.name}</div>
+            <div style="font-size:.82rem;color:${hasUnread?'var(--text)':'var(--muted)'}">${c.name}</div>
             <div style="font-size:.72rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.last.from_uid===userId?'Du: ':''}${c.last.content}</div>
           </div>
           ${hasUnread?`<span style="background:var(--primary);color:#000;border-radius:50%;min-width:18px;height:18px;font-size:.6rem;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;flex-shrink:0">${c.unread}</span>`:'<i class="fas fa-chevron-right" style="color:var(--muted);font-size:.7rem;flex-shrink:0"></i>'}
@@ -4098,7 +4195,13 @@ function updateProfile(){
   if(domEl){const totalArea=mine.reduce((s,t)=>s+(t.area||0),0);const avgDef=mine.length?Math.round(mine.reduce((s,t)=>s+t.defense,0)/mine.length):0;const legCount=mine.filter(t=>t.rarity==='legendary').length;domEl.innerHTML=`<div class="dominion-grid">${[['🗺️ Fläche',totalArea>9999?(totalArea/1000000).toFixed(2)+' km²':Math.round(totalArea)+' m²'],['🛡️ Ø Stärke',avgDef+'/100'],['🏅 Legendär',legCount],['🔥 Raids',raids.length]].map(([l,v])=>`<div class="dom-card"><div class="dom-val">${v}</div><div class="dom-lbl">${l}</div></div>`).join('')}</div>`;}
   const bm=history.filter(r=>r.distance>=500).reduce((b,r)=>{const p=r.duration/60/(r.distance/1000);return p<b?p:b},Infinity);
   const bd=Math.max(0,...history.map(r=>r.distance)),ba=Math.max(0,...mine.map(t=>t.area||0));
-  $('pvPRs').innerHTML=[['⚡','Beste Pace',bm===Infinity?'--':Math.floor(bm)+':'+pad(Math.round((bm%1)*60))+'/km'],['📏','Längster Lauf',fmtDist(bd)],['🗺️','Größtes Gebiet',Math.round(ba)+' m²'],['🔥','kcal gesamt',history.reduce((s,r)=>s+(r.kcal||0),0)+' kcal'],['🏆','Punkte',points],['⚔️','Gebiete erobert',totalConquered]].map(([i,l,v])=>`<div class="pr-row"><span class="pr-icon">${i}</span><span class="pr-label">${l}</span><span class="pr-val">${v}</span></div>`).join('');
+  const pr=personalRecords;
+  const fastKmSecs=pr.fastestKm?.secs;
+  const fastKmFmt=fastKmSecs?Math.floor(fastKmSecs/60)+':'+pad(Math.round(fastKmSecs%60)):bm===Infinity?'--':Math.floor(bm)+':'+pad(Math.round((bm%1)*60));
+  $('pvPRs').innerHTML=[['⚡','Schnellster km',fastKmFmt+'/km'],['📏','Längster Lauf',fmtDist(pr.longestRun?.dist||bd)],['🗺️','Größtes Gebiet',Math.round(pr.mostArea?.area||ba)+' m²'],['🏆','Meiste XP/Lauf',pr.mostXp?'+'+pr.mostXp.pts:'--'],['🔥','kcal gesamt',history.reduce((s,r)=>s+(r.kcal||0),0)+' kcal'],['⚔️','Gebiete erobert',totalConquered]].map(([i,l,v])=>`<div class="pr-row"><span class="pr-icon">${i}</span><span class="pr-label">${l}</span><span class="pr-val">${v}</span></div>`).join('');
+  // Battle Pass
+  const bpEl=document.getElementById('pvBattlePass');
+  if(bpEl){const bpLv=Math.min(20,Math.floor(seasonXp/500));const bpPct=Math.min(100,(seasonXp%500)/5);const nextSp=(bpLv<20)?(bpLv+1)*500-seasonXp:0;bpEl.innerHTML=`<div class="section-title"><i class="fas fa-ticket-alt"></i> Saison-Pass <span style="font-size:.65rem;color:var(--muted);font-weight:400;margin-left:6px">Level ${bpLv}/20</span></div><div style="height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;margin-bottom:8px"><div style="height:100%;width:${bpPct}%;background:var(--primary);border-radius:3px;transition:width .4s"></div></div><div style="font-size:.68rem;color:var(--muted);margin-bottom:10px">${bpLv<20?nextSp+' XP bis Level '+(bpLv+1):'🏆 Max Level erreicht!'}</div><div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px">${BATTLE_PASS_REWARDS.map(r=>{const unlocked=bpLv>=r.lv;const claimed=battlePassClaimed.includes(r.lv);return`<div data-bplv="${r.lv}" style="flex-shrink:0;width:68px;padding:8px 4px;border-radius:12px;background:${unlocked?claimed?'rgba(16,185,129,.15)':'rgba(232,255,71,.1)':'var(--card)'};border:1px solid ${unlocked?claimed?'rgba(16,185,129,.4)':'rgba(232,255,71,.4)':'var(--border)'};text-align:center;cursor:${unlocked&&!claimed?'pointer':'default'}"><div style="font-size:1.2rem">${r.icon}</div><div style="font-size:.58rem;color:${unlocked?'var(--primary)':'var(--muted)'};line-height:1.2;margin:3px 0">${r.name}</div><div style="font-size:.55rem;color:var(--muted)">Lv.${r.lv}</div>${unlocked&&!claimed?`<div style="font-size:.55rem;background:var(--primary);color:#000;border-radius:4px;padding:1px 4px;margin-top:2px;font-weight:700">Abholen</div>`:claimed?'<div style="font-size:.65rem;color:#10b981">✓</div>':''}</div>`;}).join('')}</div>`;bpEl.querySelectorAll('[data-bplv]').forEach(el=>{const lv=Number(el.dataset.bplv);if(bpLv>=lv&&!battlePassClaimed.includes(lv)){el.addEventListener('click',()=>{battlePassClaimed.push(lv);const rw=BATTLE_PASS_REWARDS.find(r=>r.lv===lv);if(rw){if(rw.type==='xp'){points+=rw.val;toast('🎁 Battle Pass: +'+rw.val+' XP');}else if(rw.type==='shield'){streakShields=Math.min(3,streakShields+rw.val);toast('🛡️ Streak-Schutz hinzugefügt!');}else if(rw.type==='energy'){energy=Math.min(CFG.ENERGY_MAX,energy+rw.val);toast('⚡ Energie aufgeladen!');}else if(rw.type==='title'){toast('👑 Titel freigeschaltet: '+rw.val);}else{toast('🎁 '+rw.name+' freigeschaltet!');}}save();updateProfile();},{ once:true });}});}
   $('pvAchs').innerHTML=achievements.map(a=>`<div class="ach-badge ${a.earned?'earned':''}"><div class="ach-badge-icon">${a.icon}</div><div class="ach-badge-name">${a.name}</div><div class="ach-badge-prog">${a.earned?'✓':Math.round(a.progress)+'/'+a.target}</div></div>`).join('');
   // Saisonhistorie
   const seasEl=document.getElementById('pvSeasons');
@@ -4111,10 +4214,10 @@ function closeDrawer(){$('drawerOverlay').classList.remove('open');drawer.classL
 function renderDrawer(){
   const tabs={
     history:()=>history.slice(-8).reverse().map(r=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)"><span style="font-size:1.2rem">${r.conquered?'⚔️':r.defended?'🛡️':'🏃'}</span><div style="flex:1"><div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary)">${fmtDist(r.distance)}</div><div style="font-size:.68rem;color:var(--muted)">${new Date(r.date).toLocaleDateString('de')} · ${fmtTime(r.duration)}</div></div><span style="font-family:'Bebas Neue',sans-serif;color:var(--primary)">+${r.pts}</span></div>`).join('')||'<div class="muted" style="padding:16px">Noch keine Läufe</div>',
-    quests:()=>quests.map(q=>{const p=Math.min(100,Math.round(q.progress/q.target*100));return`<div style="background:var(--card);border-radius:14px;padding:12px;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:1.2rem">${q.icon}</span><span style="flex:1;font-size:.85rem;font-weight:600;color:${q.claimed?'#10b981':'var(--text)'}">${q.desc}</span><span style="font-family:'Bebas Neue',sans-serif;color:var(--primary)">🎁 ${q.reward}</span></div><div class="q-bar"><div class="q-fill" style="width:${p}%"></div></div></div>`}).join(''),
+    quests:()=>{genWeeklyChallenges();const now=new Date(),dow=(now.getDay()+6)%7,daysLeft=7-dow;const wkHdr=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><span style="font-size:.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--primary);font-weight:700">🗓️ Wochen-Challenges</span><span style="font-size:.62rem;color:var(--muted)">noch ${daysLeft} Tag${daysLeft!==1?'e':''}</span></div>`;const wkCards=weeklyChals.map(c=>{const p=Math.min(100,Math.round((c.progress||0)/c.target*100));const lbl=c.key==='km'?((c.progress||0).toFixed(1)+'/'+c.target+' km'):c.key==='runs'?Math.floor(c.progress||0)+'/'+c.target+' Läufe':(Math.floor(c.progress||0)+'/'+c.target);return`<div style="background:var(--card);border-radius:14px;padding:12px;margin-bottom:8px;border:1px solid ${c.done?'var(--primary)44':'var(--border)'}"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:1.2rem">${c.done?'✅':c.icon}</span><span style="flex:1;font-size:.82rem;font-weight:600;color:${c.done?'#10b981':'var(--text)'}">${c.desc}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;color:var(--primary)">+${c.reward}</span></div><div class="q-bar"><div class="q-fill" style="width:${p}%"></div></div><div style="font-size:.62rem;color:var(--muted);margin-top:4px">${lbl}</div></div>`;}).join('');const divider='<div style="height:1px;background:var(--border);margin:12px 0"></div><div style="font-size:.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700;margin-bottom:8px">⭐ Starter-Quests</div>';const sqCards=quests.map(q=>{const p=Math.min(100,Math.round(q.progress/q.target*100));return`<div style="background:var(--card);border-radius:14px;padding:12px;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:1.2rem">${q.icon}</span><span style="flex:1;font-size:.82rem;font-weight:600;color:${q.claimed?'#10b981':'var(--text)'}">${q.desc}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;color:var(--primary)">🎁 ${q.reward}</span></div><div class="q-bar"><div class="q-fill" style="width:${p}%"></div></div></div>`;}).join('');return wkHdr+wkCards+divider+sqCards;},
     terr:()=>territories.filter(t=>t.owner===userId).map(t=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)"><div style="width:10px;height:10px;border-radius:50%;background:${userColor}"></div><span style="flex:1;cursor:pointer" onclick="window.flyTo('${t.id}')">${t.customName||'Unbenannt'}</span><span class="muted" style="font-size:.72rem">${Math.round(t.area)} m²</span><button onclick="window.openRename('${t.id}')" style="background:none;border:none;color:var(--muted);cursor:pointer">✏️</button></div>`).join('')||'<div class="muted" style="padding:16px">Noch keine Gebiete</div>',
     fitness:()=>{setTimeout(()=>{document.getElementById('btBtn2')?.addEventListener('click',connectBT)},100);return`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${[['Schritte',stepsToday],['Puls',heartRate+' bpm'],['Laufzeit',fmtTime(runSecs)],['Pace',fmtPace(dist,runSecs)],['Gesamt km',totalKm.toFixed(1)],['Streak',streakDays+'🔥'],['kcal',history.reduce((s,r)=>s+(r.kcal||0),0)],['Gebiete',territories.filter(t=>t.owner===userId).length]].map(([l,v])=>`<div class="stat-card"><div class="sv">${v}</div><div class="sl">${l}</div></div>`).join('')}</div><button class="btn" id="btBtn2" style="width:100%;margin-top:14px"><i class="fas fa-heartbeat"></i> Pulsmesser koppeln</button>`},
-    ach:()=>achievements.map(a=>`<div style="display:inline-block;margin:4px;background:${a.earned?'rgba(232,255,71,.1)':'var(--card)'};border:1px solid ${a.earned?'rgba(232,255,71,.35)':'var(--border)'};border-radius:12px;padding:8px 14px;font-size:.8rem;color:${a.earned?'var(--primary)':'var(--muted)'}">${a.icon} ${a.name} ${a.earned?'✓':Math.round(a.progress)+'/'+a.target}</div>`).join(''),
+    ach:()=>{const cats={run:'🏃 Laufen',terr:'🗺️ Gebiete',pts:'⭐ Punkte',disc:'🔍 Entdecken',streak:'🔥 Serien',battle:'⚔️ Kämpfe'};const groups={};achievements.forEach(a=>{const c=a.cat||'run';if(!groups[c])groups[c]=[];groups[c].push(a);});return Object.entries(cats).map(([cat,label])=>{const list=groups[cat]||[];if(!list.length)return'';const earned=list.filter(a=>a.earned).length;return`<div style="margin-bottom:14px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><span style="font-size:.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700">${label}</span><span style="font-size:.6rem;color:var(--muted)">${earned}/${list.length}</span></div><div style="display:flex;flex-wrap:wrap;gap:6px">${list.map(a=>`<div style="display:flex;align-items:center;gap:5px;padding:6px 10px;border-radius:10px;background:${a.earned?'rgba(232,255,71,.12)':'var(--card)'};border:1px solid ${a.earned?'rgba(232,255,71,.4)':'var(--border)'};font-size:.75rem;color:${a.earned?'var(--primary)':'var(--muted)'}">${a.icon} ${a.name} ${a.earned?'✓':Math.round(a.progress)+'/'+a.target}</div>`).join('')}</div></div>`;}).join('');},
     calendar:()=>{setTimeout(drawCalendar,0);return'<div id="calDiv"></div>'}
   };
   drawerBody.innerHTML=tabs[currentTab]?tabs[currentTab]():'';
