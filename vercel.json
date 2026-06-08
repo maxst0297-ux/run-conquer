@@ -7,6 +7,7 @@
     { "src": "/privacy.html", "dest": "/privacy.html" },
     { "src": "/icons/(.*)", "dest": "/icons/$1" },
     { "src": "/screenshots/(.*)", "dest": "/screenshots/$1" },
+    { "src": "/videos/(.*)", "dest": "/videos/$1" },
     { "src": "/(.*)", "dest": "/index.html" }
   ],
   "headers": [

@@ -2969,6 +2969,21 @@ function renderSettingsTab(tab){
   } else if(tab==='hilfe'){
     body.innerHTML=`
 <div style="display:flex;flex-direction:column;gap:10px;font-size:.82rem">
+
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden">
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border)">
+      <span style="background:#e8ff47;color:#09090f;font-size:.6rem;font-weight:700;letter-spacing:1.5px;padding:3px 9px;border-radius:20px;flex-shrink:0">PROMO</span>
+      <span style="font-size:.82rem;font-weight:600">RunConquer – Offizieller Trailer</span>
+    </div>
+    <div id="promoWrap" style="position:relative;width:100%;background:#09090f;overflow:hidden">
+      <div style="padding-top:177.8%"></div>
+      <iframe id="promoIframe" src="/videos/runconquer-promo/index.html"
+        scrolling="no" frameborder="0"
+        style="position:absolute;top:0;left:0;border:none;transform-origin:top left;pointer-events:none">
+      </iframe>
+    </div>
+  </div>
+
   <div style="font-weight:700;font-size:1rem;color:var(--primary)">📖 Spielanleitung</div>
 
   <details open style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
@@ -3065,6 +3080,17 @@ function renderSettingsTab(tab){
     </div>
   </details>
 </div>`;
+    // Scale promo iframe to fit container width
+    requestAnimationFrame(()=>{
+      const wrap=document.getElementById('promoWrap');
+      const fr=document.getElementById('promoIframe');
+      if(!wrap||!fr)return;
+      const w=wrap.offsetWidth||320;
+      const scale=w/1080;
+      fr.style.width='1080px';
+      fr.style.height='1920px';
+      fr.style.transform=`scale(${scale})`;
+    });
   } else if(tab==='datenschutz'){
     const gpsGranted=localStorage.getItem('rc_gps_consent')==='1';
     body.innerHTML=`<div style="display:flex;flex-direction:column;gap:10px">

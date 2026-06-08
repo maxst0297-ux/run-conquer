@@ -741,6 +741,12 @@ tl.from('#s6-plat',        { y: 24, opacity: 0, duration: 0.45, ease: 'power2.ou
 tl.to('#s6-fade', { opacity: 1, duration: 0.7, ease: 'power2.in' }, 27.3);
 
 window.__timelines['main'] = tl;
+
+// Auto-play + loop when viewed outside HyperFrames Studio
+if (typeof window.__hyperframes === 'undefined') {
+  tl.play();
+  tl.eventCallback('onComplete', function() { tl.restart(); });
+}
 </script>
 </body>
 </html>
