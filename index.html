@@ -4391,7 +4391,12 @@ window.initApp=function(){
   $('obTabLogin')?.addEventListener('click',()=>switchAuthTab('obTabLogin'));
   $('obTabAdmin')?.addEventListener('click',()=>switchAuthTab('obTabAdmin'));
   /* Name → interne E-Mail (Nutzer sieht diese nie) */
-  const nameToEmail=n=>n.toLowerCase().replace(/[^a-z0-9]/g,'')+'@rc.runconquer.app';
+  const nameToEmail=n=>{
+    const clean=n.toLowerCase()
+      .replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss')
+      .replace(/[^a-z0-9]/g,'');
+    return(clean||'user'+(Date.now()%99999))+'@player.runconquer.app';
+  };
   /* Registrieren */
   $('regBtn')?.addEventListener('click',async()=>{
     const name=($('regName')?.value||'').trim();
@@ -4411,7 +4416,9 @@ window.initApp=function(){
       const email=nameToEmail(name);
       const{data,error}=await sb.auth.signUp({email,password:pw,options:{data:{playerName:name}}});
       if(error){
-        if(error.message?.toLowerCase().includes('already')||error.message?.toLowerCase().includes('user already'))showErr('❌ Dieser Name ist bereits vergeben. Wähle einen anderen.');
+        const msg=error.message?.toLowerCase()||'';
+        if(msg.includes('already')||msg.includes('user already'))showErr('❌ Dieser Name ist bereits vergeben. Wähle einen anderen.');
+        else if(msg.includes('email')||msg.includes('invalid'))showErr('❌ Registrierung fehlgeschlagen ('+error.message+'). Versuche einen anderen Namen.');
         else throw error;
         return;
       }
