@@ -1284,10 +1284,11 @@ const drawer=$('drawer'),drawerBody=$('drawerBody');
 /* UTILS */
 let _toastTimer=null;
 function toast(msg){
+  if(!toastEl)return;
   toastEl.textContent=msg;
   toastEl.classList.add('show');
   clearTimeout(_toastTimer);
-  _toastTimer=setTimeout(()=>toastEl.classList.remove('show'),2700);
+  _toastTimer=setTimeout(()=>toastEl?.classList.remove('show'),2700);
 }
 function beep(f,d=.1){try{const c=new(window.AudioContext||window.webkitAudioContext)();if(c.state==='suspended')c.resume();const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=f;g.gain.value=.08;o.start();o.stop(c.currentTime+d);}catch(e){}}
 function vib(ms){if(navigator.vibrate)navigator.vibrate(ms)}
@@ -1563,7 +1564,7 @@ function updateDailyChallenges(rec){
 function renderDailyChallenges(){
   genDailyChallenges();
   const el=$('dailyChalDiv');if(!el)return;
-  const sb=$('chalStreakBadge');if(sb)sb.textContent=chalStreak>0?`🔥 ${chalStreak}`:'' ;
+  const chalBadgeEl=$('chalStreakBadge');if(chalBadgeEl)chalBadgeEl.textContent=chalStreak>0?`🔥 ${chalStreak}`:'';
   el.innerHTML=dailyChallenges.map(c=>{
     const p=Math.min(100,Math.round((c.progress||0)/c.target*100));
     const valLbl=c.key==='distance'?((c.progress||0).toFixed(1)+'/'+c.target+' km'):c.key==='duration'?Math.floor((c.progress||0)/60)+'/'+Math.floor(c.target/60)+' min':(Math.floor(c.progress||0)+'/'+c.target);
