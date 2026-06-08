@@ -4418,8 +4418,19 @@ window.initApp=function(){
       const{data,error}=await sb.auth.signUp({email,password:pw,options:{data:{playerName:name}}});
       if(error){
         const msg=error.message?.toLowerCase()||'';
-        if(msg.includes('already')||msg.includes('user already'))showErr('❌ Dieser Name ist bereits vergeben. Wähle einen anderen.');
-        else if(msg.includes('email')||msg.includes('invalid'))showErr('❌ Registrierung fehlgeschlagen ('+error.message+'). Versuche einen anderen Namen.');
+        if(msg.includes('already')||msg.includes('user already')){
+          // Account exists — just sign in
+          const{data:ld}=await sb.auth.signInWithPassword({email,password:pw});
+          if(ld?.user){await launchAppFromSession(ld.user);return;}
+          showErr('❌ Dieser Name ist bereits vergeben. Wähle einen anderen oder melde dich an.');return;
+        }
+        if(msg.includes('rate limit')||msg.includes('email rate')){
+          // Supabase email rate limit — account may already be created, try signing in
+          const{data:ld,error:le}=await sb.auth.signInWithPassword({email,password:pw});
+          if(ld?.user){await launchAppFromSession(ld.user);return;}
+          showErr('⏳ Zu viele Registrierungen gerade. Bitte 60 Sekunden warten und erneut versuchen.');return;
+        }
+        if(msg.includes('email')||msg.includes('invalid'))showErr('❌ Registrierung fehlgeschlagen ('+error.message+'). Versuche einen anderen Namen.');
         else throw error;
         return;
       }
