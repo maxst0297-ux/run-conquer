@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<script src="gsap.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  width: 1080px;
+  height: 1920px;
+  overflow: hidden;
+  background: #09090F;
+  font-family: 'Poppins', sans-serif;
+}
+
+/* ── ROOT ── */
+#root {
+  position: relative;
+  width: 1080px;
+  height: 1920px;
+}
+
+/* ── SCENES ── */
+.scene {
+  position: absolute;
+  top: 0; left: 0;
+  width: 1080px;
+  height: 1920px;
+  overflow: hidden;
+}
+/* Scene 1: visible by default */
+#s1 { background: #09090F; z-index: 1; }
+/* Scenes 2-6: hidden, revealed by GSAP */
+#s2 { background: #09090F; z-index: 2; opacity: 0; }
+#s3 { background: #09090F; z-index: 3; opacity: 0; }
+#s4 { background: #0D0D18; z-index: 4; opacity: 0; }
+#s5 { background: #09090F; z-index: 5; opacity: 0; }
+#s6 { background: #09090F; z-index: 6; opacity: 0; }
+
+/* ── SHARED LAYOUT ── */
+.scene-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 140px 80px;
+  gap: 24px;
+  box-sizing: border-box;
+}
+
+/* ══════════════════════
+   SCENE 1 — HOOK
+══════════════════════ */
+.s1-glow {
+  position: absolute;
+  width: 900px; height: 900px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(232,255,71,.08) 0%, transparent 70%);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.s1-ghost {
+  position: absolute;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 420px;
+  color: rgba(232,255,71,0.04);
+  /* decorative only — intentionally below contrast threshold */
+  letter-spacing: -8px;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+.s1-label {
+  font-size: 22px;
+  letter-spacing: 6px;
+  color: #9292AA;
+  text-transform: uppercase;
+  text-align: center;
+}
+.s1-headline {
+  font-family: 'Bebas Neue', sans-serif;
+  text-align: center;
+  line-height: 0.88;
+}
+.s1-headline .l1 {
+  display: block;
+  font-size: 180px;
+  color: #F0F0F8;
+  letter-spacing: 6px;
+}
+.s1-headline .l2 {
+  display: block;
+  font-size: 210px;
+  color: #E8FF47;
+  letter-spacing: 4px;
+  text-shadow: 0 0 60px rgba(232,255,71,.5), 0 0 120px rgba(232,255,71,.25);
+}
+.s1-sub {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 80px;
+  color: #F0F0F8;
+  text-align: center;
+  letter-spacing: 8px;
+}
+.s1-ping-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 40px;
+  height: 100px;
+  position: relative;
+}
+.s1-dot {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: #E8FF47;
+  position: absolute;
+  box-shadow: 0 0 20px rgba(232,255,71,.8);
+}
+.s1-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid rgba(232,255,71,.5);
+  width: 18px; height: 18px;
+}
+
+/* ══════════════════════
+   SCENE 2 — GPS TRACK
+══════════════════════ */
+.s2-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(232,255,71,.4) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(232,255,71,.4) 1px, transparent 1px);
+  background-size: 60px 60px;
+  opacity: 0.05;
+  pointer-events: none;
+}
+.s2-label {
+  font-size: 22px;
+  letter-spacing: 5px;
+  color: #9292AA;
+  text-transform: uppercase;
+  text-align: center;
+}
+.s2-map-wrap {
+  display: flex;
+  justify-content: center;
+}
+#s2-svg {
+  width: 920px;
+  height: 580px;
+  border-radius: 20px;
+  overflow: hidden;
+}
+.s2-hud {
+  display: flex;
+  justify-content: center;
+  gap: 60px;
+}
+.s2-hud-item { text-align: center; }
+.s2-hud-val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 80px;
+  color: #E8FF47;
+  line-height: 1;
+}
+.s2-hud-lbl {
+  font-size: 20px;
+  color: #9292AA;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+.s2-heading {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 130px;
+  color: #F0F0F8;
+  text-align: center;
+  letter-spacing: 6px;
+  line-height: 1;
+}
+.s2-heading em {
+  font-style: normal;
+  color: #E8FF47;
+  text-shadow: 0 0 40px rgba(232,255,71,.4);
+}
+
+/* ══════════════════════
+   SCENE 3 — CONQUEST
+══════════════════════ */
+.s3-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  background: #FF4D6D;
+  color: #fff;
+  font-weight: 700;
+  font-size: 30px;
+  letter-spacing: 2px;
+  padding: 18px 40px;
+  border-radius: 50px;
+  align-self: center;
+}
+.s3-grid-wrap {
+  display: flex;
+  justify-content: center;
+}
+.s3-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 160px);
+  grid-template-rows: repeat(4, 100px);
+  gap: 8px;
+}
+.s3-cell {
+  border-radius: 14px;
+  background: #1A1A26;
+}
+.s3-cell.owned { background: rgba(232,255,71,.35); }
+.s3-cell.new {
+  background: #E8FF47;
+  box-shadow: 0 0 28px rgba(232,255,71,.7);
+}
+.s3-pts {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 180px;
+  color: #E8FF47;
+  text-align: center;
+  line-height: 0.85;
+  text-shadow: 0 0 80px rgba(232,255,71,.45);
+}
+.s3-pts-lbl {
+  font-size: 30px;
+  letter-spacing: 5px;
+  color: #9292AA;
+  text-align: center;
+  text-transform: uppercase;
+}
+.s3-sub {
+  font-size: 26px;
+  color: #F0F0F8;
+  text-align: center;
+  letter-spacing: 2px;
+  opacity: 0.55;
+}
+
+/* ══════════════════════
+   SCENE 4 — STATS
+══════════════════════ */
+.s4-intro {
+  font-size: 24px;
+  letter-spacing: 5px;
+  color: #9292AA;
+  text-transform: uppercase;
+  text-align: center;
+}
+.s4-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.s4-card {
+  background: #1A1A26;
+  border-radius: 24px;
+  padding: 44px 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 4px solid #E8FF47;
+}
+.s4-card-lbl {
+  font-size: 26px;
+  letter-spacing: 4px;
+  color: #9292AA;
+  text-transform: uppercase;
+}
+.s4-card-val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 130px;
+  color: #E8FF47;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ══════════════════════
+   SCENE 5 — LEADERBOARD
+══════════════════════ */
+.s5-lbl {
+  font-size: 22px;
+  letter-spacing: 5px;
+  color: #9292AA;
+  text-transform: uppercase;
+  text-align: center;
+}
+.s5-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 110px;
+  color: #E8FF47;
+  text-align: center;
+  letter-spacing: 4px;
+  line-height: 1;
+}
+.s5-sub {
+  font-size: 28px;
+  letter-spacing: 3px;
+  color: #F0F0F8;
+  text-align: center;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+.s5-rows { display: flex; flex-direction: column; gap: 16px; }
+.s5-row {
+  background: #1A1A26;
+  border-radius: 20px;
+  padding: 30px 40px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.s5-row.you {
+  background: rgba(232,255,71,.1);
+  border: 2px solid #E8FF47;
+}
+.s5-rank {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 60px;
+  color: #9292AA;
+  width: 54px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.s5-row.you .s5-rank { color: #E8FF47; }
+.s5-player { flex: 1; }
+.s5-name {
+  font-weight: 600;
+  font-size: 30px;
+  color: #F0F0F8;
+}
+.s5-row.you .s5-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 52px;
+  letter-spacing: 3px;
+  color: #E8FF47;
+}
+.s5-meta { font-size: 20px; color: #9292AA; }
+.s5-pts {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 56px;
+  color: #E8FF47;
+  font-variant-numeric: tabular-nums;
+}
+.s5-row.you .s5-pts {
+  font-size: 36px;
+  color: #9292AA;
+}
+
+/* ══════════════════════
+   SCENE 6 — CTA
+══════════════════════ */
+.s6-glow {
+  position: absolute;
+  width: 1100px; height: 1100px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(232,255,71,.1) 0%, transparent 65%);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.s6-heading {
+  font-family: 'Bebas Neue', sans-serif;
+  text-align: center;
+  line-height: 0.88;
+}
+.s6-heading .l1 {
+  display: block;
+  font-size: 110px;
+  color: #F0F0F8;
+  letter-spacing: 10px;
+}
+.s6-heading .l2 {
+  display: block;
+  font-size: 220px;
+  color: #E8FF47;
+  letter-spacing: 2px;
+  text-shadow: 0 0 80px rgba(232,255,71,.5), 0 0 160px rgba(232,255,71,.2);
+}
+.s6-tagline {
+  font-size: 28px;
+  letter-spacing: 6px;
+  color: #9292AA;
+  text-align: center;
+  text-transform: uppercase;
+}
+.s6-cta {
+  background: #E8FF47;
+  color: #09090F;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 60px;
+  letter-spacing: 5px;
+  padding: 40px 100px;
+  border-radius: 50px;
+  text-align: center;
+  align-self: center;
+}
+.s6-platforms {
+  font-size: 24px;
+  color: #9292AA;
+  text-align: center;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+.s6-fade {
+  position: absolute;
+  inset: 0;
+  background: #09090F;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+</style>
+</head>
+<body>
+
+<div id="root"
+  data-composition-id="main"
+  data-width="1080"
+  data-height="1920"
+  data-start="0"
+  data-duration="28">
+
+  <!-- ══ SCENE 1: HOOK ══ -->
+  <div id="s1" class="scene">
+    <div class="s1-glow" id="s1-glow"></div>
+    <div class="s1-ghost" data-layout-ignore>CONQUER</div>
+    <div class="scene-content" style="justify-content:center;gap:20px;">
+      <div class="s1-label" id="s1-lbl">GPS · GEBIETE · HERRSCHAFT</div>
+      <div class="s1-headline">
+        <span class="l1" id="s1-l1">DEINE</span>
+        <span class="l2" id="s1-l2">STADT</span>
+      </div>
+      <div class="s1-sub" id="s1-sub">GEHÖRT DIR.</div>
+      <div class="s1-ping-wrap">
+        <div class="s1-dot"></div>
+        <div class="s1-ring" id="ring1"></div>
+        <div class="s1-ring" id="ring2"></div>
+        <div class="s1-ring" id="ring3"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SCENE 2: GPS TRACK ══ -->
+  <div id="s2" class="scene">
+    <div class="s2-grid"></div>
+    <div class="scene-content" style="gap:28px;">
+      <div class="s2-label" id="s2-lbl">HINTERGRUND-GPS AKTIV</div>
+      <div class="s2-map-wrap">
+        <svg id="s2-svg" viewBox="0 0 920 580" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="920" height="580" fill="#111118" rx="20"/>
+          <!-- Street grid -->
+          <line x1="0" y1="290" x2="920" y2="290" stroke="#1A1A26" stroke-width="28"/>
+          <line x1="460" y1="0" x2="460" y2="580" stroke="#1A1A26" stroke-width="28"/>
+          <line x1="0" y1="145" x2="920" y2="145" stroke="#1A1A26" stroke-width="14"/>
+          <line x1="0" y1="435" x2="920" y2="435" stroke="#1A1A26" stroke-width="14"/>
+          <line x1="230" y1="0" x2="230" y2="580" stroke="#1A1A26" stroke-width="14"/>
+          <line x1="690" y1="0" x2="690" y2="580" stroke="#1A1A26" stroke-width="14"/>
+          <!-- Conquered territory fill -->
+          <polygon points="180,100 420,115 440,290 240,270 200,190"
+            fill="rgba(232,255,71,.15)" stroke="rgba(232,255,71,.3)" stroke-width="2"/>
+          <!-- GPS track (animated via stroke-dashoffset) -->
+          <polyline id="s2-track"
+            points="100,430 160,340 230,275 300,230 400,125 445,185 510,210 590,165 650,205 720,295 760,355 715,415 610,435 510,395 435,420 350,455 260,475 175,440 100,430"
+            fill="none"
+            stroke="#E8FF47"
+            stroke-width="6"
+            stroke-linecap="round"
+            stroke-linejoin="round"/>
+          <!-- Position dot + halo -->
+          <circle cx="720" cy="295" r="32" fill="rgba(232,255,71,.15)"/>
+          <circle id="s2-pos-dot" cx="720" cy="295" r="14" fill="#E8FF47"/>
+        </svg>
+      </div>
+      <div class="s2-hud" id="s2-hud">
+        <div class="s2-hud-item">
+          <div class="s2-hud-val">2.4</div>
+          <div class="s2-hud-lbl">KM</div>
+        </div>
+        <div class="s2-hud-item">
+          <div class="s2-hud-val">5:12</div>
+          <div class="s2-hud-lbl">MIN/KM</div>
+        </div>
+        <div class="s2-hud-item">
+          <div class="s2-hud-val">162</div>
+          <div class="s2-hud-lbl">BPM</div>
+        </div>
+      </div>
+      <div class="s2-heading" id="s2-heading">LAUF &amp; <em>EROBER</em></div>
+    </div>
+  </div>
+
+  <!-- ══ SCENE 3: CONQUEST ══ -->
+  <div id="s3" class="scene">
+    <div class="scene-content" style="gap:22px;">
+      <div class="s3-badge" id="s3-badge">⚔️ GEBIET EROBERT</div>
+      <div class="s3-grid-wrap">
+        <div class="s3-grid">
+          <div class="s3-cell owned"></div><div class="s3-cell owned"></div><div class="s3-cell owned"></div><div class="s3-cell owned"></div><div class="s3-cell owned"></div>
+          <div class="s3-cell owned"></div><div class="s3-cell new" id="s3-n1"></div><div class="s3-cell new" id="s3-n2"></div><div class="s3-cell owned"></div><div class="s3-cell"></div>
+          <div class="s3-cell owned"></div><div class="s3-cell new" id="s3-n3"></div><div class="s3-cell"></div><div class="s3-cell"></div><div class="s3-cell"></div>
+          <div class="s3-cell"></div><div class="s3-cell"></div><div class="s3-cell"></div><div class="s3-cell"></div><div class="s3-cell"></div>
+        </div>
+      </div>
+      <div class="s3-pts" id="s3-pts">+200</div>
+      <div class="s3-pts-lbl">PUNKTE</div>
+      <div class="s3-sub" id="s3-sub">+3 Gebiete heute · 47 gesamt</div>
+    </div>
+  </div>
+
+  <!-- ══ SCENE 4: STATS ══ -->
+  <div id="s4" class="scene">
+    <div class="scene-content" style="gap:32px;">
+      <div class="s4-intro" id="s4-intro">DEIN FORTSCHRITT</div>
+      <div class="s4-cards">
+        <div class="s4-card" id="s4-c1">
+          <div class="s4-card-lbl">KM TOTAL</div>
+          <div class="s4-card-val" id="v-km">0</div>
+        </div>
+        <div class="s4-card" id="s4-c2">
+          <div class="s4-card-lbl">GEBIETE</div>
+          <div class="s4-card-val" id="v-geo">0</div>
+        </div>
+        <div class="s4-card" id="s4-c3">
+          <div class="s4-card-lbl">STREAK</div>
+          <div class="s4-card-val" style="font-size:100px;">12🔥</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SCENE 5: LEADERBOARD ══ -->
+  <div id="s5" class="scene">
+    <div class="scene-content" style="gap:20px;">
+      <div class="s5-lbl" id="s5-lbl">DEINE STADT</div>
+      <div class="s5-title" id="s5-title">🏆 RANGLISTE</div>
+      <div class="s5-sub" id="s5-sub">WER FÜHRT DEINE STADT?</div>
+      <div class="s5-rows">
+        <div class="s5-row" id="s5-r1">
+          <div class="s5-rank">1</div>
+          <div class="s5-player">
+            <div class="s5-name">SpeedKing</div>
+            <div class="s5-meta">48k m² · 7🔥</div>
+          </div>
+          <div class="s5-pts">6.840</div>
+        </div>
+        <div class="s5-row" id="s5-r2">
+          <div class="s5-rank">2</div>
+          <div class="s5-player">
+            <div class="s5-name">MountainGoat</div>
+            <div class="s5-meta">31k m² · 5🔥</div>
+          </div>
+          <div class="s5-pts">4.290</div>
+        </div>
+        <div class="s5-row" id="s5-r3">
+          <div class="s5-rank">3</div>
+          <div class="s5-player">
+            <div class="s5-name">NightOwl</div>
+            <div class="s5-meta">22k m² · 3🔥</div>
+          </div>
+          <div class="s5-pts">2.915</div>
+        </div>
+        <div class="s5-row you" id="s5-you">
+          <div class="s5-rank">?</div>
+          <div class="s5-player">
+            <div class="s5-name">DU?</div>
+            <div class="s5-meta" style="font-size:22px;">Tritt jetzt an</div>
+          </div>
+          <div class="s5-pts">STARTEN</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SCENE 6: CTA ══ -->
+  <div id="s6" class="scene">
+    <div class="s6-glow" id="s6-glow"></div>
+    <div class="scene-content" style="justify-content:center;align-items:center;gap:28px;">
+      <div class="s6-heading" id="s6-heading">
+        <span class="l1">RUN &amp;</span>
+        <span class="l2">CONQUER</span>
+      </div>
+      <div class="s6-tagline" id="s6-tagline">LAUFE · EROBER · HERRSCHE</div>
+      <div class="s6-cta" id="s6-cta">JETZT SPIELEN</div>
+      <div class="s6-platforms" id="s6-plat">KOSTENLOS · ANDROID &amp; IOS</div>
+    </div>
+    <div class="s6-fade" id="s6-fade"></div>
+  </div>
+
+</div><!-- /root -->
+
+<script>
+window.__timelines = window.__timelines || {};
+
+// ── SVG track dash setup ──
+var trackEl = document.getElementById('s2-track');
+var trackLen = trackEl ? Math.round(trackEl.getTotalLength()) : 1200;
+trackEl.setAttribute('stroke-dasharray', trackLen);
+trackEl.setAttribute('stroke-dashoffset', trackLen);
+
+// ── Counter proxy ──
+var cnt = { km: 0, geo: 0 };
+
+// ── Timeline ──
+var tl = gsap.timeline({ paused: true });
+
+/* ════════════════════════
+   SCENE 1 ENTRANCES (0–4s)
+   ════════════════════════ */
+// Ambient glow drift
+tl.fromTo('#s1-glow', { scale: 0.9, opacity: 0.5 }, { scale: 1.1, opacity: 1, duration: 4, ease: 'sine.inOut', repeat: 3, yoyo: true }, 0);
+// Ghost text slow drift
+tl.fromTo('#s1 .s1-ghost', { x: -15 }, { x: 15, duration: 4, ease: 'none' }, 0);
+// Content entrances
+tl.from('#s1-lbl',  { y: 30, opacity: 0, duration: 0.6, ease: 'power3.out' }, 0.25);
+tl.from('#s1-l1',   { y: 70, opacity: 0, duration: 0.7, ease: 'power4.out' }, 0.55);
+tl.from('#s1-l2',   { scale: 0.75, opacity: 0, duration: 0.8, ease: 'expo.out' }, 0.80);
+tl.from('#s1-sub',  { y: 40, opacity: 0, duration: 0.6, ease: 'power3.out' }, 1.15);
+// GPS ping rings (3 repeats × 1.2s = 3.6s total, fits within scene)
+tl.fromTo('#ring1', { width: 18, height: 18, x: -9, y: -9, opacity: 0.9 },
+  { width: 100, height: 100, x: -50, y: -50, opacity: 0, duration: 1.2, ease: 'power1.out', repeat: 3 }, 1.4);
+tl.fromTo('#ring2', { width: 18, height: 18, x: -9, y: -9, opacity: 0.7 },
+  { width: 100, height: 100, x: -50, y: -50, opacity: 0, duration: 1.2, ease: 'power1.out', repeat: 3 }, 1.8);
+tl.fromTo('#ring3', { width: 18, height: 18, x: -9, y: -9, opacity: 0.5 },
+  { width: 100, height: 100, x: -50, y: -50, opacity: 0, duration: 1.2, ease: 'power1.out', repeat: 3 }, 2.2);
+
+/* ════════════════════
+   TRANSITION 1→2 (T=4.0, crossfade)
+   ════════════════════ */
+var T1 = 4.0;
+tl.to('#s1', { opacity: 0, duration: 0.5, ease: 'power2.inOut' }, T1);
+tl.fromTo('#s2', { opacity: 0 }, { opacity: 1, duration: 0.5, ease: 'power2.inOut' }, T1);
+
+/* ════════════════════════
+   SCENE 2 ENTRANCES (4.0–8.5s)
+   ════════════════════════ */
+tl.from('#s2-lbl',     { y: 30, opacity: 0, duration: 0.5, ease: 'power3.out' }, T1 + 0.15);
+tl.from('#s2-svg',     { scale: 0.92, opacity: 0, duration: 0.65, ease: 'power2.out' }, T1 + 0.25);
+// GPS track drawing animation
+tl.to('#s2-track', { attr: { 'stroke-dashoffset': 0 }, duration: 2.6, ease: 'power1.inOut' }, T1 + 0.45);
+// Position dot pulse (finite: 4.5s scene / 1.0s cycle ≈ 4 repeats)
+tl.fromTo('#s2-pos-dot', { attr: { r: 14 } }, { attr: { r: 20 }, duration: 0.5, ease: 'sine.inOut', repeat: 8, yoyo: true }, T1 + 0.3);
+tl.from('#s2-hud',     { y: 40, opacity: 0, duration: 0.6, ease: 'power3.out' }, T1 + 0.8);
+tl.from('#s2-heading', { y: 50, opacity: 0, duration: 0.7, ease: 'expo.out' }, T1 + 1.1);
+
+/* ════════════════════
+   TRANSITION 2→3 (T=8.5, vertical push up)
+   ════════════════════ */
+var T2 = 8.5;
+tl.to('#s2', { y: -1920, duration: 0.5, ease: 'power3.inOut' }, T2);
+tl.fromTo('#s3', { y: 1920, opacity: 1 }, { y: 0, duration: 0.5, ease: 'power3.inOut' }, T2);
+
+/* ════════════════════════
+   SCENE 3 ENTRANCES (8.5–13.0s)
+   ════════════════════════ */
+tl.from('#s3-badge', { scale: 0.65, opacity: 0, duration: 0.5, ease: 'back.out(2.5)' }, T2 + 0.25);
+// Territory cells stagger
+tl.fromTo('#s3-n1', { scale: 0 }, { scale: 1, duration: 0.4, ease: 'back.out(2.5)', transformOrigin: 'center' }, T2 + 0.55);
+tl.fromTo('#s3-n2', { scale: 0 }, { scale: 1, duration: 0.4, ease: 'back.out(2.5)', transformOrigin: 'center' }, T2 + 0.72);
+tl.fromTo('#s3-n3', { scale: 0 }, { scale: 1, duration: 0.4, ease: 'back.out(2.5)', transformOrigin: 'center' }, T2 + 0.89);
+tl.from('#s3-pts',  { scale: 0.55, opacity: 0, duration: 0.7, ease: 'elastic.out(1, 0.5)' }, T2 + 1.05);
+tl.from('.s3-pts-lbl', { y: 24, opacity: 0, duration: 0.4, ease: 'power2.out' }, T2 + 1.3);
+tl.from('#s3-sub',  { y: 20, opacity: 0, duration: 0.4, ease: 'power2.out' }, T2 + 1.55);
+
+/* ════════════════════
+   TRANSITION 3→4 (T=13.0, blur crossfade)
+   ════════════════════ */
+var T3 = 13.0;
+tl.to('#s3', { filter: 'blur(10px)', scale: 1.03, opacity: 0, duration: 0.5, ease: 'power2.inOut' }, T3);
+tl.fromTo('#s4',
+  { filter: 'blur(10px)', scale: 0.97, opacity: 0 },
+  { filter: 'blur(0px)', scale: 1, opacity: 1, duration: 0.5, ease: 'power2.inOut' }, T3 + 0.1);
+
+/* ════════════════════════
+   SCENE 4 ENTRANCES (13.0–17.5s)
+   ════════════════════════ */
+tl.from('#s4-intro', { y: 30, opacity: 0, duration: 0.5, ease: 'power3.out' }, T3 + 0.3);
+tl.from('#s4-c1', { y: 90, opacity: 0, duration: 0.55, ease: 'power3.out' }, T3 + 0.5);
+tl.from('#s4-c2', { y: 90, opacity: 0, duration: 0.55, ease: 'power3.out' }, T3 + 0.68);
+tl.from('#s4-c3', { y: 90, opacity: 0, duration: 0.55, ease: 'power3.out' }, T3 + 0.86);
+// Animated counters
+tl.to(cnt, {
+  km: 142, geo: 47,
+  duration: 1.9,
+  ease: 'power2.out',
+  onUpdate: function() {
+    document.getElementById('v-km').textContent  = Math.floor(cnt.km);
+    document.getElementById('v-geo').textContent = Math.floor(cnt.geo);
+  }
+}, T3 + 0.9);
+
+/* ════════════════════
+   TRANSITION 4→5 (T=17.5, push left)
+   ════════════════════ */
+var T4 = 17.5;
+tl.to('#s4', { x: -1080, duration: 0.5, ease: 'power3.inOut' }, T4);
+tl.fromTo('#s5', { x: 1080, opacity: 1 }, { x: 0, duration: 0.5, ease: 'power3.inOut' }, T4);
+
+/* ════════════════════════
+   SCENE 5 ENTRANCES (17.5–22.0s)
+   ════════════════════════ */
+tl.from('#s5-lbl',   { y: 30, opacity: 0, duration: 0.5, ease: 'power3.out' }, T4 + 0.15);
+tl.from('#s5-title', { scale: 0.78, opacity: 0, duration: 0.65, ease: 'expo.out' }, T4 + 0.35);
+tl.from('#s5-sub',   { y: 24, opacity: 0, duration: 0.45, ease: 'power2.out' }, T4 + 0.7);
+tl.from('#s5-r1',    { x: 100, opacity: 0, duration: 0.5, ease: 'power3.out' }, T4 + 0.9);
+tl.from('#s5-r2',    { x: 100, opacity: 0, duration: 0.5, ease: 'power3.out' }, T4 + 1.1);
+tl.from('#s5-r3',    { x: 100, opacity: 0, duration: 0.5, ease: 'power3.out' }, T4 + 1.3);
+tl.from('#s5-you',   { y: 50, opacity: 0, duration: 0.6, ease: 'back.out(2)' }, T4 + 1.6);
+
+/* ════════════════════
+   TRANSITION 5→6 (T=22.0, color dip)
+   ════════════════════ */
+var T5 = 22.0;
+tl.to('#s5', { opacity: 0, duration: 0.25, ease: 'power2.in' }, T5);
+tl.fromTo('#s6', { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'power2.out' }, T5 + 0.3);
+
+/* ════════════════════════
+   SCENE 6 ENTRANCES (22.0–28.0s)
+   ════════════════════════ */
+// Glow pulse (3 cycles × 2s = 6s, from T5+0.2=22.2 to 28.2s)
+tl.fromTo('#s6-glow',
+  { scale: 0.85, opacity: 0.5 },
+  { scale: 1.2, opacity: 1, duration: 2, ease: 'sine.inOut', repeat: 2, yoyo: true }, T5 + 0.2);
+tl.from('#s6-heading .l1', { y: 50, opacity: 0, duration: 0.6, ease: 'power3.out' }, T5 + 0.45);
+tl.from('#s6-heading .l2', { scale: 0.65, opacity: 0, duration: 0.85, ease: 'expo.out' }, T5 + 0.75);
+tl.from('#s6-tagline',     { y: 35, opacity: 0, duration: 0.5, ease: 'power2.out' }, T5 + 1.3);
+tl.from('#s6-cta',         { scale: 0.8, opacity: 0, duration: 0.65, ease: 'back.out(2.2)' }, T5 + 1.75);
+tl.from('#s6-plat',        { y: 24, opacity: 0, duration: 0.45, ease: 'power2.out' }, T5 + 2.2);
+// Fade to black (only last scene may have exit animation)
+tl.to('#s6-fade', { opacity: 1, duration: 0.7, ease: 'power2.in' }, 27.3);
+
+window.__timelines['main'] = tl;
+</script>
+</body>
+</html>

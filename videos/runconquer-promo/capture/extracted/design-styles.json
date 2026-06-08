@@ -1,0 +1,84 @@
+{
+  "typography": [
+    {
+      "role": "body-small",
+      "fontFamily": "Poppins",
+      "fontSize": "15.2px",
+      "fontWeight": "400",
+      "lineHeight": "normal",
+      "letterSpacing": "3px",
+      "color": "#E8FF47",
+      "sampleText": "GPS-Tracking in Echtzeit"
+    },
+    {
+      "role": "label",
+      "fontFamily": "Poppins",
+      "fontSize": "7.68px",
+      "fontWeight": "400",
+      "lineHeight": "normal",
+      "letterSpacing": "normal",
+      "color": "#10B981",
+      "sampleText": "+3 Gebiete"
+    }
+  ],
+  "spacing": {
+    "observed": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      10,
+      16,
+      28
+    ],
+    "baseUnit": 4
+  },
+  "radius": [
+    "4px",
+    "40px"
+  ],
+  "shadows": [],
+  "buttons": [
+    {
+      "label": "→ FLY",
+      "background": "#E8FF47",
+      "color": "#09090F",
+      "padding": "2px 5px",
+      "borderRadius": "4px",
+      "border": "0px none rgb(9, 9, 15)",
+      "boxShadow": "none",
+      "fontSize": "6.72px",
+      "fontWeight": "400",
+      "height": "11px"
+    },
+    {
+      "label": "Android APK",
+      "background": "#FFFFFF",
+      "color": "#FFFFFF",
+      "padding": "10px 20px",
+      "borderRadius": "40px",
+      "border": "1px solid rgba(255, 255, 255, 0.15)",
+      "boxShadow": "none",
+      "fontSize": "12px",
+      "fontWeight": "400",
+      "height": "36px"
+    },
+    {
+      "label": "ÜBERSPRINGEN ↓",
+      "background": "#FFFFFF",
+      "color": "#FFFFFF",
+      "padding": "8px 16px",
+      "borderRadius": "40px",
+      "border": "1px solid rgba(255, 255, 255, 0.12)",
+      "boxShadow": "none",
+      "fontSize": "11.2px",
+      "fontWeight": "400",
+      "height": "30px"
+    }
+  ],
+  "cards": [],
+  "nav": null
+}

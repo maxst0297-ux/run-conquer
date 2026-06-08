@@ -1,0 +1,142 @@
+[div] Gebiet Erobern
+[div] ⚔️ +200 PUNKTE · GEBIET EROBERT
+[div] km gelaufen
+[div] 🗺️
+[div] Gebiete
+[div] Punkte
+[div] Tage Streak
+[div] 5:12
+[div] Beste Pace
+[div] 🛡️
+[div] Verteidigt
+[div] Laufe 5 km
+[div] 🎁 250
+[div] Erobere 3 Gebiete
+[div] 🎁 400
+[div] 🛡️
+[div] Verteidige 5 Gebiete
+[div] 🎁 300
+[div] 🗺️
+[div] Wöchentliches Ziel: 30 km
+[div] 🎁 500
+[div] 🛰️
+[div] Live GPS
+[div] Echtzeit-Tracking
+[div] Gebiete
+[div] Lauf & Erobere
+[div] Wöchentlich
+[div] Ziel im Blick
+[div] Beste Pace
+[div] 5:12 min/km
+[div] Community
+[div] Lokale Rivalen
+[div] Gebiete
+[div] Direkt anfliegen
+[div] Erfolge
+[div] Sammle Trophäen
+[div] 12 Tage Streak
+[div] Bleib dran!
+[div] RUN&CONQUER
+[div] 🏃 Max · Lv.7
+[div] 2.4
+[div] 12:35
+[div] Zeit
+[b] 5:14
+[div] /km
+[b] 162
+[div] ■ STOP
+[div] 18.4
+[div] km diese Woche
+[span] Wochenziel
+[span] 18.4 / 40 km
+[div] 142
+[div] km total
+[div] Gebiete
+[div] 12🔥
+[div] Streak
+[div] 8.2
+[div] 42:17
+[div] Zeit
+[div] 5:09
+[div] Pace
+[div] +3 Gebiete
+[div] 🏆 RANGLISTE
+[div] SpeedKing
+[div] 48k m² · 7🔥
+[div] 6.840
+[div] MountainGoat
+[div] 31k m² · 5🔥
+[div] 4.290
+[div] Tritt an!
+[div] ···
+[div] 📍 NAHE GEBIETE
+[div] Marktplatz
+[span] 380m · feindlich
+[button] → FLY
+[div] Bahnhof Nord
+[span] 610m · neutral
+[button] → FLY
+[div] Stadtpark
+[span] 850m · rival
+[button] → FLY
+[div] MAX_RUNNER
+[div] Läufer seit Jan 2025 · Level 7
+[div] 142
+[div] Gebiete
+[div] 4.280
+[div] Punkte
+[div] 12🔥
+[div] Streak
+[div] BESTZEITEN
+[span] 🏃 5 km
+[div] 23:41
+[span] 🏅 10 km
+[div] 49:02
+[div] ⚡ Schnellster
+[div] 🗺️ Explorer
+[div] 🔥 Unstoppable
+[div] 🗺️
+[span] Karte
+[span] Aktiv.
+[span] Community
+[span] Profil
+[div] KARTE
+[div] Herzrate
+[div] Bluetooth HR-Monitor
+[div] Live Pace
+[div] 5:14 min/km
+[div] Aktivitäten
+[div] Alle Läufe gespeichert
+[div] Fortschritt
+[div] Täglich sichtbar
+[div] Rangliste
+[div] Wer führt die Stadt?
+[div] Live-News
+[div] Follower-Erfolge
+[div] Bestzeiten
+[div] 5 km · 10 km · HM
+[div] 🛡️
+[div] 47 Verteidigt
+[div] Halte dein Revier
+[div] SpeedKing
+[div] 48.200 m² · 7🔥
+[div] 6.840
+[div] MountainGoat
+[div] 31.500 m² · 5🔥
+[div] 4.290
+[div] NightOwl
+[div] 22.100 m² · 3🔥
+[div] 2.915
+[div] 🏋️
+[div] IronRunner
+[div] 18.700 m² · 2🔥
+[div] 1.780
+[div] Du?
+[div] Tritt jetzt an
+[div] ···
+[div] NATIVE APP MIT HINTERGRUND-GPS
+[a] Android APK
+[a] iOS via AltStore
+[span] 🛰️
+[span] 🗺️
+[button] ÜBERSPRINGEN ↓

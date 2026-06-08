@@ -1,0 +1,81 @@
+{
+  "files": [
+    {
+      "file": "JTUSjIg69CK48gW7PXooxW4.ttf",
+      "family": "Bebas Neue",
+      "rawFamily": "Bebas Neue",
+      "subfamily": "Regular",
+      "postscript": "BebasNeue-Regular",
+      "weight": 400,
+      "style": "normal",
+      "variationAxes": [],
+      "identified": true
+    },
+    {
+      "file": "pxiByp8kv8JHgFVrLDD4V1s.ttf",
+      "family": "Poppins",
+      "rawFamily": "Poppins ExtraBold",
+      "subfamily": "Regular",
+      "postscript": "Poppins-ExtraBold",
+      "weight": 800,
+      "style": "normal",
+      "variationAxes": [],
+      "identified": true
+    },
+    {
+      "file": "pxiByp8kv8JHgFVrLEj6V1s.ttf",
+      "family": "Poppins",
+      "rawFamily": "Poppins SemiBold",
+      "subfamily": "Regular",
+      "postscript": "Poppins-SemiBold",
+      "weight": 600,
+      "style": "normal",
+      "variationAxes": [],
+      "identified": true
+    },
+    {
+      "file": "pxiEyp8kv8JHgFVrFJA.ttf",
+      "family": "Poppins",
+      "rawFamily": "Poppins",
+      "subfamily": "Regular",
+      "postscript": "Poppins-Regular",
+      "weight": 400,
+      "style": "normal",
+      "variationAxes": [],
+      "identified": true
+    }
+  ],
+  "families": [
+    {
+      "family": "Bebas Neue",
+      "weights": [
+        400
+      ],
+      "variable": false,
+      "fileCount": 1,
+      "files": [
+        "JTUSjIg69CK48gW7PXooxW4.ttf"
+      ]
+    },
+    {
+      "family": "Poppins",
+      "weights": [
+        400,
+        600,
+        800
+      ],
+      "variable": false,
+      "fileCount": 3,
+      "files": [
+        "pxiByp8kv8JHgFVrLDD4V1s.ttf",
+        "pxiByp8kv8JHgFVrLEj6V1s.ttf",
+        "pxiEyp8kv8JHgFVrFJA.ttf"
+      ]
+    }
+  ],
+  "unidentified": [],
+  "meta": {
+    "generatedAt": "2026-06-08T11:42:50.888Z",
+    "tool": "fontkit"
+  }
+}
