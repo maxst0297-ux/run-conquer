@@ -2979,7 +2979,7 @@ function renderSettingsTab(tab){
       <div style="padding-top:177.8%"></div>
       <iframe id="promoIframe" src="/videos/runconquer-promo/index.html"
         scrolling="no" frameborder="0"
-        style="position:absolute;top:0;left:0;border:none;transform-origin:top left;pointer-events:none">
+        style="position:absolute;top:0;left:0;border:none;transform-origin:top left;pointer-events:none;width:1080px;height:1920px;transform:scale(0.296)">
       </iframe>
     </div>
   </div>
@@ -3081,16 +3081,14 @@ function renderSettingsTab(tab){
   </details>
 </div>`;
     // Scale promo iframe to fit container width
-    requestAnimationFrame(()=>{
+    (function scalePromo(attempt){
       const wrap=document.getElementById('promoWrap');
       const fr=document.getElementById('promoIframe');
       if(!wrap||!fr)return;
-      const w=wrap.offsetWidth||320;
-      const scale=w/1080;
-      fr.style.width='1080px';
-      fr.style.height='1920px';
-      fr.style.transform=`scale(${scale})`;
-    });
+      const w=wrap.offsetWidth;
+      if(!w&&attempt<10){setTimeout(()=>scalePromo(attempt+1),50);return;}
+      fr.style.transform=`scale(${(w||320)/1080})`;
+    })(0);
   } else if(tab==='datenschutz'){
     const gpsGranted=localStorage.getItem('rc_gps_consent')==='1';
     body.innerHTML=`<div style="display:flex;flex-direction:column;gap:10px">
