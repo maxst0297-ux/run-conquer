@@ -3555,17 +3555,17 @@ async function loadDmConvList(container){
       const activeConvs=convs.filter(c=>!archivedConvs.some(a=>a.uid===c.uid));
       const archCount=convs.length-activeConvs.length;
       const archHint=archCount>0?`<div style="text-align:center;font-size:.7rem;color:var(--muted);padding:6px 0 2px;cursor:pointer" id="showArchLink">📦 ${archCount} archiviert</div>`:'';
-      el.innerHTML=newBtn+activeConvs.map(c=>{
-      const isRead=c.unread===0&&c.last.from_uid!==userId;
+    el.innerHTML=newBtn+activeConvs.map(c=>{
+      const hasUnread=c.unread>0;
       return`<div class="sw-wrap">
         <div class="sw-arch"><i class="fas fa-archive" style="font-size:.85rem;color:#fff"></i><span style="font-size:.58rem;color:#fff;font-weight:700;margin-top:2px">Archiv</span></div>
-        <div class="dm-conv-row sw-content" data-dmuid="${c.uid}" data-dmname="${encodeURIComponent(c.name)}" style="margin-bottom:0;${isRead?'background:var(--bg2)':''}">
-          <div style="width:38px;height:38px;border-radius:50%;background:var(--primary)22;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:${isRead?'400':'700'};color:${isRead?'var(--muted)':'var(--primary)'};flex-shrink:0">${(c.name||'?')[0].toUpperCase()}</div>
+        <div class="dm-conv-row sw-content" data-dmuid="${c.uid}" data-dmname="${encodeURIComponent(c.name)}" style="margin-bottom:0">
+          <div style="width:38px;height:38px;border-radius:50%;background:var(--primary)22;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;color:var(--primary);flex-shrink:0">${(c.name||'?')[0].toUpperCase()}</div>
           <div style="flex:1;min-width:0">
-            <div style="font-weight:${isRead?'400':'700'};font-size:.82rem;color:${isRead?'var(--muted)':'var(--text)'}">${c.name}</div>
+            <div style="font-size:.82rem;color:var(--text)">${c.name}</div>
             <div style="font-size:.72rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.last.from_uid===userId?'Du: ':''}${c.last.content}</div>
           </div>
-          ${!isRead?`<span style="background:var(--primary);color:#000;border-radius:50%;min-width:18px;height:18px;font-size:.6rem;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;flex-shrink:0">●</span>`:'<i class="fas fa-chevron-right" style="color:var(--muted);font-size:.7rem;flex-shrink:0"></i>'}
+          ${hasUnread?`<span style="background:var(--primary);color:#000;border-radius:50%;min-width:18px;height:18px;font-size:.6rem;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;flex-shrink:0">${c.unread}</span>`:'<i class="fas fa-chevron-right" style="color:var(--muted);font-size:.7rem;flex-shrink:0"></i>'}
         </div>
         <div class="sw-del"><i class="fas fa-trash" style="font-size:.85rem;color:#fff"></i><span style="font-size:.58rem;color:#fff;font-weight:700;margin-top:2px">Löschen</span></div>
       </div>`;
@@ -3579,10 +3579,7 @@ async function loadDmConvList(container){
       addSwipeHandlers(wrap,
         ()=>{
           if(!archivedConvs.some(a=>a.uid===aUid))archivedConvs.push({uid:aUid,name:aName});
-          saveArchived();updateDmBadge();
-          const archHintEl=el.querySelector('#showArchLink');
-          if(archHintEl){archHintEl.textContent=`📦 ${archivedConvs.length} archiviert`;archHintEl.style.display='';}
-          else{const h=document.createElement('div');h.id='showArchLink';h.style.cssText='text-align:center;font-size:.7rem;color:var(--muted);padding:6px 0 2px;cursor:pointer';h.textContent=`📦 ${archivedConvs.length} archiviert`;el.appendChild(h);h.addEventListener('click',()=>loadArchiveView(el));}
+          saveArchived();updateDmBadge();loadDmConvList(el);
         },
         ()=>deleteDmConv(aUid)
       );
@@ -3734,10 +3731,11 @@ async function loadArchiveView(container){
       e.stopPropagation();
       if(btn.dataset.unarchType==='dm'){
         archivedConvs=archivedConvs.filter(a=>a.uid!==btn.dataset.unarchUid);
+        saveArchived();updateDmBadge();loadDmConvList(el);
       } else {
         archivedSupportIds.delete(btn.dataset.unarchUid);
+        saveArchived();loadArchiveView(container);
       }
-      saveArchived();loadArchiveView(container);
     });
   });
   el.querySelectorAll('[data-arch-uid]').forEach(row=>{
@@ -3844,7 +3842,7 @@ function showImpressum(){
 function showSqlHint(type,container){
   const sql=type==='support'
     ?`ALTER TABLE support_messages\n  ADD COLUMN IF NOT EXISTS admin_reply TEXT,\n  ADD COLUMN IF NOT EXISTS replied_at TIMESTAMPTZ;`
-    :`CREATE TABLE IF NOT EXISTS direct_messages (\n  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,\n  from_uid TEXT NOT NULL,\n  from_name TEXT NOT NULL,\n  to_uid TEXT NOT NULL,\n  to_name TEXT NOT NULL,\n  content TEXT NOT NULL,\n  created_at TIMESTAMPTZ DEFAULT NOW(),\n  read_at TIMESTAMPTZ\n);\n-- Wichtig: RLS deaktivieren!\nALTER TABLE direct_messages DISABLE ROW LEVEL SECURITY;`;
+    :`CREATE TABLE IF NOT EXISTS direct_messages (\n  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,\n  from_uid TEXT NOT NULL,\n  from_name TEXT NOT NULL,\n  to_uid TEXT NOT NULL,\n  to_name TEXT NOT NULL,\n  content TEXT NOT NULL,\n  created_at TIMESTAMPTZ DEFAULT NOW(),\n  read_at TIMESTAMPTZ\n);\n-- RLS aktivieren: Nachrichten nur für Sender + Empfänger sichtbar\nALTER TABLE direct_messages ENABLE ROW LEVEL SECURITY;\nDROP POLICY IF EXISTS "dm_own" ON direct_messages;\nCREATE POLICY "dm_own" ON direct_messages\n  FOR ALL USING (\n    from_uid = auth.uid()::text\n    OR to_uid = auth.uid()::text\n  );`;
   const title=type==='support'?'Spalten fehlen':'Tabelle einrichten';
   const html=`<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px"><div style="font-weight:700;margin-bottom:8px">⚠️ ${title}</div><div style="font-size:.75rem;color:var(--muted);margin-bottom:10px">Führe diesen SQL-Befehl im <b>Supabase Dashboard → SQL Editor</b> aus und klicke auf „Run":</div><pre style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:.68rem;color:var(--primary);overflow-x:auto;white-space:pre-wrap;word-break:break-all">${sql}</pre></div>`;
   if(container){container.innerHTML=html;return;}
