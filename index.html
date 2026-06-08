@@ -591,7 +591,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
     <span class="hdr-logo">RC</span>
     <span class="hdr-badge" id="userBadge"><span id="hdrAvatar">🏃</span><span id="hdrName">Läufer</span><span id="hdrLevel" style="font-size:.6rem;color:var(--primary);margin-left:2px">Lv.1</span></span>
     <button class="icon-btn" id="inboxBtn" aria-label="Posteingang" style="display:none"><i class="fas fa-envelope"></i><span id="inboxBadge" class="notif-badge" style="display:none">0</span></button>
-    <button class="icon-btn" id="settingsBtn"><i class="fas fa-cog"></i></button>
+    <button class="icon-btn" id="settingsBtn" style="position:relative"><i class="fas fa-cog"></i><span id="settingsBadge" class="notif-badge" style="display:none;background:#ff4d6d;font-size:.55rem">!</span></button>
     <button class="icon-btn" id="notifBtn" aria-label="Benachrichtigungen"><i class="fas fa-bell"></i><span id="notifBadge" class="notif-badge" style="display:none">0</span></button>
   </header>
   <div id="notifPanel" class="notif-panel">
@@ -1194,8 +1194,8 @@ async function syncProfile(){
     await sb.from('profiles').upsert({
       id:sbUserId,user_id:userId,player_name:playerName,user_avatar:userAvatar,user_color:userColor,
       points,total_km:totalKm,total_conquered:totalConquered,streak_days:streakDays,
-      updated_at:new Date().toISOString(),
-      game_data:gameSnap
+      updated_at:new Date().toISOString(),game_data:gameSnap,
+      user_team:userTeam||null,club_code:userClub?.code||null
     },{onConflict:'id'});
   }catch(e){console.warn('Supabase profile sync:',e);}
 }
@@ -1772,6 +1772,146 @@ function showDailyRewardOverlay(shieldUsed){
 
 /* ── NEBEL DES KRIEGES ── */
 const debouncedDrawFog=debounce(drawFog,400);
+
+/* ── WAPPEN SVG ── */
+let _wId=0;
+function wappenSVG({shape='shield',borderColor='#e8ff47',pattern='solid',patternColor='#e8ff47',bg='#09090f'},size=60){
+  const id=++_wId;
+  const shapes={
+    shield:'M50,4 L92,18 L92,56 L50,96 L8,56 L8,18 Z',
+    round:'M50,4 Q92,4 92,22 L92,64 Q92,96 50,96 Q8,96 8,64 L8,22 Q8,4 50,4 Z',
+    diamond:'M50,4 L96,50 L50,96 L4,50 Z',
+    hexa:'M50,4 L93,28 L93,72 L50,96 L7,72 L7,28 Z'
+  };
+  const d=shapes[shape]||shapes.shield;
+  const pc=patternColor;
+  const pats={
+    solid:'',
+    stripes:`<line x1="0" y1="24" x2="100" y2="24" stroke="${pc}" stroke-width="5" opacity=".35"/><line x1="0" y1="44" x2="100" y2="44" stroke="${pc}" stroke-width="5" opacity=".35"/><line x1="0" y1="64" x2="100" y2="64" stroke="${pc}" stroke-width="5" opacity=".35"/><line x1="0" y1="84" x2="100" y2="84" stroke="${pc}" stroke-width="5" opacity=".35"/>`,
+    cross:`<line x1="50" y1="4" x2="50" y2="96" stroke="${pc}" stroke-width="9" opacity=".35"/><line x1="8" y1="50" x2="92" y2="50" stroke="${pc}" stroke-width="9" opacity=".35"/>`,
+    diagonal:`<line x1="-10" y1="40" x2="40" y2="-10" stroke="${pc}" stroke-width="6" opacity=".3"/><line x1="10" y1="110" x2="110" y2="10" stroke="${pc}" stroke-width="6" opacity=".3"/><line x1="60" y1="110" x2="110" y2="60" stroke="${pc}" stroke-width="6" opacity=".3"/>`,
+    chevron:`<polyline points="10,42 50,68 90,42" fill="none" stroke="${pc}" stroke-width="9" opacity=".35"/><polyline points="10,62 50,88 90,62" fill="none" stroke="${pc}" stroke-width="9" opacity=".35"/>`,
+    dots:`<circle cx="30" cy="38" r="7" fill="${pc}" opacity=".35"/><circle cx="70" cy="38" r="7" fill="${pc}" opacity=".35"/><circle cx="50" cy="60" r="7" fill="${pc}" opacity=".35"/><circle cx="30" cy="80" r="6" fill="${pc}" opacity=".25"/><circle cx="70" cy="80" r="6" fill="${pc}" opacity=".25"/>`
+  };
+  return`<svg viewBox="0 0 100 100" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="wcp${id}"><path d="${d}"/></clipPath></defs><path d="${d}" fill="${bg}" stroke="${borderColor}" stroke-width="5"/><g clip-path="url(#wcp${id})">${pats[pattern]||''}</g></svg>`;
+}
+
+/* ── FRAKTIONS-BESCHREIBUNGEN ── */
+const TEAM_DESCS={
+  fire:'Mutig, aggressiv, leidenschaftlich. Feuer-Läufer expandieren schnell und greifen zuerst an.',
+  ice:'Strategisch, geduldig, präzise. Eis-Läufer verteidigen ihre Gebiete mit eiserner Disziplin.',
+  storm:'Schnell, anpassungsfähig, energiegeladen. Sturm-Läufer reagieren blitzschnell auf jede Lage.',
+  shadow:'Taktisch, unberechenbar, lautlos. Schatten-Läufer schlagen im richtigen Moment überraschend zu.'
+};
+
+/* ── EINSTELLUNGS-BADGE (!) ── */
+function updateSettingsBadge(){
+  const seen=localStorage.getItem('rc_hilfe_seen_'+userId)==='1';
+  const done=localStorage.getItem('rc_ob_done_'+userId)==='1';
+  const badge=$('settingsBadge');
+  if(badge)badge.style.display=(done&&!seen)?'flex':'none';
+}
+
+/* ── FRAKTION MITGLIEDER ── */
+async function loadFraktionMembers(teamId,container){
+  container.innerHTML='<div style="padding:12px;text-align:center;color:var(--muted);font-size:.78rem">⏳ Lade Mitglieder…</div>';
+  if(!sb){container.innerHTML='<div style="padding:12px;color:var(--muted);font-size:.75rem;text-align:center">Keine Verbindung</div>';return;}
+  try{
+    const{data,error}=await sb.from('profiles').select('player_name,user_avatar,user_color,points,total_km,total_conquered').eq('user_team',teamId).order('points',{ascending:false}).limit(15);
+    if(error)throw error;
+    const list=data||[];
+    if(!list.length){container.innerHTML='<div style="padding:12px;color:var(--muted);font-size:.75rem;text-align:center">Noch keine Mitglieder gefunden</div>';return;}
+    const tm=TEAMS.find(t=>t.id===teamId);
+    container.innerHTML=list.map((p,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--muted);width:20px;text-align:center;flex-shrink:0">${i+1}</div>
+      <div style="width:32px;height:32px;border-radius:50%;background:${p.user_color||'#e8ff47'}33;border:2px solid ${p.user_color||'#e8ff47'}66;display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0">${p.user_avatar||'🏃'}</div>
+      <div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600;color:${p.user_id===userId?'var(--primary)':'var(--text)'}">${p.player_name}${p.user_id===userId?' ✦':''}</div><div style="font-size:.65rem;color:var(--muted)">${(p.total_km||0).toFixed(1)} km · ${p.total_conquered||0} Gebiete</div></div>
+      <div style="font-family:'Bebas Neue',sans-serif;color:${tm?.color||'var(--primary)'};font-size:.95rem;flex-shrink:0">${p.points||0}</div>
+    </div>`).join('');
+  }catch(e){container.innerHTML=`<div style="padding:12px;color:var(--muted);font-size:.75rem;text-align:center">Mitglieder nicht geladen</div>`;}
+}
+
+/* ── CLUB MITGLIEDER ── */
+async function loadClubMembers(clubCode,container){
+  container.innerHTML='<div style="padding:10px;text-align:center;color:var(--muted);font-size:.75rem">⏳ Lade Mitglieder…</div>';
+  if(!sb){container.innerHTML='<div style="padding:10px;color:var(--muted);font-size:.75rem;text-align:center">Keine Verbindung</div>';return;}
+  try{
+    const{data,error}=await sb.from('profiles').select('player_name,user_avatar,user_color,points,total_km,streak_days,total_conquered').eq('club_code',clubCode).order('points',{ascending:false}).limit(20);
+    if(error)throw error;
+    const list=data||[];
+    if(!list.length){container.innerHTML='<div style="padding:10px;color:var(--muted);font-size:.75rem;text-align:center">Noch keine Mitglieder — teile deinen Club-Code!</div>';return;}
+    container.innerHTML=list.map((p,i)=>`<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--muted);width:18px;text-align:center;flex-shrink:0">${i+1}</div>
+      <div style="width:34px;height:34px;border-radius:50%;background:${p.user_color||'#e8ff47'}33;border:2px solid ${p.user_color||'#e8ff47'}66;display:flex;align-items:center;justify-content:center;font-size:.95rem;flex-shrink:0">${p.user_avatar||'🏃'}</div>
+      <div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600;color:${p.user_id===userId?'var(--primary)':'var(--text)'}">${p.player_name}${p.user_id===userId?' ✦':''}</div><div style="font-size:.65rem;color:var(--muted)">${(p.total_km||0).toFixed(1)} km · ${p.streak_days||0}🔥</div></div>
+      <div style="font-family:'Bebas Neue',sans-serif;color:var(--primary);font-size:.95rem;flex-shrink:0">${p.points||0} Pts</div>
+    </div>`).join('');
+  }catch(e){container.innerHTML=`<div style="padding:10px;color:var(--muted);font-size:.75rem;text-align:center">Mitglieder nicht geladen</div>`;}
+}
+
+/* ── ERSTANMELDUNGS-ONBOARDING ── */
+function checkFirstLoginOnboarding(){
+  const doneKey='rc_ob_done_'+userId;
+  if(localStorage.getItem(doneKey)==='1')return;
+  setTimeout(showOnboardingOverlay,900);
+}
+function showOnboardingOverlay(){
+  const ov=document.createElement('div');
+  ov.id='obOverlay';
+  ov.style.cssText='position:fixed;inset:0;z-index:9800;background:rgba(0,0,0,.95);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;overflow-y:auto';
+  let step=0;
+  const render=()=>{
+    if(step===0){
+      ov.innerHTML=`<div style="max-width:380px;width:100%;animation:modalIn .3s ease">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:2.4rem;color:var(--primary);text-align:center;letter-spacing:2px;margin-bottom:6px">WILLKOMMEN, ${playerName.toUpperCase()}!</div>
+        <div style="font-size:.85rem;color:var(--muted);text-align:center;margin-bottom:24px">Wähle deine Fraktion — sie bestimmt deine Farben und Community.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
+          ${TEAMS.map(tm=>`<button class="ob-frak-btn" data-tid="${tm.id}" style="padding:16px 10px;border-radius:16px;border:2px solid ${userTeam===tm.id?tm.color:'rgba(255,255,255,.12)'};background:${userTeam===tm.id?tm.color+'22':'rgba(255,255,255,.04)'};cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;transition:.2s">
+            <span style="font-size:2.2rem">${tm.icon}</span>
+            <span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:${tm.color};letter-spacing:1px">${tm.name}</span>
+            <span style="font-size:.65rem;color:rgba(255,255,255,.5);line-height:1.4;text-align:center">${TEAM_DESCS[tm.id]||''}</span>
+          </button>`).join('')}
+        </div>
+        <button id="obWeiter1" style="width:100%;padding:14px;background:${userTeam?(TEAMS.find(t=>t.id===userTeam)?.color||'var(--primary)'):'var(--primary)'};color:${userTeam?'#fff':'#09090f'};border:none;border-radius:14px;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;cursor:pointer">WEITER →</button>
+      </div>`;
+      ov.querySelectorAll('.ob-frak-btn').forEach(btn=>{
+        btn.addEventListener('click',()=>{
+          const tid=btn.dataset.tid;
+          userTeam=tid;
+          const now=new Date(),mk=now.getFullYear()+'-'+(now.getMonth()+1).toString().padStart(2,'0');
+          lastFraktionChangeDate=mk;
+          saveProfile();
+          ov.querySelectorAll('.ob-frak-btn').forEach(b=>{
+            const tm=TEAMS.find(t=>t.id===b.dataset.tid);
+            b.style.borderColor=b.dataset.tid===tid?tm.color:'rgba(255,255,255,.12)';
+            b.style.background=b.dataset.tid===tid?tm.color+'22':'rgba(255,255,255,.04)';
+          });
+          const wb=document.getElementById('obWeiter1');
+          const stm=TEAMS.find(t=>t.id===tid);
+          if(wb&&stm){wb.style.background=stm.color;wb.style.color='#fff';}
+        });
+      });
+      document.getElementById('obWeiter1')?.addEventListener('click',()=>{step=1;render();});
+    } else if(step===1){
+      const w=window.innerWidth,h=window.innerHeight;
+      const scale=Math.min(w/1080,h/1920)*0.9;
+      ov.innerHTML=`<div style="max-width:380px;width:100%;animation:modalIn .3s ease;display:flex;flex-direction:column;align-items:center;gap:14px">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--primary);letter-spacing:2px">RUNCONQUER</div>
+        <div style="position:relative;width:${Math.round(1080*scale)}px;height:${Math.round(1920*scale)}px;overflow:hidden;border-radius:16px;border:1px solid rgba(255,255,255,.1)">
+          <iframe src="/videos/runconquer-promo/index.html" style="width:1080px;height:1920px;border:none;transform:scale(${scale});transform-origin:top left;pointer-events:none" scrolling="no"></iframe>
+        </div>
+        <button id="obWeiter2" style="width:100%;max-width:380px;padding:14px;background:var(--primary);color:#09090f;border:none;border-radius:14px;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;cursor:pointer">LOS GEHT'S →</button>
+      </div>`;
+      document.getElementById('obWeiter2')?.addEventListener('click',()=>{
+        localStorage.setItem('rc_ob_done_'+userId,'1');
+        ov.style.transition='opacity .4s';ov.style.opacity='0';
+        setTimeout(()=>{ov.remove();updateSettingsBadge();},400);
+      });
+    }
+  };
+  render();
+  document.body.appendChild(ov);
+}
 function revealCell(lat,lng){
   const key=String(Math.round(lat/0.0005)*0.0005)+'_'+String(Math.round(lng/0.0005)*0.0005);
   if(!revealedCells.has(key)){
@@ -3117,24 +3257,50 @@ function renderSettingsTab(tab){
     } else {
       lockInfo=`<div style="background:rgba(var(--primary-rgb),.07);border:1px solid rgba(var(--primary-rgb),.2);border-radius:10px;padding:8px 10px;font-size:.72rem;color:var(--primary);margin-bottom:10px">🪟 Wechselfenster offen — Tag ${dayOfMonth} von 3</div>`;
     }
-    body.innerHTML=`<div style="font-size:.82rem;font-weight:600;margin-bottom:10px">⚔️ Wähle deine Fraktion</div>${lockInfo}<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${TEAMS.map(tm=>`<button class="team-sel-btn ${!canChange&&cur!==tm.id?'disabled-frak':''}" data-tid="${tm.id}" style="padding:14px 8px;border-radius:14px;border:2px solid ${cur===tm.id?tm.color:'var(--border)'};background:${cur===tm.id?tm.color+'22':'var(--card)'};color:${cur===tm.id?tm.color:'var(--text)'};cursor:${!canChange&&cur!==tm.id?'not-allowed':'pointer'};opacity:${!canChange&&cur!==tm.id?.5:1};font-weight:700;font-size:.88rem;transition:.2s;font-family:'Poppins',sans-serif;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.6rem">${tm.icon}</span><span>${tm.name}</span>${cur===tm.id?'<span style="font-size:.65rem;color:inherit">✓ Aktiv</span>':''}</button>`).join('')}</div><div style="margin-top:12px;font-size:.72rem;color:var(--muted)">Deine Fraktion beeinflusst deine Farben in der Community und Fraktion-Rangliste.</div>`;
+    body.innerHTML=`<div style="font-size:.82rem;font-weight:600;margin-bottom:10px">⚔️ Wähle deine Fraktion</div>${lockInfo}<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${TEAMS.map(tm=>`<button class="team-sel-btn ${!canChange&&cur!==tm.id?'disabled-frak':''}" data-tid="${tm.id}" style="padding:14px 8px;border-radius:14px;border:2px solid ${cur===tm.id?tm.color:'var(--border)'};background:${cur===tm.id?tm.color+'22':'var(--card)'};color:${cur===tm.id?tm.color:'var(--text)'};cursor:pointer;opacity:${!canChange&&cur!==tm.id?.5:1};font-weight:700;font-size:.88rem;transition:.2s;font-family:'Poppins',sans-serif;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:1.6rem">${tm.icon}</span><span>${tm.name}</span><span style="font-size:.58rem;color:${cur===tm.id?'inherit':'rgba(255,255,255,.4)'};line-height:1.3;text-align:center;font-weight:400">${(TEAM_DESCS[tm.id]||'').split('.')[0]}.</span>${cur===tm.id?'<span style="font-size:.6rem;color:inherit;font-weight:700">✓ Aktiv</span>':''}</button>`).join('')}</div><div style="margin-top:10px;font-size:.62rem;color:var(--muted);margin-bottom:8px">Tippe auf eine Fraktion zum Wechseln · Tippe nochmal für Mitglieder</div><div id="frakMemberBox" style="display:none;margin-top:4px"><div style="font-size:.68rem;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:6px" id="frakMemberTitle"></div><div id="frakMemberList"></div></div>`;
+    let _lastClickedTeam=null;
     body.querySelectorAll('.team-sel-btn').forEach(btn=>{btn.addEventListener('click',()=>{
-      if(!canChange&&btn.dataset.tid!==userTeam){toast('🔒 Fraktionswechsel erst ab dem 1. des Monats möglich');return;}
-      userTeam=btn.dataset.tid;lastFraktionChangeDate=monthKey;saveProfile();renderSettingsTab('fraktion');updateProfile();
+      const tid=btn.dataset.tid;
+      if(_lastClickedTeam===tid){
+        // Second tap → show members
+        const box=document.getElementById('frakMemberBox');
+        const title=document.getElementById('frakMemberTitle');
+        const list=document.getElementById('frakMemberList');
+        if(box&&title&&list){
+          const tm=TEAMS.find(t=>t.id===tid);
+          title.innerHTML=`${tm.icon} ${tm.name} – Mitglieder`;
+          title.style.color=tm.color;
+          box.style.display='';
+          loadFraktionMembers(tid,list);
+        }
+        return;
+      }
+      _lastClickedTeam=tid;
+      if(!canChange&&tid!==userTeam){toast('🔒 Fraktionswechsel erst ab dem 1. des Monats möglich');return;}
+      userTeam=tid;lastFraktionChangeDate=monthKey;saveProfile();renderSettingsTab('fraktion');updateProfile();
       const tm=TEAMS.find(t=>t.id===userTeam);toast(tm.icon+' Fraktion '+tm.name+' gewählt!');
     });});
   } else if(tab==='club'){
     const CLUB_ICONS=['⚔️','🔥','❄️','⚡','🌑','🦅','🐺','🏔️','🌊','🌟'];
     if(userClub){
-      body.innerHTML=`<div class="club-card-info"><span style="font-size:2.5rem">${userClub.icon}</span><div style="flex:1"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:1px">${userClub.name}</div><div style="font-size:.68rem;color:var(--muted)">Gegründet ${new Date(userClub.foundedAt).toLocaleDateString('de')}</div></div></div><div style="font-size:.75rem;color:var(--muted);margin-bottom:4px;text-align:center">Club-Code (antippen zum Kopieren)</div><div class="club-code-box" id="clubCodeBox">${userClub.code}</div><div style="font-size:.65rem;color:var(--muted);text-align:center;margin-bottom:14px">Teile diesen Code mit anderen Spielern</div><button class="btn" id="leaveClubBtn" style="width:100%;border-color:var(--red);color:var(--red)"><i class="fas fa-sign-out-alt"></i> Club verlassen</button>`;
+      const wHtml=wappenSVG(userClub.wappen||{},70);
+      body.innerHTML=`<div class="club-card-info" style="align-items:center;gap:14px"><div style="flex-shrink:0">${wHtml}</div><div style="flex:1"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:1px">${userClub.name}</div><div style="font-size:.68rem;color:var(--muted)">Gegründet ${new Date(userClub.foundedAt).toLocaleDateString('de')}</div></div></div><div id="clubMemberList" style="margin:10px 0"></div><div style="font-size:.75rem;color:var(--muted);margin-bottom:4px;text-align:center">Club-Code (antippen zum Kopieren)</div><div class="club-code-box" id="clubCodeBox">${userClub.code}</div><div style="font-size:.65rem;color:var(--muted);text-align:center;margin-bottom:14px">Teile diesen Code mit anderen Spielern</div><button class="btn" id="leaveClubBtn" style="width:100%;border-color:var(--red);color:var(--red)"><i class="fas fa-sign-out-alt"></i> Club verlassen</button>`;
       $('clubCodeBox')?.addEventListener('click',()=>{navigator.clipboard?.writeText(userClub.code).then(()=>toast('📋 Code kopiert: '+userClub.code)).catch(()=>toast('Code: '+userClub.code));});
       $('leaveClubBtn')?.addEventListener('click',()=>{if(!confirm('Club wirklich verlassen?'))return;userClub=null;saveProfile();renderSettingsTab('club');toast('Club verlassen');});
+      loadClubMembers(userClub.code,document.getElementById('clubMemberList'));
     } else {
-      let selIcon=CLUB_ICONS[0];
-      body.innerHTML=`<div style="font-size:.82rem;font-weight:600;margin-bottom:12px">🏰 Club erstellen</div><div style="margin-bottom:8px"><input type="text" id="clubNameInput" class="modal-input" placeholder="Clubname…" maxlength="20"></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="clubIconRow">${CLUB_ICONS.map((ic,i)=>`<button class="club-icon-btn" data-ic="${ic}" style="font-size:1.5rem;padding:6px 10px;border-radius:10px;border:2px solid ${i===0?'var(--primary)':'var(--border)'};background:var(--card);cursor:pointer">${ic}</button>`).join('')}</div><button class="btn btn-p" id="createClubBtn" style="width:100%;margin-bottom:16px"><i class="fas fa-plus"></i> Club gründen</button><div style="height:1px;background:var(--border);margin-bottom:16px"></div><div style="font-size:.82rem;font-weight:600;margin-bottom:8px">🔑 Club beitreten</div><div style="display:flex;gap:8px"><input type="text" id="clubJoinInput" class="modal-input" placeholder="6-stelliger Code…" maxlength="6" style="flex:1;text-transform:uppercase"><button class="btn btn-p" id="joinClubBtn"><i class="fas fa-arrow-right"></i></button></div>`;
-      body.querySelectorAll('.club-icon-btn').forEach(btn=>{btn.addEventListener('click',()=>{selIcon=btn.dataset.ic;body.querySelectorAll('.club-icon-btn').forEach(b=>b.style.borderColor='var(--border)');btn.style.borderColor='var(--primary)';});});
-      $('createClubBtn')?.addEventListener('click',()=>{const n=$('clubNameInput').value.trim();if(n.length<2){toast('Mindestens 2 Zeichen');return;}const code=Math.random().toString(36).toUpperCase().substring(2,8);userClub={code,name:n,icon:selIcon,foundedAt:Date.now()};const allClubs=JSON.parse(localStorage.getItem('rc_clubs_db')||'{}');allClubs[code]={...userClub,founder:playerName};localStorage.setItem('rc_clubs_db',JSON.stringify(allClubs));saveProfile();renderSettingsTab('club');toast('🏰 Club gegründet: '+n);});
-      $('joinClubBtn')?.addEventListener('click',()=>{const code=($('clubJoinInput').value||'').trim().toUpperCase();if(code.length!==6){toast('Ungültiger Code');return;}const allClubs=JSON.parse(localStorage.getItem('rc_clubs_db')||'{}');if(allClubs[code]){userClub={code,name:allClubs[code].name,icon:allClubs[code].icon,foundedAt:allClubs[code].foundedAt};saveProfile();renderSettingsTab('club');toast('🏰 Beigetreten: '+userClub.name);}else toast('❌ Club-Code nicht gefunden');});
+      let wappenCfg={shape:'shield',borderColor:'#e8ff47',pattern:'solid',patternColor:'#e8ff47',bg:'#09090f'};
+      const shapeOpts=[{v:'shield',l:'🛡 Schild'},{v:'round',l:'⭕ Rund'},{v:'diamond',l:'◆ Raute'},{v:'hexa',l:'⬡ Hexa'}];
+      const patOpts=[{v:'solid',l:'Uni'},{v:'stripes',l:'Streifen'},{v:'cross',l:'Kreuz'},{v:'diagonal',l:'Diagonal'},{v:'chevron',l:'Chevron'},{v:'dots',l:'Punkte'}];
+      body.innerHTML=`<div style="font-size:.82rem;font-weight:600;margin-bottom:10px">🏰 Club erstellen</div><div style="margin-bottom:10px"><input type="text" id="clubNameInput" class="modal-input" placeholder="Clubname…" maxlength="20"></div><div style="display:flex;justify-content:center;margin-bottom:10px"><div id="wappenPreview"></div></div><div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">Form</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px" id="shapeRow">${shapeOpts.map(s=>`<button class="wp-shape-btn" data-v="${s.v}" style="font-size:.7rem;padding:5px 9px;border-radius:8px;border:2px solid ${s.v==='shield'?'var(--primary)':'var(--border)'};background:var(--card);color:var(--text);cursor:pointer">${s.l}</button>`).join('')}</div><div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">Muster</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px" id="patRow">${patOpts.map(p=>`<button class="wp-pat-btn" data-v="${p.v}" style="font-size:.7rem;padding:5px 9px;border-radius:8px;border:2px solid ${p.v==='solid'?'var(--primary)':'var(--border)'};background:var(--card);color:var(--text);cursor:pointer">${p.l}</button>`).join('')}</div><div style="display:flex;gap:12px;margin-bottom:14px"><label style="display:flex;flex-direction:column;gap:4px;font-size:.72rem;color:var(--muted);flex:1">Rahmenfarbe<input type="color" id="wpBorderColor" value="#e8ff47" style="width:100%;height:32px;border:none;background:none;cursor:pointer;border-radius:6px"></label><label style="display:flex;flex-direction:column;gap:4px;font-size:.72rem;color:var(--muted);flex:1">Musterfarbe<input type="color" id="wpPatColor" value="#e8ff47" style="width:100%;height:32px;border:none;background:none;cursor:pointer;border-radius:6px"></label></div><button class="btn btn-p" id="createClubBtn" style="width:100%;margin-bottom:16px"><i class="fas fa-plus"></i> Club gründen</button><div style="height:1px;background:var(--border);margin-bottom:16px"></div><div style="font-size:.82rem;font-weight:600;margin-bottom:8px">🔑 Club beitreten</div><div style="display:flex;gap:8px"><input type="text" id="clubJoinInput" class="modal-input" placeholder="6-stelliger Code…" maxlength="6" style="flex:1;text-transform:uppercase"><button class="btn btn-p" id="joinClubBtn"><i class="fas fa-arrow-right"></i></button></div>`;
+      const renderWappen=()=>{const el=document.getElementById('wappenPreview');if(el)el.innerHTML=wappenSVG(wappenCfg,90);};
+      renderWappen();
+      body.querySelectorAll('.wp-shape-btn').forEach(btn=>{btn.addEventListener('click',()=>{wappenCfg.shape=btn.dataset.v;body.querySelectorAll('.wp-shape-btn').forEach(b=>b.style.borderColor='var(--border)');btn.style.borderColor='var(--primary)';renderWappen();});});
+      body.querySelectorAll('.wp-pat-btn').forEach(btn=>{btn.addEventListener('click',()=>{wappenCfg.pattern=btn.dataset.v;body.querySelectorAll('.wp-pat-btn').forEach(b=>b.style.borderColor='var(--border)');btn.style.borderColor='var(--primary)';renderWappen();});});
+      document.getElementById('wpBorderColor')?.addEventListener('input',e=>{wappenCfg.borderColor=e.target.value;renderWappen();});
+      document.getElementById('wpPatColor')?.addEventListener('input',e=>{wappenCfg.patternColor=e.target.value;renderWappen();});
+      $('createClubBtn')?.addEventListener('click',()=>{const n=$('clubNameInput').value.trim();if(n.length<2){toast('Mindestens 2 Zeichen');return;}const code=Math.random().toString(36).toUpperCase().substring(2,8);userClub={code,name:n,wappen:{...wappenCfg},foundedAt:Date.now()};const allClubs=JSON.parse(localStorage.getItem('rc_clubs_db')||'{}');allClubs[code]={...userClub,founder:playerName};localStorage.setItem('rc_clubs_db',JSON.stringify(allClubs));saveProfile();renderSettingsTab('club');toast('🏰 Club gegründet: '+n);});
+      $('joinClubBtn')?.addEventListener('click',()=>{const code=($('clubJoinInput').value||'').trim().toUpperCase();if(code.length!==6){toast('Ungültiger Code');return;}const allClubs=JSON.parse(localStorage.getItem('rc_clubs_db')||'{}');if(allClubs[code]){userClub={code,name:allClubs[code].name,wappen:allClubs[code].wappen||{},foundedAt:allClubs[code].foundedAt};saveProfile();renderSettingsTab('club');toast('🏰 Beigetreten: '+userClub.name);}else toast('❌ Club-Code nicht gefunden');});
     }
   } else if(tab==='spiel'){
     body.innerHTML=`<div style="display:flex;flex-direction:column;gap:10px"><div style="font-size:.8rem;color:var(--muted);background:var(--card);padding:12px;border-radius:12px;border:1px solid var(--border)"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>⚡ Energie</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${energy}/${CFG.ENERGY_MAX}</span></div><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>🏆 Punkte</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${points}</span></div><div style="display:flex;justify-content:space-between"><span>📐 Gebiete</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${territories.filter(t=>t.owner===userId).length}</span></div></div><button class="btn btn-p" id="setPulsBtn"><i class="fas fa-heartbeat"></i> Pulsmesser koppeln</button><div id="setVersionTap" style="text-align:center;color:var(--muted);font-size:.6rem;margin-top:8px;cursor:pointer;-webkit-user-select:none;user-select:none">v2.0.0 · Runners Conquer</div></div>`;
@@ -3247,6 +3413,7 @@ function renderSettingsTab(tab){
     </div>
   </details>
 </div>`;
+    if(userId){localStorage.setItem('rc_hilfe_seen_'+userId,'1');updateSettingsBadge();}
     document.getElementById('promoPlayBtn')?.addEventListener('click',()=>{
       const ov=document.createElement('div');
       ov.style.cssText='position:fixed;inset:0;z-index:99999;background:#000;display:flex;align-items:center;justify-content:center';
@@ -3766,11 +3933,11 @@ async function launchAppFromSession(user){
   if(!mapL){
     initMap();
     setTimeout(async()=>{
-      load();updateUI();mapL?.invalidateSize();showInboxBtn();setTimeout(checkDailyReward,600);
+      load();updateUI();mapL?.invalidateSize();showInboxBtn();setTimeout(checkDailyReward,600);setTimeout(checkFirstLoginOnboarding,1800);
       if(window._openStravaOnInit){window._openStravaOnInit=false;setTimeout(()=>{openImportModal();$('impTabStrava')?.click();},400);}
       const restored=await loadFromCloud();
       if(!restored&&territories.filter(t=>t.owner!==userId).length===0){await genRivals();}
-      renderTerr();updateUI();syncProfile();updateDmBadge();
+      renderTerr();updateUI();syncProfile();updateDmBadge();updateSettingsBadge();
       if(isAdmin)setTimeout(showInboxIfAdmin,800);
     },150);
     setupBg();initSteps();
