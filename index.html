@@ -1918,62 +1918,66 @@ async function loadClubMembers(clubCode,container){
 }
 
 /* ── ERSTANMELDUNGS-ONBOARDING ── */
-function checkFirstLoginOnboarding(){
-  const doneKey='rc_ob_done_'+userId;
-  if(localStorage.getItem(doneKey)==='1')return;
-  setTimeout(showOnboardingOverlay,900);
-}
-function showOnboardingOverlay(){
+function showFirstTimeOnboarding(onDone){
+  const AVATARS=['🏃','⚡','🦅','🐺','🔥','💪','🏅','⭐','🗡️','🛡️','🦁','🐯','🎯','🌟','👊','🏹'];
   const ov=document.createElement('div');
   ov.id='obOverlay';
-  ov.style.cssText='position:fixed;inset:0;z-index:9800;background:rgba(0,0,0,.95);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:max(20px,env(safe-area-inset-top)) 20px max(20px,env(safe-area-inset-bottom));box-sizing:border-box;overflow-y:auto';
+  ov.style.cssText='position:fixed;inset:0;z-index:9800;background:rgba(0,0,0,.96);display:flex;flex-direction:column;align-items:center;overflow-y:auto;padding:max(28px,env(safe-area-inset-top)) 20px max(24px,env(safe-area-inset-bottom));box-sizing:border-box';
   let step=0;
   const render=()=>{
     if(step===0){
-      ov.innerHTML=`<div style="max-width:380px;width:100%;animation:modalIn .3s ease;margin:auto">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:2.4rem;color:var(--primary);text-align:center;letter-spacing:2px;margin-bottom:6px">WILLKOMMEN, ${playerName.toUpperCase()}!</div>
-        <div style="font-size:.85rem;color:var(--muted);text-align:center;margin-bottom:24px">Wähle deine Fraktion — sie bestimmt deine Farben und Community.</div>
+      const cur=userAvatar||'🏃';
+      ov.innerHTML=`<div style="max-width:380px;width:100%;margin:auto;animation:modalIn .3s ease">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:2.2rem;color:var(--primary);text-align:center;letter-spacing:2px;margin-bottom:4px">PROFIL ANLEGEN</div>
+        <div style="font-size:.82rem;color:rgba(255,255,255,.5);text-align:center;margin-bottom:22px">Willkommen, ${playerName}!</div>
+        <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:18px;margin-bottom:14px">
+          <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.35);margin-bottom:12px">Avatar wählen</div>
+          <div style="display:flex;align-items:center;gap:14px">
+            <div id="obAvPrev" style="width:60px;height:60px;border-radius:50%;background:var(--primary)22;border:2px solid var(--primary);display:flex;align-items:center;justify-content:center;font-size:2.1rem;flex-shrink:0">${cur}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">${AVATARS.map(a=>`<button class="ob-av-btn" data-av="${a}" style="width:36px;height:36px;border-radius:10px;border:2px solid ${a===cur?'var(--primary)':'rgba(255,255,255,.1)'};background:${a===cur?'var(--primary)22':'rgba(255,255,255,.04)'};cursor:pointer;font-size:1.2rem;touch-action:manipulation">${a}</button>`).join('')}</div>
+          </div>
+        </div>
+        <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:14px 18px;margin-bottom:24px">
+          <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.35);margin-bottom:4px">Spielername</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--primary)">${playerName}</div>
+        </div>
+        <button id="obW1" style="width:100%;padding:14px;background:var(--primary);color:#09090f;border:none;border-radius:14px;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;cursor:pointer;touch-action:manipulation">WEITER →</button>
+      </div>`;
+      ov.querySelectorAll('.ob-av-btn').forEach(btn=>{
+        btn.addEventListener('click',()=>{
+          const av=btn.dataset.av;userAvatar=av;saveProfile();
+          ov.querySelectorAll('.ob-av-btn').forEach(b=>{b.style.borderColor=b.dataset.av===av?'var(--primary)':'rgba(255,255,255,.1)';b.style.background=b.dataset.av===av?'var(--primary)22':'rgba(255,255,255,.04)';});
+          const prev=ov.querySelector('#obAvPrev');if(prev)prev.textContent=av;
+        });
+      });
+      ov.querySelector('#obW1').addEventListener('click',()=>{step=1;render();});
+    } else if(step===1){
+      ov.innerHTML=`<div style="max-width:380px;width:100%;margin:auto;animation:modalIn .3s ease">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:2.2rem;color:var(--primary);text-align:center;letter-spacing:2px;margin-bottom:4px">WÄHLE DEINE FRAKTION</div>
+        <div style="font-size:.82rem;color:rgba(255,255,255,.5);text-align:center;margin-bottom:22px">Sie bestimmt deine Farben und deine Community.</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
-          ${TEAMS.map(tm=>`<button class="ob-frak-btn" data-tid="${tm.id}" style="padding:16px 10px;border-radius:16px;border:2px solid ${userTeam===tm.id?tm.color:'rgba(255,255,255,.12)'};background:${userTeam===tm.id?tm.color+'22':'rgba(255,255,255,.04)'};cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;transition:.2s">
+          ${TEAMS.map(tm=>`<button class="ob-frak-btn" data-tid="${tm.id}" style="padding:16px 10px;border-radius:16px;border:2px solid ${userTeam===tm.id?tm.color:'rgba(255,255,255,.12)'};background:${userTeam===tm.id?tm.color+'22':'rgba(255,255,255,.04)'};cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;touch-action:manipulation">
             <span style="font-size:2.2rem">${tm.icon}</span>
             <span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:${tm.color};letter-spacing:1px">${tm.name}</span>
             <span style="font-size:.65rem;color:rgba(255,255,255,.5);line-height:1.4;text-align:center">${TEAM_DESCS[tm.id]||''}</span>
           </button>`).join('')}
         </div>
-        <button id="obWeiter1" style="width:100%;padding:14px;background:${userTeam?(TEAMS.find(t=>t.id===userTeam)?.color||'var(--primary)'):'var(--primary)'};color:${userTeam?'#fff':'#09090f'};border:none;border-radius:14px;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;cursor:pointer">WEITER →</button>
+        <button id="obW2" style="width:100%;padding:14px;background:${userTeam?(TEAMS.find(t=>t.id===userTeam)?.color||'var(--primary)'):'var(--primary)'};color:${userTeam?'#fff':'#09090f'};border:none;border-radius:14px;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;cursor:pointer;touch-action:manipulation">LOS GEHT'S →</button>
       </div>`;
       ov.querySelectorAll('.ob-frak-btn').forEach(btn=>{
         btn.addEventListener('click',()=>{
-          const tid=btn.dataset.tid;
-          userTeam=tid;
-          const now=new Date(),mk=now.getFullYear()+'-'+(now.getMonth()+1).toString().padStart(2,'0');
-          lastFraktionChangeDate=mk;
-          saveProfile();
-          ov.querySelectorAll('.ob-frak-btn').forEach(b=>{
-            const tm=TEAMS.find(t=>t.id===b.dataset.tid);
-            b.style.borderColor=b.dataset.tid===tid?tm.color:'rgba(255,255,255,.12)';
-            b.style.background=b.dataset.tid===tid?tm.color+'22':'rgba(255,255,255,.04)';
-          });
-          const wb=ov.querySelector('#obWeiter1');
-          const stm=TEAMS.find(t=>t.id===tid);
+          const tid=btn.dataset.tid;userTeam=tid;
+          const mk=new Date().getFullYear()+'-'+(new Date().getMonth()+1).toString().padStart(2,'0');
+          lastFraktionChangeDate=mk;saveProfile();
+          ov.querySelectorAll('.ob-frak-btn').forEach(b=>{const tm=TEAMS.find(t=>t.id===b.dataset.tid);b.style.borderColor=b.dataset.tid===tid?tm.color:'rgba(255,255,255,.12)';b.style.background=b.dataset.tid===tid?tm.color+'22':'rgba(255,255,255,.04)';});
+          const wb=ov.querySelector('#obW2'),stm=TEAMS.find(t=>t.id===tid);
           if(wb&&stm){wb.style.background=stm.color;wb.style.color='#fff';}
         });
       });
-      ov.querySelector('#obWeiter1')?.addEventListener('click',()=>{step=1;render();});
-    } else if(step===1){
-      const w=window.innerWidth,h=window.innerHeight;
-      const scale=Math.min(w/1080,h/1920)*0.9;
-      ov.innerHTML=`<div style="max-width:380px;width:100%;animation:modalIn .3s ease;display:flex;flex-direction:column;align-items:center;gap:14px">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--primary);letter-spacing:2px">RUNCONQUER</div>
-        <div style="position:relative;width:${Math.round(1080*scale)}px;height:${Math.round(1920*scale)}px;overflow:hidden;border-radius:16px;border:1px solid rgba(255,255,255,.1)">
-          <iframe src="/videos/runconquer-promo/index.html" style="width:1080px;height:1920px;border:none;transform:scale(${scale});transform-origin:top left;pointer-events:none" scrolling="no"></iframe>
-        </div>
-        <button id="obWeiter2" style="width:100%;max-width:380px;padding:14px;background:var(--primary);color:#09090f;border:none;border-radius:14px;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;cursor:pointer">LOS GEHT'S →</button>
-      </div>`;
-      ov.querySelector('#obWeiter2')?.addEventListener('click',()=>{
+      ov.querySelector('#obW2').addEventListener('click',()=>{
         localStorage.setItem('rc_ob_done_'+userId,'1');
         ov.style.transition='opacity .4s';ov.style.opacity='0';
-        setTimeout(()=>{ov.remove();updateSettingsBadge();setTimeout(checkDailyReward,300);},400);
+        setTimeout(()=>{ov.remove();updateSettingsBadge();onDone();},400);
       });
     }
   };
@@ -4065,19 +4069,28 @@ async function launchAppFromSession(user){
   if(!playerName)playerName=meta.playerName||user.email?.split('@')[0]||'Läufer';
   saveProfile();
   $('onboarding').style.display='none';document.body.classList.remove('onboarding-active');
-  $('app').style.display='flex';
   window._hideCityBg?.();
-  if(!mapL){
-    initMap();
-    setTimeout(async()=>{
-      load();updateUI();mapL?.invalidateSize();showInboxBtn();setTimeout(checkFirstLoginOnboarding,400);setTimeout(checkDailyReward,1400);
-      if(window._openStravaOnInit){window._openStravaOnInit=false;setTimeout(()=>{openImportModal();$('impTabStrava')?.click();},400);}
-      const restored=await loadFromCloud();
-      if(!restored&&territories.filter(t=>t.owner!==userId).length===0){await genRivals();}
-      renderTerr();updateUI();syncProfile();updateDmBadge();updateSettingsBadge();
-      if(isAdmin)setTimeout(showInboxIfAdmin,800);
-    },150);
-    setupBg();initSteps();
+  const isNewUser=localStorage.getItem('rc_ob_done_'+userId)!=='1';
+  const startApp=()=>{
+    $('app').style.display='flex';
+    if(!mapL){
+      initMap();
+      setTimeout(async()=>{
+        load();updateUI();mapL?.invalidateSize();showInboxBtn();
+        if(window._openStravaOnInit){window._openStravaOnInit=false;setTimeout(()=>{openImportModal();$('impTabStrava')?.click();},400);}
+        const restored=await loadFromCloud();
+        if(!restored&&territories.filter(t=>t.owner!==userId).length===0){await genRivals();}
+        renderTerr();updateUI();syncProfile();updateDmBadge();updateSettingsBadge();
+        if(isAdmin)setTimeout(showInboxIfAdmin,800);
+      },150);
+      setupBg();initSteps();
+    }
+  };
+  if(isNewUser){
+    showFirstTimeOnboarding(()=>{startApp();setTimeout(checkDailyReward,600);});
+  } else {
+    startApp();
+    setTimeout(checkDailyReward,600);
   }
 }
 
