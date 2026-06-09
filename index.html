@@ -99,7 +99,7 @@ body{
 #bgVideo::-webkit-media-controls,#bgVideo::-webkit-media-controls-enclosure,#bgVideo::-webkit-media-controls-overlay-play-button,#bgVideo::-webkit-media-controls-start-playback-button{display:none!important;opacity:0!important}
 #bgTapHint{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.45);font-size:.72rem;letter-spacing:2px;text-transform:uppercase;z-index:1999;pointer-events:none;animation:hintPulse 2s ease-in-out infinite}
 @keyframes hintPulse{0%,100%{opacity:.45}50%{opacity:.15}}
-#onboarding{position:fixed;top:0;left:0;right:0;bottom:0;background:transparent;display:flex;align-items:center;justify-content:center;z-index:2000;padding:calc(20px + var(--sat)) 20px calc(20px + var(--sab));overflow-y:auto;-webkit-overflow-scrolling:touch}
+#onboarding{position:fixed;top:0;left:0;right:0;bottom:0;background:#000;display:flex;align-items:center;justify-content:flex-end;flex-direction:column;z-index:2000;padding:calc(20px + var(--sat)) 20px calc(20px + var(--sab));overflow-y:auto;-webkit-overflow-scrolling:touch}
 .ob-card{background:rgba(0,0,0,.38);border:1px solid rgba(255,255,255,.08);border-radius:24px;padding:28px 28px 36px;max-width:400px;width:100%;text-align:center;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 12px 48px rgba(0,0,0,.4)}
 .ob-title{font-family:'Bebas Neue',sans-serif;font-size:3.2rem;letter-spacing:2px;color:#fff;line-height:1;text-shadow:0 2px 16px rgba(0,0,0,.8)}
 .ob-sub{color:rgba(255,255,255,.55);font-size:.75rem;text-transform:uppercase;letter-spacing:3px;margin:4px 0 28px;text-shadow:0 1px 8px rgba(0,0,0,.6)}
@@ -1759,6 +1759,7 @@ function getDailyReward(streak){
 }
 
 function checkDailyReward(){
+  if(document.getElementById('obOverlay')){setTimeout(checkDailyReward,800);return;}
   const today=new Date().toDateString();
   if(dailyLoginDate===today)return;
   let shieldUsed=false;
@@ -1971,7 +1972,7 @@ function showOnboardingOverlay(){
       document.getElementById('obWeiter2')?.addEventListener('click',()=>{
         localStorage.setItem('rc_ob_done_'+userId,'1');
         ov.style.transition='opacity .4s';ov.style.opacity='0';
-        setTimeout(()=>{ov.remove();updateSettingsBadge();},400);
+        setTimeout(()=>{ov.remove();updateSettingsBadge();setTimeout(checkDailyReward,300);},400);
       });
     }
   };
@@ -4068,7 +4069,7 @@ async function launchAppFromSession(user){
   if(!mapL){
     initMap();
     setTimeout(async()=>{
-      load();updateUI();mapL?.invalidateSize();showInboxBtn();setTimeout(checkDailyReward,600);setTimeout(checkFirstLoginOnboarding,1800);
+      load();updateUI();mapL?.invalidateSize();showInboxBtn();setTimeout(checkFirstLoginOnboarding,400);setTimeout(checkDailyReward,1400);
       if(window._openStravaOnInit){window._openStravaOnInit=false;setTimeout(()=>{openImportModal();$('impTabStrava')?.click();},400);}
       const restored=await loadFromCloud();
       if(!restored&&territories.filter(t=>t.owner!==userId).length===0){await genRivals();}
