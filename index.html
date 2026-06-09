@@ -73,6 +73,7 @@ body.theme-petrol {
   --muted:#8a7f70; --text:#1a2832;
 }
 html{height:-webkit-fill-available;background:#000}
+body.onboarding-active{background:#000!important}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{
   font-family:'Poppins',sans-serif;background:var(--bg);color:var(--text);
@@ -94,7 +95,7 @@ body{
 @keyframes spUp{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
 
 /* ═══ ONBOARDING ═══ */
-#bgVideo{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;object-fit:cover;pointer-events:none}
+#bgVideo{position:fixed;top:0;left:0;width:100%;height:100%;height:100dvh;z-index:0;object-fit:cover;pointer-events:none}
 #bgVideo::-webkit-media-controls,#bgVideo::-webkit-media-controls-enclosure,#bgVideo::-webkit-media-controls-overlay-play-button,#bgVideo::-webkit-media-controls-start-playback-button{display:none!important;opacity:0!important}
 #bgTapHint{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.45);font-size:.72rem;letter-spacing:2px;text-transform:uppercase;z-index:1999;pointer-events:none;animation:hintPulse 2s ease-in-out infinite}
 @keyframes hintPulse{0%,100%{opacity:.45}50%{opacity:.15}}
@@ -1923,11 +1924,11 @@ function checkFirstLoginOnboarding(){
 function showOnboardingOverlay(){
   const ov=document.createElement('div');
   ov.id='obOverlay';
-  ov.style.cssText='position:fixed;inset:0;z-index:9800;background:rgba(0,0,0,.95);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;overflow-y:auto';
+  ov.style.cssText='position:fixed;inset:0;z-index:9800;background:rgba(0,0,0,.95);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:max(20px,env(safe-area-inset-top)) 20px max(20px,env(safe-area-inset-bottom));box-sizing:border-box;overflow-y:auto';
   let step=0;
   const render=()=>{
     if(step===0){
-      ov.innerHTML=`<div style="max-width:380px;width:100%;animation:modalIn .3s ease">
+      ov.innerHTML=`<div style="max-width:380px;width:100%;animation:modalIn .3s ease;margin:auto">
         <div style="font-family:'Bebas Neue',sans-serif;font-size:2.4rem;color:var(--primary);text-align:center;letter-spacing:2px;margin-bottom:6px">WILLKOMMEN, ${playerName.toUpperCase()}!</div>
         <div style="font-size:.85rem;color:var(--muted);text-align:center;margin-bottom:24px">Wähle deine Fraktion — sie bestimmt deine Farben und Community.</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
@@ -3598,7 +3599,7 @@ function renderSettingsTab(tab){
 let adminCharts=[];
 function openAdminLogin(){
   $('app').style.display='none';
-  $('onboarding').style.display='flex';
+  $('onboarding').style.display='flex';document.body.classList.add('onboarding-active');
   ['obTabReg','obTabLogin','obTabAdmin'].forEach(id=>$(id)?.classList.remove('active'));
   $('obTabAdmin')?.classList.add('active');
   $('obRegForm').style.display='none';$('obLoginForm').style.display='none';$('obAdminForm').style.display='';
@@ -4061,7 +4062,7 @@ async function launchAppFromSession(user){
   loadProfile();
   if(!playerName)playerName=meta.playerName||user.email?.split('@')[0]||'Läufer';
   saveProfile();
-  $('onboarding').style.display='none';
+  $('onboarding').style.display='none';document.body.classList.remove('onboarding-active');
   $('app').style.display='flex';
   window._hideCityBg?.();
   if(!mapL){
@@ -4689,7 +4690,7 @@ setTimeout(()=>{
         await launchAppFromSession(session.user);
       } else {
         /* Kein Login → Auth-Screen */
-        $('onboarding').style.display='flex';
+        $('onboarding').style.display='flex';document.body.classList.add('onboarding-active');
       }
     }catch(e){
       console.error('Boot error:',e);
