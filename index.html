@@ -1975,12 +1975,12 @@ function showOnboardingOverlay(){
             b.style.borderColor=b.dataset.tid===tid?tm.color:'rgba(255,255,255,.12)';
             b.style.background=b.dataset.tid===tid?tm.color+'22':'rgba(255,255,255,.04)';
           });
-          const wb=document.getElementById('obWeiter1');
+          const wb=ov.querySelector('#obWeiter1');
           const stm=TEAMS.find(t=>t.id===tid);
           if(wb&&stm){wb.style.background=stm.color;wb.style.color='#fff';}
         });
       });
-      document.getElementById('obWeiter1')?.addEventListener('click',()=>{step=1;render();});
+      ov.querySelector('#obWeiter1')?.addEventListener('click',()=>{step=1;render();});
     } else if(step===1){
       const w=window.innerWidth,h=window.innerHeight;
       const scale=Math.min(w/1080,h/1920)*0.9;
@@ -1991,15 +1991,15 @@ function showOnboardingOverlay(){
         </div>
         <button id="obWeiter2" style="width:100%;max-width:380px;padding:14px;background:var(--primary);color:#09090f;border:none;border-radius:14px;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;cursor:pointer">LOS GEHT'S →</button>
       </div>`;
-      document.getElementById('obWeiter2')?.addEventListener('click',()=>{
+      ov.querySelector('#obWeiter2')?.addEventListener('click',()=>{
         localStorage.setItem('rc_ob_done_'+userId,'1');
         ov.style.transition='opacity .4s';ov.style.opacity='0';
         setTimeout(()=>{ov.remove();updateSettingsBadge();},400);
       });
     }
   };
-  render();
   document.body.appendChild(ov);
+  render();
 }
 function revealCell(lat,lng){
   const key=String(Math.round(lat/0.0005)*0.0005)+'_'+String(Math.round(lng/0.0005)*0.0005);
