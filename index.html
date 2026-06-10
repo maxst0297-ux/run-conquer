@@ -349,10 +349,14 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .drawer-close-btn{background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;padding:4px 6px;line-height:1}
 #drawerOverlay{position:fixed;top:0;left:0;right:0;bottom:var(--nav-total);background:rgba(0,0,0,.35);z-index:699;display:none;-webkit-tap-highlight-color:transparent}
 #drawerOverlay.open{display:block}
-.drawer-tabs{display:flex;gap:4px;padding:10px 14px 0;overflow-x:auto;flex-shrink:0;position:sticky;top:0;z-index:2;background:var(--bg2)}
-.tab-btn{padding:6px 14px;border-radius:40px;border:none;background:var(--card);color:var(--muted);font-weight:600;font-size:.72rem;cursor:pointer;white-space:nowrap;transition:all .2s}
+.drawer-tabs{display:flex;gap:7px;padding:12px 14px 6px;overflow-x:auto;flex-shrink:0;position:sticky;top:0;z-index:2;background:var(--bg2);-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.drawer-tabs::-webkit-scrollbar{display:none}
+.tab-btn{padding:0 20px;min-height:44px;display:inline-flex;align-items:center;border-radius:40px;border:none;background:var(--card);color:var(--muted);font-weight:600;font-size:.86rem;cursor:pointer;white-space:nowrap;transition:background .18s ease,color .18s ease,transform .1s ease;-webkit-tap-highlight-color:transparent;touch-action:manipulation;flex-shrink:0}
+.tab-btn:active{transform:scale(.93)}
 .tab-btn.active{background:var(--primary);color:var(--bg)}
-.drawer-body{padding:14px 14px 28px;min-height:0;overflow-y:auto;flex:1}
+.drawer-body{padding:14px 14px 28px;min-height:0;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch}
+.drawer-body.anim{animation:drawerContentIn .24s cubic-bezier(.16,1,.3,1)}
+@keyframes drawerContentIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
 /* ═══ MODALS ═══ */
 .modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:1200;padding:20px}
@@ -4415,7 +4419,8 @@ function renderDrawer(){
     calendar:()=>{setTimeout(drawCalendar,0);return'<div id="calDiv"></div>'}
   };
   document.querySelectorAll('#drawerTabs .tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===currentTab));
-  try{drawerBody.innerHTML=tabs[currentTab]?tabs[currentTab]():'';}catch(err){drawerBody.innerHTML=`<div style="color:#ef4444;padding:16px;font-size:.8rem">Fehler: ${err.message}</div>`;console.error('renderDrawer error:',err);}
+  const _build=()=>{try{drawerBody.innerHTML=tabs[currentTab]?tabs[currentTab]():'';}catch(err){drawerBody.innerHTML=`<div style="color:#ef4444;padding:16px;font-size:.8rem">Fehler: ${err.message}</div>`;console.error('renderDrawer error:',err);}drawerBody.scrollTop=0;drawerBody.classList.remove('anim');void drawerBody.offsetWidth;drawerBody.classList.add('anim');};
+  requestAnimationFrame(_build);
 }
 function drawCalendar(){
   const el=document.getElementById('calDiv');if(!el)return;
@@ -4614,7 +4619,7 @@ window.initApp=function(){
   startBtn.addEventListener('click',startRun);
   pauseBtn.addEventListener('click',()=>{isPaused?resumeRun():pauseRun();});
   stopBtn.addEventListener('click',stopRun);
-  $('fitnessQuickBtn').addEventListener('click',()=>{openDrawer();currentTab='fitness';document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab==='fitness'));renderDrawer()});
+  $('fitnessQuickBtn').addEventListener('click',()=>openDrawer('fitness'));
   $('drawerClose').addEventListener('click',closeDrawer);
   $('drawerOverlay').addEventListener('click',closeDrawer);
   dockToggle.addEventListener('click',e=>{e.stopPropagation();runDock.classList.toggle('up')});
@@ -4633,7 +4638,7 @@ window.initApp=function(){
       else setView(v);
     });
   });
-  document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',function(){document.querySelectorAll('.tab-btn').forEach(t=>t.classList.remove('active'));this.classList.add('active');currentTab=this.dataset.tab;renderDrawer()}));
+  document.querySelectorAll('#drawerTabs .tab-btn').forEach(b=>b.addEventListener('click',function(){const t=this.dataset.tab;if(t===currentTab)return;currentTab=t;renderDrawer();}));
   $('pvEditBtn').addEventListener('click',()=>{closeAllModals();$('settingsModal').style.display='flex';renderSettingsTab('profil');document.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.stab==='profil'));});
   $('userBadge').addEventListener('click',()=>{closeAllModals();$('settingsModal').style.display='flex';renderSettingsTab('profil');document.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.stab==='profil'));});
   $('saveProfileBtn').addEventListener('click',()=>{playerName=$('editName').value.trim()||playerName;userAvatar=editAvatar;saveProfile();$('profileModal').style.display='none';toast('Profil gespeichert');updateProfile()});
