@@ -4414,7 +4414,7 @@ function renderAchHexGrid(){
     const pct=Math.min(100,Math.round((a.progress/a.target)*100));
     const ms=a.target>=1000?Math.round(a.target/1000)+'K':a.target;
     return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px">`+
-      `<img src="/assets/ach/${a.id}.png" alt="${a.name}" loading="lazy" onerror="this.onerror=null;this.src=_achSvg('${a.cat}',${e?1:0})" style="width:84px;height:84px;object-fit:contain;${e?'filter:drop-shadow(0 0 7px rgba(255,215,0,.25))':'filter:grayscale(1) brightness(.4) opacity(.85)'}">`+
+      `<img src="/assets/ach/${a.id}.png" alt="${a.name}" loading="lazy" onerror="this.onerror=null;this.src=_achSvg('${a.cat}',${e?1:0})" style="width:84px;height:84px;object-fit:contain;clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);${e?'filter:drop-shadow(0 0 8px rgba(255,215,0,.4))':'filter:grayscale(1) brightness(.45) opacity(.8)'}">`+
       `<div style="font-size:.6rem;font-weight:${e?700:400};color:${e?'#fff':'rgba(255,255,255,.32)'};text-align:center;line-height:1.2;max-width:92px">${a.name}</div>`+
       (e?`<div style="font-size:.55rem;color:var(--primary);font-weight:700">✓ ${ms}</div>`:`<div style="width:62px;height:3px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden"><div style="width:${pct}%;height:100%;background:var(--muted);border-radius:2px"></div></div><div style="font-size:.5rem;color:var(--muted)">${Math.round(a.progress)}/${a.target}</div>`)+
     `</div>`;
