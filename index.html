@@ -4384,6 +4384,14 @@ function updateProfile(){
 }
 
 /* DRAWER */
+function _achSvg(cat,earned){
+  const cols={conq:'#c9a227',km:'#4aabe8',atk:'#e85a4a',def:'#3ae880',disc:'#9b6fe8',streak:'#e87b3a'};
+  const icons={conq:'🛣',km:'🏃',atk:'⚔',def:'🛡',disc:'🧭',streak:'🔥'};
+  const c=cols[cat]||'#888';const ic=icons[cat]||'★';const op=earned?'1':'0.38';
+  const s=`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='r' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='#605040'/><stop offset='50%' stop-color='#a09080'/><stop offset='100%' stop-color='#403020'/></linearGradient><linearGradient id='b' x1='0' y1='0' x2='0' y2='1'><stop offset='0%' stop-color='#1e1810'/><stop offset='100%' stop-color='#0a0808'/></linearGradient></defs><polygon points='50,4 94,27 94,73 50,96 6,73 6,27' fill='url(%23r)' opacity='${op}'/><polygon points='50,11 87,32 87,68 50,89 13,68 13,32' fill='url(%23b)' opacity='${op}'/><circle cx='50' cy='50' r='22' fill='${c}' opacity='${earned?'0.18':'0.07'}'/><text x='50' y='62' text-anchor='middle' font-size='34' opacity='${op}'>${ic}</text></svg>`;
+  return 'data:image/svg+xml,'+s.replace(/#/g,'%23');
+}
+window._achSvg=_achSvg;
 function renderAchHexGrid(){
   const CC={conq:'🛣️ Straßen erobert',km:'🏃 Kilometer gelaufen',atk:'⚔️ Angriffe gewonnen',def:'🛡️ Verteidigungen',disc:'🧭 Orte besucht',streak:'🔥 Tage in Folge'};
   const groups={};achievements.forEach(a=>{(groups[a.cat]=groups[a.cat]||[]).push(a);});
@@ -4393,7 +4401,7 @@ function renderAchHexGrid(){
     const pct=Math.min(100,Math.round((a.progress/a.target)*100));
     const ms=a.target>=1000?Math.round(a.target/1000)+'K':a.target;
     return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px">`+
-      `<img src="assets/ach/${a.id}.png" alt="${a.name}" loading="lazy" style="width:84px;height:84px;object-fit:contain;${e?'filter:drop-shadow(0 0 7px rgba(255,215,0,.25))':'filter:grayscale(1) brightness(.4) opacity(.85)'}">`+
+      `<img src="/assets/ach/${a.id}.png" alt="${a.name}" loading="lazy" onerror="this.onerror=null;this.src=_achSvg('${a.cat}',${e?1:0})" style="width:84px;height:84px;object-fit:contain;${e?'filter:drop-shadow(0 0 7px rgba(255,215,0,.25))':'filter:grayscale(1) brightness(.4) opacity(.85)'}">`+
       `<div style="font-size:.6rem;font-weight:${e?700:400};color:${e?'#fff':'rgba(255,255,255,.32)'};text-align:center;line-height:1.2;max-width:92px">${a.name}</div>`+
       (e?`<div style="font-size:.55rem;color:var(--primary);font-weight:700">✓ ${ms}</div>`:`<div style="width:62px;height:3px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden"><div style="width:${pct}%;height:100%;background:var(--muted);border-radius:2px"></div></div><div style="font-size:.5rem;color:var(--muted)">${Math.round(a.progress)}/${a.target}</div>`)+
     `</div>`;
