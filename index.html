@@ -4393,31 +4393,42 @@ function renderDrawer(){
     terr:()=>territories.filter(t=>t.owner===userId).map(t=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)"><div style="width:10px;height:10px;border-radius:50%;background:${userColor}"></div><span style="flex:1;cursor:pointer" onclick="window.flyTo('${t.id}')">${t.customName||'Unbenannt'}</span><span class="muted" style="font-size:.72rem">${Math.round(t.area)} m²</span><button onclick="window.openRename('${t.id}')" style="background:none;border:none;color:var(--muted);cursor:pointer">✏️</button></div>`).join('')||'<div class="muted" style="padding:16px">Noch keine Gebiete</div>',
     fitness:()=>{setTimeout(()=>{document.getElementById('btBtn2')?.addEventListener('click',connectBT)},100);return`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${[['Schritte',stepsToday],['Puls',heartRate+' bpm'],['Laufzeit',fmtTime(runSecs)],['Pace',fmtPace(dist,runSecs)],['Gesamt km',totalKm.toFixed(1)],['Streak',streakDays+'🔥'],['kcal',history.reduce((s,r)=>s+(r.kcal||0),0)],['Gebiete',territories.filter(t=>t.owner===userId).length]].map(([l,v])=>`<div class="stat-card"><div class="sv">${v}</div><div class="sl">${l}</div></div>`).join('')}</div><button class="btn" id="btBtn2" style="width:100%;margin-top:14px"><i class="fas fa-heartbeat"></i> Pulsmesser koppeln</button>`},
     ach:()=>{
-      const catCfg={run:{label:'🏃 Laufen',col:'#4ade80'},terr:{label:'⚔️ Gebiete',col:'#f87171'},pts:{label:'⭐ Punkte',col:'#fbbf24'},disc:{label:'🗺️ Entdecken',col:'#60a5fa'},streak:{label:'🔥 Serien',col:'#fb923c'},battle:{label:'⚡ Kämpfe',col:'#c084fc'}};
-      const groups={};achievements.forEach(a=>{const c=a.cat||'run';if(!groups[c])groups[c]=[];groups[c].push(a);});
-      const totalEarned=achievements.filter(a=>a.earned).length;
-      const hexBadge=(a,col)=>{
-        const earned=a.earned;
-        const pct=Math.min(100,Math.round((a.progress/a.target)*100));
-        const glow=earned?`drop-shadow(0 0 8px ${col})`:'' ;
-        return`<div style="display:flex;flex-direction:column;align-items:center;gap:5px;cursor:default">
-          <div style="position:relative;width:70px;height:80px">
-            <!-- Hex outer (border) -->
-            <div style="position:absolute;inset:0;clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);background:${earned?col:'rgba(255,255,255,.12)'};filter:${glow}"></div>
-            <!-- Hex inner (dark bg) -->
-            <div style="position:absolute;inset:3px;clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);background:${earned?'#0e0e16':'#1a1a24'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0">
-              <span style="font-size:1.5rem;${earned?'':'filter:grayscale(1);opacity:.35'}">${a.icon||'🏆'}</span>
-            </div>
-            <!-- milestone badge bottom-right -->
-            <div style="position:absolute;bottom:4px;right:2px;background:${earned?col:'#333'};color:${earned?'#08080f':'#888'};font-size:.46rem;font-weight:900;font-family:'Bebas Neue',sans-serif;padding:1px 4px;border-radius:6px;min-width:20px;text-align:center;line-height:1.4">${a.target>999?Math.round(a.target/1000)+'K':a.target}</div>
-            ${earned?`<div style="position:absolute;top:3px;right:3px;background:${col};border-radius:50%;width:14px;height:14px;display:flex;align-items:center;justify-content:center;font-size:.45rem;color:#000;font-weight:900">✓</div>`:''}
-          </div>
-          <div style="font-size:.58rem;font-weight:${earned?700:400};color:${earned?'#fff':'rgba(255,255,255,.35)'};text-align:center;line-height:1.2;max-width:66px">${a.name}</div>
-          ${earned?'':`<div style="width:44px;height:2.5px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${col};opacity:.6;border-radius:2px"></div></div>`}
-        </div>`;
+      const catCfg={
+        run:{label:'🏃 Laufen',col:'#4ade80',grd:'#22c55e,#16a34a'},
+        terr:{label:'⚔️ Gebiete',col:'#f87171',grd:'#ef4444,#dc2626'},
+        pts:{label:'⭐ Punkte',col:'#fbbf24',grd:'#f59e0b,#d97706'},
+        disc:{label:'🗺️ Entdecken',col:'#60a5fa',grd:'#3b82f6,#2563eb'},
+        streak:{label:'🔥 Serien',col:'#fb923c',grd:'#f97316,#ea580c'},
+        battle:{label:'⚡ Kämpfe',col:'#c084fc',grd:'#a855f7,#9333ea'}
       };
-      return`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><span style="font-size:.9rem;font-weight:700;color:var(--primary);font-family:'Bebas Neue',sans-serif;letter-spacing:2px">ALLE ERFOLGE</span><span style="font-size:.75rem;color:var(--muted);background:var(--card);padding:3px 10px;border-radius:20px;border:1px solid var(--border)">${totalEarned}/${achievements.length} erreicht</span></div>`+
-      Object.entries(catCfg).map(([cat,{label,col}])=>{const list=groups[cat]||[];if(!list.length)return'';const earned=list.filter(a=>a.earned).length;return`<div style="margin-bottom:22px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span style="font-size:.7rem;font-weight:700;color:${col};letter-spacing:.5px">${label}</span><span style="font-size:.6rem;color:var(--muted);background:rgba(255,255,255,.06);padding:2px 8px;border-radius:8px">${earned}/${list.length}</span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px 8px">${list.map(a=>hexBadge(a,col)).join('')}</div></div>`;}).join('');
+      const groups={};
+      achievements.forEach(a=>{const c=a.cat||'run';if(!groups[c])groups[c]=[];groups[c].push(a);});
+      const totalEarned=achievements.filter(a=>a.earned).length;
+      const CLIP='polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%)';
+      const hexBadge=(a,col,grd)=>{
+        const e=a.earned;
+        const pct=Math.min(100,Math.round((a.progress/a.target)*100));
+        const ms=a.target>=1000?Math.round(a.target/1000)+'K':a.target;
+        const [c1,c2]=grd.split(',');
+        return`<div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+  <div style="position:relative;width:76px;height:88px;filter:${e?`drop-shadow(0 0 10px ${col}88)`:''}">
+    <div style="position:absolute;inset:0;clip-path:${CLIP};background:${e?`linear-gradient(135deg,${c1} 0%,${c2} 100%)`:'linear-gradient(135deg,#2e2e40 0%,#1a1a28 100%)'}"></div>
+    <div style="position:absolute;inset:4px;clip-path:${CLIP};background:#09090f"></div>
+    <div style="position:absolute;inset:4px;clip-path:${CLIP};background:linear-gradient(145deg,rgba(255,255,255,${e?.14:.04}) 0%,transparent 50%)"></div>
+    <div style="position:absolute;inset:4px;clip-path:${CLIP};background:linear-gradient(to bottom,transparent 55%,rgba(0,0,0,.4) 100%)"></div>
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.8rem;${e?'':'filter:grayscale(1);opacity:.2'}">${a.icon||'🏆'}</div>
+    <div style="position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);background:${e?`linear-gradient(90deg,${c1},${c2})`:'#1e1e2e'};color:${e?'#fff':'#444'};font-size:.48rem;font-weight:900;font-family:'Bebas Neue',sans-serif;padding:2px 7px;border-radius:6px;min-width:22px;text-align:center;line-height:1.5;border:1.5px solid #09090f;letter-spacing:.5px;white-space:nowrap">${ms}</div>
+  </div>
+  <div style="font-size:.55rem;font-weight:${e?700:400};color:${e?'#e8e8f0':'rgba(255,255,255,.22)'};text-align:center;line-height:1.25;max-width:76px;margin-top:10px;letter-spacing:.2px">${a.name}</div>
+  ${e?`<div style="font-size:.48rem;color:${col};font-weight:700;letter-spacing:.5px;margin-top:1px">✓ ERREICHT</div>`:`<div style="width:52px;height:2px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden;margin-top:3px"><div style="width:${pct}%;height:100%;background:${col};opacity:.55;border-radius:2px"></div></div>`}
+</div>`;
+      };
+      return`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px"><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary);letter-spacing:2px">ALLE ERFOLGE</span><span style="font-size:.72rem;color:var(--muted);background:var(--card);padding:3px 10px;border-radius:20px;border:1px solid var(--border)">${totalEarned}/${achievements.length}</span></div>`+
+      Object.entries(catCfg).map(([cat,{label,col,grd}])=>{
+        const list=groups[cat]||[];if(!list.length)return'';
+        const earned=list.filter(a=>a.earned).length;
+        return`<div style="margin-bottom:28px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><span style="font-size:.68rem;font-weight:700;color:${col};letter-spacing:.5px">${label}</span><span style="font-size:.58rem;color:var(--muted);background:rgba(255,255,255,.05);padding:2px 8px;border-radius:8px">${earned}/${list.length}</span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px 6px;padding-bottom:4px">${list.map(a=>hexBadge(a,col,grd)).join('')}</div></div>`;
+      }).join('')
     },
     calendar:()=>{setTimeout(drawCalendar,0);return'<div id="calDiv"></div>'}
   };
