@@ -1,1044 +1,1258 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
-<script src="gsap.min.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RunConquer – Promo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  width: 1080px;
-  height: 1920px;
-  overflow: hidden;
-  background: #09090F;
-  font-family: 'Poppins', sans-serif;
-}
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-#root {
-  position: relative;
-  width: 1080px;
-  height: 1920px;
-}
+  body {
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: 'Poppins', sans-serif;
+    overflow: hidden;
+  }
 
-.scene {
-  position: absolute;
-  top: 0; left: 0;
-  width: 1080px;
-  height: 1920px;
-  overflow: hidden;
-}
-#s1 { background: #09090F; z-index: 1; }
-#s2 { background: #09090F; z-index: 2; opacity: 0; }
-#s3 { background: #09090F; z-index: 3; opacity: 0; }
-#s4 { background: #0A0A14; z-index: 4; opacity: 0; }
-#s5 { background: #09090F; z-index: 5; opacity: 0; }
-#s6 { background: #09090F; z-index: 6; opacity: 0; }
-#s7 { background: #09090F; z-index: 7; opacity: 0; }
+  #stage {
+    position: relative;
+    width: 960px;
+    aspect-ratio: 16 / 9;
+    background: #080808;
+    overflow: hidden;
+    max-width: 100vw;
+  }
 
-.scene-content {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  padding: 140px 80px;
-  gap: 24px;
-  box-sizing: border-box;
-}
+  .scene {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .scene.active { opacity: 1; pointer-events: auto; }
 
-/* ── SPEED LINES (shared) ── */
-.speed-lines {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-.speed-line {
-  position: absolute;
-  background: linear-gradient(90deg, transparent, rgba(232,255,71,.18), transparent);
-  height: 2px;
-  width: 600px;
-  border-radius: 2px;
-}
+  /* PROGRESS BAR */
+  #progress-bar-wrap {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 4px;
+    background: rgba(255,255,255,0.12);
+    z-index: 100;
+  }
+  #progress-bar {
+    height: 100%;
+    background: #e8ff47;
+    width: 0%;
+    box-shadow: 0 0 8px #e8ff47;
+  }
 
-/* ── SCENE 1: AGGRESSIVE HOOK ── */
-.s1-bg-grid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(232,255,71,.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(232,255,71,.06) 1px, transparent 1px);
-  background-size: 80px 80px;
-  pointer-events: none;
-}
-.s1-strike {
-  position: absolute;
-  width: 3px;
-  background: linear-gradient(180deg, transparent, #E8FF47, transparent);
-  height: 400px;
-  opacity: 0;
-}
-.s1-eyebrow {
-  font-size: 24px;
-  letter-spacing: 8px;
-  color: #E8FF47;
-  text-transform: uppercase;
-  text-align: center;
-  font-weight: 700;
-}
-.s1-headline {
-  font-family: 'Bebas Neue', sans-serif;
-  text-align: center;
-  line-height: 0.85;
-}
-.s1-headline .l1 {
-  display: block;
-  font-size: 170px;
-  color: #F0F0F8;
-  letter-spacing: 6px;
-}
-.s1-headline .l2 {
-  display: block;
-  font-size: 220px;
-  color: #E8FF47;
-  letter-spacing: 2px;
-  text-shadow: 0 0 80px rgba(232,255,71,.7), 0 0 160px rgba(232,255,71,.3);
-}
-.s1-headline .l3 {
-  display: block;
-  font-size: 160px;
-  color: #F0F0F8;
-  letter-spacing: 8px;
-  opacity: 0.9;
-}
-.s1-sub {
-  font-size: 32px;
-  letter-spacing: 4px;
-  color: rgba(240,240,248,.55);
-  text-align: center;
-  text-transform: uppercase;
-}
-.s1-impact-bar {
-  height: 6px;
-  background: linear-gradient(90deg, transparent, #E8FF47, transparent);
-  border-radius: 3px;
-  transform: scaleX(0);
-}
+  /* ══════════════ SCENE 1 — HOOK ══════════════ */
+  #s1 { background: #080808; }
 
-/* ── SCENE 2: RUNNER IN MOTION ── */
-.s2-bg {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse 800px 800px at 50% 60%, rgba(232,255,71,.05) 0%, transparent 70%);
-}
-.s2-trail {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-.s2-hud-ring {
-  position: absolute;
-  border-radius: 50%;
-  border: 2px solid rgba(232,255,71,.25);
-}
-.s2-label {
-  font-size: 22px;
-  letter-spacing: 6px;
-  color: #9292AA;
-  text-transform: uppercase;
-  text-align: center;
-}
-.s2-map-wrap {
-  display: flex;
-  justify-content: center;
-}
-#s2-svg {
-  width: 920px;
-  height: 600px;
-  border-radius: 24px;
-  overflow: hidden;
-  box-shadow: 0 0 60px rgba(232,255,71,.12), 0 0 120px rgba(232,255,71,.05);
-}
-.s2-stats-row {
-  display: flex;
-  justify-content: center;
-  gap: 0;
-}
-.s2-stat {
-  flex: 1;
-  text-align: center;
-  padding: 28px 0;
-  border-right: 1px solid rgba(255,255,255,.08);
-  background: rgba(255,255,255,.03);
-}
-.s2-stat:first-child { border-radius: 16px 0 0 16px; }
-.s2-stat:last-child  { border-right: none; border-radius: 0 16px 16px 0; }
-.s2-stat-val {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 88px;
-  color: #E8FF47;
-  line-height: 1;
-}
-.s2-stat-lbl {
-  font-size: 18px;
-  color: #9292AA;
-  letter-spacing: 4px;
-  text-transform: uppercase;
-  margin-top: 4px;
-}
-.s2-heading {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 140px;
-  color: #F0F0F8;
-  text-align: center;
-  letter-spacing: 6px;
-  line-height: 1;
-}
-.s2-heading em {
-  font-style: normal;
-  color: #E8FF47;
-  text-shadow: 0 0 40px rgba(232,255,71,.5);
-}
+  .speed-lines {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .speed-line {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 2px;
+    height: 0;
+    transform-origin: 1px 0px;
+    background: linear-gradient(to bottom, rgba(232,255,71,0.8), transparent);
+    opacity: 0;
+  }
 
-/* ── SCENE 3: CONQUEST IMPACT ── */
-.s3-flash {
-  position: absolute;
-  inset: 0;
-  background: rgba(232,255,71,.07);
-  pointer-events: none;
-  opacity: 0;
-}
-.s3-raid-badge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  background: linear-gradient(135deg, #FF4D6D, #c0392b);
-  color: #fff;
-  font-weight: 800;
-  font-size: 34px;
-  letter-spacing: 3px;
-  padding: 22px 50px;
-  border-radius: 50px;
-  align-self: center;
-  box-shadow: 0 0 40px rgba(255,77,109,.5);
-}
-.s3-map-battle {
-  display: flex;
-  justify-content: center;
-}
-#s3-svg {
-  width: 920px;
-  height: 520px;
-  border-radius: 20px;
-}
-.s3-territory-name {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 100px;
-  color: #E8FF47;
-  text-align: center;
-  letter-spacing: 4px;
-  line-height: 1;
-  text-shadow: 0 0 60px rgba(232,255,71,.5);
-}
-.s3-territory-sub {
-  font-size: 28px;
-  letter-spacing: 4px;
-  color: rgba(240,240,248,.5);
-  text-align: center;
-  text-transform: uppercase;
-}
-.s3-pts-row {
-  display: flex;
-  justify-content: center;
-  gap: 40px;
-  align-items: center;
-}
-.s3-pts-box {
-  text-align: center;
-}
-.s3-pts-val {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 130px;
-  color: #E8FF47;
-  line-height: 1;
-  text-shadow: 0 0 60px rgba(232,255,71,.5);
-}
-.s3-pts-lbl {
-  font-size: 22px;
-  letter-spacing: 4px;
-  color: #9292AA;
-  text-transform: uppercase;
-}
+  #s1-title {
+    position: relative;
+    z-index: 10;
+    font-family: 'Bebas Neue', cursive;
+    font-size: 96px;
+    letter-spacing: 14px;
+    color: #ffffff;
+    text-shadow: 0 0 40px rgba(232,255,71,0.8), 0 0 80px rgba(232,255,71,0.4);
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  #s1-title .letter {
+    display: inline-block;
+    opacity: 0;
+  }
+  #s1-title .gap { width: 28px; }
 
-/* ── SCENE 4: FACTION WAR ── */
-.s4-title {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 110px;
-  color: #F0F0F8;
-  text-align: center;
-  letter-spacing: 5px;
-  line-height: 1;
-}
-.s4-title em {
-  color: #E8FF47;
-  font-style: normal;
-}
-.s4-subtitle {
-  font-size: 24px;
-  letter-spacing: 5px;
-  color: #9292AA;
-  text-align: center;
-  text-transform: uppercase;
-}
-.s4-factions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-.s4-faction {
-  border-radius: 24px;
-  padding: 40px 36px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  border: 2px solid transparent;
-  opacity: 0;
-  transform: scale(0.85);
-}
-#f-fire   { background: linear-gradient(145deg, #2a0a0a, #1a0808); border-color: #E84820; box-shadow: 0 0 30px rgba(232,72,32,.25); }
-#f-ice    { background: linear-gradient(145deg, #0a1a2a, #080e18); border-color: #4DB8FF; box-shadow: 0 0 30px rgba(77,184,255,.2); }
-#f-storm  { background: linear-gradient(145deg, #1a1a0a, #101008); border-color: #E8D020; box-shadow: 0 0 30px rgba(232,208,32,.2); }
-#f-shadow { background: linear-gradient(145deg, #0a0a1a, #06060f); border-color: #9B5DE5; box-shadow: 0 0 30px rgba(155,93,229,.2); }
-.s4-faction-icon {
-  font-size: 72px;
-  line-height: 1;
-}
-.s4-faction-name {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 52px;
-  letter-spacing: 3px;
-  text-align: center;
-}
-.s4-faction-stat {
-  font-size: 20px;
-  color: rgba(240,240,248,.5);
-  letter-spacing: 2px;
-  text-align: center;
-}
-.s4-cta-line {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 80px;
-  color: #E8FF47;
-  text-align: center;
-  letter-spacing: 4px;
-  text-shadow: 0 0 40px rgba(232,255,71,.4);
-}
+  #s1-tagline {
+    position: relative;
+    z-index: 10;
+    margin-top: 20px;
+    font-family: 'Bebas Neue', cursive;
+    font-size: 26px;
+    letter-spacing: 10px;
+    color: #e8ff47;
+    opacity: 0;
+    text-shadow: 0 0 20px rgba(232,255,71,0.9);
+  }
 
-/* ── SCENE 5: POWER STATS ── */
-.s5-eyebrow {
-  font-size: 22px;
-  letter-spacing: 6px;
-  color: #9292AA;
-  text-align: center;
-  text-transform: uppercase;
-}
-.s5-title {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 120px;
-  color: #F0F0F8;
-  text-align: center;
-  letter-spacing: 5px;
-  line-height: 1;
-}
-.s5-cards { display: flex; flex-direction: column; gap: 20px; }
-.s5-card {
-  border-radius: 24px;
-  padding: 48px 60px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: relative;
-  overflow: hidden;
-  opacity: 0;
-}
-.s5-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 4px;
-}
-#sc-km   { background: linear-gradient(135deg, #111120, #0e0e1c); border: 1px solid rgba(232,255,71,.15); }
-#sc-km::before { background: linear-gradient(90deg, #E8FF47, #B8CF30); }
-#sc-geo  { background: linear-gradient(135deg, #111120, #0e0e1c); border: 1px solid rgba(77,184,255,.15); }
-#sc-geo::before { background: linear-gradient(90deg, #4DB8FF, #2090e0); }
-#sc-str  { background: linear-gradient(135deg, #111120, #0e0e1c); border: 1px solid rgba(255,120,30,.2); }
-#sc-str::before { background: linear-gradient(90deg, #FF7820, #E84820); }
-.s5-card-label {
-  font-size: 24px;
-  letter-spacing: 4px;
-  color: #9292AA;
-  text-transform: uppercase;
-}
-.s5-card-val {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 120px;
-  color: #E8FF47;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-#sc-geo .s5-card-val { color: #4DB8FF; }
-#sc-str .s5-card-val { color: #FF7820; font-size: 96px; }
+  #s1-flash {
+    position: absolute;
+    inset: 0;
+    background: #e8ff47;
+    opacity: 0;
+    z-index: 50;
+    pointer-events: none;
+  }
 
-/* ── SCENE 6: LEADERBOARD ── */
-.s6-eyebrow {
-  font-size: 22px;
-  letter-spacing: 6px;
-  color: #9292AA;
-  text-transform: uppercase;
-  text-align: center;
-}
-.s6-title {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 120px;
-  color: #E8FF47;
-  text-align: center;
-  letter-spacing: 4px;
-  line-height: 1;
-  text-shadow: 0 0 60px rgba(232,255,71,.4);
-}
-.s6-subtitle {
-  font-size: 28px;
-  letter-spacing: 4px;
-  color: rgba(240,240,248,.55);
-  text-align: center;
-  text-transform: uppercase;
-}
-.s6-rows { display: flex; flex-direction: column; gap: 14px; }
-.s6-row {
-  border-radius: 20px;
-  padding: 28px 40px;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  background: rgba(255,255,255,.04);
-  border: 1px solid rgba(255,255,255,.07);
-  opacity: 0;
-  transform: translateX(80px);
-}
-.s6-row.top1 { background: rgba(232,255,71,.07); border-color: rgba(232,255,71,.2); }
-.s6-row.you  { background: rgba(77,184,255,.07); border-color: rgba(77,184,255,.25); }
-.s6-rank {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 56px;
-  color: #9292AA;
-  width: 50px;
-  text-align: center;
-  flex-shrink: 0;
-}
-.s6-row.top1 .s6-rank { color: #E8FF47; }
-.s6-row.you  .s6-rank { color: #4DB8FF; }
-.s6-icon { font-size: 36px; flex-shrink: 0; }
-.s6-player { flex: 1; min-width: 0; }
-.s6-name { font-weight: 600; font-size: 30px; color: #F0F0F8; }
-.s6-row.top1 .s6-name { font-family: 'Bebas Neue',sans-serif; font-size:48px; letter-spacing:2px; color:#E8FF47; }
-.s6-row.you  .s6-name { font-size: 40px; font-family: 'Bebas Neue',sans-serif; letter-spacing:2px; color: #4DB8FF; }
-.s6-meta { font-size: 20px; color: #9292AA; }
-.s6-pts {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 56px;
-  color: #E8FF47;
-  font-variant-numeric: tabular-nums;
-}
-.s6-row.you .s6-pts { color: #4DB8FF; font-size: 44px; }
-.s6-challenge {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 88px;
-  color: #F0F0F8;
-  text-align: center;
-  letter-spacing: 3px;
-  line-height: 1;
-}
-.s6-challenge em { color: #E8FF47; font-style: normal; }
+  /* ══════════════ SCENE 2 — CITY RUNNER ══════════════ */
+  #s2 { background: #060d1a; }
 
-/* ── SCENE 7: EPIC CTA ── */
-.s7-glow-a {
-  position: absolute;
-  width: 1200px; height: 1200px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(232,255,71,.12) 0%, transparent 65%);
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-.s7-glow-b {
-  position: absolute;
-  width: 600px; height: 600px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(232,255,71,.18) 0%, transparent 65%);
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-.s7-particles {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-.s7-p {
-  position: absolute;
-  border-radius: 50%;
-  background: #E8FF47;
-  width: 6px; height: 6px;
-  opacity: 0;
-}
-.s7-tagline-top {
-  font-size: 26px;
-  letter-spacing: 8px;
-  color: rgba(232,255,71,.7);
-  text-transform: uppercase;
-  text-align: center;
-}
-.s7-headline {
-  font-family: 'Bebas Neue', sans-serif;
-  text-align: center;
-  line-height: 0.85;
-}
-.s7-headline .l1 {
-  display: block;
-  font-size: 140px;
-  color: #F0F0F8;
-  letter-spacing: 12px;
-}
-.s7-headline .l2 {
-  display: block;
-  font-size: 240px;
-  color: #E8FF47;
-  letter-spacing: 2px;
-  text-shadow: 0 0 100px rgba(232,255,71,.6), 0 0 200px rgba(232,255,71,.25);
-}
-.s7-sub {
-  font-size: 26px;
-  letter-spacing: 6px;
-  color: rgba(240,240,248,.45);
-  text-align: center;
-  text-transform: uppercase;
-}
-.s7-cta {
-  background: #E8FF47;
-  color: #09090F;
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 72px;
-  letter-spacing: 6px;
-  padding: 44px 110px;
-  border-radius: 60px;
-  text-align: center;
-  align-self: center;
-  box-shadow: 0 0 80px rgba(232,255,71,.5), 0 20px 60px rgba(0,0,0,.5);
-}
-.s7-platform {
-  font-size: 22px;
-  color: rgba(146,146,170,.7);
-  text-align: center;
-  letter-spacing: 4px;
-  text-transform: uppercase;
-}
-.s7-fade {
-  position: absolute;
-  inset: 0;
-  background: #09090F;
-  opacity: 0;
-  pointer-events: none;
-  z-index: 10;
-}
+  .city-sky {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, #060d1a 0%, #0a1628 60%, #0d1f3c 100%);
+  }
+
+  .buildings {
+    position: absolute;
+    bottom: 28%; left: 0; right: 0;
+    display: flex;
+    align-items: flex-end;
+    padding: 0;
+    gap: 2px;
+    overflow: hidden;
+  }
+  .bld {
+    background: #0e2244;
+    border-top: 1px solid #1a3360;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .bld::after {
+    content: '';
+    position: absolute;
+    inset: 6px;
+    background:
+      repeating-linear-gradient(0deg, transparent 0px, transparent 8px, rgba(100,160,255,0.06) 8px, rgba(100,160,255,0.06) 9px),
+      repeating-linear-gradient(90deg, transparent 0px, transparent 12px, rgba(100,160,255,0.04) 12px, rgba(100,160,255,0.04) 13px);
+  }
+
+  .ground-strip {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 28%;
+    background: linear-gradient(180deg, #081020 0%, #060e1a 100%);
+    border-top: 2px solid #1a3366;
+  }
+  .road-line {
+    position: absolute;
+    bottom: 50%;
+    left: 0; right: 0;
+    height: 2px;
+    background: repeating-linear-gradient(90deg,
+      rgba(232,255,71,0.5) 0px, rgba(232,255,71,0.5) 30px,
+      transparent 30px, transparent 60px);
+  }
+
+  .gps-trail {
+    position: absolute;
+    bottom: 22%;
+    left: 0;
+    height: 3px;
+    width: 0;
+    background: linear-gradient(90deg, transparent, #e8ff47);
+    box-shadow: 0 0 12px #e8ff47, 0 0 24px rgba(232,255,71,0.5);
+  }
+
+  .runner-s2 {
+    position: absolute;
+    bottom: 22%;
+    left: 20%;
+    width: 42px;
+    height: 70px;
+    z-index: 20;
+  }
+
+  #s2-text {
+    position: absolute;
+    top: 20%;
+    left: 0; right: 0;
+    text-align: center;
+    z-index: 30;
+    opacity: 0;
+  }
+  #s2-text h2 {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 52px;
+    color: #ffffff;
+    letter-spacing: 6px;
+    text-shadow: 0 2px 20px rgba(0,0,0,0.9);
+  }
+  #s2-text p {
+    font-size: 15px;
+    color: rgba(255,255,255,0.65);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  /* ══════════════ SCENE 3 — TERRITORY MAP ══════════════ */
+  #s3 { background: #06100a; }
+
+  .map-grid {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(rgba(232,255,71,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(232,255,71,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .hex-grid {
+    position: absolute;
+    inset: 0;
+  }
+
+  .hex {
+    position: absolute;
+    opacity: 0;
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    border-radius: 2px;
+  }
+
+  #s3-overlay {
+    position: absolute;
+    bottom: 10%;
+    left: 0; right: 0;
+    text-align: center;
+    z-index: 20;
+    opacity: 0;
+  }
+  #s3-overlay h2 {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 56px;
+    color: #e8ff47;
+    letter-spacing: 8px;
+    text-shadow: 0 0 30px rgba(232,255,71,0.8);
+  }
+
+  #s3-points {
+    position: absolute;
+    top: 42%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Bebas Neue', cursive;
+    font-size: 76px;
+    color: #e8ff47;
+    letter-spacing: 4px;
+    text-shadow: 0 0 40px rgba(232,255,71,1), 0 0 80px rgba(232,255,71,0.5);
+    opacity: 0;
+    z-index: 30;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  /* ══════════════ SCENE 4 — FOREST + LANDMARK ══════════════ */
+  #s4 { background: #030f06; }
+
+  .forest-bg {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, #030f06 0%, #041508 50%, #060e04 100%);
+  }
+
+  .trees {
+    position: absolute;
+    bottom: 24%;
+    left: 0; right: 0;
+    height: 45%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-around;
+  }
+
+  .tree {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .tree-crown {
+    width: 0; height: 0;
+    border-style: solid;
+  }
+  .tree-trunk {
+    background: #1a0d05;
+    border-radius: 2px;
+  }
+
+  .ground-s4 {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 26%;
+    background: linear-gradient(180deg, #041508 0%, #030c05 100%);
+    border-top: 2px solid #0d3012;
+  }
+
+  .gps-trail-s4 {
+    position: absolute;
+    bottom: 21%;
+    left: 0;
+    height: 3px;
+    width: 0;
+    background: linear-gradient(90deg, transparent, #4eff80);
+    box-shadow: 0 0 12px #4eff80, 0 0 24px rgba(78,255,128,0.4);
+  }
+
+  .runner-s4 {
+    position: absolute;
+    bottom: 21%;
+    left: 18%;
+    width: 42px;
+    height: 70px;
+    z-index: 20;
+  }
+
+  .landmark-pin {
+    position: absolute;
+    top: 28%; right: 22%;
+    opacity: 0;
+    z-index: 30;
+    text-align: center;
+  }
+  .landmark-star {
+    font-size: 48px;
+    display: block;
+    animation: starPulse 0.9s ease-in-out infinite;
+  }
+  @keyframes starPulse {
+    0%, 100% { transform: scale(1); filter: drop-shadow(0 0 14px #ffd700) drop-shadow(0 0 28px rgba(255,215,0,0.6)); }
+    50% { transform: scale(1.15); filter: drop-shadow(0 0 24px #ffd700) drop-shadow(0 0 50px rgba(255,215,0,0.9)); }
+  }
+  .landmark-text {
+    margin-top: 8px;
+    font-family: 'Bebas Neue', cursive;
+    font-size: 20px;
+    color: #ffd700;
+    letter-spacing: 2px;
+    text-shadow: 0 0 20px rgba(255,215,0,0.9);
+    white-space: nowrap;
+    background: rgba(0,0,0,0.6);
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
+
+  #s4-text {
+    position: absolute;
+    top: 10%;
+    left: 0; right: 0;
+    text-align: center;
+    z-index: 30;
+    opacity: 0;
+  }
+  #s4-text h2 {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 52px;
+    color: #ffffff;
+    letter-spacing: 6px;
+    text-shadow: 0 2px 30px rgba(0,0,0,0.9);
+  }
+
+  /* ══════════════ SCENE 5 — FACTIONS ══════════════ */
+  #s5 { background: #080808; }
+
+  .faction-grid {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 3px;
+  }
+
+  .faction-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .faction-sturm  { background: rgba(232,255,71,0.09); }
+  .faction-flammen{ background: rgba(255,70,20,0.09);  }
+  .faction-frost  { background: rgba(40,140,255,0.09); }
+  .faction-schatten{ background: rgba(140,60,220,0.09);}
+
+  .faction-icon {
+    font-size: 60px;
+    line-height: 1;
+    margin-bottom: 12px;
+  }
+  .faction-name {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 34px;
+    letter-spacing: 5px;
+  }
+  .faction-sturm   .faction-name { color: #e8ff47; text-shadow: 0 0 22px rgba(232,255,71,0.9); }
+  .faction-flammen .faction-name { color: #ff7050; text-shadow: 0 0 22px rgba(255,80,20,0.9);  }
+  .faction-frost   .faction-name { color: #72ccff; text-shadow: 0 0 22px rgba(80,200,255,0.9); }
+  .faction-schatten .faction-name{ color: #c49aff; text-shadow: 0 0 22px rgba(180,120,255,0.9);}
+
+  .faction-dividers {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .fdh {
+    position: absolute;
+    left: 0; right: 0; top: 50%;
+    height: 3px;
+    background: #080808;
+    transform: translateY(-50%);
+  }
+  .fdv {
+    position: absolute;
+    top: 0; bottom: 0; left: 50%;
+    width: 3px;
+    background: #080808;
+    transform: translateX(-50%);
+  }
+
+  #s5-cta {
+    position: absolute;
+    bottom: 7%;
+    left: 0; right: 0;
+    text-align: center;
+    z-index: 20;
+    opacity: 0;
+  }
+  #s5-cta h2 {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 50px;
+    color: #ffffff;
+    letter-spacing: 6px;
+    text-shadow: 0 2px 6px rgba(0,0,0,1), 0 0 30px rgba(0,0,0,0.9);
+  }
+  #s5-cta p {
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    color: rgba(255,255,255,0.7);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-top: 4px;
+    text-shadow: 0 1px 4px rgba(0,0,0,1);
+  }
+
+  /* ══════════════ SCENE 6 — LEADERBOARD ══════════════ */
+  #s6 { background: #080808; }
+
+  .lb-bg {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 35%, rgba(232,255,71,0.07) 0%, transparent 65%);
+  }
+
+  #s6-title {
+    position: absolute;
+    top: 8%;
+    left: 0; right: 0;
+    text-align: center;
+    font-family: 'Bebas Neue', cursive;
+    font-size: 60px;
+    color: #e8ff47;
+    letter-spacing: 10px;
+    text-shadow: 0 0 40px rgba(232,255,71,0.8);
+    opacity: 0;
+    z-index: 10;
+  }
+
+  .lb-list {
+    position: absolute;
+    top: 24%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 72%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 10;
+  }
+
+  .lb-entry {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 22px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    opacity: 0;
+  }
+  .lb-entry.rank1 { border-color: rgba(255,215,0,0.4); background: rgba(255,215,0,0.07); }
+  .lb-entry.rank2 { border-color: rgba(192,192,192,0.3); }
+  .lb-entry.rank3 { border-color: rgba(205,127,50,0.3); }
+
+  .lb-medal { font-size: 28px; flex-shrink: 0; }
+  .lb-name  { flex: 1; font-family: 'Poppins', sans-serif; font-size: 18px; font-weight: 600; color: #fff; }
+  .lb-title-tag {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 14px;
+    letter-spacing: 2px;
+    padding: 3px 10px;
+    border-radius: 4px;
+  }
+  .rank1 .lb-title-tag { color: #ffd700; background: rgba(255,215,0,0.14); border: 1px solid rgba(255,215,0,0.4); }
+  .rank2 .lb-title-tag { color: #c0c0c0; background: rgba(192,192,192,0.10); border: 1px solid rgba(192,192,192,0.3); }
+  .rank3 .lb-title-tag { color: #cd7f32; background: rgba(205,127,50,0.10); border: 1px solid rgba(205,127,50,0.3); }
+  .lb-score { font-family: 'Bebas Neue', cursive; font-size: 22px; color: #e8ff47; letter-spacing: 2px; }
+
+  .titles-strip {
+    position: absolute;
+    bottom: 12%;
+    left: 0; right: 0;
+    text-align: center;
+    z-index: 10;
+    opacity: 0;
+  }
+  .titles-strip span {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 26px;
+    letter-spacing: 5px;
+    color: rgba(255,255,255,0.3);
+    margin: 0 14px;
+  }
+  .titles-strip span.lit { color: #e8ff47; text-shadow: 0 0 20px rgba(232,255,71,0.8); }
+  .titles-strip .dot { color: rgba(255,255,255,0.2); margin: 0 4px; }
+
+  /* ══════════════ SCENE 7 — EPIC CTA ══════════════ */
+  #s7 { background: #080808; }
+
+  .s7-map-bg {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 50% 50%, rgba(232,255,71,0.09) 0%, transparent 60%),
+      linear-gradient(rgba(232,255,71,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(232,255,71,0.025) 1px, transparent 1px);
+    background-size: auto, 48px 48px, 48px 48px;
+  }
+
+  .s7-hexes {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  #s7-ready {
+    position: absolute;
+    top: 12%;
+    left: 0; right: 0;
+    text-align: center;
+    z-index: 20;
+    opacity: 0;
+  }
+  #s7-ready h1 {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 90px;
+    color: #ffffff;
+    letter-spacing: 16px;
+    text-shadow: 0 0 60px rgba(232,255,71,0.6), 0 0 120px rgba(232,255,71,0.3);
+    line-height: 1;
+  }
+
+  #s7-qr {
+    position: absolute;
+    top: 48%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 20;
+    opacity: 0;
+  }
+  .qr-box {
+    width: 120px;
+    height: 120px;
+    border: 3px solid #e8ff47;
+    box-shadow: 0 0 30px rgba(232,255,71,0.6), inset 0 0 30px rgba(232,255,71,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(232,255,71,0.6);
+    font-size: 11px;
+    letter-spacing: 1px;
+    font-family: 'Poppins', sans-serif;
+    margin: 0 auto 14px;
+    position: relative;
+    background:
+      repeating-linear-gradient(0deg, transparent 0px, transparent 8px, rgba(232,255,71,0.06) 8px, rgba(232,255,71,0.06) 9px),
+      repeating-linear-gradient(90deg, transparent 0px, transparent 8px, rgba(232,255,71,0.06) 8px, rgba(232,255,71,0.06) 9px);
+  }
+  .qr-box .qr-corner {
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    border-color: #e8ff47;
+    border-style: solid;
+  }
+  .qr-corner.tl { top: -3px; left: -3px; border-width: 3px 0 0 3px; }
+  .qr-corner.tr { top: -3px; right: -3px; border-width: 3px 3px 0 0; }
+  .qr-corner.bl { bottom: -3px; left: -3px; border-width: 0 0 3px 3px; }
+  .qr-corner.br { bottom: -3px; right: -3px; border-width: 0 3px 3px 0; }
+  .qr-label {
+    font-family: 'Poppins', sans-serif;
+    font-size: 11px;
+    color: rgba(255,255,255,0.45);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  #s7-cta-btn {
+    position: absolute;
+    bottom: 10%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    opacity: 0;
+    white-space: nowrap;
+  }
+  .cta-btn {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 30px;
+    letter-spacing: 6px;
+    color: #080808;
+    background: #e8ff47;
+    padding: 16px 52px;
+    border-radius: 6px;
+    display: inline-block;
+    box-shadow: 0 0 40px rgba(232,255,71,0.7), 0 0 80px rgba(232,255,71,0.3);
+    cursor: pointer;
+    user-select: none;
+  }
+
+  /* PARTICLES */
+  .particle {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 60;
+  }
+
+  /* FLASH OVERLAY */
+  #scene-flash {
+    position: absolute;
+    inset: 0;
+    background: #ffffff;
+    opacity: 0;
+    z-index: 90;
+    pointer-events: none;
+  }
+
+  /* VIGNETTE */
+  #vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 50%, transparent 45%, rgba(0,0,0,0.7) 100%);
+    pointer-events: none;
+    z-index: 50;
+  }
 </style>
 </head>
 <body>
-<div id="root"
-  data-composition-id="main"
-  data-width="1080"
-  data-height="1920"
-  data-start="0"
-  data-duration="30">
+<div id="stage">
 
-  <!-- ══ SCENE 1: AGGRESSIVE HOOK ══ -->
-  <div id="s1" class="scene">
-    <div class="s1-bg-grid"></div>
-    <!-- Speed-line strikes -->
-    <div class="s1-strike" id="st1" style="left:180px;top:-200px;transform:rotate(-20deg)"></div>
-    <div class="s1-strike" id="st2" style="left:500px;top:-200px;transform:rotate(-20deg)"></div>
-    <div class="s1-strike" id="st3" style="left:820px;top:-200px;transform:rotate(-20deg)"></div>
-    <div class="scene-content" style="justify-content:center;gap:18px;">
-      <div class="s1-eyebrow" id="s1-eye">GPS · GEBIETE · HERRSCHAFT</div>
-      <div class="s1-headline">
-        <span class="l1" id="s1-l1">LAUFE</span>
-        <span class="l2" id="s1-l2">EROBER</span>
-        <span class="l3" id="s1-l3">HERRSCHE</span>
-      </div>
-      <div class="s1-impact-bar" id="s1-bar"></div>
-      <div class="s1-sub" id="s1-sub">DIE STADT WARTET AUF DICH</div>
+  <!-- PROGRESS BAR -->
+  <div id="progress-bar-wrap"><div id="progress-bar"></div></div>
+
+  <!-- ══ SCENE 1 — HOOK ══ -->
+  <div class="scene" id="s1">
+    <div class="speed-lines" id="speed-lines"></div>
+    <div id="s1-flash"></div>
+    <div id="s1-title">
+      <span class="letter">R</span><span class="letter">U</span><span class="letter">N</span>
+      <span class="gap"></span>
+      <span class="letter">C</span><span class="letter">O</span><span class="letter">N</span><span class="letter">Q</span><span class="letter">U</span><span class="letter">E</span><span class="letter">R</span>
+    </div>
+    <div id="s1-tagline">LAUF. &nbsp;EROBERE. &nbsp;HERRSCHE.</div>
+  </div>
+
+  <!-- ══ SCENE 2 — CITY RUNNER ══ -->
+  <div class="scene" id="s2">
+    <div class="city-sky"></div>
+    <div class="buildings" id="buildings"></div>
+    <div class="ground-strip"><div class="road-line"></div></div>
+    <div class="gps-trail" id="gps-trail-s2"></div>
+    <svg id="runner-s2" class="runner-s2" viewBox="0 0 42 72" fill="none" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
+      <ellipse cx="21" cy="10" rx="6" ry="7" fill="white"/>
+      <rect x="16" y="17" width="10" height="18" rx="3" fill="white"/>
+      <line x1="16" y1="22" x2="8"  y2="33" stroke="white" stroke-width="3"   stroke-linecap="round" class="arm-b"/>
+      <line x1="26" y1="22" x2="34" y2="13" stroke="white" stroke-width="3"   stroke-linecap="round" class="arm-f"/>
+      <line x1="19" y1="35" x2="11" y2="55" stroke="white" stroke-width="3.5" stroke-linecap="round" class="leg-b"/>
+      <line x1="23" y1="35" x2="31" y2="52" stroke="white" stroke-width="3.5" stroke-linecap="round" class="leg-f"/>
+      <line x1="11" y1="55" x2="5"  y2="60" stroke="white" stroke-width="2.5" stroke-linecap="round" class="foot-b"/>
+      <line x1="31" y1="52" x2="37" y2="58" stroke="white" stroke-width="2.5" stroke-linecap="round" class="foot-f"/>
+    </svg>
+    <div id="s2-text">
+      <h2>LAUF DURCH DEINE STADT</h2>
+      <p>GPS · Echtzeit · Territorien</p>
     </div>
   </div>
 
-  <!-- ══ SCENE 2: RUNNER IN MOTION ══ -->
-  <div id="s2" class="scene">
-    <div class="s2-bg"></div>
-    <div class="scene-content" style="gap:26px;">
-      <div class="s2-label" id="s2-lbl">ECHTZEIT-GPS TRACKING</div>
-      <div class="s2-map-wrap">
-        <svg id="s2-svg" viewBox="0 0 920 600" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="920" height="600" fill="#0D0D18" rx="24"/>
-          <!-- City block grid -->
-          <rect x="0" y="0" width="920" height="600" fill="url(#cityPattern)"/>
-          <defs>
-            <pattern id="cityPattern" x="0" y="0" width="80" height="80" patternUnits="userSpaceOnUse">
-              <rect width="80" height="80" fill="#0D0D18"/>
-              <rect x="5" y="5" width="32" height="32" fill="#13131F" rx="3"/>
-              <rect x="43" y="5" width="32" height="32" fill="#13131F" rx="3"/>
-              <rect x="5" y="43" width="32" height="32" fill="#13131F" rx="3"/>
-              <rect x="43" y="43" width="32" height="32" fill="#13131F" rx="3"/>
-            </pattern>
-          </defs>
-          <!-- Main roads -->
-          <line x1="0" y1="300" x2="920" y2="300" stroke="#1E1E2E" stroke-width="24"/>
-          <line x1="460" y1="0" x2="460" y2="600" stroke="#1E1E2E" stroke-width="24"/>
-          <line x1="0" y1="150" x2="920" y2="150" stroke="#1A1A28" stroke-width="12"/>
-          <line x1="0" y1="450" x2="920" y2="450" stroke="#1A1A28" stroke-width="12"/>
-          <line x1="230" y1="0" x2="230" y2="600" stroke="#1A1A28" stroke-width="12"/>
-          <line x1="690" y1="0" x2="690" y2="600" stroke="#1A1A28" stroke-width="12"/>
-          <!-- Owned territory zones -->
-          <polygon points="140,80 400,95 430,300 210,278 170,185"
-            fill="rgba(232,255,71,.12)" stroke="rgba(232,255,71,.4)" stroke-width="2.5"/>
-          <polygon points="490,80 680,70 720,210 600,230 470,190"
-            fill="rgba(232,255,71,.12)" stroke="rgba(232,255,71,.4)" stroke-width="2.5"/>
-          <!-- Enemy territory -->
-          <polygon points="160,360 280,340 320,480 180,500 140,440"
-            fill="rgba(255,77,109,.1)" stroke="rgba(255,77,109,.35)" stroke-width="2"/>
-          <!-- GPS track -->
-          <polyline id="s2-track"
-            points="90,490 130,410 200,340 280,280 380,200 440,160 490,180 560,160 630,185 700,250 760,320 780,400 730,450 640,470 560,440 480,460 390,490 290,515 200,500 120,490 90,490"
-            fill="none" stroke="#E8FF47" stroke-width="7"
-            stroke-linecap="round" stroke-linejoin="round"/>
-          <!-- Position halo -->
-          <circle cx="780" cy="400" r="36" fill="rgba(232,255,71,.12)"/>
-          <circle cx="780" cy="400" r="20" fill="rgba(232,255,71,.25)"/>
-          <circle id="s2-pos" cx="780" cy="400" r="12" fill="#E8FF47"/>
-          <!-- Waypoints -->
-          <circle cx="280" cy="280" r="8" fill="#E8FF47" opacity=".6"/>
-          <circle cx="560" cy="160" r="8" fill="#E8FF47" opacity=".6"/>
-          <circle cx="730" cy="450" r="8" fill="#E8FF47" opacity=".6"/>
-        </svg>
+  <!-- ══ SCENE 3 — TERRITORY MAP ══ -->
+  <div class="scene" id="s3">
+    <div class="map-grid"></div>
+    <div class="hex-grid" id="hex-grid"></div>
+    <div id="s3-points">+150 PUNKTE</div>
+    <div id="s3-overlay"><h2>EROBERE DEIN REVIER</h2></div>
+  </div>
+
+  <!-- ══ SCENE 4 — FOREST + LANDMARK ══ -->
+  <div class="scene" id="s4">
+    <div class="forest-bg"></div>
+    <div class="trees" id="trees"></div>
+    <div class="ground-s4"></div>
+    <div class="gps-trail-s4" id="gps-trail-s4"></div>
+    <svg id="runner-s4" class="runner-s4" viewBox="0 0 42 72" fill="none" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
+      <ellipse cx="21" cy="10" rx="6" ry="7" fill="white"/>
+      <rect x="16" y="17" width="10" height="18" rx="3" fill="white"/>
+      <line x1="16" y1="22" x2="8"  y2="33" stroke="white" stroke-width="3"   stroke-linecap="round"/>
+      <line x1="26" y1="22" x2="34" y2="13" stroke="white" stroke-width="3"   stroke-linecap="round"/>
+      <line x1="19" y1="35" x2="11" y2="55" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="23" y1="35" x2="31" y2="52" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="11" y1="55" x2="5"  y2="60" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="31" y1="52" x2="37" y2="58" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+    <div class="landmark-pin" id="landmark-pin">
+      <span class="landmark-star">⭐</span>
+      <div class="landmark-text">WAHRZEICHEN ENTDECKT! +200 XP</div>
+    </div>
+    <div id="s4-text"><h2>ENTDECKE WAHRZEICHEN</h2></div>
+  </div>
+
+  <!-- ══ SCENE 5 — FACTIONS ══ -->
+  <div class="scene" id="s5">
+    <div class="faction-grid">
+      <div class="faction-cell faction-sturm"   id="f-sturm">
+        <div class="faction-icon">⚡</div>
+        <div class="faction-name">STURM</div>
       </div>
-      <div class="s2-stats-row" id="s2-stats">
-        <div class="s2-stat">
-          <div class="s2-stat-val" id="s2-km">3.8</div>
-          <div class="s2-stat-lbl">KM</div>
-        </div>
-        <div class="s2-stat">
-          <div class="s2-stat-val">4:47</div>
-          <div class="s2-stat-lbl">MIN/KM</div>
-        </div>
-        <div class="s2-stat">
-          <div class="s2-stat-val" style="color:#FF4D6D">174</div>
-          <div class="s2-stat-lbl">BPM</div>
-        </div>
-        <div class="s2-stat">
-          <div class="s2-stat-val" style="color:#4DB8FF">+3</div>
-          <div class="s2-stat-lbl">GEBIETE</div>
-        </div>
+      <div class="faction-cell faction-flammen" id="f-flammen">
+        <div class="faction-icon">🔥</div>
+        <div class="faction-name">FLAMMEN</div>
       </div>
-      <div class="s2-heading" id="s2-head">JEDEN <em>KM</em> KÄMPFEN</div>
+      <div class="faction-cell faction-frost"   id="f-frost">
+        <div class="faction-icon">❄️</div>
+        <div class="faction-name">FROST</div>
+      </div>
+      <div class="faction-cell faction-schatten" id="f-schatten">
+        <div class="faction-icon">🌑</div>
+        <div class="faction-name">SCHATTEN</div>
+      </div>
+    </div>
+    <div class="faction-dividers"><div class="fdh"></div><div class="fdv"></div></div>
+    <div id="s5-cta">
+      <h2>WÄHLE DEINE FRAKTION</h2>
+      <p>🛡️ Kämpfe mit deinem Club</p>
     </div>
   </div>
 
-  <!-- ══ SCENE 3: CONQUEST IMPACT ══ -->
-  <div id="s3" class="scene">
-    <div class="s3-flash" id="s3-flash"></div>
-    <div class="scene-content" style="gap:20px;">
-      <div class="s3-raid-badge" id="s3-badge">⚔️ GEBIET GESTÜRMT</div>
-      <div class="s3-map-battle">
-        <svg id="s3-svg" viewBox="0 0 920 520" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="920" height="520" fill="#0D0D18" rx="20"/>
-          <!-- City grid base -->
-          <line x1="0" y1="260" x2="920" y2="260" stroke="#1A1A28" stroke-width="18"/>
-          <line x1="460" y1="0" x2="460" y2="520" stroke="#1A1A28" stroke-width="18"/>
-          <line x1="0" y1="130" x2="920" y2="130" stroke="#16161F" stroke-width="10"/>
-          <line x1="0" y1="390" x2="920" y2="390" stroke="#16161F" stroke-width="10"/>
-          <line x1="230" y1="0" x2="230" y2="520" stroke="#16161F" stroke-width="10"/>
-          <line x1="690" y1="0" x2="690" y2="520" stroke="#16161F" stroke-width="10"/>
-          <!-- Multiple owned territories -->
-          <polygon points="60,60 200,45 220,200 90,210 50,140"
-            fill="rgba(232,255,71,.18)" stroke="#E8FF47" stroke-width="2.5"/>
-          <polygon points="250,70 410,55 430,180 260,190"
-            fill="rgba(232,255,71,.18)" stroke="#E8FF47" stroke-width="2.5"/>
-          <polygon points="100,270 230,250 240,400 80,410"
-            fill="rgba(232,255,71,.18)" stroke="#E8FF47" stroke-width="2.5"/>
-          <!-- Enemy territory being conquered -->
-          <polygon id="s3-enemy" points="500,120 700,100 740,310 530,330 480,220"
-            fill="rgba(255,77,109,.15)" stroke="#FF4D6D" stroke-width="3"/>
-          <!-- New conquered (appears animated) -->
-          <polygon id="s3-new" points="500,120 700,100 740,310 530,330 480,220"
-            fill="rgba(232,255,71,.25)" stroke="#E8FF47" stroke-width="3" opacity="0"/>
-          <!-- Impact cross markers -->
-          <g id="s3-impact" opacity="0">
-            <line x1="600" y1="180" x2="640" y2="220" stroke="#E8FF47" stroke-width="6" stroke-linecap="round"/>
-            <line x1="640" y1="180" x2="600" y2="220" stroke="#E8FF47" stroke-width="6" stroke-linecap="round"/>
-            <line x1="560" y1="240" x2="590" y2="270" stroke="#E8FF47" stroke-width="5" stroke-linecap="round"/>
-            <line x1="590" y1="240" x2="560" y2="270" stroke="#E8FF47" stroke-width="5" stroke-linecap="round"/>
-          </g>
-          <!-- Runner icon at border of territory -->
-          <g id="s3-runner" transform="translate(480,215) scale(1.4)" opacity="0">
-            <circle cx="12" cy="4" r="3.5" fill="#E8FF47"/>
-            <path d="M12 8 L9 14 L7 20 M12 8 L15 14 L17 20 M9 14 L15 14" stroke="#E8FF47" stroke-width="2.2" stroke-linecap="round" fill="none"/>
-          </g>
-        </svg>
+  <!-- ══ SCENE 6 — LEADERBOARD ══ -->
+  <div class="scene" id="s6">
+    <div class="lb-bg"></div>
+    <div id="s6-title">WERDE ZUR LEGENDE</div>
+    <div class="lb-list">
+      <div class="lb-entry rank1" id="lb1">
+        <span class="lb-medal">🥇</span>
+        <span class="lb-name">XxRunnerKing</span>
+        <span class="lb-title-tag">IMPERATOR</span>
+        <span class="lb-score">12 840</span>
       </div>
-      <div class="s3-pts-row">
-        <div class="s3-pts-box">
-          <div class="s3-pts-val" id="s3-pts">+350</div>
-          <div class="s3-pts-lbl">PUNKTE</div>
-        </div>
-        <div style="font-size:60px;color:rgba(232,255,71,.3)">|</div>
-        <div class="s3-pts-box">
-          <div class="s3-pts-val" style="font-size:100px" id="s3-geo">+1</div>
-          <div class="s3-pts-lbl">GEBIET</div>
-        </div>
+      <div class="lb-entry rank2" id="lb2">
+        <span class="lb-medal">🥈</span>
+        <span class="lb-name">StormChaser99</span>
+        <span class="lb-title-tag">WÄCHTER</span>
+        <span class="lb-score">9 315</span>
       </div>
-      <div class="s3-territory-sub">52 GEBIETE INSGESAMT · RANG #7</div>
+      <div class="lb-entry rank3" id="lb3">
+        <span class="lb-medal">🥉</span>
+        <span class="lb-name">FrostWalker</span>
+        <span class="lb-title-tag">ENTDECKER</span>
+        <span class="lb-score">7 060</span>
+      </div>
+    </div>
+    <div class="titles-strip" id="titles-strip">
+      <span id="t-imp">IMPERATOR</span>
+      <span class="dot">·</span>
+      <span id="t-wae">WÄCHTER</span>
+      <span class="dot">·</span>
+      <span id="t-ent">ENTDECKER</span>
     </div>
   </div>
 
-  <!-- ══ SCENE 4: FACTION WAR ══ -->
-  <div id="s4" class="scene">
-    <div class="scene-content" style="gap:22px;justify-content:center;">
-      <div class="s4-subtitle" id="s4-sub">WÄHLE DEINE SEITE</div>
-      <div class="s4-title" id="s4-ttl">FRAKTIONS<em>KRIEG</em></div>
-      <div class="s4-factions">
-        <div class="s4-faction" id="f-fire">
-          <div class="s4-faction-icon">🔥</div>
-          <div class="s4-faction-name" style="color:#E84820">FEUER</div>
-          <div class="s4-faction-stat">482 Gebiete</div>
-        </div>
-        <div class="s4-faction" id="f-ice">
-          <div class="s4-faction-icon">❄️</div>
-          <div class="s4-faction-name" style="color:#4DB8FF">EIS</div>
-          <div class="s4-faction-stat">391 Gebiete</div>
-        </div>
-        <div class="s4-faction" id="f-storm">
-          <div class="s4-faction-icon">⚡</div>
-          <div class="s4-faction-name" style="color:#E8D020">STURM</div>
-          <div class="s4-faction-stat">445 Gebiete</div>
-        </div>
-        <div class="s4-faction" id="f-shadow">
-          <div class="s4-faction-icon">🌑</div>
-          <div class="s4-faction-name" style="color:#9B5DE5">SCHATTEN</div>
-          <div class="s4-faction-stat">367 Gebiete</div>
-        </div>
+  <!-- ══ SCENE 7 — EPIC CTA ══ -->
+  <div class="scene" id="s7">
+    <div class="s7-map-bg"></div>
+    <div class="s7-hexes" id="s7-hexes"></div>
+    <div id="s7-ready"><h1>BIST DU BEREIT?</h1></div>
+    <div id="s7-qr">
+      <div class="qr-box">
+        <span class="qr-corner tl"></span>
+        <span class="qr-corner tr"></span>
+        <span class="qr-corner bl"></span>
+        <span class="qr-corner br"></span>
+        QR CODE
       </div>
-      <div class="s4-cta-line" id="s4-cta">DEINE FRAKTION BRAUCHT DICH</div>
+      <div class="qr-label">Scan zum Starten</div>
+    </div>
+    <div id="s7-cta-btn">
+      <div class="cta-btn">JETZT KOSTENLOS STARTEN</div>
     </div>
   </div>
 
-  <!-- ══ SCENE 5: POWER STATS ══ -->
-  <div id="s5" class="scene">
-    <div class="scene-content" style="gap:28px;">
-      <div class="s5-eyebrow" id="s5-eye">DEIN FORTSCHRITT</div>
-      <div class="s5-title" id="s5-ttl">ZAHLEN<br>LÜGEN NICHT</div>
-      <div class="s5-cards">
-        <div class="s5-card" id="sc-km">
-          <div class="s5-card-label">KM GELAUFEN</div>
-          <div class="s5-card-val" id="v-km">0</div>
-        </div>
-        <div class="s5-card" id="sc-geo">
-          <div class="s5-card-label">GEBIETE</div>
-          <div class="s5-card-val" id="v-geo">0</div>
-        </div>
-        <div class="s5-card" id="sc-str">
-          <div class="s5-card-label">STREAK</div>
-          <div class="s5-card-val" id="v-str">14🔥</div>
-        </div>
-      </div>
-    </div>
-  </div>
+  <!-- SHARED OVERLAYS -->
+  <div id="scene-flash"></div>
+  <div id="vignette"></div>
+  <div id="particles"></div>
 
-  <!-- ══ SCENE 6: LEADERBOARD CHALLENGE ══ -->
-  <div id="s6" class="scene">
-    <div class="scene-content" style="gap:18px;">
-      <div class="s6-eyebrow" id="s6-eye">DEINE STADT</div>
-      <div class="s6-title" id="s6-ttl">🏆 RANGLISTE</div>
-      <div class="s6-subtitle" id="s6-sub">WER HERRSCHT HEUTE?</div>
-      <div class="s6-rows">
-        <div class="s6-row top1" id="s6-r1">
-          <div class="s6-rank">1</div>
-          <div class="s6-icon">🔥</div>
-          <div class="s6-player">
-            <div class="s6-name">SpeedKing</div>
-            <div class="s6-meta">63k m² · Streak 12🔥</div>
-          </div>
-          <div class="s6-pts">8.940</div>
-        </div>
-        <div class="s6-row" id="s6-r2">
-          <div class="s6-rank">2</div>
-          <div class="s6-icon">❄️</div>
-          <div class="s6-player">
-            <div class="s6-name">MountainGoat</div>
-            <div class="s6-meta">44k m² · Streak 7🔥</div>
-          </div>
-          <div class="s6-pts">5.510</div>
-        </div>
-        <div class="s6-row" id="s6-r3">
-          <div class="s6-rank">3</div>
-          <div class="s6-icon">⚡</div>
-          <div class="s6-player">
-            <div class="s6-name">NightOwl</div>
-            <div class="s6-meta">29k m² · Streak 3🔥</div>
-          </div>
-          <div class="s6-pts">3.180</div>
-        </div>
-        <div class="s6-row you" id="s6-you">
-          <div class="s6-rank">?</div>
-          <div class="s6-icon">🏃</div>
-          <div class="s6-player">
-            <div class="s6-name">DU?</div>
-            <div class="s6-meta" style="font-size:20px;color:#4DB8FF">Tritt jetzt an</div>
-          </div>
-          <div class="s6-pts">START</div>
-        </div>
-      </div>
-      <div class="s6-challenge" id="s6-chal">KANNST DU SIE <em>SCHLAGEN?</em></div>
-    </div>
-  </div>
+</div><!-- /stage -->
 
-  <!-- ══ SCENE 7: EPIC CTA ══ -->
-  <div id="s7" class="scene">
-    <div class="s7-glow-a" id="s7-glow-a"></div>
-    <div class="s7-glow-b" id="s7-glow-b"></div>
-    <div class="s7-particles" id="s7-parts"></div>
-    <div class="scene-content" style="justify-content:center;align-items:center;gap:22px;">
-      <div class="s7-tagline-top" id="s7-tag">DIE STÄDTE GEHÖREN DENEN, DIE LAUFEN</div>
-      <div class="s7-headline" id="s7-head">
-        <span class="l1">RUN &amp;</span>
-        <span class="l2">CONQUER</span>
-      </div>
-      <div class="s7-sub" id="s7-sub">LAUFE · EROBER · HERRSCHE</div>
-      <div class="s7-cta" id="s7-cta">JETZT SPIELEN</div>
-      <div class="s7-platform" id="s7-plat">KOSTENLOS · ANDROID &amp; iOS</div>
-    </div>
-    <div class="s7-fade" id="s7-fade"></div>
-  </div>
-
-</div><!-- /root -->
-
+<script src="./gsap.min.js"></script>
 <script>
-window.__timelines = window.__timelines || {};
+(function () {
+  'use strict';
 
-// GPS track dash
-var trackEl = document.getElementById('s2-track');
-var trackLen = trackEl ? Math.round(trackEl.getTotalLength()) : 1400;
-trackEl.setAttribute('stroke-dasharray', trackLen);
-trackEl.setAttribute('stroke-dashoffset', trackLen);
+  const TOTAL_S = 45;
+  const W = 960, H = 540;
+  const $ = id => document.getElementById(id);
 
-// Counters
-var cnt = { km: 0, geo: 0 };
-
-// Particle setup for scene 7
-var partsEl = document.getElementById('s7-parts');
-var particles = [];
-for (var i = 0; i < 28; i++) {
-  var p = document.createElement('div');
-  p.className = 's7-p';
-  var sz = 4 + Math.random() * 8;
-  p.style.cssText = 'width:'+sz+'px;height:'+sz+'px;left:'+(100+Math.random()*880)+'px;top:'+(200+Math.random()*1500)+'px;opacity:0';
-  partsEl.appendChild(p);
-  particles.push(p);
-}
-
-var tl = gsap.timeline({ paused: true });
-
-/* ════════════════════════════
-   SCENE 1 (0 – 3.5s)
-   ════════════════════════════ */
-// Background grid pulse
-tl.fromTo('.s1-bg-grid', { opacity: 0 }, { opacity: 1, duration: 0.5 }, 0);
-// Lightning strikes
-tl.fromTo('#st1', { scaleY: 0, opacity: 0, transformOrigin: 'top' }, { scaleY: 1, opacity: 1, duration: 0.2 }, 0.05);
-tl.to('#st1', { opacity: 0, duration: 0.3 }, 0.25);
-tl.fromTo('#st2', { scaleY: 0, opacity: 0, transformOrigin: 'top' }, { scaleY: 1, opacity: 1, duration: 0.2 }, 0.18);
-tl.to('#st2', { opacity: 0, duration: 0.3 }, 0.38);
-tl.fromTo('#st3', { scaleY: 0, opacity: 0, transformOrigin: 'top' }, { scaleY: 1, opacity: 1, duration: 0.2 }, 0.30);
-tl.to('#st3', { opacity: 0, duration: 0.3 }, 0.5);
-// Text entrances — aggressive stagger
-tl.from('#s1-eye', { y: 25, opacity: 0, duration: 0.45, ease: 'power3.out' }, 0.1);
-tl.from('#s1-l1',  { x: -60, opacity: 0, duration: 0.5, ease: 'power4.out' }, 0.3);
-tl.from('#s1-l2',  { scale: 0.7, opacity: 0, duration: 0.65, ease: 'expo.out' }, 0.55);
-tl.from('#s1-l3',  { x: 60, opacity: 0, duration: 0.5, ease: 'power4.out' }, 0.8);
-// Impact bar sweep
-tl.to('#s1-bar', { scaleX: 1, transformOrigin: 'left', duration: 0.6, ease: 'power3.out' }, 1.0);
-tl.from('#s1-sub', { y: 30, opacity: 0, duration: 0.5, ease: 'power2.out' }, 1.3);
-// Subtle text shake for l2
-tl.to('#s1-l2', { x: -6, duration: 0.04, ease: 'none' }, 0.55);
-tl.to('#s1-l2', { x: 8, duration: 0.05, ease: 'none' }, 0.59);
-tl.to('#s1-l2', { x: -4, duration: 0.04, ease: 'none' }, 0.64);
-tl.to('#s1-l2', { x: 0, duration: 0.05, ease: 'none' }, 0.68);
-
-/* ════════════════════
-   TRANSITION 1→2 (T=3.5)
-   ════════════════════ */
-var T1 = 3.5;
-tl.to('#s1', { scale: 1.04, opacity: 0, filter: 'blur(8px)', duration: 0.45, ease: 'power2.inOut' }, T1);
-tl.fromTo('#s2', { opacity: 0, scale: 0.96 }, { opacity: 1, scale: 1, duration: 0.45, ease: 'power2.out' }, T1 + 0.1);
-
-/* ════════════════════════════
-   SCENE 2 (3.5 – 8.0s)
-   ════════════════════════════ */
-tl.from('#s2-lbl',   { y: 28, opacity: 0, duration: 0.45, ease: 'power3.out' }, T1 + 0.2);
-tl.fromTo('#s2-svg', { scale: 0.9, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.6, ease: 'power2.out' }, T1 + 0.3);
-tl.to('#s2-track',   { attr: { 'stroke-dashoffset': 0 }, duration: 2.8, ease: 'power2.inOut' }, T1 + 0.5);
-// Position dot heartbeat
-tl.fromTo('#s2-pos', { attr:{r:12} }, { attr:{r:18}, duration: 0.4, ease: 'sine.inOut', repeat: 9, yoyo: true }, T1 + 0.4);
-tl.from('#s2-stats', { y: 44, opacity: 0, duration: 0.55, ease: 'power3.out' }, T1 + 0.9);
-tl.from('#s2-head',  { y: 50, opacity: 0, duration: 0.65, ease: 'expo.out' }, T1 + 1.2);
-
-/* ════════════════════
-   TRANSITION 2→3 (T=8.0, vertical slam up)
-   ════════════════════ */
-var T2 = 8.0;
-tl.to('#s2',   { y: -1920, duration: 0.45, ease: 'power4.inOut' }, T2);
-tl.fromTo('#s3', { y: 1920, opacity: 1 }, { y: 0, duration: 0.45, ease: 'power4.inOut' }, T2);
-
-/* ════════════════════════════
-   SCENE 3 (8.0 – 13.0s)
-   ════════════════════════════ */
-tl.from('#s3-badge',  { scale: 0.55, opacity: 0, duration: 0.5, ease: 'back.out(2.8)' }, T2 + 0.25);
-tl.fromTo('#s3-svg',  { scale: 0.92, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, ease: 'power2.out' }, T2 + 0.4);
-// Flash + enemy territory fades, new territory appears
-tl.to('#s3-flash',  { opacity: 1, duration: 0.08 }, T2 + 1.0);
-tl.to('#s3-flash',  { opacity: 0, duration: 0.3 }, T2 + 1.08);
-tl.to('#s3-enemy',  { attr: { fill: 'rgba(255,77,109,.05)', stroke: 'rgba(255,77,109,.2)' }, duration: 0.4 }, T2 + 1.0);
-tl.to('#s3-new',    { opacity: 1, duration: 0.4, ease: 'power2.out' }, T2 + 1.05);
-tl.fromTo('#s3-impact', { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1.2, duration: 0.25, ease: 'back.out(3)', transformOrigin: 'center' }, T2 + 1.0);
-tl.to('#s3-impact', { opacity: 0, scale: 1.5, duration: 0.4 }, T2 + 1.25);
-tl.fromTo('#s3-runner', { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1.4, duration: 0.4, ease: 'back.out(2)' }, T2 + 1.15);
-tl.from('#s3-pts',   { scale: 0.5, opacity: 0, duration: 0.7, ease: 'elastic.out(1.2, 0.5)' }, T2 + 1.2);
-tl.from('#s3-geo',   { scale: 0.5, opacity: 0, duration: 0.6, ease: 'elastic.out(1.2, 0.5)' }, T2 + 1.45);
-tl.from('.s3-pts-lbl',  { y: 20, opacity: 0, duration: 0.4, ease: 'power2.out' }, T2 + 1.6);
-tl.from('.s3-territory-sub', { y: 18, opacity: 0, duration: 0.4, ease: 'power2.out' }, T2 + 1.85);
-
-/* ════════════════════
-   TRANSITION 3→4 (T=13.0, push right)
-   ════════════════════ */
-var T3 = 13.0;
-tl.to('#s3', { x: -1080, duration: 0.5, ease: 'power3.inOut' }, T3);
-tl.fromTo('#s4', { x: 1080, opacity: 1 }, { x: 0, duration: 0.5, ease: 'power3.inOut' }, T3);
-
-/* ════════════════════════════
-   SCENE 4 (13.0 – 17.5s)
-   ════════════════════════════ */
-tl.from('#s4-sub', { y: 28, opacity: 0, duration: 0.45, ease: 'power3.out' }, T3 + 0.25);
-tl.from('#s4-ttl', { scale: 0.78, opacity: 0, duration: 0.6, ease: 'expo.out' }, T3 + 0.45);
-tl.to('#f-fire',   { opacity: 1, scale: 1, duration: 0.45, ease: 'back.out(2)' }, T3 + 0.75);
-tl.to('#f-ice',    { opacity: 1, scale: 1, duration: 0.45, ease: 'back.out(2)' }, T3 + 0.92);
-tl.to('#f-storm',  { opacity: 1, scale: 1, duration: 0.45, ease: 'back.out(2)' }, T3 + 1.09);
-tl.to('#f-shadow', { opacity: 1, scale: 1, duration: 0.45, ease: 'back.out(2)' }, T3 + 1.26);
-tl.from('#s4-cta', { y: 36, opacity: 0, duration: 0.55, ease: 'power3.out' }, T3 + 1.65);
-// Faction pulse glow
-tl.to('#f-fire',   { boxShadow: '0 0 60px rgba(232,72,32,.55)', duration: 0.6, ease: 'sine.inOut', repeat: 3, yoyo: true }, T3 + 2.0);
-
-/* ════════════════════
-   TRANSITION 4→5 (T=17.5, blur crossfade)
-   ════════════════════ */
-var T4 = 17.5;
-tl.to('#s4',  { filter: 'blur(12px)', scale: 1.04, opacity: 0, duration: 0.5, ease: 'power2.inOut' }, T4);
-tl.fromTo('#s5',
-  { filter: 'blur(12px)', scale: 0.96, opacity: 0 },
-  { filter: 'blur(0px)', scale: 1, opacity: 1, duration: 0.5, ease: 'power2.out' }, T4 + 0.1);
-
-/* ════════════════════════════
-   SCENE 5 (17.5 – 21.5s)
-   ════════════════════════════ */
-tl.from('#s5-eye',  { y: 26, opacity: 0, duration: 0.45, ease: 'power3.out' }, T4 + 0.3);
-tl.from('#s5-ttl',  { x: -50, opacity: 0, duration: 0.6, ease: 'power3.out' }, T4 + 0.5);
-tl.to('#sc-km',  { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, T4 + 0.6);
-tl.to('#sc-geo', { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, T4 + 0.78);
-tl.to('#sc-str', { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, T4 + 0.96);
-tl.to(cnt, {
-  km: 187, geo: 64,
-  duration: 2.0,
-  ease: 'power2.out',
-  onUpdate: function() {
-    document.getElementById('v-km').textContent  = Math.floor(cnt.km);
-    document.getElementById('v-geo').textContent = Math.floor(cnt.geo);
+  // ── DOM HELPERS ───────────────────────────────────────────
+  function el(tag, css, attrs) {
+    const e = document.createElement(tag);
+    if (css) e.style.cssText = css;
+    if (attrs) Object.entries(attrs).forEach(([k,v]) => e.setAttribute(k, v));
+    return e;
   }
-}, T4 + 0.9);
 
-/* ════════════════════
-   TRANSITION 5→6 (T=21.5, push left)
-   ════════════════════ */
-var T5 = 21.5;
-tl.to('#s5', { x: -1080, duration: 0.45, ease: 'power3.inOut' }, T5);
-tl.fromTo('#s6', { x: 1080, opacity: 1 }, { x: 0, duration: 0.45, ease: 'power3.inOut' }, T5);
+  // ── BUILD CITY BUILDINGS ──────────────────────────────────
+  (function () {
+    const cont = $('buildings');
+    const ws = [28,18,36,22,44,16,30,26,40,20,34,24,38,14,32,20,28,42,16,36,22,30];
+    const hs = [120,80,160,100,200,70,130,90,180,110,150,85,170,65,140,95,125,190,75,155,88,142];
+    ws.forEach((w, i) => {
+      const d = el('div', `width:${w}px;height:${hs[i]}px;`);
+      d.className = 'bld';
+      cont.appendChild(d);
+    });
+  })();
 
-/* ════════════════════════════
-   SCENE 6 (21.5 – 25.5s)
-   ════════════════════════════ */
-tl.from('#s6-eye',  { y: 26, opacity: 0, duration: 0.45, ease: 'power3.out' }, T5 + 0.15);
-tl.from('#s6-ttl',  { scale: 0.75, opacity: 0, duration: 0.65, ease: 'expo.out' }, T5 + 0.35);
-tl.from('#s6-sub',  { y: 22, opacity: 0, duration: 0.4, ease: 'power2.out' }, T5 + 0.7);
-tl.to('#s6-r1',  { x: 0, opacity: 1, duration: 0.5, ease: 'power3.out' }, T5 + 0.85);
-tl.to('#s6-r2',  { x: 0, opacity: 1, duration: 0.5, ease: 'power3.out' }, T5 + 1.05);
-tl.to('#s6-r3',  { x: 0, opacity: 1, duration: 0.5, ease: 'power3.out' }, T5 + 1.25);
-tl.to('#s6-you', { x: 0, opacity: 1, duration: 0.6, ease: 'back.out(2.2)' }, T5 + 1.5);
-tl.from('#s6-chal', { y: 40, opacity: 0, duration: 0.6, ease: 'expo.out' }, T5 + 2.1);
+  // ── BUILD TREES ───────────────────────────────────────────
+  (function () {
+    const cont = $('trees');
+    const specs = [
+      [45,88],[38,72],[56,102],[32,62],[52,94],[42,78],[62,110],[36,66],
+      [48,84],[40,76],[58,98],[34,64],[50,90],[60,106],[38,70],[54,96],[44,80]
+    ];
+    specs.forEach(([w, h]) => {
+      const tree = el('div');
+      tree.className = 'tree';
+      const crown = el('div',
+        `border-left:${w*0.52}px solid transparent;` +
+        `border-right:${w*0.52}px solid transparent;` +
+        `border-bottom:${h*0.62}px solid #0d2e12;`
+      );
+      crown.className = 'tree-crown';
+      const trunk = el('div', `width:${Math.max(4,w*0.12)}px;height:${h*0.28}px;`);
+      trunk.className = 'tree-trunk';
+      tree.appendChild(crown);
+      tree.appendChild(trunk);
+      cont.appendChild(tree);
+    });
+  })();
 
-/* ════════════════════
-   TRANSITION 6→7 (T=25.5, color dip)
-   ════════════════════ */
-var T6 = 25.5;
-tl.to('#s6', { opacity: 0, scale: 0.96, duration: 0.3, ease: 'power2.in' }, T6);
-tl.fromTo('#s7', { opacity: 0 }, { opacity: 1, duration: 0.35, ease: 'power2.out' }, T6 + 0.3);
+  // ── BUILD HEX GRID (scene 3) ──────────────────────────────
+  const hexData = [];
+  (function () {
+    const cont = $('hex-grid');
+    const size = 50, rows = 5, cols = 9;
+    const hexW = size * 2;
+    const hexH = size * Math.sqrt(3);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const x = c * hexW * 0.76 + 40;
+        const y = r * hexH + (c % 2) * (hexH * 0.5) + 20;
+        const rnd = Math.random();
+        const type = rnd < 0.25 ? 'enemy' : rnd < 0.55 ? 'own' : 'neutral';
+        const h = el('div',
+          `width:${hexW}px;height:${hexH}px;left:${x}px;top:${y}px;` +
+          `background:${type==='enemy'?'rgba(255,50,10,0.75)':type==='own'?'rgba(232,255,71,0.55)':'rgba(255,255,255,0.08)'};`
+        );
+        h.className = 'hex';
+        cont.appendChild(h);
+        hexData.push({ el: h, type });
+      }
+    }
+  })();
 
-/* ════════════════════════════
-   SCENE 7 (25.5 – 30s)
-   ════════════════════════════ */
-tl.fromTo('#s7-glow-a', { scale: 0.8, opacity: 0.4 },
-  { scale: 1.25, opacity: 1, duration: 2.2, ease: 'sine.inOut', repeat: 1, yoyo: true }, T6 + 0.3);
-tl.fromTo('#s7-glow-b', { scale: 0.7, opacity: 0.3 },
-  { scale: 1.4, opacity: 0.8, duration: 1.5, ease: 'sine.inOut', repeat: 2, yoyo: true }, T6 + 0.5);
-// Particles burst
-particles.forEach(function(p, i) {
-  tl.fromTo(p,
-    { opacity: 0, y: 0 },
-    { opacity: 0.6 + Math.random()*0.4, y: -(60 + Math.random()*200),
-      x: (Math.random()-0.5)*120,
-      duration: 1.5 + Math.random()*1.5,
-      ease: 'power2.out',
-      repeat: 1, yoyo: true },
-    T6 + 0.3 + i * 0.06
-  );
-});
-tl.from('#s7-tag',  { y: 30, opacity: 0, duration: 0.5, ease: 'power3.out' }, T6 + 0.5);
-tl.from('#s7-head .l1', { y: 50, opacity: 0, duration: 0.6, ease: 'power3.out' }, T6 + 0.75);
-tl.from('#s7-head .l2', { scale: 0.6, opacity: 0, duration: 0.9, ease: 'expo.out' }, T6 + 1.05);
-// l2 text shake
-tl.to('#s7-head .l2', { x: -8, duration: 0.04 }, T6 + 1.06);
-tl.to('#s7-head .l2', { x: 10, duration: 0.05 }, T6 + 1.10);
-tl.to('#s7-head .l2', { x: -5, duration: 0.04 }, T6 + 1.15);
-tl.to('#s7-head .l2', { x: 0, duration: 0.05 }, T6 + 1.19);
-tl.from('#s7-sub',  { y: 30, opacity: 0, duration: 0.5, ease: 'power2.out' }, T6 + 1.65);
-tl.from('#s7-cta',  { scale: 0.75, opacity: 0, duration: 0.7, ease: 'back.out(2.4)' }, T6 + 2.1);
-// CTA glow pulse
-tl.to('#s7-cta', { boxShadow: '0 0 120px rgba(232,255,71,.8), 0 20px 60px rgba(0,0,0,.5)', duration: 0.8, ease: 'sine.inOut', repeat: 1, yoyo: true }, T6 + 2.8);
-tl.from('#s7-plat', { y: 24, opacity: 0, duration: 0.45, ease: 'power2.out' }, T6 + 2.7);
-// Fade to black
-tl.to('#s7-fade', { opacity: 1, duration: 0.8, ease: 'power2.in' }, 29.2);
+  // ── BUILD S7 BACKGROUND HEXES ─────────────────────────────
+  const s7hexEls = [];
+  (function () {
+    const cont = $('s7-hexes');
+    for (let i = 0; i < 44; i++) {
+      const sz = 28 + Math.random() * 52;
+      const h = el('div',
+        `width:${sz*2}px;height:${sz*Math.sqrt(3)}px;` +
+        `left:${Math.random()*W - 20}px;top:${Math.random()*H - 20}px;` +
+        `background:rgba(232,255,71,${0.04+Math.random()*0.16});opacity:0;`
+      );
+      h.className = 'hex';
+      cont.appendChild(h);
+      s7hexEls.push(h);
+    }
+  })();
 
-window.__timelines['main'] = tl;
+  // ── PARTICLES ─────────────────────────────────────────────
+  function spawnParticles(x, y, count, colors) {
+    const cont = $('particles');
+    for (let i = 0; i < count; i++) {
+      const p = el('div');
+      p.className = 'particle';
+      const sz = 3 + Math.random() * 9;
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      p.style.cssText = `width:${sz}px;height:${sz}px;background:${color};left:${x}px;top:${y}px;`;
+      cont.appendChild(p);
+      const angle = Math.random() * Math.PI * 2;
+      const dist  = 70 + Math.random() * 220;
+      gsap.to(p, {
+        x: Math.cos(angle) * dist,
+        y: Math.sin(angle) * dist,
+        opacity: 0,
+        scale: 0.1,
+        duration: 0.7 + Math.random() * 0.9,
+        ease: 'power2.out',
+        onComplete: () => p.remove()
+      });
+    }
+  }
 
-if (typeof window.__hyperframes === 'undefined') {
-  tl.play();
-  tl.eventCallback('onComplete', function() { tl.restart(); });
-}
+  // ══════════════════════════════════════════════════════════
+  //  MASTER TIMELINE
+  // ══════════════════════════════════════════════════════════
+  const tl = gsap.timeline({ repeat: -1, repeatDelay: 0 });
+
+  // Quick scene-transition flash helper
+  function addFlash(at) {
+    tl.to('#scene-flash', { opacity: 0.55, duration: 0.07 }, at)
+      .to('#scene-flash', { opacity: 0, duration: 0.25 }, at + 0.07);
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // SCENE 1  [0–6s]  — HOOK
+  // ─────────────────────────────────────────────────────────
+  tl.set('#s1', { opacity: 1 }, 0);
+
+  // Opening white flash
+  tl.fromTo('#s1-flash', { opacity: 0.95 }, { opacity: 0, duration: 0.5, ease: 'power2.out' }, 0);
+
+  // Speed lines burst
+  const speedLines = document.querySelectorAll('.speed-line');
+  speedLines.forEach((line, i) => {
+    const angle = (i / speedLines.length) * 360;
+    const len   = 180 + (i % 7) * 35;
+    gsap.set(line, { rotation: angle, transformOrigin: '1px 0px', height: 0, opacity: 0 });
+    tl.to(line, { height: len, opacity: 0.8, duration: 0.5, ease: 'expo.out' }, 0.05 + i * 0.008)
+      .to(line, { opacity: 0, duration: 0.6, ease: 'power2.in' }, 1.1 + i * 0.004);
+  });
+
+  // Letters explode in
+  const letters = document.querySelectorAll('#s1-title .letter');
+  gsap.set(letters, { opacity: 0, scale: 4, y: -20 });
+  letters.forEach((l, i) => {
+    tl.to(l, { opacity: 1, scale: 1, y: 0, duration: 0.4, ease: 'back.out(2.5)' }, 0.28 + i * 0.065);
+  });
+
+  // Title glow pulse
+  tl.to('#s1-title', { textShadow: '0 0 70px rgba(232,255,71,1), 0 0 130px rgba(232,255,71,0.7)', duration: 0.3, yoyo: true, repeat: 3, ease: 'sine.inOut' }, 1.8);
+
+  // Tagline fade-slide
+  tl.fromTo('#s1-tagline', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.55, ease: 'power2.out' }, 2.0);
+
+  // Outro flash + fade
+  addFlash(5.6);
+  tl.to('#s1', { opacity: 0, duration: 0.45 }, 5.65);
+
+  // ─────────────────────────────────────────────────────────
+  // SCENE 2  [6–14s]  — CITY RUNNER
+  // ─────────────────────────────────────────────────────────
+  tl.set('#s2', { opacity: 0 }, 5.9)
+    .to('#s2', { opacity: 1, duration: 0.45 }, 6.1);
+
+  // GPS trail extending
+  tl.to('#gps-trail-s2', { width: '78%', duration: 6.5, ease: 'power1.inOut' }, 6.3);
+
+  // Runner horizontal travel
+  tl.to('#runner-s2', { x: 500, duration: 6.5, ease: 'power1.inOut' }, 6.3);
+
+  // Runner vertical bob (running motion)
+  tl.to('#runner-s2', { y: -6, duration: 0.28, yoyo: true, repeat: 23, ease: 'sine.inOut' }, 6.3);
+
+  // Body lean + motion blur at start
+  tl.to('#runner-s2', { rotation: 8, scaleX: 1.1, filter: 'blur(2px)', duration: 0.2 }, 6.3)
+    .to('#runner-s2', { rotation: 0, scaleX: 1,   filter: 'blur(0px)',  duration: 0.4, ease: 'power2.out' }, 6.5);
+
+  // GPS dot sparks
+  tl.call(() => spawnParticles(200, 300, 6, ['#e8ff47','#ffffff','#aacc00']), null, 8.5);
+  tl.call(() => spawnParticles(380, 300, 5, ['#e8ff47','#ffffff']),           null, 10.5);
+  tl.call(() => spawnParticles(550, 300, 5, ['#e8ff47','#aacc00']),           null, 12.0);
+
+  // Text overlay
+  tl.fromTo('#s2-text', { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 8.0);
+
+  // Fade out
+  addFlash(13.5);
+  tl.to('#s2', { opacity: 0, duration: 0.45 }, 13.55);
+
+  // ─────────────────────────────────────────────────────────
+  // SCENE 3  [14–20s]  — TERRITORY CONQUEST
+  // ─────────────────────────────────────────────────────────
+  tl.set('#s3', { opacity: 0 }, 13.8)
+    .to('#s3', { opacity: 1, duration: 0.4 }, 14.0);
+
+  // Hexes cascade in
+  hexData.forEach(({ el: h, type }, i) => {
+    const at = 14.2 + i * 0.038;
+    tl.fromTo(h, { opacity: 0, scale: 0.4 }, { opacity: 1, scale: 1, duration: 0.22, ease: 'back.out(2)' }, at);
+    if (type === 'enemy') {
+      // Flash red then turn yellow (conquered)
+      tl.to(h, { backgroundColor: 'rgba(232,255,71,0.75)', duration: 0.35, ease: 'power2.out' }, at + 0.45);
+    }
+  });
+
+  // Points badge
+  tl.fromTo('#s3-points', { opacity: 0, scale: 0.4 }, { opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(2.5)' }, 16.8)
+    .to('#s3-points', { scale: 1.12, duration: 0.25, yoyo: true, repeat: 3, ease: 'sine.inOut' }, 17.1)
+    .to('#s3-points', { opacity: 0, y: -30, duration: 0.4 }, 18.8);
+
+  tl.call(() => spawnParticles(480, 270, 22, ['#e8ff47','#ffd700','#ffffff','#ff5020']), null, 16.8);
+
+  // Overlay text
+  tl.fromTo('#s3-overlay', { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 17.8);
+
+  addFlash(19.5);
+  tl.to('#s3', { opacity: 0, duration: 0.45 }, 19.55);
+
+  // ─────────────────────────────────────────────────────────
+  // SCENE 4  [20–26s]  — FOREST + LANDMARK
+  // ─────────────────────────────────────────────────────────
+  tl.set('#s4', { opacity: 0 }, 19.8)
+    .to('#s4', { opacity: 1, duration: 0.45 }, 20.0);
+
+  tl.fromTo('#s4-text', { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 20.5);
+
+  tl.to('#gps-trail-s4', { width: '72%', duration: 4.8, ease: 'power1.inOut' }, 20.5);
+  tl.to('#runner-s4', { x: 460, duration: 4.8, ease: 'power1.inOut' }, 20.5);
+  tl.to('#runner-s4', { y: -5, duration: 0.32, yoyo: true, repeat: 15, ease: 'sine.inOut' }, 20.5);
+
+  // Landmark pop
+  tl.fromTo('#landmark-pin', { opacity: 0, scale: 0.2 }, { opacity: 1, scale: 1, duration: 0.55, ease: 'back.out(2.5)' }, 22.8);
+  tl.call(() => spawnParticles(718, 178, 18, ['#ffd700','#ffcc00','#ffffff','#e8ff47']), null, 22.8);
+
+  addFlash(25.5);
+  tl.to('#s4', { opacity: 0, duration: 0.45 }, 25.55);
+
+  // ─────────────────────────────────────────────────────────
+  // SCENE 5  [26–32s]  — FACTIONS
+  // ─────────────────────────────────────────────────────────
+  tl.set('#s5', { opacity: 0 }, 25.8)
+    .to('#s5', { opacity: 1, duration: 0.4 }, 26.0);
+
+  const factions = ['f-sturm','f-flammen','f-frost','f-schatten'];
+  gsap.set(factions.map(id => '#'+id), { opacity: 0, scale: 0.7 });
+  factions.forEach((id, i) => {
+    tl.to('#'+id, { opacity: 1, scale: 1, duration: 0.45, ease: 'back.out(1.8)' }, 26.3 + i * 0.22);
+  });
+
+  // Glow pulse on each icon
+  factions.forEach((id, i) => {
+    tl.to('#'+id+' .faction-icon', {
+      filter: 'drop-shadow(0 0 18px white)',
+      duration: 0.35, yoyo: true, repeat: 3, ease: 'sine.inOut'
+    }, 27.8 + i * 0.15);
+  });
+
+  // Brief scale pumps
+  factions.forEach((id, i) => {
+    tl.to('#'+id, { scale: 1.05, duration: 0.2, yoyo: true, repeat: 1 }, 28.5 + i * 0.3);
+  });
+
+  tl.fromTo('#s5-cta', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 28.6);
+
+  addFlash(31.5);
+  tl.to('#s5', { opacity: 0, duration: 0.45 }, 31.55);
+
+  // ─────────────────────────────────────────────────────────
+  // SCENE 6  [32–38s]  — LEADERBOARD
+  // ─────────────────────────────────────────────────────────
+  tl.set('#s6', { opacity: 0 }, 31.8)
+    .to('#s6', { opacity: 1, duration: 0.4 }, 32.0);
+
+  tl.fromTo('#s6-title', { opacity: 0, y: -16 }, { opacity: 1, y: 0, duration: 0.55, ease: 'power2.out' }, 32.3);
+
+  gsap.set(['#lb1','#lb2','#lb3'], { opacity: 0, x: -50 });
+  [['lb1', 33.0], ['lb2', 33.4], ['lb3', 33.8]].forEach(([id, at]) => {
+    tl.to('#'+id, { opacity: 1, x: 0, duration: 0.5, ease: 'power2.out' }, at);
+  });
+  tl.call(() => spawnParticles(690, 220, 14, ['#ffd700','#e8ff47','#ffffff']), null, 33.05);
+  tl.call(() => spawnParticles(690, 280, 10, ['#c0c0c0','#ffffff']),           null, 33.45);
+  tl.call(() => spawnParticles(690, 340, 8,  ['#cd7f32','#ffffff']),           null, 33.85);
+
+  tl.fromTo('#titles-strip', { opacity: 0 }, { opacity: 1, duration: 0.5 }, 35.0);
+  [['t-imp', 35.4], ['t-wae', 36.0], ['t-ent', 36.6]].forEach(([id, at]) => {
+    tl.call(() => $(id).classList.add('lit'), null, at);
+  });
+
+  addFlash(37.5);
+  tl.to('#s6', { opacity: 0, duration: 0.45 }, 37.55);
+
+  // ─────────────────────────────────────────────────────────
+  // SCENE 7  [38–45s]  — EPIC CTA
+  // ─────────────────────────────────────────────────────────
+  tl.set('#s7', { opacity: 0 }, 37.8)
+    .to('#s7', { opacity: 1, duration: 0.5 }, 38.0);
+
+  // Background hexes drift in
+  s7hexEls.forEach((h, i) => {
+    tl.to(h, { opacity: 1, duration: 0.35, ease: 'power2.out' }, 38.0 + i * 0.028);
+  });
+
+  tl.fromTo('#s7-ready', { opacity: 0, scale: 0.45 }, { opacity: 1, scale: 1, duration: 0.7, ease: 'back.out(1.8)' }, 38.3);
+
+  // Pulse the headline
+  tl.to('#s7-ready h1', {
+    textShadow: '0 0 90px rgba(232,255,71,1), 0 0 160px rgba(232,255,71,0.6)',
+    duration: 0.7, yoyo: true, repeat: -1, ease: 'sine.inOut'
+  }, 39.2);
+
+  tl.fromTo('#s7-qr', { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(2)' }, 39.6);
+
+  tl.fromTo('#s7-cta-btn', { opacity: 0, scale: 0.6, y: 20 }, { opacity: 1, scale: 1, y: 0, duration: 0.55, ease: 'back.out(2)' }, 40.4);
+
+  // CTA button pulse
+  tl.to('#s7-cta-btn .cta-btn', {
+    boxShadow: '0 0 70px rgba(232,255,71,1), 0 0 140px rgba(232,255,71,0.6)',
+    duration: 0.6, yoyo: true, repeat: -1, ease: 'sine.inOut'
+  }, 40.9);
+
+  // PARTICLE FINALE
+  tl.call(() => {
+    const C = ['#e8ff47','#ffd700','#ff7050','#72ccff','#c49aff','#ffffff'];
+    for (let i = 0; i < 7; i++) {
+      setTimeout(() => {
+        spawnParticles(
+          80 + Math.random() * 800,
+          40 + Math.random() * 460,
+          16, C
+        );
+      }, i * 180);
+    }
+  }, null, 42.0);
+
+  tl.call(() => {
+    spawnParticles(480, 270, 50, ['#e8ff47','#ffd700','#ffffff','#ff7050','#72ccff','#c49aff']);
+  }, null, 43.6);
+
+  // Fade out before loop restart
+  tl.to('#s7', { opacity: 0, duration: 0.7 }, 44.3);
+
+  // ── RESET FOR LOOP ──────────────────────────────────────
+  tl.call(() => {
+    // scenes
+    document.querySelectorAll('.scene').forEach(s => gsap.set(s, { opacity: 0 }));
+
+    // runners
+    gsap.set('#runner-s2', { x: 0, y: 0, rotation: 0, scaleX: 1, filter: 'none' });
+    gsap.set('#runner-s4', { x: 0, y: 0 });
+
+    // trails
+    gsap.set('#gps-trail-s2', { width: 0 });
+    gsap.set('#gps-trail-s4', { width: 0 });
+
+    // texts
+    gsap.set(['#s2-text','#s4-text','#s3-overlay','#s5-cta','#s6-title','#s3-points','#landmark-pin'], { opacity: 0, y: 0 });
+
+    // scene 1 letters
+    gsap.set(letters, { opacity: 0, scale: 4, y: -20 });
+    gsap.set('#s1-tagline', { opacity: 0, y: 14 });
+    gsap.set('#s1-flash', { opacity: 0 });
+    gsap.set('#s1-title', { textShadow: '0 0 40px rgba(232,255,71,0.8), 0 0 80px rgba(232,255,71,0.4)' });
+
+    // speed lines
+    speedLines.forEach(l => gsap.set(l, { height: 0, opacity: 0 }));
+
+    // factions
+    gsap.set(factions.map(id => '#'+id), { opacity: 0, scale: 0.7 });
+    gsap.set('.faction-cell .faction-icon', { filter: 'none' });
+
+    // leaderboard
+    gsap.set(['#lb1','#lb2','#lb3'], { opacity: 0, x: -50 });
+    gsap.set('#titles-strip', { opacity: 0 });
+    ['t-imp','t-wae','t-ent'].forEach(id => $(id).classList.remove('lit'));
+
+    // scene 7
+    gsap.set(['#s7-ready','#s7-qr','#s7-cta-btn'], { opacity: 0, scale: 0.5, y: 0 });
+    gsap.set('#s7-ready h1', { textShadow: '0 0 60px rgba(232,255,71,0.6), 0 0 120px rgba(232,255,71,0.3)' });
+    gsap.set('#s7-cta-btn .cta-btn', { boxShadow: '0 0 40px rgba(232,255,71,0.7), 0 0 80px rgba(232,255,71,0.3)' });
+    s7hexEls.forEach(h => gsap.set(h, { opacity: 0 }));
+
+    // hexes scene 3
+    hexData.forEach(({ el: h, type }) => {
+      gsap.set(h, { opacity: 0, scale: 0.4 });
+      h.style.background = type === 'enemy'
+        ? 'rgba(255,50,10,0.75)'
+        : type === 'own'
+          ? 'rgba(232,255,71,0.55)'
+          : 'rgba(255,255,255,0.08)';
+    });
+
+    // scene 3 points
+    gsap.set('#s3-points', { opacity: 0, scale: 0.4, y: 0 });
+  }, null, 44.95);
+
+  // ── PROGRESS BAR ──────────────────────────────────────────
+  gsap.to('#progress-bar', {
+    width: '100%',
+    duration: TOTAL_S,
+    ease: 'none',
+    repeat: -1
+  });
+
+  // ── INITIAL STATE ─────────────────────────────────────────
+  gsap.set('.scene', { opacity: 0 });
+  gsap.set(['#s2-text','#s4-text','#s3-overlay','#s5-cta','#s6-title','#s3-points','#landmark-pin'], { opacity: 0 });
+  gsap.set(['#lb1','#lb2','#lb3'], { opacity: 0, x: -50 });
+  gsap.set('#titles-strip', { opacity: 0 });
+  gsap.set(['#s7-ready','#s7-qr','#s7-cta-btn'], { opacity: 0, scale: 0.5 });
+  gsap.set(factions.map(id => '#'+id), { opacity: 0, scale: 0.7 });
+  hexData.forEach(({ el: h }) => gsap.set(h, { opacity: 0, scale: 0.4 }));
+  s7hexEls.forEach(h => gsap.set(h, { opacity: 0 }));
+  gsap.set('#s1-tagline', { opacity: 0, y: 14 });
+  gsap.set(letters, { opacity: 0, scale: 4, y: -20 });
+  gsap.set('#s1-flash', { opacity: 0 });
+  gsap.set('#s3-points', { opacity: 0, scale: 0.4 });
+
+})();
 </script>
 </body>
 </html>
