@@ -4385,6 +4385,7 @@ function updateProfile(){
 /* DRAWER */
 function openDrawer(tab){$('drawerOverlay').classList.add('open');drawer.style.display='flex';setTimeout(()=>drawer.classList.add('open'),10);if(tab)currentTab=tab;renderDrawer();}
 function openDrawerTab(tab){openDrawer(tab);}
+window.openDrawer=openDrawer;
 function closeDrawer(){$('drawerOverlay').classList.remove('open');drawer.classList.remove('open');setTimeout(()=>{if(!drawer.classList.contains('open'))drawer.style.display='none'},350)}
 function renderDrawer(){
   const tabs={
