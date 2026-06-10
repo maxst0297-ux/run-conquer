@@ -4386,10 +4386,23 @@ function updateProfile(){
 /* DRAWER */
 function _achSvg(cat,earned){
   const cols={conq:'#c9a227',km:'#4aabe8',atk:'#e85a4a',def:'#3ae880',disc:'#9b6fe8',streak:'#e87b3a'};
-  const icons={conq:'🛣',km:'🏃',atk:'⚔',def:'🛡',disc:'🧭',streak:'🔥'};
-  const c=cols[cat]||'#888';const ic=icons[cat]||'★';const op=earned?'1':'0.38';
-  const s=`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='r' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='#605040'/><stop offset='50%' stop-color='#a09080'/><stop offset='100%' stop-color='#403020'/></linearGradient><linearGradient id='b' x1='0' y1='0' x2='0' y2='1'><stop offset='0%' stop-color='#1e1810'/><stop offset='100%' stop-color='#0a0808'/></linearGradient></defs><polygon points='50,4 94,27 94,73 50,96 6,73 6,27' fill='url(%23r)' opacity='${op}'/><polygon points='50,11 87,32 87,68 50,89 13,68 13,32' fill='url(%23b)' opacity='${op}'/><circle cx='50' cy='50' r='22' fill='${c}' opacity='${earned?'0.18':'0.07'}'/><text x='50' y='62' text-anchor='middle' font-size='34' opacity='${op}'>${ic}</text></svg>`;
-  return 'data:image/svg+xml,'+s.replace(/#/g,'%23');
+  const lbl={conq:'C',km:'K',atk:'A',def:'D',disc:'E',streak:'S'};
+  const c=cols[cat]||'#888';const lb=lbl[cat]||'?';
+  const cv=document.createElement('canvas');cv.width=cv.height=84;
+  const x=cv.getContext('2d');if(!x)return'';
+  const pts=(r)=>{const a=[];for(let i=0;i<6;i++){const ang=Math.PI/3*i-Math.PI/6;a.push([42+r*Math.cos(ang),42+r*Math.sin(ang)]);}return a;};
+  const hex=(r)=>{const p=pts(r);x.beginPath();x.moveTo(p[0][0],p[0][1]);p.slice(1).forEach(([px,py])=>x.lineTo(px,py));x.closePath();};
+  // outer rim
+  hex(40);const g1=x.createLinearGradient(0,0,84,84);g1.addColorStop(0,'#706050');g1.addColorStop(.5,'#c0b090');g1.addColorStop(1,'#504030');x.fillStyle=g1;x.fill();
+  // inner bg
+  hex(32);const g2=x.createLinearGradient(0,0,0,84);g2.addColorStop(0,'#1e1810');g2.addColorStop(1,'#0a0808');x.fillStyle=g2;x.fill();
+  // glow
+  x.beginPath();x.arc(42,42,14,0,2*Math.PI);x.fillStyle=c;x.globalAlpha=earned?0.35:0.12;x.fill();x.globalAlpha=1;
+  // label
+  x.fillStyle=earned?c:'#666';x.font='bold 26px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText(lb,42,43);
+  // dim overlay for unearned
+  if(!earned){hex(40);x.fillStyle='rgba(0,0,0,0.5)';x.fill();}
+  return cv.toDataURL();
 }
 window._achSvg=_achSvg;
 function renderAchHexGrid(){
