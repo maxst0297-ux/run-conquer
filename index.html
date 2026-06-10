@@ -342,17 +342,17 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .nav-item.active .nav-indicator{transform:scaleX(1)}
 
 /* ═══ DRAWER ═══ */
-#drawer{position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid rgba(255,255,255,.1);border-radius:22px 22px 0 0;z-index:700;max-height:78vh;overflow-y:auto;display:none;flex-direction:column;transform:translateY(100%);transition:transform .42s cubic-bezier(.16,1,.3,1);-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);box-shadow:0 -8px 40px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08)}
+#drawer{position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid rgba(255,255,255,.1);border-radius:22px 22px 0 0;z-index:700;max-height:78vh;overflow:hidden;display:none;flex-direction:column;transform:translateY(100%);transition:transform .42s cubic-bezier(.16,1,.3,1);-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);box-shadow:0 -8px 40px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08)}
 #drawer.open{transform:translateY(0)}
 .drawer-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px 4px;cursor:pointer;-webkit-user-select:none;user-select:none;flex-shrink:0}
 .drawer-handle{width:36px;height:4px;background:var(--border);border-radius:4px;margin:0 auto}
 .drawer-close-btn{background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;padding:4px 6px;line-height:1}
 #drawerOverlay{position:fixed;top:0;left:0;right:0;bottom:var(--nav-total);background:rgba(0,0,0,.35);z-index:699;display:none;-webkit-tap-highlight-color:transparent}
 #drawerOverlay.open{display:block}
-.drawer-tabs{display:flex;gap:4px;padding:10px 14px 0;overflow-x:auto}
+.drawer-tabs{display:flex;gap:4px;padding:10px 14px 0;overflow-x:auto;flex-shrink:0;position:sticky;top:0;z-index:2;background:var(--bg2)}
 .tab-btn{padding:6px 14px;border-radius:40px;border:none;background:var(--card);color:var(--muted);font-weight:600;font-size:.72rem;cursor:pointer;white-space:nowrap;transition:all .2s}
 .tab-btn.active{background:var(--primary);color:var(--bg)}
-.drawer-body{padding:14px 14px 28px;min-height:200px}
+.drawer-body{padding:14px 14px 28px;min-height:200px;overflow-y:auto;flex:1}
 
 /* ═══ MODALS ═══ */
 .modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:1200;padding:20px}
@@ -4472,7 +4472,8 @@ ${e?'':`<div style="width:54px;height:2px;background:rgba(255,255,255,.07);borde
     },
     calendar:()=>{setTimeout(drawCalendar,0);return'<div id="calDiv"></div>'}
   };
-  drawerBody.innerHTML=tabs[currentTab]?tabs[currentTab]():'';
+  document.querySelectorAll('#drawerTabs .tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===currentTab));
+  try{drawerBody.innerHTML=tabs[currentTab]?tabs[currentTab]():'';}catch(err){drawerBody.innerHTML=`<div style="color:#ef4444;padding:16px;font-size:.8rem">Fehler: ${err.message}</div>`;console.error('renderDrawer error:',err);}
 }
 function drawCalendar(){
   const el=document.getElementById('calDiv');if(!el)return;
