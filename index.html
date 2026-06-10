@@ -1366,7 +1366,7 @@ function load(){
   }catch(e){}
   // Rival territories werden nach erstem GPS-Fix generiert (locationfound)
   if(!quests.length)genQuests();
-  if(!achievements.length)initAch();
+  if(achievements.length!==36||achievements[0]?.id!=='conq1'){initAch();if(typeof totalConquered!=='undefined')updateAch(true);}
   checkSeasonRollover();
   checkEnergyWeekReset();
   followedUsers=JSON.parse(localStorage.getItem('rc_follows_'+userId)||'[]');
@@ -2319,7 +2319,7 @@ function getAchSvg(a,sz=44){
   else if(a.id==='boost20'){sym=`<path d="M18 4L8 17H14L11 28L24 13H17Z" fill="${ic}"/>`;}
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="${sz}" height="${sz}" style="display:block;flex-shrink:0"><defs><linearGradient id="abg${a.id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${g1}"/><stop offset="100%" stop-color="${g2}"/></linearGradient></defs><polygon points="16,2 28,9 28,23 16,30 4,23 4,9" fill="url(#abg${a.id})" stroke="${ring}" stroke-width="${rw}"/>${sym}</svg>`;
 }
-function initAch(){achievements=[{id:'km10',name:'10 km',icon:'👟',target:10,progress:0,earned:false,cat:'run'},{id:'km50',name:'50 km',icon:'🏃',target:50,progress:0,earned:false,cat:'run'},{id:'km100',name:'100 km',icon:'🏅',target:100,progress:0,earned:false,cat:'run'},{id:'km500',name:'Marathon-König',icon:'🥇',target:500,progress:0,earned:false,cat:'run'},{id:'run10',name:'10 Läufe',icon:'📍',target:10,progress:0,earned:false,cat:'run'},{id:'run50',name:'50 Läufe',icon:'🏃',target:50,progress:0,earned:false,cat:'run'},{id:'run100',name:'100 Läufe',icon:'💯',target:100,progress:0,earned:false,cat:'run'},{id:'conq5',name:'5 Eroberungen',icon:'⚔️',target:5,progress:0,earned:false,cat:'terr'},{id:'conq20',name:'20 Gebiete',icon:'🗡️',target:20,progress:0,earned:false,cat:'terr'},{id:'conq50',name:'Imperator',icon:'👑',target:50,progress:0,earned:false,cat:'terr'},{id:'def10',name:'Verteidiger',icon:'🛡️',target:10,progress:0,earned:false,cat:'terr'},{id:'def50',name:'Wächter',icon:'🏰',target:50,progress:0,earned:false,cat:'terr'},{id:'terr10',name:'10 Gebiete',icon:'🗺️',target:10,progress:0,earned:false,cat:'terr'},{id:'terr50',name:'Landbesitzer',icon:'🏯',target:50,progress:0,earned:false,cat:'terr'},{id:'pts1k',name:'1000 Punkte',icon:'⭐',target:1000,progress:0,earned:false,cat:'pts'},{id:'pts5k',name:'5000 Punkte',icon:'🌟',target:5000,progress:0,earned:false,cat:'pts'},{id:'pts20k',name:'20000 Punkte',icon:'💫',target:20000,progress:0,earned:false,cat:'pts'},{id:'lm5',name:'5 Wahrzeichen',icon:'📍',target:5,progress:0,earned:false,cat:'disc'},{id:'lm20',name:'Entdecker',icon:'🗺️',target:20,progress:0,earned:false,cat:'disc'},{id:'str7',name:'7-Tage-Serie',icon:'🔥',target:7,progress:0,earned:false,cat:'streak'},{id:'str30',name:'Monats-Serie',icon:'💫',target:30,progress:0,earned:false,cat:'streak'},{id:'login30',name:'30 Tage Login',icon:'📅',target:30,progress:0,earned:false,cat:'streak'},{id:'login100',name:'100 Tage Login',icon:'🏆',target:100,progress:0,earned:false,cat:'streak'},{id:'raid10',name:'10 Raids',icon:'⚔️',target:10,progress:0,earned:false,cat:'battle'},{id:'boost20',name:'20 Boosts',icon:'⚡',target:20,progress:0,earned:false,cat:'battle'}];}
+function initAch(){achievements=[];const defs=[['conq',[['conq1','Erste Straße',1],['conq10','Eroberer',10],['conq50','Stadtentdecker',50],['conq100','Weltenbummler',100],['conq500','Straßenkönig',500],['conq1000','Imperator',1000]]],['km',[['km1','Erster Kilometer',1],['km100','Durchstarter',100],['km500','Ausdauernd',500],['km1000','Langstreckenläufer',1000],['km5000','Ultraläufer',5000],['km10000','Legende',10000]]],['atk',[['atk1','Erster Sieg',1],['atk10','Kämpfer',10],['atk50','Stratege',50],['atk100','Eroberungsmeister',100],['atk500','Kriegsherr',500],['atk1000','Feldherr',1000]]],['def',[['def1','Verteidiger',1],['def10','Wächter',10],['def50','Beschützer',50],['def100','Schutzwall',100],['def500','Festung',500],['def1000','Unbezwingbar',1000]]],['disc',[['disc1','Entdecker',1],['disc10','Kartograph',10],['disc50','Abenteurer',50],['disc100','Forscher',100],['disc500','Pionier',500],['disc1000','Weltentdecker',1000]]],['streak',[['streak7','Beständig',7],['streak30','Diszipliniert',30],['streak100','Unaufhaltsam',100],['streak180','Streak-Legende',180],['streak365','Unermüdlich',365],['streak730','Ewige Legende',730]]]];defs.forEach(([cat,list])=>list.forEach(([id,name,target])=>achievements.push({id,name,target,cat,progress:0,earned:false})));}
 
 /* MAP */
 function initMap(){
@@ -2893,7 +2893,7 @@ function renderStarterQuests(){
 
 /* QUESTS/ACH */
 function updateQuests(rec){quests.forEach(q=>{if(q.claimed)return;if(q.type==='distance')q.progress=Math.min(q.target,q.progress+rec.distance);if(q.type==='conquer'&&rec.conquered)q.progress++;if(q.type==='defend'&&rec.defended)q.progress++;if(q.progress>=q.target){q.claimed=true;points+=q.reward;toast('✅ '+q.desc+' +'+q.reward);}});checkStarterQuests();}
-function updateAch(){const terrCount=territories.filter(t=>t.owner===userId).length;achievements.forEach(a=>{let p=0;if(a.cat==='run'&&(a.id.startsWith('km')))p=totalKm;else if(a.cat==='run'&&a.id.startsWith('run'))p=history.length;else if(a.id==='conq5'||a.id==='conq20'||a.id==='conq50')p=totalConquered;else if(a.id==='def10'||a.id==='def50')p=totalDefended;else if(a.id==='terr10'||a.id==='terr50')p=terrCount;else if(a.cat==='pts')p=points;else if(a.id==='lm5'||a.id==='lm20')p=capturedLandmarks.length;else if(a.id==='str7'||a.id==='str30')p=streakDays;else if(a.id==='login30'||a.id==='login100')p=dailyLoginStreak;else if(a.id==='raid10')p=totalRaids;else if(a.id==='boost20')p=totalBoosts;a.progress=p;if(!a.earned&&p>=a.target){a.earned=true;points+=200;toast('🏆 Abzeichen: '+a.name+' +200 XP');}})}
+function updateAch(silent){const src={conq:totalConquered,km:totalKm,atk:totalRaids,def:totalDefended,disc:capturedLandmarks.length,streak:dailyLoginStreak};achievements.forEach(a=>{const p=src[a.cat]??0;a.progress=p;if(!a.earned&&p>=a.target){a.earned=true;if(!silent){points+=200;toast('🏆 Abzeichen: '+a.name+' +200 XP');}}})}
 
 /* POST RUN */
 function showPostRun(rec){
@@ -4381,78 +4381,25 @@ function updateProfile(){
 
 /* DRAWER */
 function renderAchHexGrid(){
-/* ── category config ── */
-      const CC={
-        run:  {label:'🏃 Laufen',     c1:'#22c55e',c2:'#15803d',bg1:'#0d2918',bg2:'#060f0a'},
-        terr: {label:'⚔️ Gebiete',    c1:'#ef4444',c2:'#b91c1c',bg1:'#2a0a0a',bg2:'#0f0404'},
-        pts:  {label:'⭐ Punkte',      c1:'#f59e0b',c2:'#b45309',bg1:'#2a1a00',bg2:'#100a00'},
-        disc: {label:'🗺️ Entdecken', c1:'#3b82f6',c2:'#1d4ed8',bg1:'#0a1428',bg2:'#040810'},
-        streak:{label:'🔥 Serien',    c1:'#f97316',c2:'#c2410c',bg1:'#2a1000',bg2:'#100600'},
-        battle:{label:'⚡ Kämpfe',    c1:'#a855f7',c2:'#7e22ce',bg1:'#1a0a2a',bg2:'#0a0414'}
-      };
-      /* ── SVG icon paths (white, viewBox 0 0 40 40) ── */
-      const ICONS={
-        km:      `<path d="M7 24 C10 20 16 18 24 21 L32 17 Q36 15 37 19 L35 23 Q38 27 36 29 L8 29 Z" fill="white"/><ellipse cx="14" cy="29" rx="5" ry="4" fill="white"/><ellipse cx="30" cy="29" rx="5" ry="4" fill="white"/>`,
-        run:     `<circle cx="20" cy="7" r="4.5" fill="white"/><line x1="20" y1="12" x2="20" y2="25" stroke="white" stroke-width="3" stroke-linecap="round"/><line x1="20" y1="18" x2="12" y2="14" stroke="white" stroke-width="2.5" stroke-linecap="round"/><line x1="20" y1="18" x2="28" y2="21" stroke="white" stroke-width="2.5" stroke-linecap="round"/><line x1="20" y1="25" x2="13" y2="34" stroke="white" stroke-width="3" stroke-linecap="round"/><line x1="20" y1="25" x2="27" y2="31" stroke="white" stroke-width="3" stroke-linecap="round"/>`,
-        sword:   `<line x1="9" y1="9" x2="31" y2="31" stroke="white" stroke-width="3.5" stroke-linecap="round"/><line x1="31" y1="9" x2="9" y2="31" stroke="white" stroke-width="3.5" stroke-linecap="round"/><circle cx="20" cy="20" r="4" fill="#09090f"/><circle cx="20" cy="20" r="2" fill="white"/>`,
-        helmet:  `<path d="M20 5 C11 5 6 12 6 19 L6 25 L34 25 L34 19 C34 12 29 5 20 5Z" fill="white"/><rect x="4" y="23" width="32" height="5" rx="2.5" fill="white"/><rect x="13" y="25" width="14" height="9" rx="1.5" fill="white"/>`,
-        shield:  `<path d="M20 4 L34 11 L34 23 Q34 33 20 38 Q6 33 6 23 L6 11 Z" fill="white"/><path d="M20 10 L29 15 L29 23 Q29 29 20 33 Q11 29 11 23 L11 15 Z" fill="rgba(0,0,0,.35)"/>`,
-        castle:  `<rect x="9" y="19" width="22" height="16" fill="white"/><rect x="7" y="14" width="6" height="8" fill="white"/><rect x="17" y="14" width="6" height="8" fill="white"/><rect x="27" y="14" width="6" height="8" fill="white"/><rect x="15" y="27" width="10" height="8" fill="rgba(0,0,0,.35)"/>`,
-        star:    `<polygon points="20,4 23.5,14 35,14 26,21 29,32 20,25 11,32 14,21 5,14 16.5,14" fill="white"/>`,
-        crown:   `<path d="M4 28 L4 16 L12 22 L20 9 L28 22 L36 16 L36 28 Z" fill="white"/><circle cx="4" cy="16" r="3.5" fill="white"/><circle cx="20" cy="9" r="3.5" fill="white"/><circle cx="36" cy="16" r="3.5" fill="white"/><rect x="3" y="26" width="34" height="6" rx="2" fill="white"/>`,
-        pin:     `<path d="M20 3 C12 3 7 9 7 16 C7 25 20 38 20 38 C20 38 33 25 33 16 C33 9 28 3 20 3Z" fill="white"/><circle cx="20" cy="16" r="6" fill="rgba(0,0,0,.4)"/>`,
-        eye:     `<path d="M3 20 Q10 7 20 7 Q30 7 37 20 Q30 33 20 33 Q10 33 3 20Z" fill="white"/><circle cx="20" cy="20" r="7" fill="rgba(0,0,0,.4)"/><circle cx="20" cy="20" r="4" fill="white"/>`,
-        flame:   `<path d="M20 3 C20 3 27 12 25 18 C29 13 27 9 27 9 C33 17 31 25 27 29 C29 24 24 22 24 22 C27 27 23 32 19 34 C21 29 17 27 15 24 C11 20 14 13 18 16 C15 10 20 3 20 3Z" fill="white"/>`,
-        calendar:`<rect x="4" y="8" width="32" height="26" rx="3.5" fill="white"/><rect x="9" y="4" width="5" height="9" rx="2.5" fill="white"/><rect x="26" y="4" width="5" height="9" rx="2.5" fill="white"/><rect x="4" y="17" width="32" height="3" fill="rgba(0,0,0,.25)"/>`,
-        lightning:`<polygon points="23,3 13,22 21,22 17,38 29,18 21,18" fill="white"/>`,
-        axe:     `<line x1="10" y1="9" x2="32" y2="31" stroke="white" stroke-width="3.5" stroke-linecap="round"/><path d="M10 9 L17 9 L10 16 Z" fill="white"/><path d="M32 31 L25 31 L32 24 Z" fill="rgba(255,255,255,.7)"/>`,
-      };
-      const IMAP={
-        km10:'km',km50:'km',km100:'km',km500:'km',
-        run10:'run',run50:'run',run100:'run',
-        conq5:'sword',conq20:'sword',conq50:'helmet',
-        def10:'shield',def50:'shield',
-        terr10:'castle',terr50:'castle',
-        pts1k:'star',pts5k:'star',pts20k:'crown',
-        lm5:'pin',lm20:'eye',
-        str7:'flame',str30:'flame',
-        login30:'calendar',login100:'calendar',
-        raid10:'axe',
-        boost20:'lightning',
-      };
-      const CLIP='polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%)';
-      const groups={};achievements.forEach(a=>{const c=a.cat||'run';if(!groups[c])groups[c]=[];groups[c].push(a);});
-      const totalEarned=achievements.filter(a=>a.earned).length;
-      const hexBadge=(a,cat)=>{
-        const {c1,c2,bg1,bg2}=CC[cat]||CC.run;
-        const e=a.earned;
-        const ms=a.target>=1000?Math.round(a.target/1000)+'K':String(a.target);
-        const pct=Math.min(100,Math.round((a.progress/a.target)*100));
-        const iconKey=IMAP[a.id]||'star';
-        const iconSvg=ICONS[iconKey]||ICONS.star;
-        /* colours: earned=category gradient, not-earned=dark grey */
-        const borderBg=e?`linear-gradient(155deg,${c1} 0%,${c2} 100%)`:`linear-gradient(155deg,#2a2a3c 0%,#171724 100%)`;
-        const innerBg= e?`linear-gradient(155deg,${bg1} 0%,${bg2} 100%)`:`linear-gradient(155deg,#131320 0%,#09090f 100%)`;
-        const glow=   e?`drop-shadow(0 0 9px ${c1}aa)`:``;
-        return`<div style="display:flex;flex-direction:column;align-items:center;gap:3px">
-<div style="position:relative;width:80px;height:92px;filter:${glow}">
-  <div style="position:absolute;inset:0;clip-path:${CLIP};background:${borderBg}"></div>
-  <div style="position:absolute;inset:4px;clip-path:${CLIP};background:${innerBg}"></div>
-  <div style="position:absolute;inset:4px;clip-path:${CLIP};background:linear-gradient(145deg,rgba(255,255,255,${e?0.18:0.05}) 0%,transparent 48%)"></div>
-  <div style="position:absolute;inset:4px;clip-path:${CLIP};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding-top:4px">
-    <svg width="34" height="34" viewBox="0 0 40 40" style="opacity:${e?1:.18}">${iconSvg}</svg>
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:13px;color:${e?'rgba(255,255,255,.9)':'rgba(255,255,255,.18)'};line-height:1;letter-spacing:.5px">${ms}</div>
-  </div>
-</div>
-<div style="font-size:.56rem;font-weight:${e?600:400};color:${e?'rgba(255,255,255,.85)':'rgba(255,255,255,.2)'};text-align:center;line-height:1.3;max-width:80px;padding:0 2px">${a.name}</div>
-${e?'':`<div style="width:54px;height:2px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${c1};opacity:.5;border-radius:2px"></div></div>`}
-</div>`;};
-      return`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary);letter-spacing:2px">ALLE ERFOLGE</span><span style="font-size:.72rem;color:var(--muted);background:var(--card);padding:3px 10px;border-radius:20px;border:1px solid var(--border)">${totalEarned}/${achievements.length}</span></div>`+
-      Object.entries(CC).map(([cat,{label,c1}])=>{
-        const list=groups[cat]||[];if(!list.length)return'';
-        const earned=list.filter(a=>a.earned).length;
-        return`<div style="margin-bottom:28px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px"><span style="font-size:.68rem;font-weight:700;color:${c1};letter-spacing:.5px">${label}</span><span style="font-size:.58rem;color:var(--muted);background:rgba(255,255,255,.05);padding:2px 8px;border-radius:8px">${earned}/${list.length}</span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px 8px">${list.map(a=>hexBadge(a,cat)).join('')}</div></div>`;
-      }).join('')
+  const CC={conq:'🛣️ Straßen erobert',km:'🏃 Kilometer gelaufen',atk:'⚔️ Angriffe gewonnen',def:'🛡️ Verteidigungen',disc:'🧭 Orte besucht',streak:'🔥 Tage in Folge'};
+  const groups={};achievements.forEach(a=>{(groups[a.cat]=groups[a.cat]||[]).push(a);});
+  const totalEarned=achievements.filter(a=>a.earned).length;
+  const badge=a=>{
+    const e=a.earned;
+    const pct=Math.min(100,Math.round((a.progress/a.target)*100));
+    const ms=a.target>=1000?Math.round(a.target/1000)+'K':a.target;
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px">`+
+      `<img src="assets/ach/${a.id}.png" alt="${a.name}" loading="lazy" style="width:84px;height:84px;object-fit:contain;${e?'filter:drop-shadow(0 0 7px rgba(255,215,0,.25))':'filter:grayscale(1) brightness(.4) opacity(.85)'}">`+
+      `<div style="font-size:.6rem;font-weight:${e?700:400};color:${e?'#fff':'rgba(255,255,255,.32)'};text-align:center;line-height:1.2;max-width:92px">${a.name}</div>`+
+      (e?`<div style="font-size:.55rem;color:var(--primary);font-weight:700">✓ ${ms}</div>`:`<div style="width:62px;height:3px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden"><div style="width:${pct}%;height:100%;background:var(--muted);border-radius:2px"></div></div><div style="font-size:.5rem;color:var(--muted)">${Math.round(a.progress)}/${a.target}</div>`)+
+    `</div>`;
+  };
+  return `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary);letter-spacing:2px">ERFOLGE</span><span style="font-size:.72rem;color:var(--muted);background:var(--card);padding:3px 10px;border-radius:20px;border:1px solid var(--border)">${totalEarned}/${achievements.length}</span></div>`+
+    Object.keys(CC).map(cat=>{
+      const list=groups[cat]||[];if(!list.length)return'';
+      const earned=list.filter(a=>a.earned).length;
+      return `<div style="margin-bottom:24px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span style="font-size:.72rem;font-weight:700;color:var(--text);letter-spacing:.3px">${CC[cat]}</span><span style="font-size:.58rem;color:var(--muted);background:rgba(255,255,255,.05);padding:2px 8px;border-radius:8px">${earned}/${list.length}</span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px 8px">${list.map(badge).join('')}</div></div>`;
+    }).join('');
 }
 function openDrawer(tab){$('drawerOverlay').classList.add('open');drawer.style.display='flex';setTimeout(()=>drawer.classList.add('open'),10);if(tab)currentTab=tab;renderDrawer();}
 function openDrawerTab(tab){openDrawer(tab);}
