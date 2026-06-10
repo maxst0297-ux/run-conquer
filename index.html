@@ -1836,60 +1836,127 @@ const debouncedDrawFog=debounce(drawFog,400);
 
 /* ── WAPPEN SVG ── */
 let _wId=0;
-function wappenSVG({shape='shield',borderColor='#e8ff47',pattern='solid',patternColor='#e8ff47',bg='#09090f',bg2='',symbol=''},size=60){
+function wappenSVG({shape='shield',borderColor='#e8ff47',borderEffect='standard',pattern='solid',patternColor='#e8ff47',bg='#09090f',bg2='',symbol='',symbolColor='',extras=[]},size=60){
   const id=++_wId;
-  const shapes={
-    shield:'M50,4 L92,18 L92,56 L50,96 L8,56 L8,18 Z',
-    round:'M50,4 A46,46 0 1,1 50,96 A46,46 0 1,1 50,4 Z',
-    diamond:'M50,4 L96,50 L50,96 L4,50 Z',
-    hexa:'M50,4 L93,28 L93,72 L50,96 L7,72 L7,28 Z',
-    kite:'M50,2 L90,40 L50,98 L10,40 Z',
-    banner:'M8,8 L92,8 L92,72 L50,98 L8,72 Z',
-    cross_sh:'M32,4 L68,4 L68,32 L96,32 L96,68 L68,68 L68,96 L32,96 L32,68 L4,68 L4,32 L32,32 Z',
-    oval:'M50,8 Q90,8 90,50 Q90,92 50,92 Q10,92 10,50 Q10,8 50,8 Z'
+  const SH={
+    shield:'M50,4 L92,18 L92,56 L50,96 L8,56 L8,18Z',
+    shield2:'M14,10 Q50,4 86,10 L90,58 Q68,88 50,96 Q32,88 10,58Z',
+    hexa:'M50,4 L93,28 L93,72 L50,96 L7,72 L7,28Z',
+    round:'M50,5 A45,45 0 1,1 50,95 A45,45 0 1,1 50,5Z',
+    diamond:'M50,4 L96,50 L50,96 L4,50Z',
+    banner:'M8,8 L92,8 L92,74 L50,96 L8,74Z',
+    kite:'M50,2 L88,42 L50,96 L12,42Z',
+    oval:'M50,8 Q88,8 90,50 Q88,92 50,92 Q12,92 10,50 Q12,8 50,8Z',
+    cross_sh:'M32,4 L68,4 L68,32 L96,32 L96,68 L68,68 L68,96 L32,96 L32,68 L4,68 L4,32 L32,32Z'
   };
-  const d=shapes[shape]||shapes.shield;
+  const d=SH[shape]||SH.shield;
   const pc=patternColor;
-  const bg2c=bg2||bg;
+  const sc=symbolColor||patternColor||'#fff';
+  /* Build defs */
+  let dfs=`<clipPath id="wcp${id}"><path d="${d}"/></clipPath>`;
+  if(bg2)dfs+=`<linearGradient id="wbg${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${bg}"/><stop offset="100%" stop-color="${bg2}"/></linearGradient>`;
+  if(pattern==='gradient2')dfs+=`<linearGradient id="wpg${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${pc}"/><stop offset="100%" stop-color="transparent"/></linearGradient>`;
+  /* Border effect */
+  let efStroke=borderColor,efSw=5,efDfs='',efOver='';
+  if(borderEffect==='gloss'){efDfs=`<linearGradient id="wgl${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="rgba(255,255,255,.45)"/><stop offset="40%" stop-color="rgba(255,255,255,.1)"/><stop offset="100%" stop-color="transparent"/></linearGradient>`;efOver=`<path d="${d}" fill="url(#wgl${id})"/>`;}
+  else if(borderEffect==='metallic'){efDfs=`<linearGradient id="wmtl${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff"/><stop offset="35%" stop-color="${borderColor}"/><stop offset="65%" stop-color="#555"/><stop offset="100%" stop-color="${borderColor}"/></linearGradient>`;efStroke=`url(#wmtl${id})`;efSw=7;}
+  else if(borderEffect==='neon'){efDfs=`<filter id="wneon${id}" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter>`;efOver=`<path d="${d}" fill="none" stroke="${borderColor}" stroke-width="14" opacity=".35" filter="url(#wneon${id})"/>`;}
+  else if(borderEffect==='gold'){efDfs=`<linearGradient id="wgld${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FFE566"/><stop offset="50%" stop-color="#B8860B"/><stop offset="100%" stop-color="#FFE566"/></linearGradient>`;efStroke=`url(#wgld${id})`;efSw=7;}
+  else if(borderEffect==='fire'){efDfs=`<linearGradient id="wfir${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FF6600"/><stop offset="50%" stop-color="#FF0000"/><stop offset="100%" stop-color="#FF6600"/></linearGradient>`;efStroke=`url(#wfir${id})`;efSw=6;}
+  else if(borderEffect==='ice'){efDfs=`<linearGradient id="wice${id}" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#A8F0FF"/><stop offset="50%" stop-color="#0099CC"/><stop offset="100%" stop-color="#A8F0FF"/></linearGradient>`;efStroke=`url(#wice${id})`;efOver=`<path d="${d}" fill="none" stroke="#E8FCFF" stroke-width="2" opacity=".5"/>`;}
+  else if(borderEffect==='electric'){efStroke='#00FFFF';efSw=4;efOver=`<path d="${d}" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="6,3" opacity=".7"/>`;}
+  dfs+=efDfs;
+  /* Patterns */
   const pats={
     solid:'',
-    stripes:`<line x1="0" y1="20" x2="100" y2="20" stroke="${pc}" stroke-width="6"/><line x1="0" y1="40" x2="100" y2="40" stroke="${pc}" stroke-width="6"/><line x1="0" y1="60" x2="100" y2="60" stroke="${pc}" stroke-width="6"/><line x1="0" y1="80" x2="100" y2="80" stroke="${pc}" stroke-width="6"/>`,
-    stripes_v:`<line x1="22" y1="0" x2="22" y2="100" stroke="${pc}" stroke-width="6"/><line x1="44" y1="0" x2="44" y2="100" stroke="${pc}" stroke-width="6"/><line x1="66" y1="0" x2="66" y2="100" stroke="${pc}" stroke-width="6"/><line x1="88" y1="0" x2="88" y2="100" stroke="${pc}" stroke-width="6"/>`,
-    cross:`<line x1="50" y1="0" x2="50" y2="100" stroke="${pc}" stroke-width="10"/><line x1="0" y1="50" x2="100" y2="50" stroke="${pc}" stroke-width="10"/>`,
-    diagonal:`<line x1="-5" y1="35" x2="35" y2="-5" stroke="${pc}" stroke-width="7"/><line x1="15" y1="110" x2="110" y2="15" stroke="${pc}" stroke-width="7"/><line x1="55" y1="110" x2="110" y2="55" stroke="${pc}" stroke-width="7"/>`,
-    chevron:`<polyline points="8,35 50,65 92,35" fill="none" stroke="${pc}" stroke-width="10"/><polyline points="8,58 50,88 92,58" fill="none" stroke="${pc}" stroke-width="10"/>`,
-    dots:`<circle cx="28" cy="34" r="8" fill="${pc}"/><circle cx="72" cy="34" r="8" fill="${pc}"/><circle cx="50" cy="56" r="8" fill="${pc}"/><circle cx="28" cy="78" r="7" fill="${pc}"/><circle cx="72" cy="78" r="7" fill="${pc}"/>`,
+    stripes:`<rect x="0" y="14" width="100" height="7" fill="${pc}"/><rect x="0" y="34" width="100" height="7" fill="${pc}"/><rect x="0" y="54" width="100" height="7" fill="${pc}"/><rect x="0" y="74" width="100" height="7" fill="${pc}"/>`,
+    stripes_v:`<rect x="16" y="0" width="7" height="100" fill="${pc}"/><rect x="37" y="0" width="7" height="100" fill="${pc}"/><rect x="58" y="0" width="7" height="100" fill="${pc}"/><rect x="79" y="0" width="7" height="100" fill="${pc}"/>`,
+    cross:`<rect x="44" y="0" width="12" height="100" fill="${pc}"/><rect x="0" y="44" width="100" height="12" fill="${pc}"/>`,
+    diagonal:`<line x1="-5" y1="30" x2="30" y2="-5" stroke="${pc}" stroke-width="8"/><line x1="10" y1="108" x2="108" y2="10" stroke="${pc}" stroke-width="8"/><line x1="55" y1="108" x2="108" y2="55" stroke="${pc}" stroke-width="8"/>`,
+    chevron:`<polyline points="6,36 50,66 94,36" fill="none" stroke="${pc}" stroke-width="10"/><polyline points="6,58 50,88 94,58" fill="none" stroke="${pc}" stroke-width="10"/>`,
+    dots:`<circle cx="28" cy="32" r="9" fill="${pc}"/><circle cx="72" cy="32" r="9" fill="${pc}"/><circle cx="50" cy="54" r="9" fill="${pc}"/><circle cx="28" cy="76" r="8" fill="${pc}"/><circle cx="72" cy="76" r="8" fill="${pc}"/>`,
     halves:`<rect x="50" y="0" width="50" height="100" fill="${pc}"/>`,
     quarters:`<rect x="50" y="0" width="50" height="50" fill="${pc}"/><rect x="0" y="50" width="50" height="50" fill="${pc}"/>`,
-    gradient2:`<defs><linearGradient id="wg${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${pc}"/><stop offset="100%" stop-color="${bg}"/></linearGradient></defs><path d="${d}" fill="url(#wg${id})"/>`,
-    star_c:`<polygon points="50,18 56,38 76,38 61,50 67,70 50,58 33,70 39,50 24,38 44,38" fill="${pc}"/>`,
-    border_inner:`<path d="${d}" fill="none" stroke="${pc}" stroke-width="7" transform="scale(.82) translate(9,9)"/>`
+    check:`<rect x="0" y="0" width="25" height="25" fill="${pc}"/><rect x="50" y="0" width="25" height="25" fill="${pc}"/><rect x="25" y="25" width="25" height="25" fill="${pc}"/><rect x="75" y="25" width="25" height="25" fill="${pc}"/><rect x="0" y="50" width="25" height="25" fill="${pc}"/><rect x="50" y="50" width="25" height="25" fill="${pc}"/><rect x="25" y="75" width="25" height="25" fill="${pc}"/><rect x="75" y="75" width="25" height="25" fill="${pc}"/>`,
+    star_c:`<polygon points="50,18 57,38 78,38 62,50 68,70 50,58 32,70 38,50 22,38 43,38" fill="${pc}"/>`,
+    border_inner:`<path d="${d}" fill="none" stroke="${pc}" stroke-width="7" transform="scale(.82) translate(9,9)"/>`,
+    gradient2:`<path d="${d}" fill="url(#wpg${id})"/>`,
   };
-  /* Symbol layer */
+  /* Symbols */
   const syms={
     '':'',
-    star:`<polygon points="50,18 57,38 78,38 62,50 68,70 50,58 32,70 38,50 22,38 43,38" fill="${pc}"/>`,
-    sword:`<line x1="35" y1="70" x2="65" y2="30" stroke="${pc}" stroke-width="5" stroke-linecap="round"/><line x1="30" y1="75" x2="40" y2="65" stroke="${pc}" stroke-width="4" stroke-linecap="round"/><line x1="57" y1="28" x2="67" y2="28" stroke="${pc}" stroke-width="4"/><line x1="62" y1="23" x2="62" y2="33" stroke="${pc}" stroke-width="4"/>`,
-    shield_s:`<path d="M50,24 L72,32 L72,54 Q72,70 50,78 Q28,70 28,54 L28,32 Z" fill="none" stroke="${pc}" stroke-width="4"/>`,
-    crown:`<path d="M26,60 L32,38 L42,52 L50,28 L58,52 L68,38 L74,60 Z" fill="${pc}"/>`,
-    flame:`<path d="M50,20 C50,20 42,34 40,42 C38,50 40,56 44,58 C44,53 46,50 48,48 C48,54 50,60 50,64 C52,60 54,53 54,48 C56,50 58,54 58,58 C62,56 64,50 62,42 C60,34 50,20 50,20 Z" fill="${pc}"/>`,
-    runner:`<circle cx="52" cy="30" r="6" fill="${pc}"/><path d="M48 36L44 46L40 54M48 36L52 44L56 52M48 36L56 33L62 38" stroke="${pc}" stroke-width="4" stroke-linecap="round" fill="none"/>`,
-    bolt:`<path d="M57,20 L40,52 L52,52 L45,80 L62,44 L50,44 Z" fill="${pc}"/>`,
+    star:`<polygon points="50,18 57,38 78,38 62,50 68,70 50,58 32,70 38,50 22,38 43,38" fill="${sc}"/>`,
+    crossed_swords:`<g stroke="${sc}" stroke-width="5" stroke-linecap="round"><line x1="28" y1="28" x2="72" y2="72"/><line x1="72" y1="28" x2="28" y2="72"/></g><circle cx="28" cy="72" r="5" fill="${sc}"/><circle cx="72" cy="28" r="5" fill="${sc}"/>`,
+    sword:`<line x1="50" y1="18" x2="50" y2="76" stroke="${sc}" stroke-width="5" stroke-linecap="round"/><line x1="36" y1="40" x2="64" y2="40" stroke="${sc}" stroke-width="4.5" stroke-linecap="round"/><circle cx="50" cy="78" r="5" fill="${sc}"/>`,
+    shield_s:`<path d="M50,22 L70,30 L70,52 Q70,68 50,78 Q30,68 30,52 L30,30Z" fill="none" stroke="${sc}" stroke-width="5"/>`,
+    crown:`<path d="M24,64 L30,40 L42,54 L50,26 L58,54 L70,40 L76,64 L76,72 L24,72Z" fill="${sc}"/>`,
+    flame:`<path d="M50,20 C50,20 40,36 38,46 C36,54 40,60 44,62 C44,56 46,52 48,50 C48,56 50,64 50,68 C52,64 54,56 54,50 C56,52 58,56 58,62 C62,60 64,52 62,44 C60,34 50,20Z" fill="${sc}"/>`,
+    runner:`<circle cx="56" cy="26" r="7" fill="${sc}"/><path d="M50,33 L44,52 L38,62 M50,33 L54,46 L60,54 M50,33 L60,30 L66,38" stroke="${sc}" stroke-width="4.5" stroke-linecap="round" fill="none"/>`,
+    bolt:`<polygon points="58,18 38,54 52,54 44,82 64,44 50,44" fill="${sc}"/>`,
+    horse:`<path d="M36,78 L40,58 Q44,44 52,38 Q62,34 66,42 L66,52 L60,54 Q58,64 54,70 L50,78Z" fill="${sc}"/><path d="M64,42 L68,28 L72,30 L67,44" fill="${sc}"/><circle cx="54" cy="43" r="3.5" fill="${bg||'#000'}"/>`,
+    lion:`<circle cx="50" cy="50" r="15" fill="${sc}"/><circle cx="50" cy="50" r="23" fill="none" stroke="${sc}" stroke-width="5"/><circle cx="43" cy="46" r="3" fill="${bg||'#000'}"/><circle cx="57" cy="46" r="3" fill="${bg||'#000'}"/><path d="M43,57 Q50,64 57,57" fill="none" stroke="${bg||'#000'}" stroke-width="2.5" stroke-linecap="round"/>`,
+    eagle:`<path d="M50,46 Q30,22 14,34 Q24,40 29,50 Q19,49 14,60 Q28,54 40,62 L50,80 L60,62 Q72,54 86,60 Q81,49 71,50 Q76,40 86,34 Q70,22 50,46Z" fill="${sc}"/>`,
+    paw:`<circle cx="50" cy="60" r="13" fill="${sc}"/><circle cx="33" cy="46" r="8" fill="${sc}"/><circle cx="67" cy="46" r="8" fill="${sc}"/><circle cx="41" cy="34" r="7" fill="${sc}"/><circle cx="59" cy="34" r="7" fill="${sc}"/>`,
+    tree:`<polygon points="50,16 68,46 32,46" fill="${sc}"/><polygon points="50,30 72,62 28,62" fill="${sc}"/><rect x="44" y="62" width="12" height="18" fill="${sc}" rx="2"/>`,
+    axe:`<rect x="47" y="28" width="6" height="52" fill="${sc}" rx="3"/><path d="M26,28 L53,20 L53,46Z" fill="${sc}"/><path d="M53,20 L76,28 L53,46Z" fill="${sc}"/>`,
   };
-  const bgGrad=bg2?`<defs><linearGradient id="wbg${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${bg}"/><stop offset="100%" stop-color="${bg2}"/></linearGradient></defs><path d="${d}" fill="url(#wbg${id})" stroke="${borderColor}" stroke-width="5"/>`:
-    `<path d="${d}" fill="${bg}" stroke="${borderColor}" stroke-width="5"/>`;
-  return`<svg viewBox="0 0 100 100" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="wcp${id}"><path d="${d}"/></clipPath></defs>${bgGrad}<g clip-path="url(#wcp${id})">${pats[pattern]||''}</g>${syms[symbol]||''}</svg>`;
+  /* Extras */
+  const extSvgs={
+    laurel:`<path d="M22,82 Q14,64 16,44 Q22,52 28,48 Q24,62 22,82Z M16,74 Q8,58 10,42 Q16,48 22,46" fill="#3d7a1a" opacity=".9"/><path d="M78,82 Q86,64 84,44 Q78,52 72,48 Q76,62 78,82Z M84,74 Q92,58 90,42 Q84,48 78,46" fill="#3d7a1a" opacity=".9"/>`,
+    stars3:`<g fill="${borderColor}"><polygon points="36,4 37.5,9 43,9 38.5,12 40,17 36,14 32,17 33.5,12 29,9 34.5,9"/><polygon points="50,2 51.5,7 57,7 52.5,10 54,15 50,12 46,15 47.5,10 43,7 48.5,7"/><polygon points="64,4 65.5,9 71,9 66.5,12 68,17 64,14 60,17 61.5,12 57,9 62.5,9"/></g>`,
+    stars5:`<g fill="${borderColor}"><polygon points="22,6 23,10 27,10 24,12 25,16 22,14 19,16 20,12 17,10 21,10"/><polygon points="34,2 35,6 39,6 36,8 37,12 34,10 31,12 32,8 29,6 33,6"/><polygon points="50,2 51.5,7 57,7 52.5,10 54,15 50,12 46,15 47.5,10 43,7 48.5,7"/><polygon points="66,2 67,6 71,6 68,8 69,12 66,10 63,12 64,8 61,6 65,6"/><polygon points="78,6 79,10 83,10 80,12 81,16 78,14 75,16 76,12 73,10 77,10"/></g>`,
+    band_gold:`<path d="M14,84 Q50,92 86,84 L88,94 Q50,102 12,94Z" fill="#B8860B"/><path d="M14,84 Q50,90 86,84" fill="none" stroke="#FFE566" stroke-width="2" opacity=".8"/>`,
+    band_red:`<path d="M14,84 Q50,92 86,84 L88,94 Q50,102 12,94Z" fill="#990000"/><path d="M14,84 Q50,90 86,84" fill="none" stroke="#FF4444" stroke-width="2" opacity=".8"/>`,
+    band_dark:`<path d="M14,84 Q50,92 86,84 L88,94 Q50,102 12,94Z" fill="#1a1a1a"/><path d="M14,84 Q50,90 86,84" fill="none" stroke="#555" stroke-width="2" opacity=".8"/>`,
+  };
+  const extraSvg=(extras||[]).map(e=>extSvgs[e]||'').join('');
+  const bgFill=bg2?`url(#wbg${id})`:bg;
+  return`<svg viewBox="-10 -10 120 120" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg"><defs>${dfs}</defs>${extraSvg}<path d="${d}" fill="${bgFill}"/><g clip-path="url(#wcp${id})">${pats[pattern]||''}</g>${syms[symbol]||''}<path d="${d}" fill="none" stroke="${efStroke}" stroke-width="${efSw}"/>${efOver}</svg>`;
 }
-const WAPPEN_SHAPES=['shield','round','hexa','diamond','banner','kite','oval','cross_sh'];
-const WAPPEN_PATTERNS=['solid','stripes','stripes_v','cross','diagonal','chevron','dots','halves','quarters','star_c','gradient2','border_inner'];
-const WAPPEN_SYMBOLS=['','star','sword','shield_s','crown','flame','runner','bolt'];
+const WAPPEN_SHAPES=[
+  {v:'shield',l:'Klassisch'},{v:'shield2',l:'Gerundet'},{v:'hexa',l:'Hexagon'},
+  {v:'round',l:'Rund'},{v:'diamond',l:'Raute'},{v:'banner',l:'Banner'},
+  {v:'kite',l:'Drachen'},{v:'oval',l:'Oval'},{v:'cross_sh',l:'Kreuz'}
+];
+const WAPPEN_PATTERNS=[
+  {v:'solid',l:'Uni'},{v:'stripes',l:'H-Streifen'},{v:'stripes_v',l:'V-Streifen'},
+  {v:'cross',l:'Kreuz'},{v:'diagonal',l:'Diagonal'},{v:'chevron',l:'Chevron'},
+  {v:'dots',l:'Punkte'},{v:'halves',l:'Hälften'},{v:'quarters',l:'Viertel'},
+  {v:'check',l:'Karo'},{v:'star_c',l:'Stern'},{v:'gradient2',l:'Verlauf'},
+  {v:'border_inner',l:'Innenrand'}
+];
+const WAPPEN_SYMBOLS=[
+  {v:'',l:'–'},{v:'runner',l:'Läufer'},{v:'horse',l:'Pferd'},{v:'lion',l:'Löwe'},
+  {v:'crown',l:'Krone'},{v:'crossed_swords',l:'Schwerter'},{v:'axe',l:'Axt'},
+  {v:'flame',l:'Flamme'},{v:'eagle',l:'Adler'},{v:'bolt',l:'Blitz'},
+  {v:'paw',l:'Pfote'},{v:'tree',l:'Baum'},{v:'star',l:'Stern'},
+  {v:'sword',l:'Schwert'},{v:'shield_s',l:'Schild'}
+];
+const WAPPEN_EFFECTS=[
+  {v:'standard',l:'Standard'},{v:'gloss',l:'Glanz'},{v:'metallic',l:'Metallisch'},
+  {v:'neon',l:'Neon'},{v:'gold',l:'Gold'},{v:'fire',l:'Feuer'},
+  {v:'ice',l:'Eis'},{v:'electric',l:'Elektrisch'}
+];
+const WAPPEN_EXTRAS=[
+  {v:'laurel',l:'Lorbeer'},{v:'stars3',l:'3 Sterne'},{v:'stars5',l:'5 Sterne'},
+  {v:'band_gold',l:'Gold-Band'},{v:'band_red',l:'Rot-Band'},{v:'band_dark',l:'Dunkel-Band'}
+];
+const WAPPEN_COLORS=[
+  '#660000','#AA0000','#DD1111','#FF4400','#FF6600','#FF8800','#FFAA00',
+  '#003300','#005500','#008800','#00AA44','#00BBAA','#007799','#004466',
+  '#000044','#0000AA','#1155CC','#2277EE','#440099','#7700CC','#AA00AA',
+  '#0a0a0a','#222222','#444444','#777777','#AAAAAA','#DDDDDD','#FFFFFF',
+  '#3B1800','#8B6914','#1a0a3a','#E8FF47','#FF69B4','#00FFCC','#FF0077',
+];
 const WAPPEN_PRESETS=[
-  {shape:'shield',bg:'#0d1a3d',bg2:'#1a2e6e',borderColor:'#4d80e6',pattern:'cross',patternColor:'#4d80e6',symbol:'star'},
-  {shape:'hexa',bg:'#3d0a0a',bg2:'#7a1e1e',borderColor:'#e65020',pattern:'diagonal',patternColor:'#e65020',symbol:'flame'},
-  {shape:'round',bg:'#0d3320',bg2:'#1a5e3a',borderColor:'#3dba72',pattern:'chevron',patternColor:'#3dba72',symbol:'runner'},
-  {shape:'banner',bg:'#3d2200',bg2:'#6e4400',borderColor:'#e6a820',pattern:'halves',patternColor:'#e6a820',symbol:'crown'},
-  {shape:'kite',bg:'#1f0d3d',bg2:'#3d1a70',borderColor:'#8c5fe6',pattern:'dots',patternColor:'#8c5fe6',symbol:'bolt'},
-  {shape:'diamond',bg:'#002a3d',bg2:'#00526e',borderColor:'#3abde6',pattern:'solid',patternColor:'#3abde6',symbol:'sword'},
+  {shape:'shield',bg:'#0d1a3d',bg2:'#1a2e6e',borderColor:'#4d80e6',borderEffect:'standard',pattern:'cross',patternColor:'#4d80e6',symbol:'star',symbolColor:'#fff',extras:[]},
+  {shape:'hexa',bg:'#3d0a0a',bg2:'#7a1e1e',borderColor:'#e65020',borderEffect:'fire',pattern:'diagonal',patternColor:'#e65020',symbol:'flame',symbolColor:'#FFD700',extras:['stars3']},
+  {shape:'shield2',bg:'#0d3320',bg2:'#1a5e3a',borderColor:'#3dba72',borderEffect:'standard',pattern:'chevron',patternColor:'#3dba72',symbol:'runner',symbolColor:'#fff',extras:['laurel']},
+  {shape:'banner',bg:'#3d2200',bg2:'#6e4400',borderColor:'#e6a820',borderEffect:'gold',pattern:'halves',patternColor:'#e6a820',symbol:'crown',symbolColor:'#fff',extras:['band_gold']},
+  {shape:'kite',bg:'#1f0d3d',bg2:'#3d1a70',borderColor:'#8c5fe6',borderEffect:'neon',pattern:'dots',patternColor:'#8c5fe6',symbol:'bolt',symbolColor:'#fff',extras:['stars5']},
+  {shape:'diamond',bg:'#002a3d',bg2:'#00526e',borderColor:'#3abde6',borderEffect:'ice',pattern:'solid',patternColor:'#3abde6',symbol:'eagle',symbolColor:'#fff',extras:[]},
+  {shape:'round',bg:'#1a1a00',bg2:'#3a3a00',borderColor:'#FFD700',borderEffect:'metallic',pattern:'border_inner',patternColor:'#FFD700',symbol:'lion',symbolColor:'#FFD700',extras:['stars3']},
+  {shape:'oval',bg:'#0a1a0a',bg2:'#0a3a0a',borderColor:'#3dba72',borderEffect:'gloss',pattern:'stripes_v',patternColor:'#3dba72',symbol:'tree',symbolColor:'#fff',extras:['laurel']},
 ];
 
 /* ── FRAKTIONS-BESCHREIBUNGEN ── */
@@ -3528,50 +3595,160 @@ function renderSettingsTab(tab){
       // Club Activity Feed
       if(sb){(async()=>{try{const{data}=await sb.from('profiles').select('player_name,points,updated_at,user_team').eq('club_code',userClub.code).order('updated_at',{ascending:false}).limit(8);const feedEl=document.getElementById('clubMemberList');if(!feedEl||!data?.length)return;const feedDiv=document.createElement('div');feedDiv.style.cssText='margin-top:12px;border-top:1px solid var(--border);padding-top:10px';feedDiv.innerHTML='<div style="font-size:.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700;margin-bottom:6px">⚡ Letzte Aktivitäten</div>'+data.map(p=>{const tm=TEAMS.find(t=>t.id===p.user_team);const diff=Math.round((Date.now()-new Date(p.updated_at).getTime())/60000);const t=diff<1?'gerade':diff<60?`vor ${diff} Min.`:diff<1440?`vor ${Math.floor(diff/60)} Std.`:`vor ${Math.floor(diff/1440)} T.`;return`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:.75rem"><span>${tm?tm.icon:'👤'}</span><span style="flex:1">${p.player_name||'?'}</span><span style="color:var(--muted);font-size:.65rem">${t}</span></div>`;}).join('');feedEl.appendChild(feedDiv);}catch(e){}})();}
     } else {
-      let wappenCfg={shape:'shield',borderColor:'#e8ff47',pattern:'solid',patternColor:'#e8ff47',bg:'#09090f',bg2:'#1a1a2e',symbol:''};
-      const shapeOpts=[{v:'shield',l:'Schild'},{v:'round',l:'Rund'},{v:'hexa',l:'Hexa'},{v:'diamond',l:'Raute'},{v:'banner',l:'Banner'},{v:'kite',l:'Drachen'},{v:'oval',l:'Oval'},{v:'cross_sh',l:'Kreuz'}];
-      const patOpts=[{v:'solid',l:'Uni'},{v:'stripes',l:'Streifen'},{v:'stripes_v',l:'Str.V'},{v:'cross',l:'Kreuz'},{v:'diagonal',l:'Diagonal'},{v:'chevron',l:'Chevron'},{v:'dots',l:'Punkte'},{v:'halves',l:'Hälften'},{v:'quarters',l:'Viertel'},{v:'star_c',l:'Stern'},{v:'gradient2',l:'Farbvl.'},{v:'border_inner',l:'Rahmen'}];
-      const symOpts=[{v:'',l:'–'},{v:'star',l:'★'},{v:'sword',l:'⚔'},{v:'shield_s',l:'🛡'},{v:'crown',l:'♛'},{v:'flame',l:'🔥'},{v:'runner',l:'🏃'},{v:'bolt',l:'⚡'}];
-      const scrollRowStyle='display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:8px;scrollbar-width:none;-webkit-overflow-scrolling:touch';
-      body.innerHTML=`<style>.wp-scroll-row::-webkit-scrollbar{display:none}.wp-chip{flex-shrink:0;font-size:.7rem;padding:5px 10px;border-radius:10px;border:2px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;transition:border-color .15s,background .15s;white-space:nowrap}.wp-chip.sel{border-color:var(--primary);background:var(--primary)18;color:var(--primary);font-weight:600}.wp-color-lbl{display:flex;flex-direction:column;gap:3px;font-size:.68rem;color:var(--muted);flex:1;min-width:0}.wp-color-lbl input[type=color]{width:100%;height:28px;border:none;background:none;cursor:pointer;border-radius:6px;padding:0}</style>
-<div style="font-size:.82rem;font-weight:700;margin-bottom:10px;letter-spacing:.3px">🏰 Club erstellen</div>
-<div style="margin-bottom:10px"><input type="text" id="clubNameInput" class="modal-input" placeholder="Clubname…" maxlength="20"></div>
-<div style="font-size:.68rem;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.8px">Vorlagen</div>
-<div class="wp-scroll-row" id="presetRow" style="${scrollRowStyle}">${WAPPEN_PRESETS.map((p,i)=>`<div class="wp-preset-btn" data-i="${i}" style="flex-shrink:0;cursor:pointer;border-radius:10px;border:2px solid var(--border);padding:3px;transition:border-color .15s">${wappenSVG(p,44)}</div>`).join('')}</div>
-<div style="display:flex;justify-content:center;margin:8px 0 10px"><div id="wappenPreview" style="filter:drop-shadow(0 4px 16px rgba(0,0,0,.5))"></div></div>
-<div style="font-size:.68rem;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.8px">Form</div>
-<div class="wp-scroll-row" id="shapeRow" style="${scrollRowStyle}">${shapeOpts.map(s=>`<button class="wp-chip wp-shape-btn${s.v==='shield'?' sel':''}" data-v="${s.v}">${s.l}</button>`).join('')}</div>
-<div style="font-size:.68rem;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.8px">Muster</div>
-<div class="wp-scroll-row" id="patRow" style="${scrollRowStyle}">${patOpts.map(p=>`<button class="wp-chip wp-pat-btn${p.v==='solid'?' sel':''}" data-v="${p.v}">${p.l}</button>`).join('')}</div>
-<div style="font-size:.68rem;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.8px">Symbol</div>
-<div class="wp-scroll-row" id="symRow" style="${scrollRowStyle}">${symOpts.map(s=>`<button class="wp-chip wp-sym-btn${s.v===''?' sel':''}" data-v="${s.v}" style="font-size:.8rem">${s.l}</button>`).join('')}</div>
-<div style="display:flex;gap:8px;margin-bottom:14px">
-  <label class="wp-color-lbl">Rahmen<input type="color" id="wpBorderColor" value="#e8ff47"></label>
-  <label class="wp-color-lbl">Muster<input type="color" id="wpPatColor" value="#e8ff47"></label>
-  <label class="wp-color-lbl">Hintergrund<input type="color" id="wpBgColor" value="#09090f"></label>
-  <label class="wp-color-lbl">BG2<input type="color" id="wpBg2Color" value="#1a1a2e"></label>
-</div>
-<button class="btn btn-p" id="createClubBtn" style="width:100%;margin-bottom:16px"><i class="fas fa-plus"></i> Club gründen</button>
-<div style="height:1px;background:var(--border);margin-bottom:16px"></div>
-<div style="font-size:.82rem;font-weight:600;margin-bottom:8px">🔑 Club beitreten</div>
+      let wCfg={shape:'shield',borderColor:'#e8ff47',borderEffect:'standard',pattern:'solid',patternColor:'#e8ff47',bg:'#0d1a3d',bg2:'#1a2e6e',symbol:'runner',symbolColor:'#fff',extras:[]};
+      body.innerHTML=`<style>
+.wb-sec{margin-bottom:14px}
+.wb-lbl{font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.wb-lbl span{background:var(--primary);color:#000;border-radius:50%;width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;font-size:.55rem;font-weight:800;flex-shrink:0}
+.wb-row{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.wb-row::-webkit-scrollbar{display:none}
+.wb-thumb{flex-shrink:0;border-radius:8px;border:2.5px solid var(--border);cursor:pointer;background:var(--card);padding:2px;transition:border-color .15s,transform .1s;touch-action:manipulation}
+.wb-thumb:active{transform:scale(.93)}
+.wb-thumb.sel{border-color:var(--primary);box-shadow:0 0 10px rgba(232,255,71,.35)}
+.wb-sym-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.wb-color-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.wb-swatch{width:100%;aspect-ratio:1;border-radius:6px;cursor:pointer;border:2.5px solid transparent;transition:border-color .12s,transform .1s;touch-action:manipulation}
+.wb-swatch:active{transform:scale(.88)}
+.wb-swatch.sel{border-color:#fff;box-shadow:0 0 6px rgba(255,255,255,.6)}
+.wb-chip-row{display:flex;gap:5px;flex-wrap:wrap}
+.wb-chip{font-size:.68rem;padding:5px 10px;border-radius:8px;border:2px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;transition:all .14s;white-space:nowrap;touch-action:manipulation}
+.wb-chip:active{transform:scale(.92)}
+.wb-chip.sel{border-color:var(--primary);background:rgba(232,255,71,.12);color:var(--primary);font-weight:700}
+.wb-extra{font-size:.66rem;padding:5px 10px;border-radius:8px;border:2px solid var(--border);background:var(--card);color:var(--muted);cursor:pointer;transition:all .14s;white-space:nowrap;touch-action:manipulation}
+.wb-extra.on{border-color:var(--primary);background:rgba(232,255,71,.1);color:var(--primary);font-weight:600}
+.wb-preview-wrap{display:flex;justify-content:center;margin:4px 0 16px;position:relative}
+.wb-name-overlay{position:absolute;bottom:-2px;left:50%;transform:translateX(-50%);font-family:'Bebas Neue',sans-serif;font-size:.75rem;letter-spacing:2px;color:rgba(255,255,255,.7);white-space:nowrap;pointer-events:none;text-shadow:0 1px 4px #000}
+</style>
+<div style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:var(--primary);margin-bottom:12px;text-align:center">🏰 WAPPEN BAUKASTEN</div>
+<div class="wb-preview-wrap"><div id="wbPrev" style="filter:drop-shadow(0 6px 24px rgba(0,0,0,.7))"></div><div class="wb-name-overlay" id="wbNameOverlay"></div></div>
+<input type="text" id="clubNameInput" class="modal-input" placeholder="Club-Name…" maxlength="20" style="margin-bottom:14px;text-align:center;font-size:.88rem">
+<div class="wb-sec"><div class="wb-lbl"><span>V</span>Vorlagen</div><div class="wb-row" id="wbPresets"></div></div>
+<div class="wb-sec"><div class="wb-lbl"><span>1</span>Form</div><div class="wb-row" id="wbShapes"></div></div>
+<div class="wb-sec"><div class="wb-lbl"><span>2</span>Muster</div><div class="wb-row" id="wbPats"></div></div>
+<div class="wb-sec"><div class="wb-lbl"><span>3</span>Symbol</div><div class="wb-sym-grid" id="wbSyms"></div></div>
+<div class="wb-sec"><div class="wb-lbl"><span>4</span>Hintergrund-Farbe</div><div class="wb-color-grid" id="wbBgColors"></div></div>
+<div class="wb-sec"><div class="wb-lbl"><span>5</span>Rahmen-Farbe</div><div class="wb-color-grid" id="wbBrColors"></div></div>
+<div class="wb-sec"><div class="wb-lbl"><span>6</span>Rahmen-Effekt</div><div class="wb-chip-row" id="wbEffects"></div></div>
+<div class="wb-sec"><div class="wb-lbl"><span>7</span>Zusätze</div><div style="display:flex;gap:5px;flex-wrap:wrap" id="wbExtras"></div></div>
+<button class="btn btn-p" id="createClubBtn" style="width:100%;margin-bottom:16px;margin-top:4px"><i class="fas fa-shield-alt"></i> Club gründen</button>
+<div style="height:1px;background:var(--border);margin-bottom:14px"></div>
+<div style="font-size:.8rem;font-weight:600;margin-bottom:8px">🔑 Club beitreten</div>
 <div style="display:flex;gap:8px"><input type="text" id="clubJoinInput" class="modal-input" placeholder="6-stelliger Code…" maxlength="6" style="flex:1;text-transform:uppercase"><button class="btn btn-p" id="joinClubBtn"><i class="fas fa-arrow-right"></i></button></div>`;
-      const renderWappen=()=>{const el=document.getElementById('wappenPreview');if(el)el.innerHTML=wappenSVG(wappenCfg,96);};
-      const syncChips=()=>{
-        body.querySelectorAll('.wp-shape-btn').forEach(b=>b.classList.toggle('sel',b.dataset.v===wappenCfg.shape));
-        body.querySelectorAll('.wp-pat-btn').forEach(b=>b.classList.toggle('sel',b.dataset.v===wappenCfg.pattern));
-        body.querySelectorAll('.wp-sym-btn').forEach(b=>b.classList.toggle('sel',b.dataset.v===wappenCfg.symbol));
+
+      const rPrev=()=>{
+        const el=document.getElementById('wbPrev');
+        if(el)el.innerHTML=wappenSVG(wCfg,110);
+        const ov=document.getElementById('wbNameOverlay');
+        if(ov){const n=(document.getElementById('clubNameInput')?.value||'').trim();ov.textContent=n||'';}
       };
-      renderWappen();
-      body.querySelectorAll('.wp-shape-btn').forEach(btn=>{btn.addEventListener('click',()=>{wappenCfg.shape=btn.dataset.v;syncChips();renderWappen();});});
-      body.querySelectorAll('.wp-pat-btn').forEach(btn=>{btn.addEventListener('click',()=>{wappenCfg.pattern=btn.dataset.v;syncChips();renderWappen();});});
-      body.querySelectorAll('.wp-sym-btn').forEach(btn=>{btn.addEventListener('click',()=>{wappenCfg.symbol=btn.dataset.v;syncChips();renderWappen();});});
-      document.getElementById('wpBorderColor')?.addEventListener('input',e=>{wappenCfg.borderColor=e.target.value;renderWappen();});
-      document.getElementById('wpPatColor')?.addEventListener('input',e=>{wappenCfg.patternColor=e.target.value;renderWappen();});
-      document.getElementById('wpBgColor')?.addEventListener('input',e=>{wappenCfg.bg=e.target.value;renderWappen();});
-      document.getElementById('wpBg2Color')?.addEventListener('input',e=>{wappenCfg.bg2=e.target.value;renderWappen();});
-      body.querySelectorAll('.wp-preset-btn').forEach(btn=>{btn.addEventListener('click',()=>{const p=WAPPEN_PRESETS[+btn.dataset.i];Object.assign(wappenCfg,p);document.getElementById('wpBorderColor').value=p.borderColor;document.getElementById('wpPatColor').value=p.patternColor;document.getElementById('wpBgColor').value=p.bg;document.getElementById('wpBg2Color').value=p.bg2;syncChips();renderWappen();body.querySelectorAll('.wp-preset-btn').forEach(b=>b.style.borderColor='var(--border)');btn.style.borderColor='var(--primary)';});});
-      $('createClubBtn')?.addEventListener('click',()=>{const n=$('clubNameInput').value.trim();if(n.length<2){toast('Mindestens 2 Zeichen');return;}const code=Math.random().toString(36).toUpperCase().substring(2,8);userClub={code,name:n,wappen:{...wappenCfg},foundedAt:Date.now()};const allClubs=JSON.parse(localStorage.getItem('rc_clubs_db')||'{}');allClubs[code]={...userClub,founder:playerName};localStorage.setItem('rc_clubs_db',JSON.stringify(allClubs));saveProfile();renderSettingsTab('club');toast('🏰 Club gegründet: '+n);});
-      $('joinClubBtn')?.addEventListener('click',()=>{const code=($('clubJoinInput').value||'').trim().toUpperCase();if(code.length!==6){toast('Ungültiger Code');return;}const allClubs=JSON.parse(localStorage.getItem('rc_clubs_db')||'{}');if(allClubs[code]){userClub={code,name:allClubs[code].name,wappen:allClubs[code].wappen||{},foundedAt:allClubs[code].foundedAt};saveProfile();renderSettingsTab('club');toast('🏰 Beigetreten: '+userClub.name);}else toast('❌ Club-Code nicht gefunden');});
+      const selThumb=(row,v)=>{document.querySelectorAll('#'+row+' .wb-thumb').forEach(b=>b.classList.toggle('sel',b.dataset.v===v));};
+      const selSwatch=(grid,v)=>{document.querySelectorAll('#'+grid+' .wb-swatch').forEach(b=>b.classList.toggle('sel',b.dataset.v===v));};
+      const selChip=(row,v)=>{document.querySelectorAll('#'+row+' .wb-chip').forEach(b=>b.classList.toggle('sel',b.dataset.v===v));};
+
+      /* Build preset row */
+      const presRow=document.getElementById('wbPresets');
+      WAPPEN_PRESETS.forEach((p,i)=>{
+        const d=document.createElement('div');
+        d.className='wb-thumb';d.dataset.v=String(i);
+        d.innerHTML=wappenSVG(p,48);
+        d.addEventListener('click',()=>{Object.assign(wCfg,JSON.parse(JSON.stringify(p)));selThumb('wbPresets',String(i));selThumb('wbShapes',wCfg.shape);selThumb('wbPats',wCfg.pattern);selThumb('wbSyms',wCfg.symbol);selSwatch('wbBgColors',wCfg.bg);selSwatch('wbBrColors',wCfg.borderColor);selChip('wbEffects',wCfg.borderEffect);document.querySelectorAll('#wbExtras .wb-extra').forEach(b=>b.classList.toggle('on',(wCfg.extras||[]).includes(b.dataset.v)));rPrev();});
+        presRow.appendChild(d);
+      });
+
+      /* Build shape row */
+      const shpRow=document.getElementById('wbShapes');
+      WAPPEN_SHAPES.forEach(s=>{
+        const d=document.createElement('div');
+        d.className='wb-thumb'+(s.v===wCfg.shape?' sel':'');d.dataset.v=s.v;
+        d.innerHTML=wappenSVG({shape:s.v,bg:'#1a1a2e',bg2:'#0a0a1a',borderColor:'#4d80e6',borderEffect:'standard',pattern:'solid',patternColor:'#4d80e6',symbol:'',extras:[]},42);
+        d.title=s.l;
+        d.addEventListener('click',()=>{wCfg.shape=s.v;selThumb('wbShapes',s.v);rPrev();});
+        shpRow.appendChild(d);
+      });
+
+      /* Build pattern row */
+      const patRow=document.getElementById('wbPats');
+      WAPPEN_PATTERNS.forEach(p=>{
+        const d=document.createElement('div');
+        d.className='wb-thumb'+(p.v===wCfg.pattern?' sel':'');d.dataset.v=p.v;
+        d.innerHTML=wappenSVG({shape:wCfg.shape,bg:'#0a0a14',bg2:'',borderColor:'#555',borderEffect:'standard',pattern:p.v,patternColor:'#4d80e6',symbol:'',extras:[]},42);
+        d.title=p.l;
+        d.addEventListener('click',()=>{wCfg.pattern=p.v;selThumb('wbPats',p.v);rPrev();});
+        patRow.appendChild(d);
+      });
+
+      /* Build symbol grid */
+      const symGrid=document.getElementById('wbSyms');
+      WAPPEN_SYMBOLS.forEach(s=>{
+        const d=document.createElement('div');
+        d.className='wb-thumb'+(s.v===wCfg.symbol?' sel':'');d.dataset.v=s.v;d.style.cssText='border-radius:8px;border:2.5px solid var(--border);cursor:pointer;background:var(--card);padding:2px;transition:border-color .15s,transform .1s;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:2px';
+        d.innerHTML=wappenSVG({shape:'shield',bg:'#0d1a2e',bg2:'',borderColor:'#334',borderEffect:'standard',pattern:'solid',patternColor:'#555',symbol:s.v,symbolColor:'#e8ff47',extras:[]},44)+`<div style="font-size:.48rem;color:var(--muted);text-align:center;line-height:1">${s.l}</div>`;
+        d.addEventListener('click',()=>{wCfg.symbol=s.v;document.querySelectorAll('#wbSyms .wb-thumb').forEach(b=>b.classList.toggle('sel',b.dataset.v===s.v));rPrev();});
+        symGrid.appendChild(d);
+      });
+
+      /* Build color grids */
+      const mkColorGrid=(elId,onPick,selVal)=>{
+        const el=document.getElementById(elId);
+        WAPPEN_COLORS.forEach(c=>{
+          const d=document.createElement('div');
+          d.className='wb-swatch'+(c===selVal?' sel':'');
+          d.style.background=c;d.dataset.v=c;
+          d.addEventListener('click',()=>{onPick(c);selSwatch(elId,c);rPrev();});
+          el.appendChild(d);
+        });
+      };
+      mkColorGrid('wbBgColors',c=>{wCfg.bg=c;wCfg.bg2='';},wCfg.bg);
+      mkColorGrid('wbBrColors',c=>{wCfg.borderColor=c;},wCfg.borderColor);
+
+      /* Build effect chips */
+      const efRow=document.getElementById('wbEffects');
+      WAPPEN_EFFECTS.forEach(e=>{
+        const b=document.createElement('button');
+        b.className='wb-chip'+(e.v===wCfg.borderEffect?' sel':'');b.dataset.v=e.v;b.textContent=e.l;
+        b.addEventListener('click',()=>{wCfg.borderEffect=e.v;selChip('wbEffects',e.v);rPrev();});
+        efRow.appendChild(b);
+      });
+
+      /* Build extras */
+      const extRow=document.getElementById('wbExtras');
+      WAPPEN_EXTRAS.forEach(e=>{
+        const b=document.createElement('button');
+        b.className='wb-extra';b.dataset.v=e.v;b.textContent=e.l;
+        b.addEventListener('click',()=>{
+          wCfg.extras=wCfg.extras||[];
+          const i=wCfg.extras.indexOf(e.v);
+          if(i>=0)wCfg.extras.splice(i,1);else wCfg.extras.push(e.v);
+          b.classList.toggle('on',wCfg.extras.includes(e.v));
+          rPrev();
+        });
+        extRow.appendChild(b);
+      });
+
+      /* Name live-update */
+      document.getElementById('clubNameInput')?.addEventListener('input',()=>rPrev());
+
+      /* Initial render */
+      rPrev();
+
+      /* Create/Join */
+      $('createClubBtn')?.addEventListener('click',()=>{
+        const n=($('clubNameInput')?.value||'').trim();
+        if(n.length<2){toast('Mindestens 2 Zeichen');return;}
+        const code=Math.random().toString(36).toUpperCase().substring(2,8);
+        userClub={code,name:n,wappen:{...wCfg,extras:[...(wCfg.extras||[])]},foundedAt:Date.now()};
+        const allClubs=JSON.parse(localStorage.getItem('rc_clubs_db')||'{}');
+        allClubs[code]={...userClub,founder:playerName};
+        localStorage.setItem('rc_clubs_db',JSON.stringify(allClubs));
+        saveProfile();renderSettingsTab('club');toast('🏰 Club gegründet: '+n);
+      });
+      $('joinClubBtn')?.addEventListener('click',()=>{
+        const code=($('clubJoinInput')?.value||'').trim().toUpperCase();
+        if(code.length!==6){toast('Ungültiger Code');return;}
+        const allClubs=JSON.parse(localStorage.getItem('rc_clubs_db')||'{}');
+        if(allClubs[code]){userClub={code,name:allClubs[code].name,wappen:allClubs[code].wappen||{},foundedAt:allClubs[code].foundedAt};saveProfile();renderSettingsTab('club');toast('🏰 Beigetreten: '+userClub.name);}
+        else toast('❌ Club-Code nicht gefunden');
+      });
     }
   } else if(tab==='spiel'){
     body.innerHTML=`<div style="display:flex;flex-direction:column;gap:10px"><div style="font-size:.8rem;color:var(--muted);background:var(--card);padding:12px;border-radius:12px;border:1px solid var(--border)"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>⚡ Energie</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${energy}/${CFG.ENERGY_MAX}</span></div><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>🏆 Punkte</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${points}</span></div><div style="display:flex;justify-content:space-between"><span>📐 Gebiete</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${territories.filter(t=>t.owner===userId).length}</span></div></div><button class="btn btn-p" id="setPulsBtn"><i class="fas fa-heartbeat"></i> Pulsmesser koppeln</button><div id="setVersionTap" style="text-align:center;color:var(--muted);font-size:.6rem;margin-top:8px;cursor:pointer;-webkit-user-select:none;user-select:none">v2.0.0 · Runners Conquer</div></div>`;

@@ -1,1258 +1,752 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RunConquer – Promo</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
+<meta charset="UTF-8">
+<script src="gsap.min.js"></script>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  width: 1080px;
+  height: 1920px;
+  overflow: hidden;
+  background: #09090F;
+  font-family: 'Poppins', sans-serif;
+}
 
-  body {
-    background: #000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    font-family: 'Poppins', sans-serif;
-    overflow: hidden;
-  }
+/* ── ROOT ── */
+#root {
+  position: relative;
+  width: 1080px;
+  height: 1920px;
+}
 
-  #stage {
-    position: relative;
-    width: 960px;
-    aspect-ratio: 16 / 9;
-    background: #080808;
-    overflow: hidden;
-    max-width: 100vw;
-  }
+/* ── SCENES ── */
+.scene {
+  position: absolute;
+  top: 0; left: 0;
+  width: 1080px;
+  height: 1920px;
+  overflow: hidden;
+}
+/* Scene 1: visible by default */
+#s1 { background: #09090F; z-index: 1; }
+/* Scenes 2-6: hidden, revealed by GSAP */
+#s2 { background: #09090F; z-index: 2; opacity: 0; }
+#s3 { background: #09090F; z-index: 3; opacity: 0; }
+#s4 { background: #0D0D18; z-index: 4; opacity: 0; }
+#s5 { background: #09090F; z-index: 5; opacity: 0; }
+#s6 { background: #09090F; z-index: 6; opacity: 0; }
 
-  .scene {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    pointer-events: none;
-  }
-  .scene.active { opacity: 1; pointer-events: auto; }
+/* ── SHARED LAYOUT ── */
+.scene-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 140px 80px;
+  gap: 24px;
+  box-sizing: border-box;
+}
 
-  /* PROGRESS BAR */
-  #progress-bar-wrap {
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    height: 4px;
-    background: rgba(255,255,255,0.12);
-    z-index: 100;
-  }
-  #progress-bar {
-    height: 100%;
-    background: #e8ff47;
-    width: 0%;
-    box-shadow: 0 0 8px #e8ff47;
-  }
+/* ══════════════════════
+   SCENE 1 — HOOK
+══════════════════════ */
+.s1-glow {
+  position: absolute;
+  width: 900px; height: 900px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(232,255,71,.08) 0%, transparent 70%);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.s1-ghost {
+  position: absolute;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 420px;
+  color: rgba(232,255,71,0.04);
+  /* decorative only — intentionally below contrast threshold */
+  letter-spacing: -8px;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+.s1-label {
+  font-size: 22px;
+  letter-spacing: 6px;
+  color: #9292AA;
+  text-transform: uppercase;
+  text-align: center;
+}
+.s1-headline {
+  font-family: 'Bebas Neue', sans-serif;
+  text-align: center;
+  line-height: 0.88;
+}
+.s1-headline .l1 {
+  display: block;
+  font-size: 180px;
+  color: #F0F0F8;
+  letter-spacing: 6px;
+}
+.s1-headline .l2 {
+  display: block;
+  font-size: 210px;
+  color: #E8FF47;
+  letter-spacing: 4px;
+  text-shadow: 0 0 60px rgba(232,255,71,.5), 0 0 120px rgba(232,255,71,.25);
+}
+.s1-sub {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 80px;
+  color: #F0F0F8;
+  text-align: center;
+  letter-spacing: 8px;
+}
+.s1-ping-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 40px;
+  height: 100px;
+  position: relative;
+}
+.s1-dot {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: #E8FF47;
+  position: absolute;
+  box-shadow: 0 0 20px rgba(232,255,71,.8);
+}
+.s1-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid rgba(232,255,71,.5);
+  width: 18px; height: 18px;
+}
 
-  /* ══════════════ SCENE 1 — HOOK ══════════════ */
-  #s1 { background: #080808; }
+/* ══════════════════════
+   SCENE 2 — GPS TRACK
+══════════════════════ */
+.s2-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(232,255,71,.4) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(232,255,71,.4) 1px, transparent 1px);
+  background-size: 60px 60px;
+  opacity: 0.05;
+  pointer-events: none;
+}
+.s2-label {
+  font-size: 22px;
+  letter-spacing: 5px;
+  color: #9292AA;
+  text-transform: uppercase;
+  text-align: center;
+}
+.s2-map-wrap {
+  display: flex;
+  justify-content: center;
+}
+#s2-svg {
+  width: 920px;
+  height: 580px;
+  border-radius: 20px;
+  overflow: hidden;
+}
+.s2-hud {
+  display: flex;
+  justify-content: center;
+  gap: 60px;
+}
+.s2-hud-item { text-align: center; }
+.s2-hud-val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 80px;
+  color: #E8FF47;
+  line-height: 1;
+}
+.s2-hud-lbl {
+  font-size: 20px;
+  color: #9292AA;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+.s2-heading {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 130px;
+  color: #F0F0F8;
+  text-align: center;
+  letter-spacing: 6px;
+  line-height: 1;
+}
+.s2-heading em {
+  font-style: normal;
+  color: #E8FF47;
+  text-shadow: 0 0 40px rgba(232,255,71,.4);
+}
 
-  .speed-lines {
-    position: absolute;
-    inset: 0;
-    overflow: hidden;
-    pointer-events: none;
-  }
-  .speed-line {
-    position: absolute;
-    top: 50%; left: 50%;
-    width: 2px;
-    height: 0;
-    transform-origin: 1px 0px;
-    background: linear-gradient(to bottom, rgba(232,255,71,0.8), transparent);
-    opacity: 0;
-  }
+/* ══════════════════════
+   SCENE 3 — CONQUEST
+══════════════════════ */
+.s3-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  background: #FF4D6D;
+  color: #fff;
+  font-weight: 700;
+  font-size: 30px;
+  letter-spacing: 2px;
+  padding: 18px 40px;
+  border-radius: 50px;
+  align-self: center;
+}
+.s3-grid-wrap {
+  display: flex;
+  justify-content: center;
+}
+.s3-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 160px);
+  grid-template-rows: repeat(4, 100px);
+  gap: 8px;
+}
+.s3-cell {
+  border-radius: 14px;
+  background: #1A1A26;
+}
+.s3-cell.owned { background: rgba(232,255,71,.35); }
+.s3-cell.new {
+  background: #E8FF47;
+  box-shadow: 0 0 28px rgba(232,255,71,.7);
+}
+.s3-pts {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 180px;
+  color: #E8FF47;
+  text-align: center;
+  line-height: 0.85;
+  text-shadow: 0 0 80px rgba(232,255,71,.45);
+}
+.s3-pts-lbl {
+  font-size: 30px;
+  letter-spacing: 5px;
+  color: #9292AA;
+  text-align: center;
+  text-transform: uppercase;
+}
+.s3-sub {
+  font-size: 26px;
+  color: #F0F0F8;
+  text-align: center;
+  letter-spacing: 2px;
+  opacity: 0.55;
+}
 
-  #s1-title {
-    position: relative;
-    z-index: 10;
-    font-family: 'Bebas Neue', cursive;
-    font-size: 96px;
-    letter-spacing: 14px;
-    color: #ffffff;
-    text-shadow: 0 0 40px rgba(232,255,71,0.8), 0 0 80px rgba(232,255,71,0.4);
-    display: flex;
-    gap: 4px;
-    align-items: center;
-    justify-content: center;
-    line-height: 1;
-  }
-  #s1-title .letter {
-    display: inline-block;
-    opacity: 0;
-  }
-  #s1-title .gap { width: 28px; }
+/* ══════════════════════
+   SCENE 4 — STATS
+══════════════════════ */
+.s4-intro {
+  font-size: 24px;
+  letter-spacing: 5px;
+  color: #9292AA;
+  text-transform: uppercase;
+  text-align: center;
+}
+.s4-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.s4-card {
+  background: #1A1A26;
+  border-radius: 24px;
+  padding: 44px 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 4px solid #E8FF47;
+}
+.s4-card-lbl {
+  font-size: 26px;
+  letter-spacing: 4px;
+  color: #9292AA;
+  text-transform: uppercase;
+}
+.s4-card-val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 130px;
+  color: #E8FF47;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
 
-  #s1-tagline {
-    position: relative;
-    z-index: 10;
-    margin-top: 20px;
-    font-family: 'Bebas Neue', cursive;
-    font-size: 26px;
-    letter-spacing: 10px;
-    color: #e8ff47;
-    opacity: 0;
-    text-shadow: 0 0 20px rgba(232,255,71,0.9);
-  }
+/* ══════════════════════
+   SCENE 5 — LEADERBOARD
+══════════════════════ */
+.s5-lbl {
+  font-size: 22px;
+  letter-spacing: 5px;
+  color: #9292AA;
+  text-transform: uppercase;
+  text-align: center;
+}
+.s5-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 110px;
+  color: #E8FF47;
+  text-align: center;
+  letter-spacing: 4px;
+  line-height: 1;
+}
+.s5-sub {
+  font-size: 28px;
+  letter-spacing: 3px;
+  color: #F0F0F8;
+  text-align: center;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+.s5-rows { display: flex; flex-direction: column; gap: 16px; }
+.s5-row {
+  background: #1A1A26;
+  border-radius: 20px;
+  padding: 30px 40px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.s5-row.you {
+  background: rgba(232,255,71,.1);
+  border: 2px solid #E8FF47;
+}
+.s5-rank {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 60px;
+  color: #9292AA;
+  width: 54px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.s5-row.you .s5-rank { color: #E8FF47; }
+.s5-player { flex: 1; }
+.s5-name {
+  font-weight: 600;
+  font-size: 30px;
+  color: #F0F0F8;
+}
+.s5-row.you .s5-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 52px;
+  letter-spacing: 3px;
+  color: #E8FF47;
+}
+.s5-meta { font-size: 20px; color: #9292AA; }
+.s5-pts {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 56px;
+  color: #E8FF47;
+  font-variant-numeric: tabular-nums;
+}
+.s5-row.you .s5-pts {
+  font-size: 36px;
+  color: #9292AA;
+}
 
-  #s1-flash {
-    position: absolute;
-    inset: 0;
-    background: #e8ff47;
-    opacity: 0;
-    z-index: 50;
-    pointer-events: none;
-  }
-
-  /* ══════════════ SCENE 2 — CITY RUNNER ══════════════ */
-  #s2 { background: #060d1a; }
-
-  .city-sky {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(180deg, #060d1a 0%, #0a1628 60%, #0d1f3c 100%);
-  }
-
-  .buildings {
-    position: absolute;
-    bottom: 28%; left: 0; right: 0;
-    display: flex;
-    align-items: flex-end;
-    padding: 0;
-    gap: 2px;
-    overflow: hidden;
-  }
-  .bld {
-    background: #0e2244;
-    border-top: 1px solid #1a3360;
-    flex-shrink: 0;
-    position: relative;
-  }
-  .bld::after {
-    content: '';
-    position: absolute;
-    inset: 6px;
-    background:
-      repeating-linear-gradient(0deg, transparent 0px, transparent 8px, rgba(100,160,255,0.06) 8px, rgba(100,160,255,0.06) 9px),
-      repeating-linear-gradient(90deg, transparent 0px, transparent 12px, rgba(100,160,255,0.04) 12px, rgba(100,160,255,0.04) 13px);
-  }
-
-  .ground-strip {
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    height: 28%;
-    background: linear-gradient(180deg, #081020 0%, #060e1a 100%);
-    border-top: 2px solid #1a3366;
-  }
-  .road-line {
-    position: absolute;
-    bottom: 50%;
-    left: 0; right: 0;
-    height: 2px;
-    background: repeating-linear-gradient(90deg,
-      rgba(232,255,71,0.5) 0px, rgba(232,255,71,0.5) 30px,
-      transparent 30px, transparent 60px);
-  }
-
-  .gps-trail {
-    position: absolute;
-    bottom: 22%;
-    left: 0;
-    height: 3px;
-    width: 0;
-    background: linear-gradient(90deg, transparent, #e8ff47);
-    box-shadow: 0 0 12px #e8ff47, 0 0 24px rgba(232,255,71,0.5);
-  }
-
-  .runner-s2 {
-    position: absolute;
-    bottom: 22%;
-    left: 20%;
-    width: 42px;
-    height: 70px;
-    z-index: 20;
-  }
-
-  #s2-text {
-    position: absolute;
-    top: 20%;
-    left: 0; right: 0;
-    text-align: center;
-    z-index: 30;
-    opacity: 0;
-  }
-  #s2-text h2 {
-    font-family: 'Bebas Neue', cursive;
-    font-size: 52px;
-    color: #ffffff;
-    letter-spacing: 6px;
-    text-shadow: 0 2px 20px rgba(0,0,0,0.9);
-  }
-  #s2-text p {
-    font-size: 15px;
-    color: rgba(255,255,255,0.65);
-    letter-spacing: 4px;
-    text-transform: uppercase;
-    margin-top: 6px;
-  }
-
-  /* ══════════════ SCENE 3 — TERRITORY MAP ══════════════ */
-  #s3 { background: #06100a; }
-
-  .map-grid {
-    position: absolute;
-    inset: 0;
-    background:
-      linear-gradient(rgba(232,255,71,0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(232,255,71,0.04) 1px, transparent 1px);
-    background-size: 40px 40px;
-  }
-
-  .hex-grid {
-    position: absolute;
-    inset: 0;
-  }
-
-  .hex {
-    position: absolute;
-    opacity: 0;
-    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-    border-radius: 2px;
-  }
-
-  #s3-overlay {
-    position: absolute;
-    bottom: 10%;
-    left: 0; right: 0;
-    text-align: center;
-    z-index: 20;
-    opacity: 0;
-  }
-  #s3-overlay h2 {
-    font-family: 'Bebas Neue', cursive;
-    font-size: 56px;
-    color: #e8ff47;
-    letter-spacing: 8px;
-    text-shadow: 0 0 30px rgba(232,255,71,0.8);
-  }
-
-  #s3-points {
-    position: absolute;
-    top: 42%; left: 50%;
-    transform: translate(-50%, -50%);
-    font-family: 'Bebas Neue', cursive;
-    font-size: 76px;
-    color: #e8ff47;
-    letter-spacing: 4px;
-    text-shadow: 0 0 40px rgba(232,255,71,1), 0 0 80px rgba(232,255,71,0.5);
-    opacity: 0;
-    z-index: 30;
-    white-space: nowrap;
-    pointer-events: none;
-  }
-
-  /* ══════════════ SCENE 4 — FOREST + LANDMARK ══════════════ */
-  #s4 { background: #030f06; }
-
-  .forest-bg {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(180deg, #030f06 0%, #041508 50%, #060e04 100%);
-  }
-
-  .trees {
-    position: absolute;
-    bottom: 24%;
-    left: 0; right: 0;
-    height: 45%;
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-around;
-  }
-
-  .tree {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    flex-shrink: 0;
-  }
-  .tree-crown {
-    width: 0; height: 0;
-    border-style: solid;
-  }
-  .tree-trunk {
-    background: #1a0d05;
-    border-radius: 2px;
-  }
-
-  .ground-s4 {
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    height: 26%;
-    background: linear-gradient(180deg, #041508 0%, #030c05 100%);
-    border-top: 2px solid #0d3012;
-  }
-
-  .gps-trail-s4 {
-    position: absolute;
-    bottom: 21%;
-    left: 0;
-    height: 3px;
-    width: 0;
-    background: linear-gradient(90deg, transparent, #4eff80);
-    box-shadow: 0 0 12px #4eff80, 0 0 24px rgba(78,255,128,0.4);
-  }
-
-  .runner-s4 {
-    position: absolute;
-    bottom: 21%;
-    left: 18%;
-    width: 42px;
-    height: 70px;
-    z-index: 20;
-  }
-
-  .landmark-pin {
-    position: absolute;
-    top: 28%; right: 22%;
-    opacity: 0;
-    z-index: 30;
-    text-align: center;
-  }
-  .landmark-star {
-    font-size: 48px;
-    display: block;
-    animation: starPulse 0.9s ease-in-out infinite;
-  }
-  @keyframes starPulse {
-    0%, 100% { transform: scale(1); filter: drop-shadow(0 0 14px #ffd700) drop-shadow(0 0 28px rgba(255,215,0,0.6)); }
-    50% { transform: scale(1.15); filter: drop-shadow(0 0 24px #ffd700) drop-shadow(0 0 50px rgba(255,215,0,0.9)); }
-  }
-  .landmark-text {
-    margin-top: 8px;
-    font-family: 'Bebas Neue', cursive;
-    font-size: 20px;
-    color: #ffd700;
-    letter-spacing: 2px;
-    text-shadow: 0 0 20px rgba(255,215,0,0.9);
-    white-space: nowrap;
-    background: rgba(0,0,0,0.6);
-    padding: 4px 10px;
-    border-radius: 4px;
-  }
-
-  #s4-text {
-    position: absolute;
-    top: 10%;
-    left: 0; right: 0;
-    text-align: center;
-    z-index: 30;
-    opacity: 0;
-  }
-  #s4-text h2 {
-    font-family: 'Bebas Neue', cursive;
-    font-size: 52px;
-    color: #ffffff;
-    letter-spacing: 6px;
-    text-shadow: 0 2px 30px rgba(0,0,0,0.9);
-  }
-
-  /* ══════════════ SCENE 5 — FACTIONS ══════════════ */
-  #s5 { background: #080808; }
-
-  .faction-grid {
-    position: absolute;
-    inset: 0;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
-    gap: 3px;
-  }
-
-  .faction-cell {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .faction-sturm  { background: rgba(232,255,71,0.09); }
-  .faction-flammen{ background: rgba(255,70,20,0.09);  }
-  .faction-frost  { background: rgba(40,140,255,0.09); }
-  .faction-schatten{ background: rgba(140,60,220,0.09);}
-
-  .faction-icon {
-    font-size: 60px;
-    line-height: 1;
-    margin-bottom: 12px;
-  }
-  .faction-name {
-    font-family: 'Bebas Neue', cursive;
-    font-size: 34px;
-    letter-spacing: 5px;
-  }
-  .faction-sturm   .faction-name { color: #e8ff47; text-shadow: 0 0 22px rgba(232,255,71,0.9); }
-  .faction-flammen .faction-name { color: #ff7050; text-shadow: 0 0 22px rgba(255,80,20,0.9);  }
-  .faction-frost   .faction-name { color: #72ccff; text-shadow: 0 0 22px rgba(80,200,255,0.9); }
-  .faction-schatten .faction-name{ color: #c49aff; text-shadow: 0 0 22px rgba(180,120,255,0.9);}
-
-  .faction-dividers {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    z-index: 5;
-  }
-  .fdh {
-    position: absolute;
-    left: 0; right: 0; top: 50%;
-    height: 3px;
-    background: #080808;
-    transform: translateY(-50%);
-  }
-  .fdv {
-    position: absolute;
-    top: 0; bottom: 0; left: 50%;
-    width: 3px;
-    background: #080808;
-    transform: translateX(-50%);
-  }
-
-  #s5-cta {
-    position: absolute;
-    bottom: 7%;
-    left: 0; right: 0;
-    text-align: center;
-    z-index: 20;
-    opacity: 0;
-  }
-  #s5-cta h2 {
-    font-family: 'Bebas Neue', cursive;
-    font-size: 50px;
-    color: #ffffff;
-    letter-spacing: 6px;
-    text-shadow: 0 2px 6px rgba(0,0,0,1), 0 0 30px rgba(0,0,0,0.9);
-  }
-  #s5-cta p {
-    font-family: 'Poppins', sans-serif;
-    font-size: 14px;
-    color: rgba(255,255,255,0.7);
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    margin-top: 4px;
-    text-shadow: 0 1px 4px rgba(0,0,0,1);
-  }
-
-  /* ══════════════ SCENE 6 — LEADERBOARD ══════════════ */
-  #s6 { background: #080808; }
-
-  .lb-bg {
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(ellipse at 50% 35%, rgba(232,255,71,0.07) 0%, transparent 65%);
-  }
-
-  #s6-title {
-    position: absolute;
-    top: 8%;
-    left: 0; right: 0;
-    text-align: center;
-    font-family: 'Bebas Neue', cursive;
-    font-size: 60px;
-    color: #e8ff47;
-    letter-spacing: 10px;
-    text-shadow: 0 0 40px rgba(232,255,71,0.8);
-    opacity: 0;
-    z-index: 10;
-  }
-
-  .lb-list {
-    position: absolute;
-    top: 24%;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 72%;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    z-index: 10;
-  }
-
-  .lb-entry {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 14px 22px;
-    border-radius: 8px;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-    opacity: 0;
-  }
-  .lb-entry.rank1 { border-color: rgba(255,215,0,0.4); background: rgba(255,215,0,0.07); }
-  .lb-entry.rank2 { border-color: rgba(192,192,192,0.3); }
-  .lb-entry.rank3 { border-color: rgba(205,127,50,0.3); }
-
-  .lb-medal { font-size: 28px; flex-shrink: 0; }
-  .lb-name  { flex: 1; font-family: 'Poppins', sans-serif; font-size: 18px; font-weight: 600; color: #fff; }
-  .lb-title-tag {
-    font-family: 'Bebas Neue', cursive;
-    font-size: 14px;
-    letter-spacing: 2px;
-    padding: 3px 10px;
-    border-radius: 4px;
-  }
-  .rank1 .lb-title-tag { color: #ffd700; background: rgba(255,215,0,0.14); border: 1px solid rgba(255,215,0,0.4); }
-  .rank2 .lb-title-tag { color: #c0c0c0; background: rgba(192,192,192,0.10); border: 1px solid rgba(192,192,192,0.3); }
-  .rank3 .lb-title-tag { color: #cd7f32; background: rgba(205,127,50,0.10); border: 1px solid rgba(205,127,50,0.3); }
-  .lb-score { font-family: 'Bebas Neue', cursive; font-size: 22px; color: #e8ff47; letter-spacing: 2px; }
-
-  .titles-strip {
-    position: absolute;
-    bottom: 12%;
-    left: 0; right: 0;
-    text-align: center;
-    z-index: 10;
-    opacity: 0;
-  }
-  .titles-strip span {
-    font-family: 'Bebas Neue', cursive;
-    font-size: 26px;
-    letter-spacing: 5px;
-    color: rgba(255,255,255,0.3);
-    margin: 0 14px;
-  }
-  .titles-strip span.lit { color: #e8ff47; text-shadow: 0 0 20px rgba(232,255,71,0.8); }
-  .titles-strip .dot { color: rgba(255,255,255,0.2); margin: 0 4px; }
-
-  /* ══════════════ SCENE 7 — EPIC CTA ══════════════ */
-  #s7 { background: #080808; }
-
-  .s7-map-bg {
-    position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(ellipse at 50% 50%, rgba(232,255,71,0.09) 0%, transparent 60%),
-      linear-gradient(rgba(232,255,71,0.025) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(232,255,71,0.025) 1px, transparent 1px);
-    background-size: auto, 48px 48px, 48px 48px;
-  }
-
-  .s7-hexes {
-    position: absolute;
-    inset: 0;
-    overflow: hidden;
-    pointer-events: none;
-  }
-
-  #s7-ready {
-    position: absolute;
-    top: 12%;
-    left: 0; right: 0;
-    text-align: center;
-    z-index: 20;
-    opacity: 0;
-  }
-  #s7-ready h1 {
-    font-family: 'Bebas Neue', cursive;
-    font-size: 90px;
-    color: #ffffff;
-    letter-spacing: 16px;
-    text-shadow: 0 0 60px rgba(232,255,71,0.6), 0 0 120px rgba(232,255,71,0.3);
-    line-height: 1;
-  }
-
-  #s7-qr {
-    position: absolute;
-    top: 48%; left: 50%;
-    transform: translate(-50%, -50%);
-    text-align: center;
-    z-index: 20;
-    opacity: 0;
-  }
-  .qr-box {
-    width: 120px;
-    height: 120px;
-    border: 3px solid #e8ff47;
-    box-shadow: 0 0 30px rgba(232,255,71,0.6), inset 0 0 30px rgba(232,255,71,0.08);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: rgba(232,255,71,0.6);
-    font-size: 11px;
-    letter-spacing: 1px;
-    font-family: 'Poppins', sans-serif;
-    margin: 0 auto 14px;
-    position: relative;
-    background:
-      repeating-linear-gradient(0deg, transparent 0px, transparent 8px, rgba(232,255,71,0.06) 8px, rgba(232,255,71,0.06) 9px),
-      repeating-linear-gradient(90deg, transparent 0px, transparent 8px, rgba(232,255,71,0.06) 8px, rgba(232,255,71,0.06) 9px);
-  }
-  .qr-box .qr-corner {
-    position: absolute;
-    width: 22px;
-    height: 22px;
-    border-color: #e8ff47;
-    border-style: solid;
-  }
-  .qr-corner.tl { top: -3px; left: -3px; border-width: 3px 0 0 3px; }
-  .qr-corner.tr { top: -3px; right: -3px; border-width: 3px 3px 0 0; }
-  .qr-corner.bl { bottom: -3px; left: -3px; border-width: 0 0 3px 3px; }
-  .qr-corner.br { bottom: -3px; right: -3px; border-width: 0 3px 3px 0; }
-  .qr-label {
-    font-family: 'Poppins', sans-serif;
-    font-size: 11px;
-    color: rgba(255,255,255,0.45);
-    letter-spacing: 2px;
-    text-transform: uppercase;
-  }
-
-  #s7-cta-btn {
-    position: absolute;
-    bottom: 10%;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 20;
-    opacity: 0;
-    white-space: nowrap;
-  }
-  .cta-btn {
-    font-family: 'Bebas Neue', cursive;
-    font-size: 30px;
-    letter-spacing: 6px;
-    color: #080808;
-    background: #e8ff47;
-    padding: 16px 52px;
-    border-radius: 6px;
-    display: inline-block;
-    box-shadow: 0 0 40px rgba(232,255,71,0.7), 0 0 80px rgba(232,255,71,0.3);
-    cursor: pointer;
-    user-select: none;
-  }
-
-  /* PARTICLES */
-  .particle {
-    position: absolute;
-    border-radius: 50%;
-    pointer-events: none;
-    z-index: 60;
-  }
-
-  /* FLASH OVERLAY */
-  #scene-flash {
-    position: absolute;
-    inset: 0;
-    background: #ffffff;
-    opacity: 0;
-    z-index: 90;
-    pointer-events: none;
-  }
-
-  /* VIGNETTE */
-  #vignette {
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(ellipse at 50% 50%, transparent 45%, rgba(0,0,0,0.7) 100%);
-    pointer-events: none;
-    z-index: 50;
-  }
+/* ══════════════════════
+   SCENE 6 — CTA
+══════════════════════ */
+.s6-glow {
+  position: absolute;
+  width: 1100px; height: 1100px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(232,255,71,.1) 0%, transparent 65%);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.s6-heading {
+  font-family: 'Bebas Neue', sans-serif;
+  text-align: center;
+  line-height: 0.88;
+}
+.s6-heading .l1 {
+  display: block;
+  font-size: 110px;
+  color: #F0F0F8;
+  letter-spacing: 10px;
+}
+.s6-heading .l2 {
+  display: block;
+  font-size: 220px;
+  color: #E8FF47;
+  letter-spacing: 2px;
+  text-shadow: 0 0 80px rgba(232,255,71,.5), 0 0 160px rgba(232,255,71,.2);
+}
+.s6-tagline {
+  font-size: 28px;
+  letter-spacing: 6px;
+  color: #9292AA;
+  text-align: center;
+  text-transform: uppercase;
+}
+.s6-cta {
+  background: #E8FF47;
+  color: #09090F;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 60px;
+  letter-spacing: 5px;
+  padding: 40px 100px;
+  border-radius: 50px;
+  text-align: center;
+  align-self: center;
+}
+.s6-platforms {
+  font-size: 24px;
+  color: #9292AA;
+  text-align: center;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+.s6-fade {
+  position: absolute;
+  inset: 0;
+  background: #09090F;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 10;
+}
 </style>
 </head>
 <body>
-<div id="stage">
 
-  <!-- PROGRESS BAR -->
-  <div id="progress-bar-wrap"><div id="progress-bar"></div></div>
+<div id="root"
+  data-composition-id="main"
+  data-width="1080"
+  data-height="1920"
+  data-start="0"
+  data-duration="28">
 
-  <!-- ══ SCENE 1 — HOOK ══ -->
-  <div class="scene" id="s1">
-    <div class="speed-lines" id="speed-lines"></div>
-    <div id="s1-flash"></div>
-    <div id="s1-title">
-      <span class="letter">R</span><span class="letter">U</span><span class="letter">N</span>
-      <span class="gap"></span>
-      <span class="letter">C</span><span class="letter">O</span><span class="letter">N</span><span class="letter">Q</span><span class="letter">U</span><span class="letter">E</span><span class="letter">R</span>
-    </div>
-    <div id="s1-tagline">LAUF. &nbsp;EROBERE. &nbsp;HERRSCHE.</div>
-  </div>
-
-  <!-- ══ SCENE 2 — CITY RUNNER ══ -->
-  <div class="scene" id="s2">
-    <div class="city-sky"></div>
-    <div class="buildings" id="buildings"></div>
-    <div class="ground-strip"><div class="road-line"></div></div>
-    <div class="gps-trail" id="gps-trail-s2"></div>
-    <svg id="runner-s2" class="runner-s2" viewBox="0 0 42 72" fill="none" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
-      <ellipse cx="21" cy="10" rx="6" ry="7" fill="white"/>
-      <rect x="16" y="17" width="10" height="18" rx="3" fill="white"/>
-      <line x1="16" y1="22" x2="8"  y2="33" stroke="white" stroke-width="3"   stroke-linecap="round" class="arm-b"/>
-      <line x1="26" y1="22" x2="34" y2="13" stroke="white" stroke-width="3"   stroke-linecap="round" class="arm-f"/>
-      <line x1="19" y1="35" x2="11" y2="55" stroke="white" stroke-width="3.5" stroke-linecap="round" class="leg-b"/>
-      <line x1="23" y1="35" x2="31" y2="52" stroke="white" stroke-width="3.5" stroke-linecap="round" class="leg-f"/>
-      <line x1="11" y1="55" x2="5"  y2="60" stroke="white" stroke-width="2.5" stroke-linecap="round" class="foot-b"/>
-      <line x1="31" y1="52" x2="37" y2="58" stroke="white" stroke-width="2.5" stroke-linecap="round" class="foot-f"/>
-    </svg>
-    <div id="s2-text">
-      <h2>LAUF DURCH DEINE STADT</h2>
-      <p>GPS · Echtzeit · Territorien</p>
+  <!-- ══ SCENE 1: HOOK ══ -->
+  <div id="s1" class="scene">
+    <div class="s1-glow" id="s1-glow"></div>
+    <div class="s1-ghost" data-layout-ignore>CONQUER</div>
+    <div class="scene-content" style="justify-content:center;gap:20px;">
+      <div class="s1-label" id="s1-lbl">GPS · GEBIETE · HERRSCHAFT</div>
+      <div class="s1-headline">
+        <span class="l1" id="s1-l1">DEINE</span>
+        <span class="l2" id="s1-l2">STADT</span>
+      </div>
+      <div class="s1-sub" id="s1-sub">GEHÖRT DIR.</div>
+      <div class="s1-ping-wrap">
+        <div class="s1-dot"></div>
+        <div class="s1-ring" id="ring1"></div>
+        <div class="s1-ring" id="ring2"></div>
+        <div class="s1-ring" id="ring3"></div>
+      </div>
     </div>
   </div>
 
-  <!-- ══ SCENE 3 — TERRITORY MAP ══ -->
-  <div class="scene" id="s3">
-    <div class="map-grid"></div>
-    <div class="hex-grid" id="hex-grid"></div>
-    <div id="s3-points">+150 PUNKTE</div>
-    <div id="s3-overlay"><h2>EROBERE DEIN REVIER</h2></div>
-  </div>
-
-  <!-- ══ SCENE 4 — FOREST + LANDMARK ══ -->
-  <div class="scene" id="s4">
-    <div class="forest-bg"></div>
-    <div class="trees" id="trees"></div>
-    <div class="ground-s4"></div>
-    <div class="gps-trail-s4" id="gps-trail-s4"></div>
-    <svg id="runner-s4" class="runner-s4" viewBox="0 0 42 72" fill="none" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
-      <ellipse cx="21" cy="10" rx="6" ry="7" fill="white"/>
-      <rect x="16" y="17" width="10" height="18" rx="3" fill="white"/>
-      <line x1="16" y1="22" x2="8"  y2="33" stroke="white" stroke-width="3"   stroke-linecap="round"/>
-      <line x1="26" y1="22" x2="34" y2="13" stroke="white" stroke-width="3"   stroke-linecap="round"/>
-      <line x1="19" y1="35" x2="11" y2="55" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
-      <line x1="23" y1="35" x2="31" y2="52" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
-      <line x1="11" y1="55" x2="5"  y2="60" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
-      <line x1="31" y1="52" x2="37" y2="58" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
-    </svg>
-    <div class="landmark-pin" id="landmark-pin">
-      <span class="landmark-star">⭐</span>
-      <div class="landmark-text">WAHRZEICHEN ENTDECKT! +200 XP</div>
-    </div>
-    <div id="s4-text"><h2>ENTDECKE WAHRZEICHEN</h2></div>
-  </div>
-
-  <!-- ══ SCENE 5 — FACTIONS ══ -->
-  <div class="scene" id="s5">
-    <div class="faction-grid">
-      <div class="faction-cell faction-sturm"   id="f-sturm">
-        <div class="faction-icon">⚡</div>
-        <div class="faction-name">STURM</div>
+  <!-- ══ SCENE 2: GPS TRACK ══ -->
+  <div id="s2" class="scene">
+    <div class="s2-grid"></div>
+    <div class="scene-content" style="gap:28px;">
+      <div class="s2-label" id="s2-lbl">HINTERGRUND-GPS AKTIV</div>
+      <div class="s2-map-wrap">
+        <svg id="s2-svg" viewBox="0 0 920 580" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="920" height="580" fill="#111118" rx="20"/>
+          <!-- Street grid -->
+          <line x1="0" y1="290" x2="920" y2="290" stroke="#1A1A26" stroke-width="28"/>
+          <line x1="460" y1="0" x2="460" y2="580" stroke="#1A1A26" stroke-width="28"/>
+          <line x1="0" y1="145" x2="920" y2="145" stroke="#1A1A26" stroke-width="14"/>
+          <line x1="0" y1="435" x2="920" y2="435" stroke="#1A1A26" stroke-width="14"/>
+          <line x1="230" y1="0" x2="230" y2="580" stroke="#1A1A26" stroke-width="14"/>
+          <line x1="690" y1="0" x2="690" y2="580" stroke="#1A1A26" stroke-width="14"/>
+          <!-- Conquered territory fill -->
+          <polygon points="180,100 420,115 440,290 240,270 200,190"
+            fill="rgba(232,255,71,.15)" stroke="rgba(232,255,71,.3)" stroke-width="2"/>
+          <!-- GPS track (animated via stroke-dashoffset) -->
+          <polyline id="s2-track"
+            points="100,430 160,340 230,275 300,230 400,125 445,185 510,210 590,165 650,205 720,295 760,355 715,415 610,435 510,395 435,420 350,455 260,475 175,440 100,430"
+            fill="none"
+            stroke="#E8FF47"
+            stroke-width="6"
+            stroke-linecap="round"
+            stroke-linejoin="round"/>
+          <!-- Position dot + halo -->
+          <circle cx="720" cy="295" r="32" fill="rgba(232,255,71,.15)"/>
+          <circle id="s2-pos-dot" cx="720" cy="295" r="14" fill="#E8FF47"/>
+        </svg>
       </div>
-      <div class="faction-cell faction-flammen" id="f-flammen">
-        <div class="faction-icon">🔥</div>
-        <div class="faction-name">FLAMMEN</div>
+      <div class="s2-hud" id="s2-hud">
+        <div class="s2-hud-item">
+          <div class="s2-hud-val">2.4</div>
+          <div class="s2-hud-lbl">KM</div>
+        </div>
+        <div class="s2-hud-item">
+          <div class="s2-hud-val">5:12</div>
+          <div class="s2-hud-lbl">MIN/KM</div>
+        </div>
+        <div class="s2-hud-item">
+          <div class="s2-hud-val">162</div>
+          <div class="s2-hud-lbl">BPM</div>
+        </div>
       </div>
-      <div class="faction-cell faction-frost"   id="f-frost">
-        <div class="faction-icon">❄️</div>
-        <div class="faction-name">FROST</div>
-      </div>
-      <div class="faction-cell faction-schatten" id="f-schatten">
-        <div class="faction-icon">🌑</div>
-        <div class="faction-name">SCHATTEN</div>
-      </div>
-    </div>
-    <div class="faction-dividers"><div class="fdh"></div><div class="fdv"></div></div>
-    <div id="s5-cta">
-      <h2>WÄHLE DEINE FRAKTION</h2>
-      <p>🛡️ Kämpfe mit deinem Club</p>
+      <div class="s2-heading" id="s2-heading">LAUF &amp; <em>EROBER</em></div>
     </div>
   </div>
 
-  <!-- ══ SCENE 6 — LEADERBOARD ══ -->
-  <div class="scene" id="s6">
-    <div class="lb-bg"></div>
-    <div id="s6-title">WERDE ZUR LEGENDE</div>
-    <div class="lb-list">
-      <div class="lb-entry rank1" id="lb1">
-        <span class="lb-medal">🥇</span>
-        <span class="lb-name">XxRunnerKing</span>
-        <span class="lb-title-tag">IMPERATOR</span>
-        <span class="lb-score">12 840</span>
+  <!-- ══ SCENE 3: CONQUEST ══ -->
+  <div id="s3" class="scene">
+    <div class="scene-content" style="gap:22px;">
+      <div class="s3-badge" id="s3-badge">⚔️ GEBIET EROBERT</div>
+      <div class="s3-grid-wrap">
+        <div class="s3-grid">
+          <div class="s3-cell owned"></div><div class="s3-cell owned"></div><div class="s3-cell owned"></div><div class="s3-cell owned"></div><div class="s3-cell owned"></div>
+          <div class="s3-cell owned"></div><div class="s3-cell new" id="s3-n1"></div><div class="s3-cell new" id="s3-n2"></div><div class="s3-cell owned"></div><div class="s3-cell"></div>
+          <div class="s3-cell owned"></div><div class="s3-cell new" id="s3-n3"></div><div class="s3-cell"></div><div class="s3-cell"></div><div class="s3-cell"></div>
+          <div class="s3-cell"></div><div class="s3-cell"></div><div class="s3-cell"></div><div class="s3-cell"></div><div class="s3-cell"></div>
+        </div>
       </div>
-      <div class="lb-entry rank2" id="lb2">
-        <span class="lb-medal">🥈</span>
-        <span class="lb-name">StormChaser99</span>
-        <span class="lb-title-tag">WÄCHTER</span>
-        <span class="lb-score">9 315</span>
-      </div>
-      <div class="lb-entry rank3" id="lb3">
-        <span class="lb-medal">🥉</span>
-        <span class="lb-name">FrostWalker</span>
-        <span class="lb-title-tag">ENTDECKER</span>
-        <span class="lb-score">7 060</span>
-      </div>
-    </div>
-    <div class="titles-strip" id="titles-strip">
-      <span id="t-imp">IMPERATOR</span>
-      <span class="dot">·</span>
-      <span id="t-wae">WÄCHTER</span>
-      <span class="dot">·</span>
-      <span id="t-ent">ENTDECKER</span>
+      <div class="s3-pts" id="s3-pts">+200</div>
+      <div class="s3-pts-lbl">PUNKTE</div>
+      <div class="s3-sub" id="s3-sub">+3 Gebiete heute · 47 gesamt</div>
     </div>
   </div>
 
-  <!-- ══ SCENE 7 — EPIC CTA ══ -->
-  <div class="scene" id="s7">
-    <div class="s7-map-bg"></div>
-    <div class="s7-hexes" id="s7-hexes"></div>
-    <div id="s7-ready"><h1>BIST DU BEREIT?</h1></div>
-    <div id="s7-qr">
-      <div class="qr-box">
-        <span class="qr-corner tl"></span>
-        <span class="qr-corner tr"></span>
-        <span class="qr-corner bl"></span>
-        <span class="qr-corner br"></span>
-        QR CODE
+  <!-- ══ SCENE 4: STATS ══ -->
+  <div id="s4" class="scene">
+    <div class="scene-content" style="gap:32px;">
+      <div class="s4-intro" id="s4-intro">DEIN FORTSCHRITT</div>
+      <div class="s4-cards">
+        <div class="s4-card" id="s4-c1">
+          <div class="s4-card-lbl">KM TOTAL</div>
+          <div class="s4-card-val" id="v-km">0</div>
+        </div>
+        <div class="s4-card" id="s4-c2">
+          <div class="s4-card-lbl">GEBIETE</div>
+          <div class="s4-card-val" id="v-geo">0</div>
+        </div>
+        <div class="s4-card" id="s4-c3">
+          <div class="s4-card-lbl">STREAK</div>
+          <div class="s4-card-val" style="font-size:100px;">12🔥</div>
+        </div>
       </div>
-      <div class="qr-label">Scan zum Starten</div>
-    </div>
-    <div id="s7-cta-btn">
-      <div class="cta-btn">JETZT KOSTENLOS STARTEN</div>
     </div>
   </div>
 
-  <!-- SHARED OVERLAYS -->
-  <div id="scene-flash"></div>
-  <div id="vignette"></div>
-  <div id="particles"></div>
+  <!-- ══ SCENE 5: LEADERBOARD ══ -->
+  <div id="s5" class="scene">
+    <div class="scene-content" style="gap:20px;">
+      <div class="s5-lbl" id="s5-lbl">DEINE STADT</div>
+      <div class="s5-title" id="s5-title">🏆 RANGLISTE</div>
+      <div class="s5-sub" id="s5-sub">WER FÜHRT DEINE STADT?</div>
+      <div class="s5-rows">
+        <div class="s5-row" id="s5-r1">
+          <div class="s5-rank">1</div>
+          <div class="s5-player">
+            <div class="s5-name">SpeedKing</div>
+            <div class="s5-meta">48k m² · 7🔥</div>
+          </div>
+          <div class="s5-pts">6.840</div>
+        </div>
+        <div class="s5-row" id="s5-r2">
+          <div class="s5-rank">2</div>
+          <div class="s5-player">
+            <div class="s5-name">MountainGoat</div>
+            <div class="s5-meta">31k m² · 5🔥</div>
+          </div>
+          <div class="s5-pts">4.290</div>
+        </div>
+        <div class="s5-row" id="s5-r3">
+          <div class="s5-rank">3</div>
+          <div class="s5-player">
+            <div class="s5-name">NightOwl</div>
+            <div class="s5-meta">22k m² · 3🔥</div>
+          </div>
+          <div class="s5-pts">2.915</div>
+        </div>
+        <div class="s5-row you" id="s5-you">
+          <div class="s5-rank">?</div>
+          <div class="s5-player">
+            <div class="s5-name">DU?</div>
+            <div class="s5-meta" style="font-size:22px;">Tritt jetzt an</div>
+          </div>
+          <div class="s5-pts">STARTEN</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-</div><!-- /stage -->
+  <!-- ══ SCENE 6: CTA ══ -->
+  <div id="s6" class="scene">
+    <div class="s6-glow" id="s6-glow"></div>
+    <div class="scene-content" style="justify-content:center;align-items:center;gap:28px;">
+      <div class="s6-heading" id="s6-heading">
+        <span class="l1">RUN &amp;</span>
+        <span class="l2">CONQUER</span>
+      </div>
+      <div class="s6-tagline" id="s6-tagline">LAUFE · EROBER · HERRSCHE</div>
+      <div class="s6-cta" id="s6-cta">JETZT SPIELEN</div>
+      <div class="s6-platforms" id="s6-plat">KOSTENLOS · ANDROID &amp; IOS</div>
+    </div>
+    <div class="s6-fade" id="s6-fade"></div>
+  </div>
 
-<script src="./gsap.min.js"></script>
+</div><!-- /root -->
+
 <script>
-(function () {
-  'use strict';
+window.__timelines = window.__timelines || {};
 
-  const TOTAL_S = 45;
-  const W = 960, H = 540;
-  const $ = id => document.getElementById(id);
+// ── SVG track dash setup ──
+var trackEl = document.getElementById('s2-track');
+var trackLen = trackEl ? Math.round(trackEl.getTotalLength()) : 1200;
+trackEl.setAttribute('stroke-dasharray', trackLen);
+trackEl.setAttribute('stroke-dashoffset', trackLen);
 
-  // ── DOM HELPERS ───────────────────────────────────────────
-  function el(tag, css, attrs) {
-    const e = document.createElement(tag);
-    if (css) e.style.cssText = css;
-    if (attrs) Object.entries(attrs).forEach(([k,v]) => e.setAttribute(k, v));
-    return e;
+// ── Counter proxy ──
+var cnt = { km: 0, geo: 0 };
+
+// ── Timeline ──
+var tl = gsap.timeline({ paused: true });
+
+/* ════════════════════════
+   SCENE 1 ENTRANCES (0–4s)
+   ════════════════════════ */
+// Ambient glow drift
+tl.fromTo('#s1-glow', { scale: 0.9, opacity: 0.5 }, { scale: 1.1, opacity: 1, duration: 4, ease: 'sine.inOut', repeat: 3, yoyo: true }, 0);
+// Ghost text slow drift
+tl.fromTo('#s1 .s1-ghost', { x: -15 }, { x: 15, duration: 4, ease: 'none' }, 0);
+// Content entrances
+tl.from('#s1-lbl',  { y: 30, opacity: 0, duration: 0.6, ease: 'power3.out' }, 0.25);
+tl.from('#s1-l1',   { y: 70, opacity: 0, duration: 0.7, ease: 'power4.out' }, 0.55);
+tl.from('#s1-l2',   { scale: 0.75, opacity: 0, duration: 0.8, ease: 'expo.out' }, 0.80);
+tl.from('#s1-sub',  { y: 40, opacity: 0, duration: 0.6, ease: 'power3.out' }, 1.15);
+// GPS ping rings (3 repeats × 1.2s = 3.6s total, fits within scene)
+tl.fromTo('#ring1', { width: 18, height: 18, x: -9, y: -9, opacity: 0.9 },
+  { width: 100, height: 100, x: -50, y: -50, opacity: 0, duration: 1.2, ease: 'power1.out', repeat: 3 }, 1.4);
+tl.fromTo('#ring2', { width: 18, height: 18, x: -9, y: -9, opacity: 0.7 },
+  { width: 100, height: 100, x: -50, y: -50, opacity: 0, duration: 1.2, ease: 'power1.out', repeat: 3 }, 1.8);
+tl.fromTo('#ring3', { width: 18, height: 18, x: -9, y: -9, opacity: 0.5 },
+  { width: 100, height: 100, x: -50, y: -50, opacity: 0, duration: 1.2, ease: 'power1.out', repeat: 3 }, 2.2);
+
+/* ════════════════════
+   TRANSITION 1→2 (T=4.0, crossfade)
+   ════════════════════ */
+var T1 = 4.0;
+tl.to('#s1', { opacity: 0, duration: 0.5, ease: 'power2.inOut' }, T1);
+tl.fromTo('#s2', { opacity: 0 }, { opacity: 1, duration: 0.5, ease: 'power2.inOut' }, T1);
+
+/* ════════════════════════
+   SCENE 2 ENTRANCES (4.0–8.5s)
+   ════════════════════════ */
+tl.from('#s2-lbl',     { y: 30, opacity: 0, duration: 0.5, ease: 'power3.out' }, T1 + 0.15);
+tl.from('#s2-svg',     { scale: 0.92, opacity: 0, duration: 0.65, ease: 'power2.out' }, T1 + 0.25);
+// GPS track drawing animation
+tl.to('#s2-track', { attr: { 'stroke-dashoffset': 0 }, duration: 2.6, ease: 'power1.inOut' }, T1 + 0.45);
+// Position dot pulse (finite: 4.5s scene / 1.0s cycle ≈ 4 repeats)
+tl.fromTo('#s2-pos-dot', { attr: { r: 14 } }, { attr: { r: 20 }, duration: 0.5, ease: 'sine.inOut', repeat: 8, yoyo: true }, T1 + 0.3);
+tl.from('#s2-hud',     { y: 40, opacity: 0, duration: 0.6, ease: 'power3.out' }, T1 + 0.8);
+tl.from('#s2-heading', { y: 50, opacity: 0, duration: 0.7, ease: 'expo.out' }, T1 + 1.1);
+
+/* ════════════════════
+   TRANSITION 2→3 (T=8.5, vertical push up)
+   ════════════════════ */
+var T2 = 8.5;
+tl.to('#s2', { y: -1920, duration: 0.5, ease: 'power3.inOut' }, T2);
+tl.fromTo('#s3', { y: 1920, opacity: 1 }, { y: 0, duration: 0.5, ease: 'power3.inOut' }, T2);
+
+/* ════════════════════════
+   SCENE 3 ENTRANCES (8.5–13.0s)
+   ════════════════════════ */
+tl.from('#s3-badge', { scale: 0.65, opacity: 0, duration: 0.5, ease: 'back.out(2.5)' }, T2 + 0.25);
+// Territory cells stagger
+tl.fromTo('#s3-n1', { scale: 0 }, { scale: 1, duration: 0.4, ease: 'back.out(2.5)', transformOrigin: 'center' }, T2 + 0.55);
+tl.fromTo('#s3-n2', { scale: 0 }, { scale: 1, duration: 0.4, ease: 'back.out(2.5)', transformOrigin: 'center' }, T2 + 0.72);
+tl.fromTo('#s3-n3', { scale: 0 }, { scale: 1, duration: 0.4, ease: 'back.out(2.5)', transformOrigin: 'center' }, T2 + 0.89);
+tl.from('#s3-pts',  { scale: 0.55, opacity: 0, duration: 0.7, ease: 'elastic.out(1, 0.5)' }, T2 + 1.05);
+tl.from('.s3-pts-lbl', { y: 24, opacity: 0, duration: 0.4, ease: 'power2.out' }, T2 + 1.3);
+tl.from('#s3-sub',  { y: 20, opacity: 0, duration: 0.4, ease: 'power2.out' }, T2 + 1.55);
+
+/* ════════════════════
+   TRANSITION 3→4 (T=13.0, blur crossfade)
+   ════════════════════ */
+var T3 = 13.0;
+tl.to('#s3', { filter: 'blur(10px)', scale: 1.03, opacity: 0, duration: 0.5, ease: 'power2.inOut' }, T3);
+tl.fromTo('#s4',
+  { filter: 'blur(10px)', scale: 0.97, opacity: 0 },
+  { filter: 'blur(0px)', scale: 1, opacity: 1, duration: 0.5, ease: 'power2.inOut' }, T3 + 0.1);
+
+/* ════════════════════════
+   SCENE 4 ENTRANCES (13.0–17.5s)
+   ════════════════════════ */
+tl.from('#s4-intro', { y: 30, opacity: 0, duration: 0.5, ease: 'power3.out' }, T3 + 0.3);
+tl.from('#s4-c1', { y: 90, opacity: 0, duration: 0.55, ease: 'power3.out' }, T3 + 0.5);
+tl.from('#s4-c2', { y: 90, opacity: 0, duration: 0.55, ease: 'power3.out' }, T3 + 0.68);
+tl.from('#s4-c3', { y: 90, opacity: 0, duration: 0.55, ease: 'power3.out' }, T3 + 0.86);
+// Animated counters
+tl.to(cnt, {
+  km: 142, geo: 47,
+  duration: 1.9,
+  ease: 'power2.out',
+  onUpdate: function() {
+    document.getElementById('v-km').textContent  = Math.floor(cnt.km);
+    document.getElementById('v-geo').textContent = Math.floor(cnt.geo);
   }
-
-  // ── BUILD CITY BUILDINGS ──────────────────────────────────
-  (function () {
-    const cont = $('buildings');
-    const ws = [28,18,36,22,44,16,30,26,40,20,34,24,38,14,32,20,28,42,16,36,22,30];
-    const hs = [120,80,160,100,200,70,130,90,180,110,150,85,170,65,140,95,125,190,75,155,88,142];
-    ws.forEach((w, i) => {
-      const d = el('div', `width:${w}px;height:${hs[i]}px;`);
-      d.className = 'bld';
-      cont.appendChild(d);
-    });
-  })();
-
-  // ── BUILD TREES ───────────────────────────────────────────
-  (function () {
-    const cont = $('trees');
-    const specs = [
-      [45,88],[38,72],[56,102],[32,62],[52,94],[42,78],[62,110],[36,66],
-      [48,84],[40,76],[58,98],[34,64],[50,90],[60,106],[38,70],[54,96],[44,80]
-    ];
-    specs.forEach(([w, h]) => {
-      const tree = el('div');
-      tree.className = 'tree';
-      const crown = el('div',
-        `border-left:${w*0.52}px solid transparent;` +
-        `border-right:${w*0.52}px solid transparent;` +
-        `border-bottom:${h*0.62}px solid #0d2e12;`
-      );
-      crown.className = 'tree-crown';
-      const trunk = el('div', `width:${Math.max(4,w*0.12)}px;height:${h*0.28}px;`);
-      trunk.className = 'tree-trunk';
-      tree.appendChild(crown);
-      tree.appendChild(trunk);
-      cont.appendChild(tree);
-    });
-  })();
-
-  // ── BUILD HEX GRID (scene 3) ──────────────────────────────
-  const hexData = [];
-  (function () {
-    const cont = $('hex-grid');
-    const size = 50, rows = 5, cols = 9;
-    const hexW = size * 2;
-    const hexH = size * Math.sqrt(3);
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const x = c * hexW * 0.76 + 40;
-        const y = r * hexH + (c % 2) * (hexH * 0.5) + 20;
-        const rnd = Math.random();
-        const type = rnd < 0.25 ? 'enemy' : rnd < 0.55 ? 'own' : 'neutral';
-        const h = el('div',
-          `width:${hexW}px;height:${hexH}px;left:${x}px;top:${y}px;` +
-          `background:${type==='enemy'?'rgba(255,50,10,0.75)':type==='own'?'rgba(232,255,71,0.55)':'rgba(255,255,255,0.08)'};`
-        );
-        h.className = 'hex';
-        cont.appendChild(h);
-        hexData.push({ el: h, type });
-      }
-    }
-  })();
-
-  // ── BUILD S7 BACKGROUND HEXES ─────────────────────────────
-  const s7hexEls = [];
-  (function () {
-    const cont = $('s7-hexes');
-    for (let i = 0; i < 44; i++) {
-      const sz = 28 + Math.random() * 52;
-      const h = el('div',
-        `width:${sz*2}px;height:${sz*Math.sqrt(3)}px;` +
-        `left:${Math.random()*W - 20}px;top:${Math.random()*H - 20}px;` +
-        `background:rgba(232,255,71,${0.04+Math.random()*0.16});opacity:0;`
-      );
-      h.className = 'hex';
-      cont.appendChild(h);
-      s7hexEls.push(h);
-    }
-  })();
-
-  // ── PARTICLES ─────────────────────────────────────────────
-  function spawnParticles(x, y, count, colors) {
-    const cont = $('particles');
-    for (let i = 0; i < count; i++) {
-      const p = el('div');
-      p.className = 'particle';
-      const sz = 3 + Math.random() * 9;
-      const color = colors[Math.floor(Math.random() * colors.length)];
-      p.style.cssText = `width:${sz}px;height:${sz}px;background:${color};left:${x}px;top:${y}px;`;
-      cont.appendChild(p);
-      const angle = Math.random() * Math.PI * 2;
-      const dist  = 70 + Math.random() * 220;
-      gsap.to(p, {
-        x: Math.cos(angle) * dist,
-        y: Math.sin(angle) * dist,
-        opacity: 0,
-        scale: 0.1,
-        duration: 0.7 + Math.random() * 0.9,
-        ease: 'power2.out',
-        onComplete: () => p.remove()
-      });
-    }
-  }
-
-  // ══════════════════════════════════════════════════════════
-  //  MASTER TIMELINE
-  // ══════════════════════════════════════════════════════════
-  const tl = gsap.timeline({ repeat: -1, repeatDelay: 0 });
-
-  // Quick scene-transition flash helper
-  function addFlash(at) {
-    tl.to('#scene-flash', { opacity: 0.55, duration: 0.07 }, at)
-      .to('#scene-flash', { opacity: 0, duration: 0.25 }, at + 0.07);
-  }
-
-  // ─────────────────────────────────────────────────────────
-  // SCENE 1  [0–6s]  — HOOK
-  // ─────────────────────────────────────────────────────────
-  tl.set('#s1', { opacity: 1 }, 0);
-
-  // Opening white flash
-  tl.fromTo('#s1-flash', { opacity: 0.95 }, { opacity: 0, duration: 0.5, ease: 'power2.out' }, 0);
-
-  // Speed lines burst
-  const speedLines = document.querySelectorAll('.speed-line');
-  speedLines.forEach((line, i) => {
-    const angle = (i / speedLines.length) * 360;
-    const len   = 180 + (i % 7) * 35;
-    gsap.set(line, { rotation: angle, transformOrigin: '1px 0px', height: 0, opacity: 0 });
-    tl.to(line, { height: len, opacity: 0.8, duration: 0.5, ease: 'expo.out' }, 0.05 + i * 0.008)
-      .to(line, { opacity: 0, duration: 0.6, ease: 'power2.in' }, 1.1 + i * 0.004);
-  });
-
-  // Letters explode in
-  const letters = document.querySelectorAll('#s1-title .letter');
-  gsap.set(letters, { opacity: 0, scale: 4, y: -20 });
-  letters.forEach((l, i) => {
-    tl.to(l, { opacity: 1, scale: 1, y: 0, duration: 0.4, ease: 'back.out(2.5)' }, 0.28 + i * 0.065);
-  });
-
-  // Title glow pulse
-  tl.to('#s1-title', { textShadow: '0 0 70px rgba(232,255,71,1), 0 0 130px rgba(232,255,71,0.7)', duration: 0.3, yoyo: true, repeat: 3, ease: 'sine.inOut' }, 1.8);
-
-  // Tagline fade-slide
-  tl.fromTo('#s1-tagline', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.55, ease: 'power2.out' }, 2.0);
-
-  // Outro flash + fade
-  addFlash(5.6);
-  tl.to('#s1', { opacity: 0, duration: 0.45 }, 5.65);
-
-  // ─────────────────────────────────────────────────────────
-  // SCENE 2  [6–14s]  — CITY RUNNER
-  // ─────────────────────────────────────────────────────────
-  tl.set('#s2', { opacity: 0 }, 5.9)
-    .to('#s2', { opacity: 1, duration: 0.45 }, 6.1);
-
-  // GPS trail extending
-  tl.to('#gps-trail-s2', { width: '78%', duration: 6.5, ease: 'power1.inOut' }, 6.3);
-
-  // Runner horizontal travel
-  tl.to('#runner-s2', { x: 500, duration: 6.5, ease: 'power1.inOut' }, 6.3);
-
-  // Runner vertical bob (running motion)
-  tl.to('#runner-s2', { y: -6, duration: 0.28, yoyo: true, repeat: 23, ease: 'sine.inOut' }, 6.3);
-
-  // Body lean + motion blur at start
-  tl.to('#runner-s2', { rotation: 8, scaleX: 1.1, filter: 'blur(2px)', duration: 0.2 }, 6.3)
-    .to('#runner-s2', { rotation: 0, scaleX: 1,   filter: 'blur(0px)',  duration: 0.4, ease: 'power2.out' }, 6.5);
-
-  // GPS dot sparks
-  tl.call(() => spawnParticles(200, 300, 6, ['#e8ff47','#ffffff','#aacc00']), null, 8.5);
-  tl.call(() => spawnParticles(380, 300, 5, ['#e8ff47','#ffffff']),           null, 10.5);
-  tl.call(() => spawnParticles(550, 300, 5, ['#e8ff47','#aacc00']),           null, 12.0);
-
-  // Text overlay
-  tl.fromTo('#s2-text', { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 8.0);
-
-  // Fade out
-  addFlash(13.5);
-  tl.to('#s2', { opacity: 0, duration: 0.45 }, 13.55);
-
-  // ─────────────────────────────────────────────────────────
-  // SCENE 3  [14–20s]  — TERRITORY CONQUEST
-  // ─────────────────────────────────────────────────────────
-  tl.set('#s3', { opacity: 0 }, 13.8)
-    .to('#s3', { opacity: 1, duration: 0.4 }, 14.0);
-
-  // Hexes cascade in
-  hexData.forEach(({ el: h, type }, i) => {
-    const at = 14.2 + i * 0.038;
-    tl.fromTo(h, { opacity: 0, scale: 0.4 }, { opacity: 1, scale: 1, duration: 0.22, ease: 'back.out(2)' }, at);
-    if (type === 'enemy') {
-      // Flash red then turn yellow (conquered)
-      tl.to(h, { backgroundColor: 'rgba(232,255,71,0.75)', duration: 0.35, ease: 'power2.out' }, at + 0.45);
-    }
-  });
-
-  // Points badge
-  tl.fromTo('#s3-points', { opacity: 0, scale: 0.4 }, { opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(2.5)' }, 16.8)
-    .to('#s3-points', { scale: 1.12, duration: 0.25, yoyo: true, repeat: 3, ease: 'sine.inOut' }, 17.1)
-    .to('#s3-points', { opacity: 0, y: -30, duration: 0.4 }, 18.8);
-
-  tl.call(() => spawnParticles(480, 270, 22, ['#e8ff47','#ffd700','#ffffff','#ff5020']), null, 16.8);
-
-  // Overlay text
-  tl.fromTo('#s3-overlay', { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 17.8);
-
-  addFlash(19.5);
-  tl.to('#s3', { opacity: 0, duration: 0.45 }, 19.55);
-
-  // ─────────────────────────────────────────────────────────
-  // SCENE 4  [20–26s]  — FOREST + LANDMARK
-  // ─────────────────────────────────────────────────────────
-  tl.set('#s4', { opacity: 0 }, 19.8)
-    .to('#s4', { opacity: 1, duration: 0.45 }, 20.0);
-
-  tl.fromTo('#s4-text', { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 20.5);
-
-  tl.to('#gps-trail-s4', { width: '72%', duration: 4.8, ease: 'power1.inOut' }, 20.5);
-  tl.to('#runner-s4', { x: 460, duration: 4.8, ease: 'power1.inOut' }, 20.5);
-  tl.to('#runner-s4', { y: -5, duration: 0.32, yoyo: true, repeat: 15, ease: 'sine.inOut' }, 20.5);
-
-  // Landmark pop
-  tl.fromTo('#landmark-pin', { opacity: 0, scale: 0.2 }, { opacity: 1, scale: 1, duration: 0.55, ease: 'back.out(2.5)' }, 22.8);
-  tl.call(() => spawnParticles(718, 178, 18, ['#ffd700','#ffcc00','#ffffff','#e8ff47']), null, 22.8);
-
-  addFlash(25.5);
-  tl.to('#s4', { opacity: 0, duration: 0.45 }, 25.55);
-
-  // ─────────────────────────────────────────────────────────
-  // SCENE 5  [26–32s]  — FACTIONS
-  // ─────────────────────────────────────────────────────────
-  tl.set('#s5', { opacity: 0 }, 25.8)
-    .to('#s5', { opacity: 1, duration: 0.4 }, 26.0);
-
-  const factions = ['f-sturm','f-flammen','f-frost','f-schatten'];
-  gsap.set(factions.map(id => '#'+id), { opacity: 0, scale: 0.7 });
-  factions.forEach((id, i) => {
-    tl.to('#'+id, { opacity: 1, scale: 1, duration: 0.45, ease: 'back.out(1.8)' }, 26.3 + i * 0.22);
-  });
-
-  // Glow pulse on each icon
-  factions.forEach((id, i) => {
-    tl.to('#'+id+' .faction-icon', {
-      filter: 'drop-shadow(0 0 18px white)',
-      duration: 0.35, yoyo: true, repeat: 3, ease: 'sine.inOut'
-    }, 27.8 + i * 0.15);
-  });
-
-  // Brief scale pumps
-  factions.forEach((id, i) => {
-    tl.to('#'+id, { scale: 1.05, duration: 0.2, yoyo: true, repeat: 1 }, 28.5 + i * 0.3);
-  });
-
-  tl.fromTo('#s5-cta', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 28.6);
-
-  addFlash(31.5);
-  tl.to('#s5', { opacity: 0, duration: 0.45 }, 31.55);
-
-  // ─────────────────────────────────────────────────────────
-  // SCENE 6  [32–38s]  — LEADERBOARD
-  // ─────────────────────────────────────────────────────────
-  tl.set('#s6', { opacity: 0 }, 31.8)
-    .to('#s6', { opacity: 1, duration: 0.4 }, 32.0);
-
-  tl.fromTo('#s6-title', { opacity: 0, y: -16 }, { opacity: 1, y: 0, duration: 0.55, ease: 'power2.out' }, 32.3);
-
-  gsap.set(['#lb1','#lb2','#lb3'], { opacity: 0, x: -50 });
-  [['lb1', 33.0], ['lb2', 33.4], ['lb3', 33.8]].forEach(([id, at]) => {
-    tl.to('#'+id, { opacity: 1, x: 0, duration: 0.5, ease: 'power2.out' }, at);
-  });
-  tl.call(() => spawnParticles(690, 220, 14, ['#ffd700','#e8ff47','#ffffff']), null, 33.05);
-  tl.call(() => spawnParticles(690, 280, 10, ['#c0c0c0','#ffffff']),           null, 33.45);
-  tl.call(() => spawnParticles(690, 340, 8,  ['#cd7f32','#ffffff']),           null, 33.85);
-
-  tl.fromTo('#titles-strip', { opacity: 0 }, { opacity: 1, duration: 0.5 }, 35.0);
-  [['t-imp', 35.4], ['t-wae', 36.0], ['t-ent', 36.6]].forEach(([id, at]) => {
-    tl.call(() => $(id).classList.add('lit'), null, at);
-  });
-
-  addFlash(37.5);
-  tl.to('#s6', { opacity: 0, duration: 0.45 }, 37.55);
-
-  // ─────────────────────────────────────────────────────────
-  // SCENE 7  [38–45s]  — EPIC CTA
-  // ─────────────────────────────────────────────────────────
-  tl.set('#s7', { opacity: 0 }, 37.8)
-    .to('#s7', { opacity: 1, duration: 0.5 }, 38.0);
-
-  // Background hexes drift in
-  s7hexEls.forEach((h, i) => {
-    tl.to(h, { opacity: 1, duration: 0.35, ease: 'power2.out' }, 38.0 + i * 0.028);
-  });
-
-  tl.fromTo('#s7-ready', { opacity: 0, scale: 0.45 }, { opacity: 1, scale: 1, duration: 0.7, ease: 'back.out(1.8)' }, 38.3);
-
-  // Pulse the headline
-  tl.to('#s7-ready h1', {
-    textShadow: '0 0 90px rgba(232,255,71,1), 0 0 160px rgba(232,255,71,0.6)',
-    duration: 0.7, yoyo: true, repeat: -1, ease: 'sine.inOut'
-  }, 39.2);
-
-  tl.fromTo('#s7-qr', { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(2)' }, 39.6);
-
-  tl.fromTo('#s7-cta-btn', { opacity: 0, scale: 0.6, y: 20 }, { opacity: 1, scale: 1, y: 0, duration: 0.55, ease: 'back.out(2)' }, 40.4);
-
-  // CTA button pulse
-  tl.to('#s7-cta-btn .cta-btn', {
-    boxShadow: '0 0 70px rgba(232,255,71,1), 0 0 140px rgba(232,255,71,0.6)',
-    duration: 0.6, yoyo: true, repeat: -1, ease: 'sine.inOut'
-  }, 40.9);
-
-  // PARTICLE FINALE
-  tl.call(() => {
-    const C = ['#e8ff47','#ffd700','#ff7050','#72ccff','#c49aff','#ffffff'];
-    for (let i = 0; i < 7; i++) {
-      setTimeout(() => {
-        spawnParticles(
-          80 + Math.random() * 800,
-          40 + Math.random() * 460,
-          16, C
-        );
-      }, i * 180);
-    }
-  }, null, 42.0);
-
-  tl.call(() => {
-    spawnParticles(480, 270, 50, ['#e8ff47','#ffd700','#ffffff','#ff7050','#72ccff','#c49aff']);
-  }, null, 43.6);
-
-  // Fade out before loop restart
-  tl.to('#s7', { opacity: 0, duration: 0.7 }, 44.3);
-
-  // ── RESET FOR LOOP ──────────────────────────────────────
-  tl.call(() => {
-    // scenes
-    document.querySelectorAll('.scene').forEach(s => gsap.set(s, { opacity: 0 }));
-
-    // runners
-    gsap.set('#runner-s2', { x: 0, y: 0, rotation: 0, scaleX: 1, filter: 'none' });
-    gsap.set('#runner-s4', { x: 0, y: 0 });
-
-    // trails
-    gsap.set('#gps-trail-s2', { width: 0 });
-    gsap.set('#gps-trail-s4', { width: 0 });
-
-    // texts
-    gsap.set(['#s2-text','#s4-text','#s3-overlay','#s5-cta','#s6-title','#s3-points','#landmark-pin'], { opacity: 0, y: 0 });
-
-    // scene 1 letters
-    gsap.set(letters, { opacity: 0, scale: 4, y: -20 });
-    gsap.set('#s1-tagline', { opacity: 0, y: 14 });
-    gsap.set('#s1-flash', { opacity: 0 });
-    gsap.set('#s1-title', { textShadow: '0 0 40px rgba(232,255,71,0.8), 0 0 80px rgba(232,255,71,0.4)' });
-
-    // speed lines
-    speedLines.forEach(l => gsap.set(l, { height: 0, opacity: 0 }));
-
-    // factions
-    gsap.set(factions.map(id => '#'+id), { opacity: 0, scale: 0.7 });
-    gsap.set('.faction-cell .faction-icon', { filter: 'none' });
-
-    // leaderboard
-    gsap.set(['#lb1','#lb2','#lb3'], { opacity: 0, x: -50 });
-    gsap.set('#titles-strip', { opacity: 0 });
-    ['t-imp','t-wae','t-ent'].forEach(id => $(id).classList.remove('lit'));
-
-    // scene 7
-    gsap.set(['#s7-ready','#s7-qr','#s7-cta-btn'], { opacity: 0, scale: 0.5, y: 0 });
-    gsap.set('#s7-ready h1', { textShadow: '0 0 60px rgba(232,255,71,0.6), 0 0 120px rgba(232,255,71,0.3)' });
-    gsap.set('#s7-cta-btn .cta-btn', { boxShadow: '0 0 40px rgba(232,255,71,0.7), 0 0 80px rgba(232,255,71,0.3)' });
-    s7hexEls.forEach(h => gsap.set(h, { opacity: 0 }));
-
-    // hexes scene 3
-    hexData.forEach(({ el: h, type }) => {
-      gsap.set(h, { opacity: 0, scale: 0.4 });
-      h.style.background = type === 'enemy'
-        ? 'rgba(255,50,10,0.75)'
-        : type === 'own'
-          ? 'rgba(232,255,71,0.55)'
-          : 'rgba(255,255,255,0.08)';
-    });
-
-    // scene 3 points
-    gsap.set('#s3-points', { opacity: 0, scale: 0.4, y: 0 });
-  }, null, 44.95);
-
-  // ── PROGRESS BAR ──────────────────────────────────────────
-  gsap.to('#progress-bar', {
-    width: '100%',
-    duration: TOTAL_S,
-    ease: 'none',
-    repeat: -1
-  });
-
-  // ── INITIAL STATE ─────────────────────────────────────────
-  gsap.set('.scene', { opacity: 0 });
-  gsap.set(['#s2-text','#s4-text','#s3-overlay','#s5-cta','#s6-title','#s3-points','#landmark-pin'], { opacity: 0 });
-  gsap.set(['#lb1','#lb2','#lb3'], { opacity: 0, x: -50 });
-  gsap.set('#titles-strip', { opacity: 0 });
-  gsap.set(['#s7-ready','#s7-qr','#s7-cta-btn'], { opacity: 0, scale: 0.5 });
-  gsap.set(factions.map(id => '#'+id), { opacity: 0, scale: 0.7 });
-  hexData.forEach(({ el: h }) => gsap.set(h, { opacity: 0, scale: 0.4 }));
-  s7hexEls.forEach(h => gsap.set(h, { opacity: 0 }));
-  gsap.set('#s1-tagline', { opacity: 0, y: 14 });
-  gsap.set(letters, { opacity: 0, scale: 4, y: -20 });
-  gsap.set('#s1-flash', { opacity: 0 });
-  gsap.set('#s3-points', { opacity: 0, scale: 0.4 });
-
-})();
+}, T3 + 0.9);
+
+/* ════════════════════
+   TRANSITION 4→5 (T=17.5, push left)
+   ════════════════════ */
+var T4 = 17.5;
+tl.to('#s4', { x: -1080, duration: 0.5, ease: 'power3.inOut' }, T4);
+tl.fromTo('#s5', { x: 1080, opacity: 1 }, { x: 0, duration: 0.5, ease: 'power3.inOut' }, T4);
+
+/* ════════════════════════
+   SCENE 5 ENTRANCES (17.5–22.0s)
+   ════════════════════════ */
+tl.from('#s5-lbl',   { y: 30, opacity: 0, duration: 0.5, ease: 'power3.out' }, T4 + 0.15);
+tl.from('#s5-title', { scale: 0.78, opacity: 0, duration: 0.65, ease: 'expo.out' }, T4 + 0.35);
+tl.from('#s5-sub',   { y: 24, opacity: 0, duration: 0.45, ease: 'power2.out' }, T4 + 0.7);
+tl.from('#s5-r1',    { x: 100, opacity: 0, duration: 0.5, ease: 'power3.out' }, T4 + 0.9);
+tl.from('#s5-r2',    { x: 100, opacity: 0, duration: 0.5, ease: 'power3.out' }, T4 + 1.1);
+tl.from('#s5-r3',    { x: 100, opacity: 0, duration: 0.5, ease: 'power3.out' }, T4 + 1.3);
+tl.from('#s5-you',   { y: 50, opacity: 0, duration: 0.6, ease: 'back.out(2)' }, T4 + 1.6);
+
+/* ════════════════════
+   TRANSITION 5→6 (T=22.0, color dip)
+   ════════════════════ */
+var T5 = 22.0;
+tl.to('#s5', { opacity: 0, duration: 0.25, ease: 'power2.in' }, T5);
+tl.fromTo('#s6', { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'power2.out' }, T5 + 0.3);
+
+/* ════════════════════════
+   SCENE 6 ENTRANCES (22.0–28.0s)
+   ════════════════════════ */
+// Glow pulse (3 cycles × 2s = 6s, from T5+0.2=22.2 to 28.2s)
+tl.fromTo('#s6-glow',
+  { scale: 0.85, opacity: 0.5 },
+  { scale: 1.2, opacity: 1, duration: 2, ease: 'sine.inOut', repeat: 2, yoyo: true }, T5 + 0.2);
+tl.from('#s6-heading .l1', { y: 50, opacity: 0, duration: 0.6, ease: 'power3.out' }, T5 + 0.45);
+tl.from('#s6-heading .l2', { scale: 0.65, opacity: 0, duration: 0.85, ease: 'expo.out' }, T5 + 0.75);
+tl.from('#s6-tagline',     { y: 35, opacity: 0, duration: 0.5, ease: 'power2.out' }, T5 + 1.3);
+tl.from('#s6-cta',         { scale: 0.8, opacity: 0, duration: 0.65, ease: 'back.out(2.2)' }, T5 + 1.75);
+tl.from('#s6-plat',        { y: 24, opacity: 0, duration: 0.45, ease: 'power2.out' }, T5 + 2.2);
+// Fade to black (only last scene may have exit animation)
+tl.to('#s6-fade', { opacity: 1, duration: 0.7, ease: 'power2.in' }, 27.3);
+
+window.__timelines['main'] = tl;
+
+// Auto-play + loop when viewed outside HyperFrames Studio
+if (typeof window.__hyperframes === 'undefined') {
+  tl.play();
+  tl.eventCallback('onComplete', function() { tl.restart(); });
+}
 </script>
 </body>
 </html>
