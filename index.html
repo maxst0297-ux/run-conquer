@@ -324,7 +324,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .pr-label{flex:1;font-size:.82rem}
 .pr-val{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:var(--primary)}
 
-.ach-grid{display:flex;flex-wrap:wrap;gap:8px}
+.ach-grid{display:block}
 .ach-badge{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;padding:8px 14px;text-align:center;min-width:66px;transition:all .25s}
 .ach-badge.earned{background:rgba(var(--primary-rgb),.1);border-color:rgba(var(--primary-rgb),.35)}
 .ach-badge-icon{font-size:1.5rem}
@@ -4373,7 +4373,7 @@ function updateProfile(){
   // Battle Pass
   const bpEl=document.getElementById('pvBattlePass');
   if(bpEl){const bpLv=Math.min(20,Math.floor(seasonXp/500));const bpPct=Math.min(100,(seasonXp%500)/5);const nextSp=(bpLv<20)?(bpLv+1)*500-seasonXp:0;bpEl.innerHTML=`<div class="section-title"><i class="fas fa-ticket-alt"></i> Saison-Pass <span style="font-size:.65rem;color:var(--muted);font-weight:400;margin-left:6px">Level ${bpLv}/20</span></div><div style="height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;margin-bottom:8px"><div style="height:100%;width:${bpPct}%;background:var(--primary);border-radius:3px;transition:width .4s"></div></div><div style="font-size:.68rem;color:var(--muted);margin-bottom:10px">${bpLv<20?nextSp+' XP bis Level '+(bpLv+1):'🏆 Max Level erreicht!'}</div><div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px">${BATTLE_PASS_REWARDS.map(r=>{const unlocked=bpLv>=r.lv;const claimed=battlePassClaimed.includes(r.lv);return`<div data-bplv="${r.lv}" style="flex-shrink:0;width:68px;padding:8px 4px;border-radius:12px;background:${unlocked?claimed?'rgba(16,185,129,.15)':'rgba(232,255,71,.1)':'var(--card)'};border:1px solid ${unlocked?claimed?'rgba(16,185,129,.4)':'rgba(232,255,71,.4)':'var(--border)'};text-align:center;cursor:${unlocked&&!claimed?'pointer':'default'}"><div style="font-size:1.2rem">${r.icon}</div><div style="font-size:.58rem;color:${unlocked?'var(--primary)':'var(--muted)'};line-height:1.2;margin:3px 0">${r.name}</div><div style="font-size:.55rem;color:var(--muted)">Lv.${r.lv}</div>${unlocked&&!claimed?`<div style="font-size:.55rem;background:var(--primary);color:#000;border-radius:4px;padding:1px 4px;margin-top:2px;font-weight:700">Abholen</div>`:claimed?'<div style="font-size:.65rem;color:#10b981">✓</div>':''}</div>`;}).join('')}</div>`;bpEl.querySelectorAll('[data-bplv]').forEach(el=>{const lv=Number(el.dataset.bplv);if(bpLv>=lv&&!battlePassClaimed.includes(lv)){el.addEventListener('click',()=>{battlePassClaimed.push(lv);const rw=BATTLE_PASS_REWARDS.find(r=>r.lv===lv);if(rw){if(rw.type==='xp'){points+=rw.val;toast('🎁 Battle Pass: +'+rw.val+' XP');}else if(rw.type==='shield'){streakShields=Math.min(3,streakShields+rw.val);toast('🛡️ Streak-Schutz hinzugefügt!');}else if(rw.type==='energy'){energy=Math.min(CFG.ENERGY_MAX,energy+rw.val);toast('⚡ Energie aufgeladen!');}else if(rw.type==='title'){toast('👑 Titel freigeschaltet: '+rw.val);}else{toast('🎁 '+rw.name+' freigeschaltet!');}}save();updateProfile();},{ once:true });}});}
-  $('pvAchs').innerHTML=renderAchHexGrid();
+  try{$('pvAchs').innerHTML=renderAchHexGrid();}catch(e){$('pvAchs').innerHTML='<div style="color:#ef4444;font-size:.75rem;padding:8px">Fehler beim Laden der Erfolge</div>';console.error('renderAchHexGrid error:',e);}
   // Saisonhistorie
   const seasEl=document.getElementById('pvSeasons');
   if(seasEl){try{const seasons=JSON.parse(localStorage.getItem('rc_seasons_'+userId)||'[]');const MONTHS=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];seasEl.innerHTML=seasons.length?seasons.slice(0,6).map(s=>`<div class="season-row"><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${MONTHS[s.month]} ${s.year}</span><span style="color:var(--muted);font-size:.72rem">${s.title}</span><span style="font-family:'Bebas Neue',sans-serif;color:var(--primary)">${s.points} Pts</span></div>`).join(''):'<div style="padding:10px;color:var(--muted);font-size:.78rem;text-align:center">Noch keine abgeschlossenen Saisons</div>';}catch(e){seasEl.innerHTML=''}}
@@ -4436,13 +4436,9 @@ function renderAchHexGrid(){
         const glow=   e?`drop-shadow(0 0 9px ${c1}aa)`:``;
         return`<div style="display:flex;flex-direction:column;align-items:center;gap:3px">
 <div style="position:relative;width:80px;height:92px;filter:${glow}">
-  <!-- border hex -->
   <div style="position:absolute;inset:0;clip-path:${CLIP};background:${borderBg}"></div>
-  <!-- dark inner hex -->
   <div style="position:absolute;inset:4px;clip-path:${CLIP};background:${innerBg}"></div>
-  <!-- top-left sheen -->
-  <div style="position:absolute;inset:4px;clip-path:${CLIP};background:linear-gradient(145deg,rgba(255,255,255,${e?.18:.05}) 0%,transparent 48%)"></div>
-  <!-- icon + milestone number inside hex -->
+  <div style="position:absolute;inset:4px;clip-path:${CLIP};background:linear-gradient(145deg,rgba(255,255,255,${e?0.18:0.05}) 0%,transparent 48%)"></div>
   <div style="position:absolute;inset:4px;clip-path:${CLIP};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding-top:4px">
     <svg width="34" height="34" viewBox="0 0 40 40" style="opacity:${e?1:.18}">${iconSvg}</svg>
     <div style="font-family:'Bebas Neue',sans-serif;font-size:13px;color:${e?'rgba(255,255,255,.9)':'rgba(255,255,255,.18)'};line-height:1;letter-spacing:.5px">${ms}</div>
