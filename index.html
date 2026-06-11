@@ -1844,12 +1844,17 @@ function wappenSVG({shape='shield',borderColor='#e8ff47',borderEffect='standard'
   const SH={
     shield:'M50,4 L92,18 L92,56 L50,96 L8,56 L8,18Z',
     shield2:'M14,10 Q50,4 86,10 L90,58 Q68,88 50,96 Q32,88 10,58Z',
+    shield3:'M10,10 Q50,2 90,10 L92,52 Q78,94 50,96 Q22,94 8,52Z',
+    shield4:'M12,10 Q50,4 88,10 L90,64 L50,88 L10,64Z',
+    shield5:'M50,4 L82,20 L82,60 L50,96 L18,60 L18,20Z',
     hexa:'M50,4 L93,28 L93,72 L50,96 L7,72 L7,28Z',
     round:'M50,5 A45,45 0 1,1 50,95 A45,45 0 1,1 50,5Z',
     diamond:'M50,4 L96,50 L50,96 L4,50Z',
     banner:'M8,8 L92,8 L92,74 L50,96 L8,74Z',
     kite:'M50,2 L88,42 L50,96 L12,42Z',
     oval:'M50,8 Q88,8 90,50 Q88,92 50,92 Q12,92 10,50 Q12,8 50,8Z',
+    arch:'M12,8 Q50,2 88,8 L90,68 Q70,96 50,96 Q30,96 10,68Z',
+    vaulted:'M8,20 Q50,4 92,20 L92,58 Q72,96 50,96 Q28,96 8,58Z',
     cross_sh:'M32,4 L68,4 L68,32 L96,32 L96,68 L68,68 L68,96 L32,96 L32,68 L4,68 L4,32 L32,32Z'
   };
   const d=SH[shape]||SH.shield;
@@ -1917,9 +1922,20 @@ function wappenSVG({shape='shield',borderColor='#e8ff47',borderEffect='standard'
   return`<svg viewBox="-10 -10 120 120" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg"><defs>${dfs}</defs>${extraSvg}<path d="${d}" fill="${bgFill}"/><g clip-path="url(#wcp${id})">${pats[pattern]||''}</g>${syms[symbol]||''}<path d="${d}" fill="none" stroke="${efStroke}" stroke-width="${efSw}"/>${efOver}</svg>`;
 }
 const WAPPEN_SHAPES=[
-  {v:'shield',l:'Klassisch'},{v:'shield2',l:'Gerundet'},{v:'hexa',l:'Hexagon'},
-  {v:'round',l:'Rund'},{v:'diamond',l:'Raute'},{v:'banner',l:'Banner'},
-  {v:'kite',l:'Drachen'},{v:'oval',l:'Oval'},{v:'cross_sh',l:'Kreuz'}
+  {v:'shield',  l:'Klassisch', png:'/assets/wappen/shape_s5.png'},
+  {v:'shield2', l:'Gerundet',  png:'/assets/wappen/shape_s2.png'},
+  {v:'shield3', l:'Kurvig',    png:'/assets/wappen/shape_s1.png'},
+  {v:'shield4', l:'Flach',     png:'/assets/wappen/shape_s7.png'},
+  {v:'shield5', l:'Spitz',     png:'/assets/wappen/shape_s6.png'},
+  {v:'hexa',    l:'Hexagon',   png:'/assets/wappen/shape_s4.png'},
+  {v:'round',   l:'Rund',      png:'/assets/wappen/shape_s10.png'},
+  {v:'diamond', l:'Raute',     png:'/assets/wappen/shape_s11.png'},
+  {v:'banner',  l:'Banner',    png:'/assets/wappen/shape_s3.png'},
+  {v:'kite',    l:'Kite',      png:'/assets/wappen/shape_s8.png'},
+  {v:'oval',    l:'Oval',      png:'/assets/wappen/shape_s9.png'},
+  {v:'arch',    l:'Bogen',     png:'/assets/wappen/shape_s14.png'},
+  {v:'vaulted', l:'Gewölbt',   png:'/assets/wappen/shape_s15.png'},
+  {v:'cross_sh',l:'Kreuz',     png:null},
 ];
 const WAPPEN_PATTERNS=[
   {v:'solid',l:'Uni'},{v:'stripes',l:'H-Streifen'},{v:'stripes_v',l:'V-Streifen'},
@@ -1952,14 +1968,16 @@ const WAPPEN_COLORS=[
   '#3B1800','#8B6914','#1a0a3a','#E8FF47','#FF69B4','#00FFCC','#FF0077',
 ];
 const WAPPEN_PRESETS=[
-  {shape:'shield',bg:'#0d1a3d',bg2:'#1a2e6e',borderColor:'#4d80e6',borderEffect:'standard',pattern:'cross',patternColor:'#4d80e6',symbol:'star',symbolColor:'#fff',extras:[]},
-  {shape:'hexa',bg:'#3d0a0a',bg2:'#7a1e1e',borderColor:'#e65020',borderEffect:'fire',pattern:'diagonal',patternColor:'#e65020',symbol:'flame',symbolColor:'#FFD700',extras:['stars3']},
-  {shape:'shield2',bg:'#0d3320',bg2:'#1a5e3a',borderColor:'#3dba72',borderEffect:'standard',pattern:'chevron',patternColor:'#3dba72',symbol:'runner',symbolColor:'#fff',extras:['laurel']},
-  {shape:'banner',bg:'#3d2200',bg2:'#6e4400',borderColor:'#e6a820',borderEffect:'gold',pattern:'halves',patternColor:'#e6a820',symbol:'crown',symbolColor:'#fff',extras:['band_gold']},
-  {shape:'kite',bg:'#1f0d3d',bg2:'#3d1a70',borderColor:'#8c5fe6',borderEffect:'neon',pattern:'dots',patternColor:'#8c5fe6',symbol:'bolt',symbolColor:'#fff',extras:['stars5']},
-  {shape:'diamond',bg:'#002a3d',bg2:'#00526e',borderColor:'#3abde6',borderEffect:'ice',pattern:'solid',patternColor:'#3abde6',symbol:'eagle',symbolColor:'#fff',extras:[]},
-  {shape:'round',bg:'#1a1a00',bg2:'#3a3a00',borderColor:'#FFD700',borderEffect:'metallic',pattern:'border_inner',patternColor:'#FFD700',symbol:'lion',symbolColor:'#FFD700',extras:['stars3']},
-  {shape:'oval',bg:'#0a1a0a',bg2:'#0a3a0a',borderColor:'#3dba72',borderEffect:'gloss',pattern:'stripes_v',patternColor:'#3dba72',symbol:'tree',symbolColor:'#fff',extras:['laurel']},
+  {shape:'shield', bg:'#080c18',bg2:'#0e1a36',borderColor:'#4d80e6',borderEffect:'neon',  pattern:'cross',    patternColor:'#2255bb',symbol:'star',          symbolColor:'#ffffff',extras:['stars3']},
+  {shape:'hexa',   bg:'#180808',bg2:'#2e0a0a',borderColor:'#e63020',borderEffect:'fire',  pattern:'diagonal', patternColor:'#993311',symbol:'flame',         symbolColor:'#FFD700',extras:['stars3']},
+  {shape:'shield2',bg:'#081808',bg2:'#0a2e0a',borderColor:'#e6a820',borderEffect:'gold',  pattern:'chevron',  patternColor:'#3d7a20',symbol:'runner',        symbolColor:'#e6a820',extras:['laurel']},
+  {shape:'shield3',bg:'#0a0818',bg2:'#160a2a',borderColor:'#9933FF',borderEffect:'neon',  pattern:'dots',     patternColor:'#6611cc',symbol:'bolt',          symbolColor:'#ffffff',extras:['stars5']},
+  {shape:'shield4',bg:'#080808',bg2:'#181818',borderColor:'#FF8800',borderEffect:'fire',  pattern:'solid',    patternColor:'#FF8800',symbol:'lion',          symbolColor:'#FF8800',extras:[]},
+  {shape:'arch',   bg:'#080808',bg2:'#181818',borderColor:'#00CCFF',borderEffect:'ice',   pattern:'border_inner',patternColor:'#004466',symbol:'eagle',     symbolColor:'#00CCFF',extras:[]},
+  {shape:'banner', bg:'#180a00',bg2:'#2e1800',borderColor:'#FFD700',borderEffect:'gold',  pattern:'halves',   patternColor:'#7a3300',symbol:'crown',         symbolColor:'#FFD700',extras:['band_gold']},
+  {shape:'vaulted',bg:'#080808',bg2:'#141414',borderColor:'#3dba72',borderEffect:'gloss', pattern:'stripes_v',patternColor:'#1a5e3a',symbol:'tree',          symbolColor:'#ffffff',extras:['laurel']},
+  {shape:'kite',   bg:'#10080a',bg2:'#201018',borderColor:'#FF4466',borderEffect:'neon',  pattern:'diagonal', patternColor:'#881122',symbol:'crossed_swords',symbolColor:'#ffffff',extras:['stars3']},
+  {shape:'hexa',   bg:'#060a14',bg2:'#0a1428',borderColor:'#88AAFF',borderEffect:'metallic',pattern:'solid', patternColor:'#88AAFF',symbol:'shield_s',      symbolColor:'#88AAFF',extras:[]},
 ];
 
 /* ── FRAKTIONS-BESCHREIBUNGEN ── */
@@ -3728,7 +3746,9 @@ function renderSettingsTab(tab){
       WAPPEN_SHAPES.forEach(s=>{
         const d=document.createElement('div');
         d.className='wb-thumb'+(s.v===wCfg.shape?' sel':'');d.dataset.v=s.v;
-        d.innerHTML=wappenSVG({shape:s.v,bg:'#1a1a2e',bg2:'#0a0a1a',borderColor:'#4d80e6',borderEffect:'standard',pattern:'solid',patternColor:'#4d80e6',symbol:'',extras:[]},42);
+        d.innerHTML=s.png
+          ?`<img src="${s.png}" width="46" height="46" style="object-fit:contain;display:block;border-radius:4px" loading="lazy">`
+          :wappenSVG({shape:s.v,bg:'#1a1a2e',bg2:'#0a0a1a',borderColor:'#4d80e6',borderEffect:'standard',pattern:'solid',patternColor:'#4d80e6',symbol:'',extras:[]},42);
         d.title=s.l;
         d.addEventListener('click',()=>{wCfg.shape=s.v;selThumb('wbShapes',s.v);rPrev();});
         shpRow.appendChild(d);
