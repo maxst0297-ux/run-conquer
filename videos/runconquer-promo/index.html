@@ -13,12 +13,14 @@ body {
   font-family: 'Poppins', sans-serif;
 }
 
+/* ── ROOT ── */
 #root {
   position: relative;
   width: 1080px;
   height: 1920px;
 }
 
+/* ── SCENES ── */
 .scene {
   position: absolute;
   top: 0; left: 0;
@@ -26,14 +28,16 @@ body {
   height: 1920px;
   overflow: hidden;
 }
+/* Scene 1: visible by default */
 #s1 { background: #09090F; z-index: 1; }
+/* Scenes 2-6: hidden, revealed by GSAP */
 #s2 { background: #09090F; z-index: 2; opacity: 0; }
 #s3 { background: #09090F; z-index: 3; opacity: 0; }
-#s4 { background: #0A0A14; z-index: 4; opacity: 0; }
+#s4 { background: #0D0D18; z-index: 4; opacity: 0; }
 #s5 { background: #09090F; z-index: 5; opacity: 0; }
 #s6 { background: #09090F; z-index: 6; opacity: 0; }
-#s7 { background: #09090F; z-index: 7; opacity: 0; }
 
+/* ── SHARED LAYOUT ── */
 .scene-content {
   display: flex;
   flex-direction: column;
@@ -45,105 +49,101 @@ body {
   box-sizing: border-box;
 }
 
-/* ── SPEED LINES (shared) ── */
-.speed-lines {
+/* ══════════════════════
+   SCENE 1 — HOOK
+══════════════════════ */
+.s1-glow {
   position: absolute;
-  inset: 0;
-  overflow: hidden;
+  width: 900px; height: 900px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(232,255,71,.08) 0%, transparent 70%);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
   pointer-events: none;
 }
-.speed-line {
+.s1-ghost {
   position: absolute;
-  background: linear-gradient(90deg, transparent, rgba(232,255,71,.18), transparent);
-  height: 2px;
-  width: 600px;
-  border-radius: 2px;
-}
-
-/* ── SCENE 1: AGGRESSIVE HOOK ── */
-.s1-bg-grid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(232,255,71,.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(232,255,71,.06) 1px, transparent 1px);
-  background-size: 80px 80px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 420px;
+  color: rgba(232,255,71,0.04);
+  /* decorative only — intentionally below contrast threshold */
+  letter-spacing: -8px;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
   pointer-events: none;
+  user-select: none;
 }
-.s1-strike {
-  position: absolute;
-  width: 3px;
-  background: linear-gradient(180deg, transparent, #E8FF47, transparent);
-  height: 400px;
-  opacity: 0;
-}
-.s1-eyebrow {
-  font-size: 24px;
-  letter-spacing: 8px;
-  color: #E8FF47;
+.s1-label {
+  font-size: 22px;
+  letter-spacing: 6px;
+  color: #9292AA;
   text-transform: uppercase;
   text-align: center;
-  font-weight: 700;
 }
 .s1-headline {
   font-family: 'Bebas Neue', sans-serif;
   text-align: center;
-  line-height: 0.85;
+  line-height: 0.88;
 }
 .s1-headline .l1 {
   display: block;
-  font-size: 170px;
+  font-size: 180px;
   color: #F0F0F8;
   letter-spacing: 6px;
 }
 .s1-headline .l2 {
   display: block;
-  font-size: 220px;
+  font-size: 210px;
   color: #E8FF47;
-  letter-spacing: 2px;
-  text-shadow: 0 0 80px rgba(232,255,71,.7), 0 0 160px rgba(232,255,71,.3);
-}
-.s1-headline .l3 {
-  display: block;
-  font-size: 160px;
-  color: #F0F0F8;
-  letter-spacing: 8px;
-  opacity: 0.9;
+  letter-spacing: 4px;
+  text-shadow: 0 0 60px rgba(232,255,71,.5), 0 0 120px rgba(232,255,71,.25);
 }
 .s1-sub {
-  font-size: 32px;
-  letter-spacing: 4px;
-  color: rgba(240,240,248,.55);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 80px;
+  color: #F0F0F8;
   text-align: center;
-  text-transform: uppercase;
+  letter-spacing: 8px;
 }
-.s1-impact-bar {
-  height: 6px;
-  background: linear-gradient(90deg, transparent, #E8FF47, transparent);
-  border-radius: 3px;
-  transform: scaleX(0);
+.s1-ping-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 40px;
+  height: 100px;
+  position: relative;
 }
-
-/* ── SCENE 2: RUNNER IN MOTION ── */
-.s2-bg {
+.s1-dot {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: #E8FF47;
   position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse 800px 800px at 50% 60%, rgba(232,255,71,.05) 0%, transparent 70%);
+  box-shadow: 0 0 20px rgba(232,255,71,.8);
 }
-.s2-trail {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-.s2-hud-ring {
+.s1-ring {
   position: absolute;
   border-radius: 50%;
-  border: 2px solid rgba(232,255,71,.25);
+  border: 2px solid rgba(232,255,71,.5);
+  width: 18px; height: 18px;
+}
+
+/* ══════════════════════
+   SCENE 2 — GPS TRACK
+══════════════════════ */
+.s2-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(232,255,71,.4) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(232,255,71,.4) 1px, transparent 1px);
+  background-size: 60px 60px;
+  opacity: 0.05;
+  pointer-events: none;
 }
 .s2-label {
   font-size: 22px;
-  letter-spacing: 6px;
+  letter-spacing: 5px;
   color: #9292AA;
   text-transform: uppercase;
   text-align: center;
@@ -154,41 +154,31 @@ body {
 }
 #s2-svg {
   width: 920px;
-  height: 600px;
-  border-radius: 24px;
+  height: 580px;
+  border-radius: 20px;
   overflow: hidden;
-  box-shadow: 0 0 60px rgba(232,255,71,.12), 0 0 120px rgba(232,255,71,.05);
 }
-.s2-stats-row {
+.s2-hud {
   display: flex;
   justify-content: center;
-  gap: 0;
+  gap: 60px;
 }
-.s2-stat {
-  flex: 1;
-  text-align: center;
-  padding: 28px 0;
-  border-right: 1px solid rgba(255,255,255,.08);
-  background: rgba(255,255,255,.03);
-}
-.s2-stat:first-child { border-radius: 16px 0 0 16px; }
-.s2-stat:last-child  { border-right: none; border-radius: 0 16px 16px 0; }
-.s2-stat-val {
+.s2-hud-item { text-align: center; }
+.s2-hud-val {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 88px;
+  font-size: 80px;
   color: #E8FF47;
   line-height: 1;
 }
-.s2-stat-lbl {
-  font-size: 18px;
+.s2-hud-lbl {
+  font-size: 20px;
   color: #9292AA;
-  letter-spacing: 4px;
+  letter-spacing: 3px;
   text-transform: uppercase;
-  margin-top: 4px;
 }
 .s2-heading {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 140px;
+  font-size: 130px;
   color: #F0F0F8;
   text-align: center;
   letter-spacing: 6px;
@@ -197,354 +187,233 @@ body {
 .s2-heading em {
   font-style: normal;
   color: #E8FF47;
-  text-shadow: 0 0 40px rgba(232,255,71,.5);
+  text-shadow: 0 0 40px rgba(232,255,71,.4);
 }
 
-/* ── SCENE 3: CONQUEST IMPACT ── */
-.s3-flash {
-  position: absolute;
-  inset: 0;
-  background: rgba(232,255,71,.07);
-  pointer-events: none;
-  opacity: 0;
-}
-.s3-raid-badge {
-  display: flex;
+/* ══════════════════════
+   SCENE 3 — CONQUEST
+══════════════════════ */
+.s3-badge {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 16px;
-  background: linear-gradient(135deg, #FF4D6D, #c0392b);
+  gap: 12px;
+  background: #FF4D6D;
   color: #fff;
-  font-weight: 800;
-  font-size: 34px;
-  letter-spacing: 3px;
-  padding: 22px 50px;
+  font-weight: 700;
+  font-size: 30px;
+  letter-spacing: 2px;
+  padding: 18px 40px;
   border-radius: 50px;
   align-self: center;
-  box-shadow: 0 0 40px rgba(255,77,109,.5);
 }
-.s3-map-battle {
+.s3-grid-wrap {
   display: flex;
   justify-content: center;
 }
-#s3-svg {
-  width: 920px;
-  height: 520px;
-  border-radius: 20px;
+.s3-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 160px);
+  grid-template-rows: repeat(4, 100px);
+  gap: 8px;
 }
-.s3-territory-name {
+.s3-cell {
+  border-radius: 14px;
+  background: #1A1A26;
+}
+.s3-cell.owned { background: rgba(232,255,71,.35); }
+.s3-cell.new {
+  background: #E8FF47;
+  box-shadow: 0 0 28px rgba(232,255,71,.7);
+}
+.s3-pts {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 100px;
+  font-size: 180px;
   color: #E8FF47;
   text-align: center;
-  letter-spacing: 4px;
-  line-height: 1;
-  text-shadow: 0 0 60px rgba(232,255,71,.5);
+  line-height: 0.85;
+  text-shadow: 0 0 80px rgba(232,255,71,.45);
 }
-.s3-territory-sub {
-  font-size: 28px;
-  letter-spacing: 4px;
-  color: rgba(240,240,248,.5);
+.s3-pts-lbl {
+  font-size: 30px;
+  letter-spacing: 5px;
+  color: #9292AA;
   text-align: center;
   text-transform: uppercase;
 }
-.s3-pts-row {
-  display: flex;
-  justify-content: center;
-  gap: 40px;
-  align-items: center;
+.s3-sub {
+  font-size: 26px;
+  color: #F0F0F8;
+  text-align: center;
+  letter-spacing: 2px;
+  opacity: 0.55;
 }
-.s3-pts-box {
+
+/* ══════════════════════
+   SCENE 4 — STATS
+══════════════════════ */
+.s4-intro {
+  font-size: 24px;
+  letter-spacing: 5px;
+  color: #9292AA;
+  text-transform: uppercase;
   text-align: center;
 }
-.s3-pts-val {
+.s4-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.s4-card {
+  background: #1A1A26;
+  border-radius: 24px;
+  padding: 44px 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 4px solid #E8FF47;
+}
+.s4-card-lbl {
+  font-size: 26px;
+  letter-spacing: 4px;
+  color: #9292AA;
+  text-transform: uppercase;
+}
+.s4-card-val {
   font-family: 'Bebas Neue', sans-serif;
   font-size: 130px;
   color: #E8FF47;
   line-height: 1;
-  text-shadow: 0 0 60px rgba(232,255,71,.5);
-}
-.s3-pts-lbl {
-  font-size: 22px;
-  letter-spacing: 4px;
-  color: #9292AA;
-  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
 }
 
-/* ── SCENE 4: FACTION WAR ── */
-.s4-title {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 110px;
-  color: #F0F0F8;
-  text-align: center;
-  letter-spacing: 5px;
-  line-height: 1;
-}
-.s4-title em {
-  color: #E8FF47;
-  font-style: normal;
-}
-.s4-subtitle {
-  font-size: 24px;
-  letter-spacing: 5px;
-  color: #9292AA;
-  text-align: center;
-  text-transform: uppercase;
-}
-.s4-factions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-.s4-faction {
-  border-radius: 24px;
-  padding: 40px 36px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  border: 2px solid transparent;
-  opacity: 0;
-  transform: scale(0.85);
-}
-#f-fire   { background: linear-gradient(145deg, #2a0a0a, #1a0808); border-color: #E84820; box-shadow: 0 0 30px rgba(232,72,32,.25); }
-#f-ice    { background: linear-gradient(145deg, #0a1a2a, #080e18); border-color: #4DB8FF; box-shadow: 0 0 30px rgba(77,184,255,.2); }
-#f-storm  { background: linear-gradient(145deg, #1a1a0a, #101008); border-color: #E8D020; box-shadow: 0 0 30px rgba(232,208,32,.2); }
-#f-shadow { background: linear-gradient(145deg, #0a0a1a, #06060f); border-color: #9B5DE5; box-shadow: 0 0 30px rgba(155,93,229,.2); }
-.s4-faction-icon {
-  font-size: 72px;
-  line-height: 1;
-}
-.s4-faction-name {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 52px;
-  letter-spacing: 3px;
-  text-align: center;
-}
-.s4-faction-stat {
-  font-size: 20px;
-  color: rgba(240,240,248,.5);
-  letter-spacing: 2px;
-  text-align: center;
-}
-.s4-cta-line {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 80px;
-  color: #E8FF47;
-  text-align: center;
-  letter-spacing: 4px;
-  text-shadow: 0 0 40px rgba(232,255,71,.4);
-}
-
-/* ── SCENE 5: POWER STATS ── */
-.s5-eyebrow {
+/* ══════════════════════
+   SCENE 5 — LEADERBOARD
+══════════════════════ */
+.s5-lbl {
   font-size: 22px;
-  letter-spacing: 6px;
+  letter-spacing: 5px;
   color: #9292AA;
-  text-align: center;
   text-transform: uppercase;
+  text-align: center;
 }
 .s5-title {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 120px;
+  font-size: 110px;
+  color: #E8FF47;
+  text-align: center;
+  letter-spacing: 4px;
+  line-height: 1;
+}
+.s5-sub {
+  font-size: 28px;
+  letter-spacing: 3px;
   color: #F0F0F8;
   text-align: center;
-  letter-spacing: 5px;
-  line-height: 1;
-}
-.s5-cards { display: flex; flex-direction: column; gap: 20px; }
-.s5-card {
-  border-radius: 24px;
-  padding: 48px 60px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: relative;
-  overflow: hidden;
-  opacity: 0;
-}
-.s5-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 4px;
-}
-#sc-km   { background: linear-gradient(135deg, #111120, #0e0e1c); border: 1px solid rgba(232,255,71,.15); }
-#sc-km::before { background: linear-gradient(90deg, #E8FF47, #B8CF30); }
-#sc-geo  { background: linear-gradient(135deg, #111120, #0e0e1c); border: 1px solid rgba(77,184,255,.15); }
-#sc-geo::before { background: linear-gradient(90deg, #4DB8FF, #2090e0); }
-#sc-str  { background: linear-gradient(135deg, #111120, #0e0e1c); border: 1px solid rgba(255,120,30,.2); }
-#sc-str::before { background: linear-gradient(90deg, #FF7820, #E84820); }
-.s5-card-label {
-  font-size: 24px;
-  letter-spacing: 4px;
-  color: #9292AA;
   text-transform: uppercase;
+  opacity: 0.65;
 }
-.s5-card-val {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 120px;
-  color: #E8FF47;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-#sc-geo .s5-card-val { color: #4DB8FF; }
-#sc-str .s5-card-val { color: #FF7820; font-size: 96px; }
-
-/* ── SCENE 6: LEADERBOARD ── */
-.s6-eyebrow {
-  font-size: 22px;
-  letter-spacing: 6px;
-  color: #9292AA;
-  text-transform: uppercase;
-  text-align: center;
-}
-.s6-title {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 120px;
-  color: #E8FF47;
-  text-align: center;
-  letter-spacing: 4px;
-  line-height: 1;
-  text-shadow: 0 0 60px rgba(232,255,71,.4);
-}
-.s6-subtitle {
-  font-size: 28px;
-  letter-spacing: 4px;
-  color: rgba(240,240,248,.55);
-  text-align: center;
-  text-transform: uppercase;
-}
-.s6-rows { display: flex; flex-direction: column; gap: 14px; }
-.s6-row {
+.s5-rows { display: flex; flex-direction: column; gap: 16px; }
+.s5-row {
+  background: #1A1A26;
   border-radius: 20px;
-  padding: 28px 40px;
+  padding: 30px 40px;
   display: flex;
   align-items: center;
   gap: 20px;
-  background: rgba(255,255,255,.04);
-  border: 1px solid rgba(255,255,255,.07);
-  opacity: 0;
-  transform: translateX(80px);
 }
-.s6-row.top1 { background: rgba(232,255,71,.07); border-color: rgba(232,255,71,.2); }
-.s6-row.you  { background: rgba(77,184,255,.07); border-color: rgba(77,184,255,.25); }
-.s6-rank {
+.s5-row.you {
+  background: rgba(232,255,71,.1);
+  border: 2px solid #E8FF47;
+}
+.s5-rank {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 56px;
+  font-size: 60px;
   color: #9292AA;
-  width: 50px;
+  width: 54px;
   text-align: center;
   flex-shrink: 0;
 }
-.s6-row.top1 .s6-rank { color: #E8FF47; }
-.s6-row.you  .s6-rank { color: #4DB8FF; }
-.s6-icon { font-size: 36px; flex-shrink: 0; }
-.s6-player { flex: 1; min-width: 0; }
-.s6-name { font-weight: 600; font-size: 30px; color: #F0F0F8; }
-.s6-row.top1 .s6-name { font-family: 'Bebas Neue',sans-serif; font-size:48px; letter-spacing:2px; color:#E8FF47; }
-.s6-row.you  .s6-name { font-size: 40px; font-family: 'Bebas Neue',sans-serif; letter-spacing:2px; color: #4DB8FF; }
-.s6-meta { font-size: 20px; color: #9292AA; }
-.s6-pts {
+.s5-row.you .s5-rank { color: #E8FF47; }
+.s5-player { flex: 1; }
+.s5-name {
+  font-weight: 600;
+  font-size: 30px;
+  color: #F0F0F8;
+}
+.s5-row.you .s5-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 52px;
+  letter-spacing: 3px;
+  color: #E8FF47;
+}
+.s5-meta { font-size: 20px; color: #9292AA; }
+.s5-pts {
   font-family: 'Bebas Neue', sans-serif;
   font-size: 56px;
   color: #E8FF47;
   font-variant-numeric: tabular-nums;
 }
-.s6-row.you .s6-pts { color: #4DB8FF; font-size: 44px; }
-.s6-challenge {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 88px;
-  color: #F0F0F8;
-  text-align: center;
-  letter-spacing: 3px;
-  line-height: 1;
+.s5-row.you .s5-pts {
+  font-size: 36px;
+  color: #9292AA;
 }
-.s6-challenge em { color: #E8FF47; font-style: normal; }
 
-/* ── SCENE 7: EPIC CTA ── */
-.s7-glow-a {
+/* ══════════════════════
+   SCENE 6 — CTA
+══════════════════════ */
+.s6-glow {
   position: absolute;
-  width: 1200px; height: 1200px;
+  width: 1100px; height: 1100px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(232,255,71,.12) 0%, transparent 65%);
+  background: radial-gradient(circle, rgba(232,255,71,.1) 0%, transparent 65%);
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
-.s7-glow-b {
-  position: absolute;
-  width: 600px; height: 600px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(232,255,71,.18) 0%, transparent 65%);
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-.s7-particles {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-.s7-p {
-  position: absolute;
-  border-radius: 50%;
-  background: #E8FF47;
-  width: 6px; height: 6px;
-  opacity: 0;
-}
-.s7-tagline-top {
-  font-size: 26px;
-  letter-spacing: 8px;
-  color: rgba(232,255,71,.7);
-  text-transform: uppercase;
-  text-align: center;
-}
-.s7-headline {
+.s6-heading {
   font-family: 'Bebas Neue', sans-serif;
   text-align: center;
-  line-height: 0.85;
+  line-height: 0.88;
 }
-.s7-headline .l1 {
+.s6-heading .l1 {
   display: block;
-  font-size: 140px;
+  font-size: 110px;
   color: #F0F0F8;
-  letter-spacing: 12px;
+  letter-spacing: 10px;
 }
-.s7-headline .l2 {
+.s6-heading .l2 {
   display: block;
-  font-size: 240px;
+  font-size: 220px;
   color: #E8FF47;
   letter-spacing: 2px;
-  text-shadow: 0 0 100px rgba(232,255,71,.6), 0 0 200px rgba(232,255,71,.25);
+  text-shadow: 0 0 80px rgba(232,255,71,.5), 0 0 160px rgba(232,255,71,.2);
 }
-.s7-sub {
-  font-size: 26px;
+.s6-tagline {
+  font-size: 28px;
   letter-spacing: 6px;
-  color: rgba(240,240,248,.45);
+  color: #9292AA;
   text-align: center;
   text-transform: uppercase;
 }
-.s7-cta {
+.s6-cta {
   background: #E8FF47;
   color: #09090F;
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 72px;
-  letter-spacing: 6px;
-  padding: 44px 110px;
-  border-radius: 60px;
+  font-size: 60px;
+  letter-spacing: 5px;
+  padding: 40px 100px;
+  border-radius: 50px;
   text-align: center;
   align-self: center;
-  box-shadow: 0 0 80px rgba(232,255,71,.5), 0 20px 60px rgba(0,0,0,.5);
 }
-.s7-platform {
-  font-size: 22px;
-  color: rgba(146,146,170,.7);
+.s6-platforms {
+  font-size: 24px;
+  color: #9292AA;
   text-align: center;
-  letter-spacing: 4px;
+  letter-spacing: 3px;
   text-transform: uppercase;
 }
-.s7-fade {
+.s6-fade {
   position: absolute;
   inset: 0;
   background: #09090F;
@@ -555,277 +424,178 @@ body {
 </style>
 </head>
 <body>
+
 <div id="root"
   data-composition-id="main"
   data-width="1080"
   data-height="1920"
   data-start="0"
-  data-duration="30">
+  data-duration="28">
 
-  <!-- ══ SCENE 1: AGGRESSIVE HOOK ══ -->
+  <!-- ══ SCENE 1: HOOK ══ -->
   <div id="s1" class="scene">
-    <div class="s1-bg-grid"></div>
-    <!-- Speed-line strikes -->
-    <div class="s1-strike" id="st1" style="left:180px;top:-200px;transform:rotate(-20deg)"></div>
-    <div class="s1-strike" id="st2" style="left:500px;top:-200px;transform:rotate(-20deg)"></div>
-    <div class="s1-strike" id="st3" style="left:820px;top:-200px;transform:rotate(-20deg)"></div>
-    <div class="scene-content" style="justify-content:center;gap:18px;">
-      <div class="s1-eyebrow" id="s1-eye">GPS · GEBIETE · HERRSCHAFT</div>
+    <div class="s1-glow" id="s1-glow"></div>
+    <div class="s1-ghost" data-layout-ignore>CONQUER</div>
+    <div class="scene-content" style="justify-content:center;gap:20px;">
+      <div class="s1-label" id="s1-lbl">GPS · GEBIETE · HERRSCHAFT</div>
       <div class="s1-headline">
-        <span class="l1" id="s1-l1">LAUFE</span>
-        <span class="l2" id="s1-l2">EROBER</span>
-        <span class="l3" id="s1-l3">HERRSCHE</span>
+        <span class="l1" id="s1-l1">DEINE</span>
+        <span class="l2" id="s1-l2">STADT</span>
       </div>
-      <div class="s1-impact-bar" id="s1-bar"></div>
-      <div class="s1-sub" id="s1-sub">DIE STADT WARTET AUF DICH</div>
+      <div class="s1-sub" id="s1-sub">GEHÖRT DIR.</div>
+      <div class="s1-ping-wrap">
+        <div class="s1-dot"></div>
+        <div class="s1-ring" id="ring1"></div>
+        <div class="s1-ring" id="ring2"></div>
+        <div class="s1-ring" id="ring3"></div>
+      </div>
     </div>
   </div>
 
-  <!-- ══ SCENE 2: RUNNER IN MOTION ══ -->
+  <!-- ══ SCENE 2: GPS TRACK ══ -->
   <div id="s2" class="scene">
-    <div class="s2-bg"></div>
-    <div class="scene-content" style="gap:26px;">
-      <div class="s2-label" id="s2-lbl">ECHTZEIT-GPS TRACKING</div>
-      <div class="s2-map-wrap">
-        <svg id="s2-svg" viewBox="0 0 920 600" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="920" height="600" fill="#0D0D18" rx="24"/>
-          <!-- City block grid -->
-          <rect x="0" y="0" width="920" height="600" fill="url(#cityPattern)"/>
-          <defs>
-            <pattern id="cityPattern" x="0" y="0" width="80" height="80" patternUnits="userSpaceOnUse">
-              <rect width="80" height="80" fill="#0D0D18"/>
-              <rect x="5" y="5" width="32" height="32" fill="#13131F" rx="3"/>
-              <rect x="43" y="5" width="32" height="32" fill="#13131F" rx="3"/>
-              <rect x="5" y="43" width="32" height="32" fill="#13131F" rx="3"/>
-              <rect x="43" y="43" width="32" height="32" fill="#13131F" rx="3"/>
-            </pattern>
-          </defs>
-          <!-- Main roads -->
-          <line x1="0" y1="300" x2="920" y2="300" stroke="#1E1E2E" stroke-width="24"/>
-          <line x1="460" y1="0" x2="460" y2="600" stroke="#1E1E2E" stroke-width="24"/>
-          <line x1="0" y1="150" x2="920" y2="150" stroke="#1A1A28" stroke-width="12"/>
-          <line x1="0" y1="450" x2="920" y2="450" stroke="#1A1A28" stroke-width="12"/>
-          <line x1="230" y1="0" x2="230" y2="600" stroke="#1A1A28" stroke-width="12"/>
-          <line x1="690" y1="0" x2="690" y2="600" stroke="#1A1A28" stroke-width="12"/>
-          <!-- Owned territory zones -->
-          <polygon points="140,80 400,95 430,300 210,278 170,185"
-            fill="rgba(232,255,71,.12)" stroke="rgba(232,255,71,.4)" stroke-width="2.5"/>
-          <polygon points="490,80 680,70 720,210 600,230 470,190"
-            fill="rgba(232,255,71,.12)" stroke="rgba(232,255,71,.4)" stroke-width="2.5"/>
-          <!-- Enemy territory -->
-          <polygon points="160,360 280,340 320,480 180,500 140,440"
-            fill="rgba(255,77,109,.1)" stroke="rgba(255,77,109,.35)" stroke-width="2"/>
-          <!-- GPS track -->
-          <polyline id="s2-track"
-            points="90,490 130,410 200,340 280,280 380,200 440,160 490,180 560,160 630,185 700,250 760,320 780,400 730,450 640,470 560,440 480,460 390,490 290,515 200,500 120,490 90,490"
-            fill="none" stroke="#E8FF47" stroke-width="7"
-            stroke-linecap="round" stroke-linejoin="round"/>
-          <!-- Position halo -->
-          <circle cx="780" cy="400" r="36" fill="rgba(232,255,71,.12)"/>
-          <circle cx="780" cy="400" r="20" fill="rgba(232,255,71,.25)"/>
-          <circle id="s2-pos" cx="780" cy="400" r="12" fill="#E8FF47"/>
-          <!-- Waypoints -->
-          <circle cx="280" cy="280" r="8" fill="#E8FF47" opacity=".6"/>
-          <circle cx="560" cy="160" r="8" fill="#E8FF47" opacity=".6"/>
-          <circle cx="730" cy="450" r="8" fill="#E8FF47" opacity=".6"/>
-        </svg>
-      </div>
-      <div class="s2-stats-row" id="s2-stats">
-        <div class="s2-stat">
-          <div class="s2-stat-val" id="s2-km">3.8</div>
-          <div class="s2-stat-lbl">KM</div>
-        </div>
-        <div class="s2-stat">
-          <div class="s2-stat-val">4:47</div>
-          <div class="s2-stat-lbl">MIN/KM</div>
-        </div>
-        <div class="s2-stat">
-          <div class="s2-stat-val" style="color:#FF4D6D">174</div>
-          <div class="s2-stat-lbl">BPM</div>
-        </div>
-        <div class="s2-stat">
-          <div class="s2-stat-val" style="color:#4DB8FF">+3</div>
-          <div class="s2-stat-lbl">GEBIETE</div>
-        </div>
-      </div>
-      <div class="s2-heading" id="s2-head">JEDEN <em>KM</em> KÄMPFEN</div>
-    </div>
-  </div>
-
-  <!-- ══ SCENE 3: CONQUEST IMPACT ══ -->
-  <div id="s3" class="scene">
-    <div class="s3-flash" id="s3-flash"></div>
-    <div class="scene-content" style="gap:20px;">
-      <div class="s3-raid-badge" id="s3-badge">⚔️ GEBIET GESTÜRMT</div>
-      <div class="s3-map-battle">
-        <svg id="s3-svg" viewBox="0 0 920 520" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="920" height="520" fill="#0D0D18" rx="20"/>
-          <!-- City grid base -->
-          <line x1="0" y1="260" x2="920" y2="260" stroke="#1A1A28" stroke-width="18"/>
-          <line x1="460" y1="0" x2="460" y2="520" stroke="#1A1A28" stroke-width="18"/>
-          <line x1="0" y1="130" x2="920" y2="130" stroke="#16161F" stroke-width="10"/>
-          <line x1="0" y1="390" x2="920" y2="390" stroke="#16161F" stroke-width="10"/>
-          <line x1="230" y1="0" x2="230" y2="520" stroke="#16161F" stroke-width="10"/>
-          <line x1="690" y1="0" x2="690" y2="520" stroke="#16161F" stroke-width="10"/>
-          <!-- Multiple owned territories -->
-          <polygon points="60,60 200,45 220,200 90,210 50,140"
-            fill="rgba(232,255,71,.18)" stroke="#E8FF47" stroke-width="2.5"/>
-          <polygon points="250,70 410,55 430,180 260,190"
-            fill="rgba(232,255,71,.18)" stroke="#E8FF47" stroke-width="2.5"/>
-          <polygon points="100,270 230,250 240,400 80,410"
-            fill="rgba(232,255,71,.18)" stroke="#E8FF47" stroke-width="2.5"/>
-          <!-- Enemy territory being conquered -->
-          <polygon id="s3-enemy" points="500,120 700,100 740,310 530,330 480,220"
-            fill="rgba(255,77,109,.15)" stroke="#FF4D6D" stroke-width="3"/>
-          <!-- New conquered (appears animated) -->
-          <polygon id="s3-new" points="500,120 700,100 740,310 530,330 480,220"
-            fill="rgba(232,255,71,.25)" stroke="#E8FF47" stroke-width="3" opacity="0"/>
-          <!-- Impact cross markers -->
-          <g id="s3-impact" opacity="0">
-            <line x1="600" y1="180" x2="640" y2="220" stroke="#E8FF47" stroke-width="6" stroke-linecap="round"/>
-            <line x1="640" y1="180" x2="600" y2="220" stroke="#E8FF47" stroke-width="6" stroke-linecap="round"/>
-            <line x1="560" y1="240" x2="590" y2="270" stroke="#E8FF47" stroke-width="5" stroke-linecap="round"/>
-            <line x1="590" y1="240" x2="560" y2="270" stroke="#E8FF47" stroke-width="5" stroke-linecap="round"/>
-          </g>
-          <!-- Runner icon at border of territory -->
-          <g id="s3-runner" transform="translate(480,215) scale(1.4)" opacity="0">
-            <circle cx="12" cy="4" r="3.5" fill="#E8FF47"/>
-            <path d="M12 8 L9 14 L7 20 M12 8 L15 14 L17 20 M9 14 L15 14" stroke="#E8FF47" stroke-width="2.2" stroke-linecap="round" fill="none"/>
-          </g>
-        </svg>
-      </div>
-      <div class="s3-pts-row">
-        <div class="s3-pts-box">
-          <div class="s3-pts-val" id="s3-pts">+350</div>
-          <div class="s3-pts-lbl">PUNKTE</div>
-        </div>
-        <div style="font-size:60px;color:rgba(232,255,71,.3)">|</div>
-        <div class="s3-pts-box">
-          <div class="s3-pts-val" style="font-size:100px" id="s3-geo">+1</div>
-          <div class="s3-pts-lbl">GEBIET</div>
-        </div>
-      </div>
-      <div class="s3-territory-sub">52 GEBIETE INSGESAMT · RANG #7</div>
-    </div>
-  </div>
-
-  <!-- ══ SCENE 4: FACTION WAR ══ -->
-  <div id="s4" class="scene">
-    <div class="scene-content" style="gap:22px;justify-content:center;">
-      <div class="s4-subtitle" id="s4-sub">WÄHLE DEINE SEITE</div>
-      <div class="s4-title" id="s4-ttl">FRAKTIONS<em>KRIEG</em></div>
-      <div class="s4-factions">
-        <div class="s4-faction" id="f-fire">
-          <div class="s4-faction-icon">🔥</div>
-          <div class="s4-faction-name" style="color:#E84820">FEUER</div>
-          <div class="s4-faction-stat">482 Gebiete</div>
-        </div>
-        <div class="s4-faction" id="f-ice">
-          <div class="s4-faction-icon">❄️</div>
-          <div class="s4-faction-name" style="color:#4DB8FF">EIS</div>
-          <div class="s4-faction-stat">391 Gebiete</div>
-        </div>
-        <div class="s4-faction" id="f-storm">
-          <div class="s4-faction-icon">⚡</div>
-          <div class="s4-faction-name" style="color:#E8D020">STURM</div>
-          <div class="s4-faction-stat">445 Gebiete</div>
-        </div>
-        <div class="s4-faction" id="f-shadow">
-          <div class="s4-faction-icon">🌑</div>
-          <div class="s4-faction-name" style="color:#9B5DE5">SCHATTEN</div>
-          <div class="s4-faction-stat">367 Gebiete</div>
-        </div>
-      </div>
-      <div class="s4-cta-line" id="s4-cta">DEINE FRAKTION BRAUCHT DICH</div>
-    </div>
-  </div>
-
-  <!-- ══ SCENE 5: POWER STATS ══ -->
-  <div id="s5" class="scene">
+    <div class="s2-grid"></div>
     <div class="scene-content" style="gap:28px;">
-      <div class="s5-eyebrow" id="s5-eye">DEIN FORTSCHRITT</div>
-      <div class="s5-title" id="s5-ttl">ZAHLEN<br>LÜGEN NICHT</div>
-      <div class="s5-cards">
-        <div class="s5-card" id="sc-km">
-          <div class="s5-card-label">KM GELAUFEN</div>
-          <div class="s5-card-val" id="v-km">0</div>
+      <div class="s2-label" id="s2-lbl">HINTERGRUND-GPS AKTIV</div>
+      <div class="s2-map-wrap">
+        <svg id="s2-svg" viewBox="0 0 920 580" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="920" height="580" fill="#111118" rx="20"/>
+          <!-- Street grid -->
+          <line x1="0" y1="290" x2="920" y2="290" stroke="#1A1A26" stroke-width="28"/>
+          <line x1="460" y1="0" x2="460" y2="580" stroke="#1A1A26" stroke-width="28"/>
+          <line x1="0" y1="145" x2="920" y2="145" stroke="#1A1A26" stroke-width="14"/>
+          <line x1="0" y1="435" x2="920" y2="435" stroke="#1A1A26" stroke-width="14"/>
+          <line x1="230" y1="0" x2="230" y2="580" stroke="#1A1A26" stroke-width="14"/>
+          <line x1="690" y1="0" x2="690" y2="580" stroke="#1A1A26" stroke-width="14"/>
+          <!-- Conquered territory fill -->
+          <polygon points="180,100 420,115 440,290 240,270 200,190"
+            fill="rgba(232,255,71,.15)" stroke="rgba(232,255,71,.3)" stroke-width="2"/>
+          <!-- GPS track (animated via stroke-dashoffset) -->
+          <polyline id="s2-track"
+            points="100,430 160,340 230,275 300,230 400,125 445,185 510,210 590,165 650,205 720,295 760,355 715,415 610,435 510,395 435,420 350,455 260,475 175,440 100,430"
+            fill="none"
+            stroke="#E8FF47"
+            stroke-width="6"
+            stroke-linecap="round"
+            stroke-linejoin="round"/>
+          <!-- Position dot + halo -->
+          <circle cx="720" cy="295" r="32" fill="rgba(232,255,71,.15)"/>
+          <circle id="s2-pos-dot" cx="720" cy="295" r="14" fill="#E8FF47"/>
+        </svg>
+      </div>
+      <div class="s2-hud" id="s2-hud">
+        <div class="s2-hud-item">
+          <div class="s2-hud-val">2.4</div>
+          <div class="s2-hud-lbl">KM</div>
         </div>
-        <div class="s5-card" id="sc-geo">
-          <div class="s5-card-label">GEBIETE</div>
-          <div class="s5-card-val" id="v-geo">0</div>
+        <div class="s2-hud-item">
+          <div class="s2-hud-val">5:12</div>
+          <div class="s2-hud-lbl">MIN/KM</div>
         </div>
-        <div class="s5-card" id="sc-str">
-          <div class="s5-card-label">STREAK</div>
-          <div class="s5-card-val" id="v-str">14🔥</div>
+        <div class="s2-hud-item">
+          <div class="s2-hud-val">162</div>
+          <div class="s2-hud-lbl">BPM</div>
+        </div>
+      </div>
+      <div class="s2-heading" id="s2-heading">LAUF &amp; <em>EROBER</em></div>
+    </div>
+  </div>
+
+  <!-- ══ SCENE 3: CONQUEST ══ -->
+  <div id="s3" class="scene">
+    <div class="scene-content" style="gap:22px;">
+      <div class="s3-badge" id="s3-badge">⚔️ GEBIET EROBERT</div>
+      <div class="s3-grid-wrap">
+        <div class="s3-grid">
+          <div class="s3-cell owned"></div><div class="s3-cell owned"></div><div class="s3-cell owned"></div><div class="s3-cell owned"></div><div class="s3-cell owned"></div>
+          <div class="s3-cell owned"></div><div class="s3-cell new" id="s3-n1"></div><div class="s3-cell new" id="s3-n2"></div><div class="s3-cell owned"></div><div class="s3-cell"></div>
+          <div class="s3-cell owned"></div><div class="s3-cell new" id="s3-n3"></div><div class="s3-cell"></div><div class="s3-cell"></div><div class="s3-cell"></div>
+          <div class="s3-cell"></div><div class="s3-cell"></div><div class="s3-cell"></div><div class="s3-cell"></div><div class="s3-cell"></div>
+        </div>
+      </div>
+      <div class="s3-pts" id="s3-pts">+200</div>
+      <div class="s3-pts-lbl">PUNKTE</div>
+      <div class="s3-sub" id="s3-sub">+3 Gebiete heute · 47 gesamt</div>
+    </div>
+  </div>
+
+  <!-- ══ SCENE 4: STATS ══ -->
+  <div id="s4" class="scene">
+    <div class="scene-content" style="gap:32px;">
+      <div class="s4-intro" id="s4-intro">DEIN FORTSCHRITT</div>
+      <div class="s4-cards">
+        <div class="s4-card" id="s4-c1">
+          <div class="s4-card-lbl">KM TOTAL</div>
+          <div class="s4-card-val" id="v-km">0</div>
+        </div>
+        <div class="s4-card" id="s4-c2">
+          <div class="s4-card-lbl">GEBIETE</div>
+          <div class="s4-card-val" id="v-geo">0</div>
+        </div>
+        <div class="s4-card" id="s4-c3">
+          <div class="s4-card-lbl">STREAK</div>
+          <div class="s4-card-val" style="font-size:100px;">12🔥</div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ══ SCENE 6: LEADERBOARD CHALLENGE ══ -->
+  <!-- ══ SCENE 5: LEADERBOARD ══ -->
+  <div id="s5" class="scene">
+    <div class="scene-content" style="gap:20px;">
+      <div class="s5-lbl" id="s5-lbl">DEINE STADT</div>
+      <div class="s5-title" id="s5-title">🏆 RANGLISTE</div>
+      <div class="s5-sub" id="s5-sub">WER FÜHRT DEINE STADT?</div>
+      <div class="s5-rows">
+        <div class="s5-row" id="s5-r1">
+          <div class="s5-rank">1</div>
+          <div class="s5-player">
+            <div class="s5-name">SpeedKing</div>
+            <div class="s5-meta">48k m² · 7🔥</div>
+          </div>
+          <div class="s5-pts">6.840</div>
+        </div>
+        <div class="s5-row" id="s5-r2">
+          <div class="s5-rank">2</div>
+          <div class="s5-player">
+            <div class="s5-name">MountainGoat</div>
+            <div class="s5-meta">31k m² · 5🔥</div>
+          </div>
+          <div class="s5-pts">4.290</div>
+        </div>
+        <div class="s5-row" id="s5-r3">
+          <div class="s5-rank">3</div>
+          <div class="s5-player">
+            <div class="s5-name">NightOwl</div>
+            <div class="s5-meta">22k m² · 3🔥</div>
+          </div>
+          <div class="s5-pts">2.915</div>
+        </div>
+        <div class="s5-row you" id="s5-you">
+          <div class="s5-rank">?</div>
+          <div class="s5-player">
+            <div class="s5-name">DU?</div>
+            <div class="s5-meta" style="font-size:22px;">Tritt jetzt an</div>
+          </div>
+          <div class="s5-pts">STARTEN</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SCENE 6: CTA ══ -->
   <div id="s6" class="scene">
-    <div class="scene-content" style="gap:18px;">
-      <div class="s6-eyebrow" id="s6-eye">DEINE STADT</div>
-      <div class="s6-title" id="s6-ttl">🏆 RANGLISTE</div>
-      <div class="s6-subtitle" id="s6-sub">WER HERRSCHT HEUTE?</div>
-      <div class="s6-rows">
-        <div class="s6-row top1" id="s6-r1">
-          <div class="s6-rank">1</div>
-          <div class="s6-icon">🔥</div>
-          <div class="s6-player">
-            <div class="s6-name">SpeedKing</div>
-            <div class="s6-meta">63k m² · Streak 12🔥</div>
-          </div>
-          <div class="s6-pts">8.940</div>
-        </div>
-        <div class="s6-row" id="s6-r2">
-          <div class="s6-rank">2</div>
-          <div class="s6-icon">❄️</div>
-          <div class="s6-player">
-            <div class="s6-name">MountainGoat</div>
-            <div class="s6-meta">44k m² · Streak 7🔥</div>
-          </div>
-          <div class="s6-pts">5.510</div>
-        </div>
-        <div class="s6-row" id="s6-r3">
-          <div class="s6-rank">3</div>
-          <div class="s6-icon">⚡</div>
-          <div class="s6-player">
-            <div class="s6-name">NightOwl</div>
-            <div class="s6-meta">29k m² · Streak 3🔥</div>
-          </div>
-          <div class="s6-pts">3.180</div>
-        </div>
-        <div class="s6-row you" id="s6-you">
-          <div class="s6-rank">?</div>
-          <div class="s6-icon">🏃</div>
-          <div class="s6-player">
-            <div class="s6-name">DU?</div>
-            <div class="s6-meta" style="font-size:20px;color:#4DB8FF">Tritt jetzt an</div>
-          </div>
-          <div class="s6-pts">START</div>
-        </div>
-      </div>
-      <div class="s6-challenge" id="s6-chal">KANNST DU SIE <em>SCHLAGEN?</em></div>
-    </div>
-  </div>
-
-  <!-- ══ SCENE 7: EPIC CTA ══ -->
-  <div id="s7" class="scene">
-    <div class="s7-glow-a" id="s7-glow-a"></div>
-    <div class="s7-glow-b" id="s7-glow-b"></div>
-    <div class="s7-particles" id="s7-parts"></div>
-    <div class="scene-content" style="justify-content:center;align-items:center;gap:22px;">
-      <div class="s7-tagline-top" id="s7-tag">DIE STÄDTE GEHÖREN DENEN, DIE LAUFEN</div>
-      <div class="s7-headline" id="s7-head">
+    <div class="s6-glow" id="s6-glow"></div>
+    <div class="scene-content" style="justify-content:center;align-items:center;gap:28px;">
+      <div class="s6-heading" id="s6-heading">
         <span class="l1">RUN &amp;</span>
         <span class="l2">CONQUER</span>
       </div>
-      <div class="s7-sub" id="s7-sub">LAUFE · EROBER · HERRSCHE</div>
-      <div class="s7-cta" id="s7-cta">JETZT SPIELEN</div>
-      <div class="s7-platform" id="s7-plat">KOSTENLOS · ANDROID &amp; iOS</div>
+      <div class="s6-tagline" id="s6-tagline">LAUFE · EROBER · HERRSCHE</div>
+      <div class="s6-cta" id="s6-cta">JETZT SPIELEN</div>
+      <div class="s6-platforms" id="s6-plat">KOSTENLOS · ANDROID &amp; IOS</div>
     </div>
-    <div class="s7-fade" id="s7-fade"></div>
+    <div class="s6-fade" id="s6-fade"></div>
   </div>
 
 </div><!-- /root -->
@@ -833,208 +603,146 @@ body {
 <script>
 window.__timelines = window.__timelines || {};
 
-// GPS track dash
+// ── SVG track dash setup ──
 var trackEl = document.getElementById('s2-track');
-var trackLen = trackEl ? Math.round(trackEl.getTotalLength()) : 1400;
+var trackLen = trackEl ? Math.round(trackEl.getTotalLength()) : 1200;
 trackEl.setAttribute('stroke-dasharray', trackLen);
 trackEl.setAttribute('stroke-dashoffset', trackLen);
 
-// Counters
+// ── Counter proxy ──
 var cnt = { km: 0, geo: 0 };
 
-// Particle setup for scene 7
-var partsEl = document.getElementById('s7-parts');
-var particles = [];
-for (var i = 0; i < 28; i++) {
-  var p = document.createElement('div');
-  p.className = 's7-p';
-  var sz = 4 + Math.random() * 8;
-  p.style.cssText = 'width:'+sz+'px;height:'+sz+'px;left:'+(100+Math.random()*880)+'px;top:'+(200+Math.random()*1500)+'px;opacity:0';
-  partsEl.appendChild(p);
-  particles.push(p);
-}
-
+// ── Timeline ──
 var tl = gsap.timeline({ paused: true });
 
-/* ════════════════════════════
-   SCENE 1 (0 – 3.5s)
-   ════════════════════════════ */
-// Background grid pulse
-tl.fromTo('.s1-bg-grid', { opacity: 0 }, { opacity: 1, duration: 0.5 }, 0);
-// Lightning strikes
-tl.fromTo('#st1', { scaleY: 0, opacity: 0, transformOrigin: 'top' }, { scaleY: 1, opacity: 1, duration: 0.2 }, 0.05);
-tl.to('#st1', { opacity: 0, duration: 0.3 }, 0.25);
-tl.fromTo('#st2', { scaleY: 0, opacity: 0, transformOrigin: 'top' }, { scaleY: 1, opacity: 1, duration: 0.2 }, 0.18);
-tl.to('#st2', { opacity: 0, duration: 0.3 }, 0.38);
-tl.fromTo('#st3', { scaleY: 0, opacity: 0, transformOrigin: 'top' }, { scaleY: 1, opacity: 1, duration: 0.2 }, 0.30);
-tl.to('#st3', { opacity: 0, duration: 0.3 }, 0.5);
-// Text entrances — aggressive stagger
-tl.from('#s1-eye', { y: 25, opacity: 0, duration: 0.45, ease: 'power3.out' }, 0.1);
-tl.from('#s1-l1',  { x: -60, opacity: 0, duration: 0.5, ease: 'power4.out' }, 0.3);
-tl.from('#s1-l2',  { scale: 0.7, opacity: 0, duration: 0.65, ease: 'expo.out' }, 0.55);
-tl.from('#s1-l3',  { x: 60, opacity: 0, duration: 0.5, ease: 'power4.out' }, 0.8);
-// Impact bar sweep
-tl.to('#s1-bar', { scaleX: 1, transformOrigin: 'left', duration: 0.6, ease: 'power3.out' }, 1.0);
-tl.from('#s1-sub', { y: 30, opacity: 0, duration: 0.5, ease: 'power2.out' }, 1.3);
-// Subtle text shake for l2
-tl.to('#s1-l2', { x: -6, duration: 0.04, ease: 'none' }, 0.55);
-tl.to('#s1-l2', { x: 8, duration: 0.05, ease: 'none' }, 0.59);
-tl.to('#s1-l2', { x: -4, duration: 0.04, ease: 'none' }, 0.64);
-tl.to('#s1-l2', { x: 0, duration: 0.05, ease: 'none' }, 0.68);
+/* ════════════════════════
+   SCENE 1 ENTRANCES (0–4s)
+   ════════════════════════ */
+// Ambient glow drift
+tl.fromTo('#s1-glow', { scale: 0.9, opacity: 0.5 }, { scale: 1.1, opacity: 1, duration: 4, ease: 'sine.inOut', repeat: 3, yoyo: true }, 0);
+// Ghost text slow drift
+tl.fromTo('#s1 .s1-ghost', { x: -15 }, { x: 15, duration: 4, ease: 'none' }, 0);
+// Content entrances
+tl.from('#s1-lbl',  { y: 30, opacity: 0, duration: 0.6, ease: 'power3.out' }, 0.25);
+tl.from('#s1-l1',   { y: 70, opacity: 0, duration: 0.7, ease: 'power4.out' }, 0.55);
+tl.from('#s1-l2',   { scale: 0.75, opacity: 0, duration: 0.8, ease: 'expo.out' }, 0.80);
+tl.from('#s1-sub',  { y: 40, opacity: 0, duration: 0.6, ease: 'power3.out' }, 1.15);
+// GPS ping rings (3 repeats × 1.2s = 3.6s total, fits within scene)
+tl.fromTo('#ring1', { width: 18, height: 18, x: -9, y: -9, opacity: 0.9 },
+  { width: 100, height: 100, x: -50, y: -50, opacity: 0, duration: 1.2, ease: 'power1.out', repeat: 3 }, 1.4);
+tl.fromTo('#ring2', { width: 18, height: 18, x: -9, y: -9, opacity: 0.7 },
+  { width: 100, height: 100, x: -50, y: -50, opacity: 0, duration: 1.2, ease: 'power1.out', repeat: 3 }, 1.8);
+tl.fromTo('#ring3', { width: 18, height: 18, x: -9, y: -9, opacity: 0.5 },
+  { width: 100, height: 100, x: -50, y: -50, opacity: 0, duration: 1.2, ease: 'power1.out', repeat: 3 }, 2.2);
 
 /* ════════════════════
-   TRANSITION 1→2 (T=3.5)
+   TRANSITION 1→2 (T=4.0, crossfade)
    ════════════════════ */
-var T1 = 3.5;
-tl.to('#s1', { scale: 1.04, opacity: 0, filter: 'blur(8px)', duration: 0.45, ease: 'power2.inOut' }, T1);
-tl.fromTo('#s2', { opacity: 0, scale: 0.96 }, { opacity: 1, scale: 1, duration: 0.45, ease: 'power2.out' }, T1 + 0.1);
+var T1 = 4.0;
+tl.to('#s1', { opacity: 0, duration: 0.5, ease: 'power2.inOut' }, T1);
+tl.fromTo('#s2', { opacity: 0 }, { opacity: 1, duration: 0.5, ease: 'power2.inOut' }, T1);
 
-/* ════════════════════════════
-   SCENE 2 (3.5 – 8.0s)
-   ════════════════════════════ */
-tl.from('#s2-lbl',   { y: 28, opacity: 0, duration: 0.45, ease: 'power3.out' }, T1 + 0.2);
-tl.fromTo('#s2-svg', { scale: 0.9, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.6, ease: 'power2.out' }, T1 + 0.3);
-tl.to('#s2-track',   { attr: { 'stroke-dashoffset': 0 }, duration: 2.8, ease: 'power2.inOut' }, T1 + 0.5);
-// Position dot heartbeat
-tl.fromTo('#s2-pos', { attr:{r:12} }, { attr:{r:18}, duration: 0.4, ease: 'sine.inOut', repeat: 9, yoyo: true }, T1 + 0.4);
-tl.from('#s2-stats', { y: 44, opacity: 0, duration: 0.55, ease: 'power3.out' }, T1 + 0.9);
-tl.from('#s2-head',  { y: 50, opacity: 0, duration: 0.65, ease: 'expo.out' }, T1 + 1.2);
+/* ════════════════════════
+   SCENE 2 ENTRANCES (4.0–8.5s)
+   ════════════════════════ */
+tl.from('#s2-lbl',     { y: 30, opacity: 0, duration: 0.5, ease: 'power3.out' }, T1 + 0.15);
+tl.from('#s2-svg',     { scale: 0.92, opacity: 0, duration: 0.65, ease: 'power2.out' }, T1 + 0.25);
+// GPS track drawing animation
+tl.to('#s2-track', { attr: { 'stroke-dashoffset': 0 }, duration: 2.6, ease: 'power1.inOut' }, T1 + 0.45);
+// Position dot pulse (finite: 4.5s scene / 1.0s cycle ≈ 4 repeats)
+tl.fromTo('#s2-pos-dot', { attr: { r: 14 } }, { attr: { r: 20 }, duration: 0.5, ease: 'sine.inOut', repeat: 8, yoyo: true }, T1 + 0.3);
+tl.from('#s2-hud',     { y: 40, opacity: 0, duration: 0.6, ease: 'power3.out' }, T1 + 0.8);
+tl.from('#s2-heading', { y: 50, opacity: 0, duration: 0.7, ease: 'expo.out' }, T1 + 1.1);
 
 /* ════════════════════
-   TRANSITION 2→3 (T=8.0, vertical slam up)
+   TRANSITION 2→3 (T=8.5, vertical push up)
    ════════════════════ */
-var T2 = 8.0;
-tl.to('#s2',   { y: -1920, duration: 0.45, ease: 'power4.inOut' }, T2);
-tl.fromTo('#s3', { y: 1920, opacity: 1 }, { y: 0, duration: 0.45, ease: 'power4.inOut' }, T2);
+var T2 = 8.5;
+tl.to('#s2', { y: -1920, duration: 0.5, ease: 'power3.inOut' }, T2);
+tl.fromTo('#s3', { y: 1920, opacity: 1 }, { y: 0, duration: 0.5, ease: 'power3.inOut' }, T2);
 
-/* ════════════════════════════
-   SCENE 3 (8.0 – 13.0s)
-   ════════════════════════════ */
-tl.from('#s3-badge',  { scale: 0.55, opacity: 0, duration: 0.5, ease: 'back.out(2.8)' }, T2 + 0.25);
-tl.fromTo('#s3-svg',  { scale: 0.92, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, ease: 'power2.out' }, T2 + 0.4);
-// Flash + enemy territory fades, new territory appears
-tl.to('#s3-flash',  { opacity: 1, duration: 0.08 }, T2 + 1.0);
-tl.to('#s3-flash',  { opacity: 0, duration: 0.3 }, T2 + 1.08);
-tl.to('#s3-enemy',  { attr: { fill: 'rgba(255,77,109,.05)', stroke: 'rgba(255,77,109,.2)' }, duration: 0.4 }, T2 + 1.0);
-tl.to('#s3-new',    { opacity: 1, duration: 0.4, ease: 'power2.out' }, T2 + 1.05);
-tl.fromTo('#s3-impact', { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1.2, duration: 0.25, ease: 'back.out(3)', transformOrigin: 'center' }, T2 + 1.0);
-tl.to('#s3-impact', { opacity: 0, scale: 1.5, duration: 0.4 }, T2 + 1.25);
-tl.fromTo('#s3-runner', { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1.4, duration: 0.4, ease: 'back.out(2)' }, T2 + 1.15);
-tl.from('#s3-pts',   { scale: 0.5, opacity: 0, duration: 0.7, ease: 'elastic.out(1.2, 0.5)' }, T2 + 1.2);
-tl.from('#s3-geo',   { scale: 0.5, opacity: 0, duration: 0.6, ease: 'elastic.out(1.2, 0.5)' }, T2 + 1.45);
-tl.from('.s3-pts-lbl',  { y: 20, opacity: 0, duration: 0.4, ease: 'power2.out' }, T2 + 1.6);
-tl.from('.s3-territory-sub', { y: 18, opacity: 0, duration: 0.4, ease: 'power2.out' }, T2 + 1.85);
+/* ════════════════════════
+   SCENE 3 ENTRANCES (8.5–13.0s)
+   ════════════════════════ */
+tl.from('#s3-badge', { scale: 0.65, opacity: 0, duration: 0.5, ease: 'back.out(2.5)' }, T2 + 0.25);
+// Territory cells stagger
+tl.fromTo('#s3-n1', { scale: 0 }, { scale: 1, duration: 0.4, ease: 'back.out(2.5)', transformOrigin: 'center' }, T2 + 0.55);
+tl.fromTo('#s3-n2', { scale: 0 }, { scale: 1, duration: 0.4, ease: 'back.out(2.5)', transformOrigin: 'center' }, T2 + 0.72);
+tl.fromTo('#s3-n3', { scale: 0 }, { scale: 1, duration: 0.4, ease: 'back.out(2.5)', transformOrigin: 'center' }, T2 + 0.89);
+tl.from('#s3-pts',  { scale: 0.55, opacity: 0, duration: 0.7, ease: 'elastic.out(1, 0.5)' }, T2 + 1.05);
+tl.from('.s3-pts-lbl', { y: 24, opacity: 0, duration: 0.4, ease: 'power2.out' }, T2 + 1.3);
+tl.from('#s3-sub',  { y: 20, opacity: 0, duration: 0.4, ease: 'power2.out' }, T2 + 1.55);
 
 /* ════════════════════
-   TRANSITION 3→4 (T=13.0, push right)
+   TRANSITION 3→4 (T=13.0, blur crossfade)
    ════════════════════ */
 var T3 = 13.0;
-tl.to('#s3', { x: -1080, duration: 0.5, ease: 'power3.inOut' }, T3);
-tl.fromTo('#s4', { x: 1080, opacity: 1 }, { x: 0, duration: 0.5, ease: 'power3.inOut' }, T3);
+tl.to('#s3', { filter: 'blur(10px)', scale: 1.03, opacity: 0, duration: 0.5, ease: 'power2.inOut' }, T3);
+tl.fromTo('#s4',
+  { filter: 'blur(10px)', scale: 0.97, opacity: 0 },
+  { filter: 'blur(0px)', scale: 1, opacity: 1, duration: 0.5, ease: 'power2.inOut' }, T3 + 0.1);
 
-/* ════════════════════════════
-   SCENE 4 (13.0 – 17.5s)
-   ════════════════════════════ */
-tl.from('#s4-sub', { y: 28, opacity: 0, duration: 0.45, ease: 'power3.out' }, T3 + 0.25);
-tl.from('#s4-ttl', { scale: 0.78, opacity: 0, duration: 0.6, ease: 'expo.out' }, T3 + 0.45);
-tl.to('#f-fire',   { opacity: 1, scale: 1, duration: 0.45, ease: 'back.out(2)' }, T3 + 0.75);
-tl.to('#f-ice',    { opacity: 1, scale: 1, duration: 0.45, ease: 'back.out(2)' }, T3 + 0.92);
-tl.to('#f-storm',  { opacity: 1, scale: 1, duration: 0.45, ease: 'back.out(2)' }, T3 + 1.09);
-tl.to('#f-shadow', { opacity: 1, scale: 1, duration: 0.45, ease: 'back.out(2)' }, T3 + 1.26);
-tl.from('#s4-cta', { y: 36, opacity: 0, duration: 0.55, ease: 'power3.out' }, T3 + 1.65);
-// Faction pulse glow
-tl.to('#f-fire',   { boxShadow: '0 0 60px rgba(232,72,32,.55)', duration: 0.6, ease: 'sine.inOut', repeat: 3, yoyo: true }, T3 + 2.0);
-
-/* ════════════════════
-   TRANSITION 4→5 (T=17.5, blur crossfade)
-   ════════════════════ */
-var T4 = 17.5;
-tl.to('#s4',  { filter: 'blur(12px)', scale: 1.04, opacity: 0, duration: 0.5, ease: 'power2.inOut' }, T4);
-tl.fromTo('#s5',
-  { filter: 'blur(12px)', scale: 0.96, opacity: 0 },
-  { filter: 'blur(0px)', scale: 1, opacity: 1, duration: 0.5, ease: 'power2.out' }, T4 + 0.1);
-
-/* ════════════════════════════
-   SCENE 5 (17.5 – 21.5s)
-   ════════════════════════════ */
-tl.from('#s5-eye',  { y: 26, opacity: 0, duration: 0.45, ease: 'power3.out' }, T4 + 0.3);
-tl.from('#s5-ttl',  { x: -50, opacity: 0, duration: 0.6, ease: 'power3.out' }, T4 + 0.5);
-tl.to('#sc-km',  { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, T4 + 0.6);
-tl.to('#sc-geo', { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, T4 + 0.78);
-tl.to('#sc-str', { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, T4 + 0.96);
+/* ════════════════════════
+   SCENE 4 ENTRANCES (13.0–17.5s)
+   ════════════════════════ */
+tl.from('#s4-intro', { y: 30, opacity: 0, duration: 0.5, ease: 'power3.out' }, T3 + 0.3);
+tl.from('#s4-c1', { y: 90, opacity: 0, duration: 0.55, ease: 'power3.out' }, T3 + 0.5);
+tl.from('#s4-c2', { y: 90, opacity: 0, duration: 0.55, ease: 'power3.out' }, T3 + 0.68);
+tl.from('#s4-c3', { y: 90, opacity: 0, duration: 0.55, ease: 'power3.out' }, T3 + 0.86);
+// Animated counters
 tl.to(cnt, {
-  km: 187, geo: 64,
-  duration: 2.0,
+  km: 142, geo: 47,
+  duration: 1.9,
   ease: 'power2.out',
   onUpdate: function() {
     document.getElementById('v-km').textContent  = Math.floor(cnt.km);
     document.getElementById('v-geo').textContent = Math.floor(cnt.geo);
   }
-}, T4 + 0.9);
+}, T3 + 0.9);
 
 /* ════════════════════
-   TRANSITION 5→6 (T=21.5, push left)
+   TRANSITION 4→5 (T=17.5, push left)
    ════════════════════ */
-var T5 = 21.5;
-tl.to('#s5', { x: -1080, duration: 0.45, ease: 'power3.inOut' }, T5);
-tl.fromTo('#s6', { x: 1080, opacity: 1 }, { x: 0, duration: 0.45, ease: 'power3.inOut' }, T5);
+var T4 = 17.5;
+tl.to('#s4', { x: -1080, duration: 0.5, ease: 'power3.inOut' }, T4);
+tl.fromTo('#s5', { x: 1080, opacity: 1 }, { x: 0, duration: 0.5, ease: 'power3.inOut' }, T4);
 
-/* ════════════════════════════
-   SCENE 6 (21.5 – 25.5s)
-   ════════════════════════════ */
-tl.from('#s6-eye',  { y: 26, opacity: 0, duration: 0.45, ease: 'power3.out' }, T5 + 0.15);
-tl.from('#s6-ttl',  { scale: 0.75, opacity: 0, duration: 0.65, ease: 'expo.out' }, T5 + 0.35);
-tl.from('#s6-sub',  { y: 22, opacity: 0, duration: 0.4, ease: 'power2.out' }, T5 + 0.7);
-tl.to('#s6-r1',  { x: 0, opacity: 1, duration: 0.5, ease: 'power3.out' }, T5 + 0.85);
-tl.to('#s6-r2',  { x: 0, opacity: 1, duration: 0.5, ease: 'power3.out' }, T5 + 1.05);
-tl.to('#s6-r3',  { x: 0, opacity: 1, duration: 0.5, ease: 'power3.out' }, T5 + 1.25);
-tl.to('#s6-you', { x: 0, opacity: 1, duration: 0.6, ease: 'back.out(2.2)' }, T5 + 1.5);
-tl.from('#s6-chal', { y: 40, opacity: 0, duration: 0.6, ease: 'expo.out' }, T5 + 2.1);
+/* ════════════════════════
+   SCENE 5 ENTRANCES (17.5–22.0s)
+   ════════════════════════ */
+tl.from('#s5-lbl',   { y: 30, opacity: 0, duration: 0.5, ease: 'power3.out' }, T4 + 0.15);
+tl.from('#s5-title', { scale: 0.78, opacity: 0, duration: 0.65, ease: 'expo.out' }, T4 + 0.35);
+tl.from('#s5-sub',   { y: 24, opacity: 0, duration: 0.45, ease: 'power2.out' }, T4 + 0.7);
+tl.from('#s5-r1',    { x: 100, opacity: 0, duration: 0.5, ease: 'power3.out' }, T4 + 0.9);
+tl.from('#s5-r2',    { x: 100, opacity: 0, duration: 0.5, ease: 'power3.out' }, T4 + 1.1);
+tl.from('#s5-r3',    { x: 100, opacity: 0, duration: 0.5, ease: 'power3.out' }, T4 + 1.3);
+tl.from('#s5-you',   { y: 50, opacity: 0, duration: 0.6, ease: 'back.out(2)' }, T4 + 1.6);
 
 /* ════════════════════
-   TRANSITION 6→7 (T=25.5, color dip)
+   TRANSITION 5→6 (T=22.0, color dip)
    ════════════════════ */
-var T6 = 25.5;
-tl.to('#s6', { opacity: 0, scale: 0.96, duration: 0.3, ease: 'power2.in' }, T6);
-tl.fromTo('#s7', { opacity: 0 }, { opacity: 1, duration: 0.35, ease: 'power2.out' }, T6 + 0.3);
+var T5 = 22.0;
+tl.to('#s5', { opacity: 0, duration: 0.25, ease: 'power2.in' }, T5);
+tl.fromTo('#s6', { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'power2.out' }, T5 + 0.3);
 
-/* ════════════════════════════
-   SCENE 7 (25.5 – 30s)
-   ════════════════════════════ */
-tl.fromTo('#s7-glow-a', { scale: 0.8, opacity: 0.4 },
-  { scale: 1.25, opacity: 1, duration: 2.2, ease: 'sine.inOut', repeat: 1, yoyo: true }, T6 + 0.3);
-tl.fromTo('#s7-glow-b', { scale: 0.7, opacity: 0.3 },
-  { scale: 1.4, opacity: 0.8, duration: 1.5, ease: 'sine.inOut', repeat: 2, yoyo: true }, T6 + 0.5);
-// Particles burst
-particles.forEach(function(p, i) {
-  tl.fromTo(p,
-    { opacity: 0, y: 0 },
-    { opacity: 0.6 + Math.random()*0.4, y: -(60 + Math.random()*200),
-      x: (Math.random()-0.5)*120,
-      duration: 1.5 + Math.random()*1.5,
-      ease: 'power2.out',
-      repeat: 1, yoyo: true },
-    T6 + 0.3 + i * 0.06
-  );
-});
-tl.from('#s7-tag',  { y: 30, opacity: 0, duration: 0.5, ease: 'power3.out' }, T6 + 0.5);
-tl.from('#s7-head .l1', { y: 50, opacity: 0, duration: 0.6, ease: 'power3.out' }, T6 + 0.75);
-tl.from('#s7-head .l2', { scale: 0.6, opacity: 0, duration: 0.9, ease: 'expo.out' }, T6 + 1.05);
-// l2 text shake
-tl.to('#s7-head .l2', { x: -8, duration: 0.04 }, T6 + 1.06);
-tl.to('#s7-head .l2', { x: 10, duration: 0.05 }, T6 + 1.10);
-tl.to('#s7-head .l2', { x: -5, duration: 0.04 }, T6 + 1.15);
-tl.to('#s7-head .l2', { x: 0, duration: 0.05 }, T6 + 1.19);
-tl.from('#s7-sub',  { y: 30, opacity: 0, duration: 0.5, ease: 'power2.out' }, T6 + 1.65);
-tl.from('#s7-cta',  { scale: 0.75, opacity: 0, duration: 0.7, ease: 'back.out(2.4)' }, T6 + 2.1);
-// CTA glow pulse
-tl.to('#s7-cta', { boxShadow: '0 0 120px rgba(232,255,71,.8), 0 20px 60px rgba(0,0,0,.5)', duration: 0.8, ease: 'sine.inOut', repeat: 1, yoyo: true }, T6 + 2.8);
-tl.from('#s7-plat', { y: 24, opacity: 0, duration: 0.45, ease: 'power2.out' }, T6 + 2.7);
-// Fade to black
-tl.to('#s7-fade', { opacity: 1, duration: 0.8, ease: 'power2.in' }, 29.2);
+/* ════════════════════════
+   SCENE 6 ENTRANCES (22.0–28.0s)
+   ════════════════════════ */
+// Glow pulse (3 cycles × 2s = 6s, from T5+0.2=22.2 to 28.2s)
+tl.fromTo('#s6-glow',
+  { scale: 0.85, opacity: 0.5 },
+  { scale: 1.2, opacity: 1, duration: 2, ease: 'sine.inOut', repeat: 2, yoyo: true }, T5 + 0.2);
+tl.from('#s6-heading .l1', { y: 50, opacity: 0, duration: 0.6, ease: 'power3.out' }, T5 + 0.45);
+tl.from('#s6-heading .l2', { scale: 0.65, opacity: 0, duration: 0.85, ease: 'expo.out' }, T5 + 0.75);
+tl.from('#s6-tagline',     { y: 35, opacity: 0, duration: 0.5, ease: 'power2.out' }, T5 + 1.3);
+tl.from('#s6-cta',         { scale: 0.8, opacity: 0, duration: 0.65, ease: 'back.out(2.2)' }, T5 + 1.75);
+tl.from('#s6-plat',        { y: 24, opacity: 0, duration: 0.45, ease: 'power2.out' }, T5 + 2.2);
+// Fade to black (only last scene may have exit animation)
+tl.to('#s6-fade', { opacity: 1, duration: 0.7, ease: 'power2.in' }, 27.3);
 
 window.__timelines['main'] = tl;
 
+// Auto-play + loop when viewed outside HyperFrames Studio
 if (typeof window.__hyperframes === 'undefined') {
   tl.play();
   tl.eventCallback('onComplete', function() { tl.restart(); });

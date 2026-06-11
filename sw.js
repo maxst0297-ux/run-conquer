@@ -20,9 +20,18 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
-  // Only cache same-origin and manifest
+  // Only handle same-origin
   if (url.origin !== location.origin) return;
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
+    caches.match(e.request).then(cached =>
+      cached || fetch(e.request).then(resp => {
+        // Runtime-cache successful same-origin GETs (e.g. achievement badges)
+        if (resp && resp.status === 200 && resp.type === 'basic') {
+          const copy = resp.clone();
+          caches.open(CACHE_NAME).then(c => c.put(e.request, copy));
+        }
+        return resp;
+      }).catch(() => cached)
+    )
   );
 });
