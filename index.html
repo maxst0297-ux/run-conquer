@@ -2018,8 +2018,53 @@ async function loadClubMembers(clubCode,container){
 /* ── ERSTANMELDUNGS-ONBOARDING ── */
 function checkFirstLoginOnboarding(){
   const doneKey='rc_ob_done_'+userId;
-  if(localStorage.getItem(doneKey)==='1')return;
+  if(localStorage.getItem(doneKey)==='1'){checkMonthlyFactionPrompt();return;}
   setTimeout(showOnboardingOverlay,900);
+}
+function checkMonthlyFactionPrompt(){
+  const now=new Date();
+  const mk=now.getFullYear()+'-'+(now.getMonth()+1).toString().padStart(2,'0');
+  if(lastFraktionChangeDate===mk)return;
+  setTimeout(showFactionMonthlyOverlay,900);
+}
+function showFactionMonthlyOverlay(){
+  if(document.getElementById('obOverlay'))return;
+  const ov=document.createElement('div');
+  ov.id='obOverlay';
+  ov.style.cssText='position:fixed;inset:0;z-index:9800;background:rgba(0,0,0,.95);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;overflow-y:auto';
+  const now=new Date(),mk=now.getFullYear()+'-'+(now.getMonth()+1).toString().padStart(2,'0');
+  ov.innerHTML=`<div style="max-width:380px;width:100%;animation:modalIn .3s ease">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:2.4rem;color:#e8ff47;text-align:center;letter-spacing:2px;margin-bottom:6px">NEUER MONAT!</div>
+    <div style="font-size:.85rem;color:rgba(255,255,255,.6);text-align:center;margin-bottom:24px">Wähle deine Fraktion für diesen Monat.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
+      \${TEAMS.map(tm=>\`<button class="ob-frak-btn" data-tid="\${tm.id}" style="padding:16px 10px;border-radius:16px;border:2px solid \${userTeam===tm.id?tm.color:'rgba(255,255,255,.12)'};background:\${userTeam===tm.id?tm.color+'22':'rgba(255,255,255,.04)'};cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;transition:.2s;-webkit-user-select:none;user-select:none;touch-action:manipulation">
+        <span style="font-size:2.2rem">\${tm.icon}</span>
+        <span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:\${tm.color};letter-spacing:1px">\${tm.name}</span>
+        <span style="font-size:.65rem;color:rgba(255,255,255,.5);line-height:1.4;text-align:center">\${TEAM_DESCS[tm.id]||''}</span>
+      </button>\`).join('')}
+    </div>
+    <button id="obFrakWeiter" style="width:100%;padding:14px;background:#e8ff47;color:#09090f;border:none;border-radius:14px;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none">WEITER →</button>
+  </div>`;
+  ov.addEventListener('click',e=>{
+    const frakBtn=e.target.closest('.ob-frak-btn');
+    if(frakBtn){
+      const tid=frakBtn.dataset.tid;userTeam=tid;
+      lastFraktionChangeDate=mk;saveProfile();
+      ov.querySelectorAll('.ob-frak-btn').forEach(b=>{
+        const tm=TEAMS.find(t=>t.id===b.dataset.tid);
+        b.style.borderColor=b.dataset.tid===tid?tm.color:'rgba(255,255,255,.12)';
+        b.style.background=b.dataset.tid===tid?tm.color+'22':'rgba(255,255,255,.04)';
+      });
+      const wb=ov.querySelector('#obFrakWeiter'),stm=TEAMS.find(t=>t.id===tid);
+      if(wb&&stm){wb.style.background=stm.color;wb.style.color='#fff';}
+      return;
+    }
+    if(e.target.closest('#obFrakWeiter')){
+      ov.style.transition='opacity .4s';ov.style.opacity='0';
+      setTimeout(()=>ov.remove(),400);
+    }
+  });
+  document.body.appendChild(ov);
 }
 function showOnboardingOverlay(){
   const ov=document.createElement('div');
