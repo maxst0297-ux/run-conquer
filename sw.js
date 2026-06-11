@@ -1,4 +1,4 @@
-const CACHE_NAME = 'runconquer-v14';
+const CACHE_NAME = 'runconquer-v16';
 const PRECACHE = ['/', '/index.html', '/manifest.json'];
 
 self.addEventListener('install', e => {
@@ -20,18 +20,36 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
-  // Only handle same-origin
   if (url.origin !== location.origin) return;
+
+  // Navigation requests (HTML) → network-first so updates go live instantly
+  const isNav = e.request.mode === 'navigate' ||
+    url.pathname === '/' || url.pathname === '/index.html';
+
+  if (isNav) {
+    e.respondWith(
+      fetch(e.request).then(resp => {
+        if (resp && resp.status === 200) {
+          const copy = resp.clone();
+          caches.open(CACHE_NAME).then(c => c.put(e.request, copy));
+        }
+        return resp;
+      }).catch(() => caches.match(e.request))
+    );
+    return;
+  }
+
+  // All other same-origin GETs → cache-first, update in background
   e.respondWith(
-    caches.match(e.request).then(cached =>
-      cached || fetch(e.request).then(resp => {
-        // Runtime-cache successful same-origin GETs (e.g. achievement badges)
+    caches.match(e.request).then(cached => {
+      const fromNetwork = fetch(e.request).then(resp => {
         if (resp && resp.status === 200 && resp.type === 'basic') {
           const copy = resp.clone();
           caches.open(CACHE_NAME).then(c => c.put(e.request, copy));
         }
         return resp;
-      }).catch(() => cached)
-    )
+      });
+      return cached || fromNetwork;
+    })
   );
 });
