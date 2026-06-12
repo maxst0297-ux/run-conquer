@@ -88,10 +88,10 @@ html,body{background:#080808}
 #splash{position:fixed;top:0;left:0;right:0;bottom:0;background:#080808;display:flex;align-items:center;justify-content:center;z-index:10000;transition:opacity .7s;overflow:hidden}
 .splash-logo{text-align:center}
 .splash-word{display:flex;justify-content:center;gap:2px;overflow:hidden}
-.splash-word span{font-family:'Bebas Neue',sans-serif;font-size:min(22vw,88px);color:#e8ff47;opacity:0;transform:translateY(40px);animation:letterDrop .5s cubic-bezier(.16,1,.3,1) forwards}
-#splWord1 span:nth-child(1){animation-delay:.1s}#splWord1 span:nth-child(2){animation-delay:.18s}#splWord1 span:nth-child(3){animation-delay:.26s}
-#splWord2 span:nth-child(1){animation-delay:.5s}#splWord2 span:nth-child(2){animation-delay:.58s}#splWord2 span:nth-child(3){animation-delay:.66s}#splWord2 span:nth-child(4){animation-delay:.74s}#splWord2 span:nth-child(5){animation-delay:.82s}#splWord2 span:nth-child(6){animation-delay:.9s}#splWord2 span:nth-child(7){animation-delay:.98s}
-.splash-sub{font-size:min(3.5vw,12px);color:rgba(232,255,71,.6);letter-spacing:4px;text-transform:uppercase;opacity:0;animation:subFadeIn .6s ease forwards 1.4s;margin-top:6px}
+.splash-word span{font-family:'Bebas Neue',sans-serif;font-size:min(18vw,72px);color:#e8ff47;opacity:0;transform:translateY(40px);animation:letterDrop .5s cubic-bezier(.16,1,.3,1) forwards}
+#splWord1 span:nth-child(1){animation-delay:.08s}#splWord1 span:nth-child(2){animation-delay:.16s}#splWord1 span:nth-child(3){animation-delay:.24s}#splWord1 span:nth-child(4){animation-delay:.32s}#splWord1 span:nth-child(5){animation-delay:.40s}#splWord1 span:nth-child(6){animation-delay:.48s}#splWord1 span:nth-child(7){animation-delay:.56s}
+#splWord2 span:nth-child(1){animation-delay:.78s}#splWord2 span:nth-child(2){animation-delay:.86s}#splWord2 span:nth-child(3){animation-delay:.94s}#splWord2 span:nth-child(4){animation-delay:1.02s}#splWord2 span:nth-child(5){animation-delay:1.10s}#splWord2 span:nth-child(6){animation-delay:1.18s}#splWord2 span:nth-child(7){animation-delay:1.26s}
+.splash-sub{font-size:min(3.5vw,12px);color:rgba(232,255,71,.6);letter-spacing:4px;text-transform:uppercase;opacity:0;animation:subFadeIn .6s ease forwards 1.7s;margin-top:6px}
 @keyframes letterDrop{0%{opacity:0;transform:translateY(40px)}60%{opacity:1;transform:translateY(-6px)}80%{transform:translateY(3px)}100%{opacity:1;transform:translateY(0)}}
 @keyframes subFadeIn{from{opacity:0;letter-spacing:8px}to{opacity:1;letter-spacing:4px}}
 
@@ -236,18 +236,30 @@ body.onboarding-active::after{content:'';position:fixed;bottom:0;left:0;right:0;
 .btn-p{background:var(--primary);color:var(--bg);border:none}
 .btn:disabled{opacity:.35;pointer-events:none}
 
-/* ── FAB – Lauf starten ── */
-.fab-run{position:fixed;bottom:calc(var(--nav-total) + 14px);left:50%;transform:translateX(-50%);
-  z-index:1100;display:flex;align-items:center;gap:10px;padding:14px 32px;
-  border-radius:50px;border:none;cursor:pointer;touch-action:manipulation;
+/* ── Run Control Pill ── */
+#runCtrlPill{position:fixed;bottom:calc(var(--nav-total) + 14px);left:50%;transform:translateX(-50%);
+  z-index:1100;display:flex;align-items:center;gap:8px;padding:10px 10px;
+  border-radius:50px;
+  background:rgba(8,12,22,.88);border:1px solid rgba(255,255,255,.12);
+  -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
+  box-shadow:0 4px 24px rgba(0,0,0,.5);
+  opacity:0;visibility:hidden;
+  transition:opacity .22s,visibility .22s}
+#runCtrlPill.visible{opacity:1;visibility:visible}
+#rcpStart{display:flex;align-items:center;gap:8px;padding:12px 26px;border-radius:40px;border:none;cursor:pointer;
   background:linear-gradient(135deg,#00E676,#00C853);color:#042D22;
-  font-family:'Poppins',sans-serif;font-weight:800;font-size:15px;
+  font-family:'Poppins',sans-serif;font-weight:800;font-size:14px;
   letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;
-  box-shadow:0 4px 22px rgba(0,230,118,.48);
-  transition:transform .14s,box-shadow .14s,opacity .22s,visibility .22s;
-  opacity:0;visibility:hidden}
-.fab-run.visible{opacity:1;visibility:visible}
-.fab-run:active{transform:translateX(-50%) scale(.95);box-shadow:0 2px 10px rgba(0,230,118,.3)}
+  transition:transform .12s;touch-action:manipulation}
+#rcpStart:active{transform:scale(.93)}
+.rcp-btn{display:flex;align-items:center;gap:6px;padding:12px 20px;border-radius:40px;border:1px solid;cursor:pointer;
+  font-family:'Poppins',sans-serif;font-weight:700;font-size:13px;
+  letter-spacing:.3px;text-transform:uppercase;white-space:nowrap;
+  transition:transform .12s;touch-action:manipulation}
+.rcp-btn:active{transform:scale(.93)}
+#rcpPause{background:rgba(232,255,71,.12);color:#e8ff47;border-color:rgba(232,255,71,.28)}
+#rcpStop{background:rgba(255,77,109,.12);color:#ff4d6d;border-color:rgba(255,77,109,.28)}
+.rcp-hidden{display:none!important}
 
 /* ── Map Layer Pills ── */
 .map-layers-bar{position:fixed;top:calc(var(--hdr-total) + 12px);left:12px;z-index:900;
@@ -499,7 +511,6 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .stab-btn.active{background:var(--primary);color:var(--bg)}
 
 /* ═══ CONQRUN FEATURES ═══ */
-#fogCanvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:298;display:none}
 .rar-rare{color:#00d4ff}.rar-epic{color:#9b5de5}.rar-legendary{color:#ffd700}
 .team-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:.72rem;font-weight:700;letter-spacing:.5px;margin-top:6px}
 .ruler-badge{font-family:'Bebas Neue',sans-serif;font-size:.9rem;letter-spacing:2px;padding:2px 14px;border-radius:20px;background:rgba(var(--primary-rgb),.1);color:var(--primary);border:1px solid rgba(var(--primary-rgb),.25);display:inline-block;margin-top:4px}
@@ -522,7 +533,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 <!-- SPLASH -->
 <div id="splash">
   <div class="splash-logo">
-    <div class="splash-word" id="splWord1"><span>R</span><span>U</span><span>N</span></div>
+    <div class="splash-word" id="splWord1"><span>R</span><span>U</span><span>N</span><span>N</span><span>E</span><span>R</span><span>S</span></div>
     <div class="splash-word" id="splWord2"><span>C</span><span>O</span><span>N</span><span>Q</span><span>U</span><span>E</span><span>R</span></div>
     <div class="splash-sub">LAUF · EROBERE · HERRSCHE</div>
   </div>
@@ -698,17 +709,14 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <button class="map-layer-pill active" id="pillTerrBtn"><i class="fas fa-map"></i> Gebiete</button>
         <button class="map-layer-pill active" id="pillHeatBtn"><i class="fas fa-fire"></i> Heatmap</button>
         <button class="map-layer-pill active" id="pillLmBtn"><i class="fas fa-star"></i> Wahrzeichen</button>
-        <button class="map-layer-pill" id="pillFogBtn"><i class="fas fa-cloud"></i> Nebel</button>
       </div>
-      <button class="fab-run" id="fabRun" aria-label="Lauf starten">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/>
-        </svg>
-        Lauf starten
-      </button>
+      <div id="runCtrlPill">
+        <button id="rcpStart"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/></svg> Starten</button>
+        <button id="rcpPause" class="rcp-btn rcp-hidden"><i class="fas fa-pause"></i> Pause</button>
+        <button id="rcpStop" class="rcp-btn rcp-hidden"><i class="fas fa-stop"></i> Stop</button>
+      </div>
       <button id="locateBtn" aria-label="Mein Standort"><i class="fas fa-location-arrow"></i></button>
       <canvas id="likeCanvas"></canvas>
-      <canvas id="fogCanvas"></canvas>
       <button id="mapPanelArrow" aria-label="Kartenoptionen"><i class="fas fa-chevron-left" id="mapPanelIcon"></i></button>
       <div id="mapPanel">
         <div class="map-panel-title">Lauf</div>
@@ -730,9 +738,6 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <button class="map-panel-btn active" id="panelLmBtn"><i class="fas fa-star"></i> Wahrzeichen</button>
         <button class="map-panel-btn" id="panelOwnTerrBtn"><i class="fas fa-map-marker-alt"></i> Eigene Gebiete</button>
         <button class="map-panel-btn" id="panelFraktBtn"><i class="fas fa-flag"></i> Fraktionskarte</button>
-        <div class="map-panel-sep"></div>
-        <div class="map-panel-title">Extras</div>
-        <button class="map-panel-btn" id="panelFogBtn"><i class="fas fa-cloud"></i> Nebel ein</button>
       </div>
     </div>
 
@@ -1222,7 +1227,7 @@ let botActivities=[];
 let userTeam=null;
 let capturedLandmarks=[],raids=[],totalDiscovered=0;
 let revealedCells=new Set();
-let heatPersonalOnly=false,fogEnabled=false;
+let heatPersonalOnly=false;
 let registeredAt=Date.now();
 let starterQuestsDone=[],starterQuestFlags={profileOpened:false};
 let seasonChecked=false;
@@ -1407,11 +1412,11 @@ function speedToPace(mps){if(!mps||mps<0.3)return'--:--';const p=1000/mps/60;ret
 function debounce(fn,w){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),w)}}
 
 /* PERSIST */
-function save(){localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,energyWeek,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered,registeredAt,starterQuestsDone,starterQuestFlags,heatPersonalOnly,fogEnabled,dailyChallenges,dailyChalDate,chalStreak,lastChalDoneDate,dailyLoginDate,dailyLoginStreak,streakShields,recentQuoteIds,weeklyChals,weekChalKey,personalRecords,battlePassClaimed,totalRaids,totalBoosts,weeklyAchsDone,seasonXp}))}
+function save(){localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,energyWeek,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered,registeredAt,starterQuestsDone,starterQuestFlags,heatPersonalOnly,dailyChallenges,dailyChalDate,chalStreak,lastChalDoneDate,dailyLoginDate,dailyLoginStreak,streakShields,recentQuoteIds,weeklyChals,weekChalKey,personalRecords,battlePassClaimed,totalRaids,totalBoosts,weeklyAchsDone,seasonXp}))}
 function load(){
   try{
     const d=JSON.parse(localStorage.getItem('rc_v4_'+userId));
-    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;registeredAt=d.registeredAt||Date.now();starterQuestsDone=d.starterQuestsDone||[];starterQuestFlags=d.starterQuestFlags||{profileOpened:false};heatPersonalOnly=d.heatPersonalOnly||false;fogEnabled=d.fogEnabled||false;dailyChallenges=d.dailyChallenges||[];dailyChalDate=d.dailyChalDate||'';chalStreak=d.chalStreak||0;lastChalDoneDate=d.lastChalDoneDate||'';dailyLoginDate=d.dailyLoginDate||'';dailyLoginStreak=d.dailyLoginStreak||0;streakShields=d.streakShields||0;recentQuoteIds=d.recentQuoteIds||[];weeklyChals=d.weeklyChals||[];weekChalKey=d.weekChalKey||'';personalRecords=d.personalRecords||{};battlePassClaimed=d.battlePassClaimed||[];totalRaids=d.totalRaids||0;totalBoosts=d.totalBoosts||0;weeklyAchsDone=d.weeklyAchsDone||0;seasonXp=d.seasonXp||0;
+    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;registeredAt=d.registeredAt||Date.now();starterQuestsDone=d.starterQuestsDone||[];starterQuestFlags=d.starterQuestFlags||{profileOpened:false};heatPersonalOnly=d.heatPersonalOnly||false;dailyChallenges=d.dailyChallenges||[];dailyChalDate=d.dailyChalDate||'';chalStreak=d.chalStreak||0;lastChalDoneDate=d.lastChalDoneDate||'';dailyLoginDate=d.dailyLoginDate||'';dailyLoginStreak=d.dailyLoginStreak||0;streakShields=d.streakShields||0;recentQuoteIds=d.recentQuoteIds||[];weeklyChals=d.weeklyChals||[];weekChalKey=d.weekChalKey||'';personalRecords=d.personalRecords||{};battlePassClaimed=d.battlePassClaimed||[];totalRaids=d.totalRaids||0;totalBoosts=d.totalBoosts||0;weeklyAchsDone=d.weeklyAchsDone||0;seasonXp=d.seasonXp||0;
       /* Alte Bot-Gebiete (Blob, <100k m²) entfernen → werden neu als Straßen-Polygon generiert */
       territories=territories.filter(t=>t.owner===userId||t.area>100000);
       /* Überlappende Bot-Gebiete entfernen */
@@ -1886,8 +1891,6 @@ function showDailyRewardOverlay(shieldUsed){
   });
 }
 
-/* ── NEBEL DES KRIEGES ── */
-const debouncedDrawFog=debounce(drawFog,400);
 
 /* ── WAPPEN SVG ── */
 let _wId=0;
@@ -2176,27 +2179,6 @@ function showOnboardingOverlay(){
   });
   document.body.appendChild(ov);
   render();
-}
-function revealCell(lat,lng){
-  const key=String(Math.round(lat/0.0005)*0.0005)+'_'+String(Math.round(lng/0.0005)*0.0005);
-  if(!revealedCells.has(key)){
-    revealedCells.add(key);
-    if(revealedCells.size>5000){const arr=[...revealedCells];revealedCells=new Set(arr.slice(arr.length-5000));}
-  }
-  debouncedDrawFog();
-}
-function drawFog(){
-  const cv=$('fogCanvas');if(!cv||!mapL||!fogEnabled)return;
-  cv.width=cv.offsetWidth||window.innerWidth;cv.height=cv.offsetHeight||window.innerHeight;
-  const ctx=cv.getContext('2d');
-  ctx.fillStyle='rgba(0,0,0,.75)';ctx.fillRect(0,0,cv.width,cv.height);
-  ctx.globalCompositeOperation='destination-out';
-  const zoom=mapL.getZoom(),r=Math.max(25,Math.min(120,Math.pow(2,zoom-12)*18));
-  revealedCells.forEach(key=>{
-    const parts=key.split('_');
-    try{const p=mapL.latLngToContainerPoint([+parts[0],+parts[1]]);ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fill();}catch(e){}
-  });
-  ctx.globalCompositeOperation='source-over';
 }
 
 /* ── RAIDS ── */
@@ -2839,7 +2821,7 @@ function startRun(){
   statusTxt.textContent=energy>0?`⚡ Boost aktiv (${energy}/${CFG.ENERGY_MAX})`:'Läuft…';
   statusDot.style.background=energy>0?'var(--primary)':'var(--green)';statusBar.classList.add('running');
   startBtn.disabled=true;pauseBtn.disabled=false;pauseBtn.innerHTML='<i class="fas fa-pause"></i> PAUSE';stopBtn.disabled=false;
-  const fabRun=$('fabRun');if(fabRun)fabRun.classList.remove('visible');
+  updateRunPill();
   liveRun.classList.add('on');idleStats.style.display='none';
   /* Panel: START ausblenden, RunBox einblenden, Panel öffnen */
   const pSB=$('panelStartBtn'),pRB=$('panelRunBox');
@@ -2884,7 +2866,6 @@ function onGPS(pos){
     }
   } else if(!lastPos){path.push(pt);pathLayer.addLatLng(pt);}
   lastPos=pt;
-  if(fogEnabled)revealCell(lat,lng);
   landmarks.forEach(lm=>{
     if(capturedLandmarks.includes(lm.id))return;
     const dist2=turf.distance(turf.point([lng,lat]),turf.point([lm.lng,lm.lat]),{units:'meters'});
@@ -2920,7 +2901,7 @@ function pauseRun(){
   statusTxt.textContent='Pausiert';statusDot.style.background='var(--primary)';
   pauseBtn.innerHTML='<i class="fas fa-play"></i> WEITER';
   const pPause=$('panelPauseBtn2');if(pPause)pPause.innerHTML='<i class="fas fa-play"></i> Weiter';
-  beep(330,.08);
+  updateRunPill();beep(330,.08);
 }
 function resumeRun(){
   if(!isRunning||!isPaused)return;
@@ -2930,7 +2911,25 @@ function resumeRun(){
   pauseBtn.innerHTML='<i class="fas fa-pause"></i> PAUSE';
   const pRes=$('panelPauseBtn2');if(pRes)pRes.innerHTML='<i class="fas fa-pause"></i> Pause';
   startLiveUpdate();
-  beep(440,.08);
+  updateRunPill();beep(440,.08);
+}
+function updateRunPill(){
+  const pill=$('runCtrlPill');if(!pill)return;
+  const start=$('rcpStart'),pause=$('rcpPause'),stop=$('rcpStop');
+  if(!start||!pause||!stop)return;
+  const onMap=currentView==='map';
+  if(!isRunning){
+    start.classList.remove('rcp-hidden');pause.classList.add('rcp-hidden');stop.classList.add('rcp-hidden');
+    pill.classList.toggle('visible',onMap);
+  } else if(isPaused){
+    start.classList.add('rcp-hidden');pause.classList.remove('rcp-hidden');stop.classList.remove('rcp-hidden');
+    pause.innerHTML='<i class="fas fa-play"></i> Weiter';
+    pill.classList.add('visible');
+  } else {
+    start.classList.add('rcp-hidden');pause.classList.remove('rcp-hidden');stop.classList.remove('rcp-hidden');
+    pause.innerHTML='<i class="fas fa-pause"></i> Pause';
+    pill.classList.add('visible');
+  }
 }
 function stopRun(){
   if(!isRunning)return;
@@ -2938,7 +2937,7 @@ function stopRun(){
   isRunning=false;watchId=null;stopLiveUpdate();stopKeepAlive();
   statusBar.classList.remove('running');statusDot.style.background='var(--muted)';
   startBtn.disabled=false;pauseBtn.disabled=true;pauseBtn.innerHTML='<i class="fas fa-pause"></i> PAUSE';stopBtn.disabled=true;
-  const fabRunEl=$('fabRun');if(fabRunEl&&currentView==='map')fabRunEl.classList.add('visible');
+  updateRunPill();
   liveRun.classList.remove('on');idleStats.style.display='';beep(330);
   /* Panel: RunBox ausblenden, START einblenden */
   const pSB2=$('panelStartBtn'),pRB2=$('panelRunBox');
@@ -4503,7 +4502,7 @@ async function launchAppFromSession(user){
   $('onboarding').style.display='none';
   $('app').style.display='flex';
   window._hideCityBg?.();
-  setTimeout(()=>{const f=$('fabRun');if(f&&!isRunning)f.classList.add('visible');const lb=$('mapLayerBar');if(lb)lb.classList.add('visible');},350);
+  setTimeout(()=>{updateRunPill();const lb=$('mapLayerBar');if(lb)lb.classList.add('visible');},350);
   if(!mapL){
     initMap();
     setTimeout(async()=>{
@@ -4785,8 +4784,7 @@ function setView(view){
   const onMap=view==='map';
   if(dockToggle)dockToggle.style.display=onMap?'':'none';
   if(runDock){if(!onMap)runDock.classList.remove('up');runDock.style.display=onMap?'':'none';}
-  const fabRun=$('fabRun');
-  if(fabRun)fabRun.classList.toggle('visible',onMap&&!isRunning);
+  updateRunPill();
   const layerBar=$('mapLayerBar');
   if(layerBar)layerBar.classList.toggle('visible',onMap);
   const _upd=view==='dash'?updateDash:view==='community'?updateCommunity:view==='profile'?updateProfile:null;
@@ -4958,7 +4956,9 @@ window.initApp=function(){
   startBtn.addEventListener('click',startRun);
   pauseBtn.addEventListener('click',()=>{isPaused?resumeRun():pauseRun();});
   stopBtn.addEventListener('click',stopRun);
-  $('fabRun')?.addEventListener('click',startRun);
+  $('rcpStart')?.addEventListener('click',startRun);
+  $('rcpPause')?.addEventListener('click',()=>{isPaused?resumeRun():pauseRun();});
+  $('rcpStop')?.addEventListener('click',stopRun);
   $('fitnessQuickBtn').addEventListener('click',()=>openDrawer('fitness'));
   $('drawerClose').addEventListener('click',closeDrawer);
   $('drawerOverlay').addEventListener('click',closeDrawer);
@@ -5127,24 +5127,14 @@ window.initApp=function(){
     toast(fraktMode?'🏳️ Fraktionskarte aktiv':'Normale Kartenansicht');
   });
   $('panelLmBtn')?.addEventListener('click',function(){this.classList.toggle('active');if(this.classList.contains('active'))landmarkLayer&&mapL.addLayer(landmarkLayer);else landmarkLayer&&mapL.removeLayer(landmarkLayer);});
-  $('panelFogBtn')?.addEventListener('click',function(){
-    fogEnabled=!fogEnabled;
-    const cv=$('fogCanvas');if(cv)cv.style.display=fogEnabled?'block':'none';
-    this.classList.toggle('active',fogEnabled);
-    this.innerHTML=fogEnabled?'<i class="fas fa-cloud"></i> Nebel aus':'<i class="fas fa-cloud"></i> Nebel ein';
-    if(fogEnabled){drawFog();if(mapL)mapL.on('move',debouncedDrawFog);}
-    else{if(mapL)mapL.off('move',debouncedDrawFog);}
-    if(cv&&!fogEnabled){cv.style.display='none';}
-  });
   /* Map layer pills — mirror panel buttons */
   [['pillTerrBtn','panelTerrBtn'],['pillHeatBtn','panelHeatBtn'],
-   ['pillLmBtn','panelLmBtn'],['pillFogBtn','panelFogBtn']].forEach(([pillId,panelId])=>{
+   ['pillLmBtn','panelLmBtn']].forEach(([pillId,panelId])=>{
     const pill=$(pillId),panel=$(panelId);
     if(!pill||!panel)return;
     pill.addEventListener('click',()=>{
       panel.click();
       pill.classList.toggle('active',panel.classList.contains('active'));
-      if(pillId==='pillFogBtn')pill.innerHTML=panel.classList.contains('active')?'<i class="fas fa-cloud"></i> Nebel an':'<i class="fas fa-cloud"></i> Nebel';
     });
   });
   /* Panel-Lauf-Buttons */
