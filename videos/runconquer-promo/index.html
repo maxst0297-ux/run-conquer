@@ -14,8 +14,7 @@ body{width:1080px;height:1920px;overflow:hidden;background:#06060A;font-family:'
 /* ── REAL FOOTAGE ── */
 .clip{position:absolute;inset:0;width:1080px;height:1920px;object-fit:cover;background:#0a0a12}
 /* color grade: scene color over footage */
-.grade{position:absolute;inset:0;mix-blend-mode:color;opacity:.38;pointer-events:none}
-.tint{position:absolute;inset:0;mix-blend-mode:overlay;opacity:.3;pointer-events:none}
+.grade{position:absolute;inset:0;mix-blend-mode:color;opacity:.42;pointer-events:none}
 .dark{position:absolute;inset:0;background:linear-gradient(180deg,rgba(4,4,10,.62) 0%,transparent 30%,transparent 62%,rgba(4,4,10,.78) 100%);pointer-events:none}
 /* conquering color wash sweeping up from the runner */
 .wash{position:absolute;left:-30%;right:-30%;bottom:-22%;height:74%;pointer-events:none;
@@ -169,9 +168,8 @@ SCENES.forEach(s=>{
   d.style.background=`linear-gradient(160deg,color-mix(in srgb,${s.c} 24%,#0a0a14),#0a0a14 70%)`;
   d.innerHTML=`
     <video class="clip" id="v_${s.id}" muted playsinline loop preload="none"
-      src="https://www.pexels.com/download/video/${s.vid}/"></video>
+      data-src="https://www.pexels.com/download/video/${s.vid}/?w=960"></video>
     <div class="grade" style="background:${s.c}"></div>
-    <div class="tint" style="background:linear-gradient(180deg,${s.c},transparent 60%)"></div>
     <div class="dark"></div>
     ${s.wash?`<div class="wash" id="w_${s.id}"></div>`:''}
     <div class="hexol" id="hx_${s.id}"></div>
@@ -186,9 +184,9 @@ SCENES.forEach(s=>{
     d.querySelector('#hx_'+s.id).appendChild(svg);
     s._lits=lits;
   }
-  /* video error → keep gradient bg, hide broken video */
+  /* video error → keep gradient bg, hide broken video (ignore unload events) */
   const v=d.querySelector('video');
-  v.addEventListener('error',()=>{v.style.display='none';});
+  v.addEventListener('error',()=>{if(v.getAttribute('src'))v.style.display='none';});
   /* drone-city: colored territory blobs over real footage */
   if(s.blobs){
     TERR_COLORS.forEach((c,i)=>{
@@ -257,6 +255,23 @@ const tl=gsap.timeline({paused:true});
 function vEl(s){return document.getElementById('v_'+s.id);}
 function showScene(el){gsap.set(el,{visibility:'visible',opacity:1});}
 function hideScene(el){gsap.set(el,{visibility:'hidden',opacity:0});}
+/* Memory management: keep at most ~2 clips buffered. Attach src shortly
+   before a scene, fully detach + free the decoder right after it ends. */
+function loadClip(s){
+  const v=vEl(s);
+  if(!v||v.getAttribute('src'))return;
+  v.style.display='';
+  v.src=v.dataset.src;
+  v.preload='auto';
+  v.load();
+}
+function unloadClip(s){
+  const v=vEl(s);
+  if(!v)return;
+  v.pause();
+  v.removeAttribute('src');
+  v.load(); /* releases buffer + decoder */
+}
 function whip(at){
   tl.fromTo('#flash',{opacity:0},{opacity:.55,duration:.07,ease:'power4.in'},at-.07);
   tl.to('#flash',{opacity:0,duration:.14,ease:'power2.out'},at);
@@ -269,11 +284,11 @@ tl.to('#h0-t .big',{scale:1.06,duration:2.4,ease:'none'},.5);
 /* footage scenes */
 SCENES.forEach((s,idx)=>{
   const [t0,t1]=s.t,el=document.getElementById('sc_'+s.id);
-  /* preload 6s before */
-  tl.call(()=>{const v=vEl(s);if(v&&v.preload!=='auto'){v.preload='auto';v.load();}},null,Math.max(0,t0-6));
+  /* attach + buffer 4s before the cut */
+  tl.call(()=>loadClip(s),null,Math.max(0,t0-4));
   /* hard cut in */
   whip(t0);
-  tl.call(()=>{showScene(el);const v=vEl(s);if(v){v.currentTime=0;v.play().catch(()=>{});}},null,t0);
+  tl.call(()=>{showScene(el);loadClip(s);const v=vEl(s);if(v){try{if(v.readyState>0)v.currentTime=0;}catch(e){}v.play().catch(()=>{});}},null,t0);
   /* hide previous scene */
   if(idx===0)tl.call(()=>hideScene(document.getElementById('h0')),null,t0+.05);
   /* slow push-in on footage for cinema feel */
@@ -296,9 +311,9 @@ SCENES.forEach((s,idx)=>{
     tl.to('#cb'+i,{opacity:.75,duration:.8,ease:'power2.out'},t0+.6+i*.5);
     tl.to('#cb'+i,{scale:1.25,duration:t1-t0-1,ease:'none'},t0+.6+i*.5);
   }
-  /* out: text exits, scene hides at next cut, video pauses */
+  /* out: text exits, scene hides at next cut, clip fully unloaded to free RAM */
   tl.to(k,{opacity:0,y:-30,duration:.3},t1-.32);
-  tl.call(()=>{hideScene(el);const v=vEl(s);if(v)v.pause();},null,t1+.08);
+  tl.call(()=>{hideScene(el);unloadClip(s);},null,t1+.4);
 });
 
 /* GAME MAP interlude */
