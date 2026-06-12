@@ -1348,6 +1348,7 @@ function restartBgWatch(){
   }
 }
 function fmtDist(m){return m<1000?Math.round(m)+' m':(m/1000).toFixed(2)+' km'}
+function fmtDecay(mins){const d=Math.floor(mins/1440),h=Math.floor((mins%1440)/60);return d>0?`${d}d ${h}h`:h>0?`${h}h`:'< 1h'}
 function fmtTime(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=Math.floor(s%60);return h>0?`${h}:${pad(m)}:${pad(sc)}`:`${pad(m)}:${pad(sc)}`}
 function pad(n){return String(n).padStart(2,'0')}
 function fmtPace(m,s){if(m<10)return'--:--';const p=s/60/(m/1000);return Math.floor(p)+':'+pad(Math.round((p%1)*60))}
@@ -2617,7 +2618,7 @@ function renderTerr(){
         /* Stats grid */
         h+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:6px 0">`;
         h+=`<div style="background:rgba(255,255,255,.05);border-radius:7px;padding:5px 8px"><div style="font-size:.6rem;color:var(--muted)">FLÄCHE</div><div style="font-size:.78rem;font-weight:700">${areaRnd}</div></div>`;
-        h+=`<div style="background:rgba(255,255,255,.05);border-radius:7px;padding:5px 8px"><div style="font-size:.6rem;color:var(--muted)">VERFALL</div><div style="font-size:.78rem;font-weight:700">${decayMins} min</div></div>`;
+        h+=`<div style="background:rgba(255,255,255,.05);border-radius:7px;padding:5px 8px"><div style="font-size:.6rem;color:var(--muted)">VERFALL</div><div style="font-size:.78rem;font-weight:700">${fmtDecay(decayMins)}</div></div>`;
         h+=`</div>`;
         /* Strength bar */
         h+=`<div style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;font-size:.7rem;margin-bottom:3px"><span style="color:var(--muted)">🛡️ STÄRKE</span><span style="color:${barCol};font-weight:700">${Math.round(t.defense)}/100</span></div>`;
@@ -2632,7 +2633,7 @@ function renderTerr(){
           const dmgPotPct=Math.round(CFG.STR_DMG_PER_KM*2);
           const raid=raids.find(r=>r.terrId===t.id);
           if(raid){const hrs=Math.max(0,Math.ceil((CFG.RAID_DURATION_MS-(Date.now()-raid.attackedAt))/3600000));h+=`<br><span style="font-size:.68rem;color:#ff4d6d">⚔️ Raid läuft – ${hrs} Std. verbleibend</span>`;}
-          h+=`<br><span style="font-size:.68rem;color:#ff9f1c">⏳ Verfall in ${decayMinsLeft} min</span>`;
+          h+=`<br><span style="font-size:.68rem;color:#ff9f1c">⏳ Verfall in ${fmtDecay(decayMinsLeft)}</span>`;
           h+=`<br><span style="font-size:.68rem;color:#ff4d6d">💥 Schadenspotential: ${dmgPotPct}% / km</span>`;
           h+=`<div style="display:flex;gap:6px;margin-top:8px">`;
           h+=`<button onclick="window.likeTerritory('${t.id}')" style="flex:1;background:#ff4d6d;color:#fff;border:none;border-radius:8px;padding:4px 8px;cursor:pointer;font-size:.72rem">⚔️ LIKE!</button>`;
