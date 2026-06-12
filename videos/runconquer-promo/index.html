@@ -11,196 +11,288 @@ body{width:1080px;height:1920px;overflow:hidden;background:#06060A;font-family:'
 .scene{position:absolute;inset:0;overflow:hidden;opacity:0;visibility:hidden}
 .scene.boot{opacity:1;visibility:visible}
 
-/* ── REAL FOOTAGE ── */
+/* ── VIDEO / GRADE LAYERS ── */
 .clip{position:absolute;inset:0;width:1080px;height:1920px;object-fit:cover;background:#0a0a12}
-/* color grade: scene color over footage */
-.grade{position:absolute;inset:0;mix-blend-mode:color;opacity:.42;pointer-events:none}
-.dark{position:absolute;inset:0;background:linear-gradient(180deg,rgba(4,4,10,.62) 0%,transparent 30%,transparent 62%,rgba(4,4,10,.78) 100%);pointer-events:none}
-/* conquering color wash sweeping up from the runner */
+.grade{position:absolute;inset:0;mix-blend-mode:color;opacity:.38;pointer-events:none}
+.dark{position:absolute;inset:0;background:linear-gradient(180deg,rgba(4,4,10,.68) 0%,transparent 28%,transparent 60%,rgba(4,4,10,.82) 100%);pointer-events:none}
 .wash{position:absolute;left:-30%;right:-30%;bottom:-22%;height:74%;pointer-events:none;
   background:radial-gradient(ellipse at 50% 100%,var(--c) 0%,color-mix(in srgb,var(--c) 55%,transparent) 38%,transparent 68%);
   mix-blend-mode:screen;opacity:.85;transform:scale(0)}
-/* hex grid = invisible game world */
-.hexol{position:absolute;inset:0;pointer-events:none;opacity:0}
-.hexol svg{width:100%;height:100%}
-.hexol polygon{fill:none;stroke:rgba(255,255,255,.34);stroke-width:2}
-.hexol .lit{fill:var(--c);fill-opacity:.16;stroke:var(--c);stroke-opacity:.85;stroke-width:3}
-.vign{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,transparent 55%,rgba(0,0,0,.5) 100%);pointer-events:none}
+.vign{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,transparent 52%,rgba(0,0,0,.55) 100%);pointer-events:none}
 
-/* ── TYPOGRAPHY ── */
-.kin{position:absolute;left:0;right:0;z-index:30;text-align:center;padding:0 50px}
-.kin .tag{display:inline-block;font-size:25px;font-weight:800;letter-spacing:8px;color:#fff;background:color-mix(in srgb,var(--c) 80%,#000);
-  padding:12px 30px;border-radius:50px;text-transform:uppercase;margin-bottom:26px;box-shadow:0 0 36px var(--c)}
-.kin .big{font-family:'Bebas Neue',sans-serif;color:#fff;line-height:.9;letter-spacing:3px;
-  text-shadow:0 4px 30px rgba(0,0,0,.85)}
-.kin .big em{font-style:normal;color:var(--c);text-shadow:0 0 50px var(--c),0 4px 30px rgba(0,0,0,.8)}
-.top{top:150px}.bot{bottom:190px}.mid{top:50%;transform:translateY(-50%)}
+/* ── TYPOGRAPHY (clip-path reveal) ── */
+.kin{position:absolute;left:0;right:0;z-index:30;text-align:center;padding:0 52px}
+.kin .tag{display:inline-block;font-size:24px;font-weight:800;letter-spacing:7px;color:#fff;
+  background:color-mix(in srgb,var(--c) 80%,#000);
+  padding:11px 28px;border-radius:50px;text-transform:uppercase;margin-bottom:24px;
+  box-shadow:0 0 34px var(--c);
+  clip-path:inset(110% 0% 0% 0%)}
+.kin .big{font-family:'Bebas Neue',sans-serif;color:#fff;line-height:.92;letter-spacing:3px;
+  text-shadow:0 4px 30px rgba(0,0,0,.9);
+  clip-path:inset(110% 0% 0% 0%)}
+.kin .big em{font-style:normal;color:var(--c);text-shadow:0 0 52px var(--c),0 4px 30px rgba(0,0,0,.8)}
+.top{top:140px}.bot{bottom:180px}.mid{top:50%;transform:translateY(-50%)}
+
+/* ── GAME HUD OVERLAYS ── */
+/* Score popup – slides in from LEFT */
+.score-pop{position:absolute;z-index:40;pointer-events:none;left:52px;top:860px;
+  background:rgba(4,4,10,.90);border:2.5px solid var(--c);border-radius:22px;
+  padding:24px 38px;box-shadow:0 0 44px color-mix(in srgb,var(--c) 48%,transparent);
+  transform:translateX(-110%)}
+.score-pop .sp-pts{font-family:'Bebas Neue',sans-serif;font-size:92px;color:var(--c);
+  text-shadow:0 0 32px var(--c);line-height:1;letter-spacing:2px}
+.score-pop .sp-label{font-size:20px;letter-spacing:5px;color:rgba(255,255,255,.7);
+  text-transform:uppercase;margin-top:6px}
+
+/* Territory capture – scaleX ribbon unroll */
+.terr-cap{position:absolute;z-index:40;left:0;right:0;bottom:360px;pointer-events:none;text-align:center;
+  transform-origin:left center;transform:scaleX(0)}
+.terr-cap .tc-bar{display:inline-flex;flex-direction:column;align-items:center;
+  background:rgba(4,4,10,.92);border:2.5px solid var(--c);border-radius:20px;
+  padding:20px 46px;box-shadow:0 0 52px color-mix(in srgb,var(--c) 44%,transparent)}
+.terr-cap .tc-icon{font-size:17px;letter-spacing:6px;color:rgba(255,255,255,.52);margin-bottom:8px}
+.terr-cap .tc-name{font-family:'Bebas Neue',sans-serif;font-size:62px;color:#fff;letter-spacing:4px;line-height:1}
+.terr-cap .tc-pts{font-family:'Bebas Neue',sans-serif;font-size:46px;color:var(--c);
+  letter-spacing:2px;text-shadow:0 0 22px var(--c);margin-top:4px}
+
+/* Leaderboard – slides in from RIGHT */
+.lb-hud{position:absolute;z-index:40;right:52px;top:360px;pointer-events:none;
+  background:rgba(4,4,10,.90);border:2px solid rgba(255,255,255,.12);border-radius:22px;
+  padding:24px 30px;min-width:318px;transform:translateX(110%)}
+.lb-hud .lb-title{font-size:15px;letter-spacing:6px;color:rgba(255,255,255,.42);
+  margin-bottom:18px;text-transform:uppercase}
+.lb-hud .lb-row{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+.lb-hud .lb-rank{font-family:'Bebas Neue',sans-serif;font-size:36px;color:rgba(255,255,255,.28);width:32px;flex-shrink:0}
+.lb-hud .lb-rank.me{color:#E8FF47;text-shadow:0 0 14px #E8FF47}
+.lb-hud .lb-name{font-size:18px;font-weight:600;color:#fff;flex:1}
+.lb-hud .lb-name.me{color:#E8FF47}
+.lb-hud .lb-sc{font-family:'Bebas Neue',sans-serif;font-size:32px;color:rgba(255,255,255,.65)}
+.lb-hud .lb-sc.me{color:#E8FF47;text-shadow:0 0 12px #E8FF47}
+
+/* Streak – slides in from LEFT */
+.streak-hud{position:absolute;z-index:40;left:52px;bottom:400px;pointer-events:none;
+  background:rgba(4,4,10,.90);border:2.5px solid #FF8800;border-radius:20px;
+  padding:20px 32px;box-shadow:0 0 38px rgba(255,136,0,.42);text-align:center;
+  transform:translateX(-110%)}
+.streak-hud .sh-fire{font-size:50px;line-height:1}
+.streak-hud .sh-num{font-family:'Bebas Neue',sans-serif;font-size:86px;color:#FF8800;
+  text-shadow:0 0 30px #FF8800;line-height:.9}
+.streak-hud .sh-label{font-size:16px;letter-spacing:4px;color:rgba(255,255,255,.6);margin-top:4px}
 
 /* ── HOOK ── */
-#h0{background:#06060A}
-#h0 .big{font-size:185px}
-#h0-ping{position:absolute;top:50%;left:50%;width:10px;height:10px}
-#h0-ping i{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);border:3px solid #E8FF47;border-radius:50%;
-  width:30px;height:30px;opacity:0;animation:ping 1.6s ease-out infinite}
-#h0-ping i:nth-child(2){animation-delay:.5s}#h0-ping i:nth-child(3){animation-delay:1s}
-@keyframes ping{0%{width:24px;height:24px;opacity:.95}100%{width:680px;height:680px;opacity:0}}
+#h0{background:#000000}
+#h0-runners{font-family:'Bebas Neue',sans-serif;font-size:38px;letter-spacing:14px;color:#fff;
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) translateY(-130px);opacity:0}
+#h0-conquer{font-family:'Bebas Neue',sans-serif;font-size:280px;color:#E8FF47;line-height:1;
+  text-shadow:0 0 80px rgba(232,255,71,.7),0 0 200px rgba(232,255,71,.35);
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) translateY(60px);opacity:0;letter-spacing:4px}
+#h0-ping{position:absolute;top:50%;left:50%;width:0;height:0}
+#h0-ping i{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  border:3px solid #E8FF47;border-radius:50%;width:30px;height:30px;opacity:0}
 
-/* ── GAME MAP (aerial interlude) ── */
+/* ── GAME MAP (territory interlude) ── */
 #gm{background:#0b0d18}
 #gm-map{position:absolute;inset:0}
 #gm-map svg{width:1080px;height:1920px}
 .terr{opacity:.88}
-.energy{fill:none;stroke:#fff;stroke-width:7;stroke-linecap:round;stroke-dasharray:34 22;opacity:0;
-  filter:drop-shadow(0 0 12px #fff) drop-shadow(0 0 26px rgba(180,220,255,.9))}
-.gridline{stroke:rgba(255,255,255,.07);stroke-width:2}
-.hud-chip{position:absolute;display:flex;align-items:center;gap:14px;background:rgba(10,12,24,.88);
-  border:2px solid rgba(255,255,255,.16);border-radius:50px;padding:13px 28px;opacity:0;z-index:20}
+.energy{fill:none;stroke:#fff;stroke-width:4;stroke-linecap:round;stroke-dasharray:28 18;opacity:0;
+  filter:drop-shadow(0 0 10px #fff) drop-shadow(0 0 22px rgba(180,220,255,.9))}
+.gridline{stroke:rgba(255,255,255,.04);stroke-width:1}
+.hud-chip{position:absolute;display:flex;align-items:center;gap:14px;
+  background:rgba(10,12,24,.88);border:2px solid rgba(255,255,255,.16);
+  border-radius:50px;padding:13px 28px;opacity:0;z-index:20}
 .hud-dot{width:24px;height:24px;border-radius:50%}
 .hud-pct{font-family:'Bebas Neue',sans-serif;font-size:40px;color:#fff}
 .hud-nm{font-size:18px;letter-spacing:3px;color:rgba(255,255,255,.6)}
-
-/* drone-city blob overlay */
-.cityblob{position:absolute;border-radius:50%;mix-blend-mode:screen;opacity:0;pointer-events:none;filter:blur(4px)}
+#gm-score{position:absolute;right:60px;bottom:220px;font-family:'Bebas Neue',sans-serif;
+  font-size:62px;color:#E8FF47;letter-spacing:3px;
+  text-shadow:0 0 28px rgba(232,255,71,.6);opacity:0;text-align:right}
+#gm-score span{display:block;font-size:22px;letter-spacing:6px;color:rgba(255,255,255,.5);margin-bottom:4px}
+#gm-t{font-family:'Bebas Neue',sans-serif;font-size:110px;color:#fff;letter-spacing:3px;
+  text-align:center;position:absolute;top:140px;left:0;right:0;padding:0 52px;
+  clip-path:inset(110% 0% 0% 0%)}
+#gm-t em{font-style:normal;color:#E8FF47;text-shadow:0 0 44px #E8FF47}
 
 /* ── FINALE ── */
 #fin{background:radial-gradient(ellipse at 50% 42%,#15172a 0%,#050508 70%)}
 #fin-title{position:absolute;top:44%;left:0;right:0;transform:translateY(-50%);text-align:center}
-#fin-title .w1,#fin-title .w2{display:block;font-family:'Bebas Neue',sans-serif;letter-spacing:5px}
-#fin-title .w1{font-size:148px;color:#fff}
-#fin-title .w2{font-size:196px;color:#E8FF47;letter-spacing:3px;text-shadow:0 0 70px rgba(232,255,71,.65),0 0 160px rgba(232,255,71,.3)}
-#fin-title span span{display:inline-block}
+#fin-title .w1{display:block;font-family:'Bebas Neue',sans-serif;font-size:148px;color:#fff;letter-spacing:5px}
+#fin-title .w2{display:block;font-family:'Bebas Neue',sans-serif;font-size:196px;color:#E8FF47;letter-spacing:3px;
+  text-shadow:0 0 70px rgba(232,255,71,.65),0 0 160px rgba(232,255,71,.3)}
+#fin-title span{display:inline-block;clip-path:inset(110% 0% 0% 0%)}
 #fin-bars{display:flex;gap:14px;justify-content:center;margin-top:42px}
-#fin-bars i{display:block;width:88px;height:10px;border-radius:6px}
-#fin-tag{margin-top:38px;font-size:29px;letter-spacing:10px;color:rgba(255,255,255,.72);text-transform:uppercase}
-.spark{position:absolute;width:9px;height:9px;border-radius:50%;background:var(--c);box-shadow:0 0 14px var(--c);
-  opacity:0;animation:sparkUp 3.2s ease-out infinite}
+#fin-bars i{display:block;width:88px;height:10px;border-radius:6px;transform:scaleX(0);transform-origin:left center}
+#fin-tag{margin-top:38px;font-size:29px;letter-spacing:22px;color:rgba(255,255,255,.72);
+  text-transform:uppercase;opacity:0}
+#fin-xp-wrap{position:absolute;bottom:320px;left:80px;right:80px;z-index:20}
+#fin-xp-lbl{font-size:18px;letter-spacing:8px;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:12px}
+#fin-xp-bar{height:14px;background:rgba(255,255,255,.1);border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,.15)}
+#fin-xp-fill{height:100%;width:0%;background:linear-gradient(90deg,#FF2E97,#E8FF47);border-radius:8px;
+  box-shadow:0 0 18px rgba(232,255,71,.6)}
+#fin-pts{position:absolute;bottom:220px;left:0;right:0;text-align:center;
+  font-family:'Bebas Neue',sans-serif;font-size:72px;color:#E8FF47;letter-spacing:4px;
+  text-shadow:0 0 36px rgba(232,255,71,.65);opacity:0}
+.spark{position:absolute;width:9px;height:9px;border-radius:50%;background:var(--c);
+  box-shadow:0 0 14px var(--c);opacity:0;animation:sparkUp 3.2s ease-out infinite}
 @keyframes sparkUp{0%{opacity:0;transform:translateY(0) scale(.5)}15%{opacity:.95}100%{opacity:0;transform:translateY(-420px) scale(1.2)}}
 
-/* whip-cut flash */
+/* ── whip-cut flash ── */
 #flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:90}
+
+/* ── chromatic aberration ── */
+#chromatic{position:absolute;inset:0;pointer-events:none;z-index:88;opacity:0;
+  background:linear-gradient(90deg,
+    rgba(255,0,80,.22) 0%,transparent 18%,
+    transparent 82%,rgba(0,200,255,.22) 100%);
+  mix-blend-mode:screen}
 </style>
 </head>
 <body>
 <div id="root">
 <div id="flash"></div>
+<div id="chromatic"></div>
 
-<!-- 0 HOOK -->
-<div class="scene boot" id="h0" style="--c:#E8FF47">
-  <div id="h0-ping"><i></i><i></i><i></i></div>
-  <div class="kin mid" id="h0-t">
-    <div class="big">ÜBER DEINER STADT LIEGT<br><em>EINE UNSICHTBARE WELT</em></div>
-  </div>
+<!-- HOOK -->
+<div class="scene boot" id="h0">
+  <div id="h0-runners">RUNNERS</div>
+  <div id="h0-conquer">CONQUER</div>
+  <div id="h0-ping"><i id="p0"></i><i id="p1"></i><i id="p2"></i></div>
+</div>
+
+<!-- GAME MAP INTERLUDE -->
+<div class="scene" id="gm">
+  <div id="gm-map"></div>
+  <div id="gm-t">TERRITORIEN<br><em>FALLEN.</em></div>
+  <div id="gm-score"><span>GESAMT</span>12.450 PTS</div>
 </div>
 
 <!-- FINALE -->
 <div class="scene" id="fin">
   <div id="fin-pt"></div>
   <div id="fin-title">
-    <span class="w1" id="fin-w1"></span>
-    <span class="w2" id="fin-w2"></span>
-    <div id="fin-bars">
-      <i style="background:#FF2E97"></i><i style="background:#3AE880"></i><i style="background:#FF8800"></i><i style="background:#00CCFF"></i><i style="background:#E8FF47"></i>
-    </div>
+    <div class="w1" id="fin-w1"></div>
+    <div class="w2" id="fin-w2"></div>
+    <div id="fin-bars"><i style="background:#FF2E97"></i><i style="background:#3AE880"></i><i style="background:#FF8800"></i><i style="background:#00CCFF"></i><i style="background:#E8FF47"></i></div>
     <div id="fin-tag">Lauf · Erobere · Herrsche</div>
   </div>
-</div>
-
-<!-- GAME MAP INTERLUDE -->
-<div class="scene" id="gm">
-  <div id="gm-map"></div>
-  <div class="kin top" style="--c:#E8FF47">
-    <div class="big" style="font-size:104px" id="gm-t">TERRITORIEN WACHSEN.<br><em>GRENZEN ENTSTEHEN.</em></div>
+  <div id="fin-xp-wrap">
+    <div id="fin-xp-lbl">SEASON XP</div>
+    <div id="fin-xp-bar"><div id="fin-xp-fill"></div></div>
   </div>
+  <div id="fin-pts">+12.450 PTS</div>
 </div>
 
 </div>
 <script>
 /* ══════════════════════════════════════════
-   REAL-FOOTAGE SCENES (Pexels, free license)
+   28 SCENES — Sports Brand Promo — RunConquer
+   Total duration: 56.0s
 ══════════════════════════════════════════ */
 const SCENES=[
- {id:'c1', vid:5310858, c:'#FF2E97', tag:'STADT',         pos:'top', big:'JEDER SCHRITT<br><em>FÄRBT SIE EIN</em>',      sz:118, t:[3.0,9.0],  wash:1, hex:1},
- {id:'c2', vid:8533442, c:'#FF2E97', tag:'',              pos:'mid', big:'<em>LAUF.</em>',                              sz:300, t:[9.0,12.4], wash:0, hex:0},
- {id:'c3', vid:4763892, c:'#FF2E97', tag:'PARKS',         pos:'bot', big:'EROBERE<br><em>STRASSEN &amp; PARKS</em>',    sz:110, t:[12.4,18.0],wash:1, hex:1},
- {id:'f1', vid:5677382, c:'#3AE880', tag:'WALD',          pos:'top', big:'<em>ÜBERALL</em><br>WIRD EROBERT',            sz:118, t:[18.0,23.4],wash:1, hex:1},
- {id:'f2', vid:5677451, c:'#3AE880', tag:'',              pos:'bot', big:'JEDE ROUTE…',                                 sz:130, t:[23.4,27.2],wash:0, hex:1},
- {id:'r1', vid:3028395, c:'#00CCFF', tag:'FLUSS',         pos:'top', big:'…WIRD <em>DEIN GEBIET</em>',                  sz:118, t:[27.2,32.4],wash:1, hex:1},
- {id:'r2', vid:3048928, c:'#00CCFF', tag:'',              pos:'bot', big:'DEINE FARBE.<br><em>DEINE SPUR.</em>',        sz:112, t:[32.4,36.6],wash:1, hex:0},
- /* game map interlude 36.6 – 44.2 */
- {id:'a1', vid:5319527, c:'#FF8800', tag:'VON OBEN',      pos:'top', big:'AUS <em>JEDER</em> PERSPEKTIVE',              sz:106, t:[44.2,49.2],wash:1, hex:1},
- {id:'a2', vid:8490468, c:'#FF8800', tag:'BERGE',         pos:'bot', big:'BIS ZUM <em>GIPFEL</em>',                     sz:120, t:[49.2,54.0],wash:1, hex:0},
- {id:'d1', vid:8491151, c:'#E8FF47', tag:'DEIN SPIELFELD',pos:'top', big:'DIE WELT IST<br><em>DEIN SPIELFELD</em>',     sz:108, t:[54.0,59.6],wash:0, hex:1, blobs:1},
- {id:'g1', vid:12510395,c:'#E8FF47', tag:'TEAM',          pos:'top', big:'<em>GEMEINSAM</em>',                          sz:150, t:[59.6,63.6],wash:1, hex:0},
- {id:'g2', vid:12510396,c:'#E8FF47', tag:'',              pos:'bot', big:'EROBERT IHR<br><em>SCHNELLER</em>',           sz:116, t:[63.6,68.0],wash:1, hex:1},
+  /* ─ PRE-GM BLOCK (s1–s14) ─ */
+  {id:'s1',  vid:5310858,  c:'#E8FF47', pos:'mid', big:'LAUF.',                          sz:320, t:[2.0,3.5],   wash:false, hud:{type:'score',pts:'+150',label:'PTS / KM'}},
+  {id:'s2',  vid:7877146,  c:'#FF2E97', pos:'bot', big:'DEINE STADT.',                   sz:210, t:[3.5,5.0],   wash:true,  hud:{type:'terr',name:'INNENSTADT',pts:'+500 PTS',col:'#FF2E97'}},
+  {id:'s3',  vid:8533442,  c:'#00CCFF', pos:'top', big:'DEIN<br><em>SPIELFELD</em>',     sz:200, t:[5.0,6.5],   wash:false, hud:{type:'score',pts:'+80',label:'PTS / 100M'}},
+  {id:'s4',  vid:5677382,  c:'#3AE880', pos:'mid', big:'JETZT.',                         sz:320, t:[6.5,8.0],   wash:true,  hud:{type:'score',pts:'+300',label:'ZONE BONUS'}},
+  {id:'s5',  vid:3028397,  c:'#FF8800', pos:'bot', big:'FRÜH RAUS.<br><em>VORN.</em>',   sz:164, t:[8.0,9.5],   wash:false, hud:{type:'streak',n:'12',label:'TAGE STREAK'}},
+  {id:'s6',  vid:4763892,  c:'#FF2E97', pos:'top', big:'BEZIRK<br><em>EINGENOMMEN</em>',sz:152, t:[9.5,11.0],  wash:true,  hud:{type:'terr',name:'BEZIRK #7',pts:'+750 PTS',col:'#FF2E97'}},
+  {id:'s7',  vid:7876920,  c:'#E8FF47', pos:'mid', big:'EROBERE.',                       sz:268, t:[11.0,12.5], wash:false, hud:{type:'score',pts:'+300',label:'CONQUEST!'}},
+  {id:'s8',  vid:3028395,  c:'#00CCFF', pos:'bot', big:'JEDER SCHRITT<br><em>ZÄHLT</em>',sz:148,t:[12.5,14.0], wash:false, hud:{type:'score',pts:'+50',label:'PTS / SCHRITT'}},
+  {id:'s9',  vid:5677451,  c:'#3AE880', pos:'top', big:'MARKIERT.',                      sz:260, t:[14.0,15.5], wash:true,  hud:{type:'terr',name:'WALD NORD',pts:'+900 PTS',col:'#3AE880'}},
+  {id:'s10', vid:3048928,  c:'#FF2E97', pos:'mid', big:'HERRSCHE.',                      sz:268, t:[15.5,17.0], wash:false, hud:{type:'lb'}},
+  {id:'s11', vid:19539315, c:'#E8FF47', pos:'bot', big:'REGEN?<br><em>EGAL.</em>',       sz:210, t:[17.0,18.5], wash:false, hud:{type:'score',pts:'+100',label:'WET RUN BONUS'}},
+  {id:'s12', vid:3125907,  c:'#FF8800', pos:'top', big:'STRANDGEBIET<br><em>DEINS!</em>',sz:140, t:[18.5,20.0], wash:true,  hud:{type:'terr',name:'STRANDPARK',pts:'+1200 PTS',col:'#FF8800'}},
+  {id:'s13', vid:8490468,  c:'#FF8800', pos:'top', big:'BERGE.<br><em>BEZWUNGEN.</em>',  sz:160, t:[20.0,21.5], wash:true,  hud:{type:'score',pts:'+1500',label:'BERGZONE!'}},
+  {id:'s14', vid:5319527,  c:'#E8FF47', pos:'bot', big:'SIEG.',                          sz:320, t:[21.5,23.0], wash:false, hud:{type:'score',pts:'+400',label:'ROUTE BONUS'}},
+  /* ─ POST-GM BLOCK (s15–s28) ─ */
+  {id:'s15', vid:31328832, c:'#FF2E97', pos:'mid', big:'MEHR.',                          sz:320, t:[27.2,28.7], wash:true,  hud:{type:'terr',name:'MARATHON ROUTE',pts:'+2500 PTS',col:'#FF2E97'}},
+  {id:'s16', vid:8491151,  c:'#E8FF47', pos:'top', big:'GEMEINSAM<br><em>FÜHREN</em>',   sz:156, t:[28.7,30.2], wash:false, hud:{type:'streak',n:'21',label:'TAGE STREAK'}},
+  {id:'s17', vid:12510395, c:'#3AE880', pos:'bot', big:'FRAKTION<br><em>GEWINNT!</em>',  sz:150, t:[30.2,31.7], wash:true,  hud:{type:'lb'}},
+  {id:'s18', vid:12510396, c:'#FF2E97', pos:'mid', big:'LAUF.<br><em>EROBERE.</em>',     sz:210, t:[31.7,33.2], wash:false, hud:{type:'score',pts:'+600',label:'TEAM BONUS'}},
+  {id:'s19', vid:32740423, c:'#FF8800', pos:'top', big:'OFFENE STRASSE.<br><em>DEIN REVIER.</em>',sz:120,t:[33.2,34.7],wash:true,hud:{type:'terr',name:'AUTOBAHNRING',pts:'+1000 PTS',col:'#FF8800'}},
+  {id:'s20', vid:19771786, c:'#00CCFF', pos:'bot', big:'×3<br><em>MULTIPLIKATOR</em>',   sz:210, t:[34.7,36.2], wash:false, hud:{type:'score',pts:'×3',label:'BOOST AKTIV'}},
+  {id:'s21', vid:5488175,  c:'#FF2E97', pos:'top', big:'28 GEBIETE.<br><em>DEIN.</em>', sz:152, t:[36.2,37.7], wash:true,  hud:{type:'terr',name:'STADTPARK WEST',pts:'+850 PTS',col:'#FF2E97'}},
+  {id:'s22', vid:32067871, c:'#E8FF47', pos:'mid', big:'ALLES.',                         sz:320, t:[37.7,39.2], wash:false, hud:{type:'score',pts:'+5000',label:'SPRINT BONUS!!'}},
+  {id:'s23', vid:8533442,  c:'#3AE880', pos:'bot', big:'TÄGLICH<br><em>STÄRKER</em>',    sz:164, t:[39.2,40.7], wash:false, hud:{type:'score',pts:'+250',label:'DAILY STREAK'}},
+  {id:'s24', vid:5677382,  c:'#FF8800', pos:'top', big:'GRENZEN<br><em>ENTSTEHEN</em>',  sz:152, t:[40.7,42.2], wash:true,  hud:{type:'terr',name:'STADTMITTE',pts:'+1800 PTS',col:'#FF8800'}},
+  {id:'s25', vid:3028397,  c:'#FF2E97', pos:'mid', big:'JETZT.',                         sz:320, t:[42.2,43.7], wash:false, hud:{type:'lb'}},
+  {id:'s26', vid:4763892,  c:'#00CCFF', pos:'bot', big:'DEINE FARBE.<br><em>ÜBERALL.</em>',sz:152,t:[43.7,45.2],wash:true,hud:{type:'terr',name:'FLUSS NORD',pts:'+650 PTS',col:'#00CCFF'}},
+  {id:'s27', vid:7876920,  c:'#E8FF47', pos:'top', big:'LEVEL UP.',                      sz:228, t:[45.2,46.7], wash:false, hud:{type:'score',pts:'+2000',label:'LEVEL BONUS!'}},
+  {id:'s28', vid:3028395,  c:'#FF2E97', pos:'mid', big:'RUNNERS<br><em>CONQUER</em>',    sz:182, t:[46.7,48.2], wash:true,  hud:{type:'score',pts:'+9999',label:'CHAMPION!'}},
 ];
-const GM_T=[36.6,44.2];           /* game-map interlude */
-const FIN_T=68.0;                  /* finale start */
-const TOTAL=76.5;
 
+const GM_T=[23.0,27.2];
+const FIN_T=48.2;
+const TOTAL=56.0;
 const TERR_COLORS=['#FF2E97','#3AE880','#FF8800','#00CCFF','#E8FF47'];
 const root=document.getElementById('root');
 const gmScene=document.getElementById('gm');
 
-/* hex overlay svg factory */
-function hexSvg(){
-  const NS='http://www.w3.org/2000/svg';
-  const svg=document.createElementNS(NS,'svg');
-  svg.setAttribute('viewBox','0 0 1080 1920');
-  const R=98,w=R*1.732,h=R*1.5;
-  let lits=[];
-  for(let row=0;row<14;row++)for(let col=0;col<8;col++){
-    const cx=col*w+(row%2?w/2:0),cy=row*h;
-    let pts='';
-    for(let k=0;k<6;k++){const a=Math.PI/180*(60*k-30);pts+=`${(cx+R*Math.cos(a)).toFixed(1)},${(cy+R*Math.sin(a)).toFixed(1)} `;}
-    const p=document.createElementNS(NS,'polygon');
-    p.setAttribute('points',pts.trim());
-    if(Math.random()<.1){p.setAttribute('class','lit');p.style.opacity='0';lits.push(p);}
-    svg.appendChild(p);
-  }
-  return {svg,lits};
+/* ── HUD element factories ── */
+function buildScorePop(s){
+  const h=s.hud,d=document.createElement('div');
+  d.className='score-pop';d.id='hud_'+s.id;
+  d.style.setProperty('--c',s.c);
+  d.innerHTML=`<div class="sp-pts">${h.pts}</div><div class="sp-label">${h.label}</div>`;
+  return d;
+}
+function buildTerrCap(s){
+  const h=s.hud,d=document.createElement('div');
+  d.className='terr-cap';d.id='hud_'+s.id;
+  d.style.setProperty('--c',h.col||s.c);
+  d.innerHTML=`<div class="tc-bar"><div class="tc-icon">▲ TERRITORIUM EINGENOMMEN ▲</div><div class="tc-name">${h.name}</div><div class="tc-pts">${h.pts}</div></div>`;
+  return d;
+}
+function buildLb(s){
+  const d=document.createElement('div');
+  d.className='lb-hud';d.id='hud_'+s.id;
+  d.innerHTML=`<div class="lb-title">RANGLISTE</div>
+    <div class="lb-row"><div class="lb-rank">#1</div><div class="lb-name">RunKing</div><div class="lb-sc">8.420</div></div>
+    <div class="lb-row"><div class="lb-rank me">#2</div><div class="lb-name me">DU</div><div class="lb-sc me">7.890 &#x2191;</div></div>
+    <div class="lb-row"><div class="lb-rank">#3</div><div class="lb-name">SpeedX</div><div class="lb-sc">6.100</div></div>`;
+  return d;
+}
+function buildStreak(s){
+  const h=s.hud,d=document.createElement('div');
+  d.className='streak-hud';d.id='hud_'+s.id;
+  d.innerHTML=`<div class="sh-fire">&#x1F525;</div><div class="sh-num">${h.n}</div><div class="sh-label">${h.label}</div>`;
+  return d;
 }
 
-/* build all footage scenes */
+/* ── build all footage scenes ── */
 SCENES.forEach(s=>{
   const d=document.createElement('div');
   d.className='scene';d.id='sc_'+s.id;
   d.style.setProperty('--c',s.c);
-  d.style.background=`linear-gradient(160deg,color-mix(in srgb,${s.c} 24%,#0a0a14),#0a0a14 70%)`;
+  d.style.background=`linear-gradient(160deg,color-mix(in srgb,${s.c} 22%,#0a0a14),#0a0a14 70%)`;
   d.innerHTML=`
     <video class="clip" id="v_${s.id}" muted playsinline loop preload="none"
       data-src="https://www.pexels.com/download/video/${s.vid}/?w=960"></video>
     <div class="grade" style="background:${s.c}"></div>
     <div class="dark"></div>
     ${s.wash?`<div class="wash" id="w_${s.id}"></div>`:''}
-    <div class="hexol" id="hx_${s.id}"></div>
     <div class="vign"></div>
-    <div class="kin ${s.pos}" id="k_${s.id}">
-      ${s.tag?`<div><span class="tag">${s.tag}</span></div>`:''}
+    <div class="kin ${s.pos}" id="k_${s.id}" style="--c:${s.c}">
       <div class="big" style="font-size:${s.sz}px">${s.big}</div>
     </div>`;
+  /* insert before flash so scenes appear under flash overlay */
   root.insertBefore(d,document.getElementById('flash'));
-  if(s.hex||s.blobs){
-    const {svg,lits}=hexSvg();
-    d.querySelector('#hx_'+s.id).appendChild(svg);
-    s._lits=lits;
-  }
-  /* video error → keep gradient bg, hide broken video (ignore unload events) */
+  /* video load error → keep gradient background */
   const v=d.querySelector('video');
   v.addEventListener('error',()=>{if(v.getAttribute('src'))v.style.display='none';});
-  /* drone-city: colored territory blobs over real footage */
-  if(s.blobs){
-    TERR_COLORS.forEach((c,i)=>{
-      const b=document.createElement('div');
-      b.className='cityblob';b.id=`cb${i}`;
-      const x=[120,560,260,640,390][i],y=[520,640,1100,1240,880][i];
-      const sz=[420,460,400,440,380][i];
-      b.style.cssText+=`;left:${x}px;top:${y}px;width:${sz}px;height:${sz*0.82}px;background:radial-gradient(ellipse,${c} 0%,transparent 65%)`;
-      d.insertBefore(b,d.querySelector('.vign'));
-    });
+  /* inject HUD overlay */
+  if(s.hud){
+    let el;
+    const t=s.hud.type;
+    if(t==='score')  el=buildScorePop(s);
+    else if(t==='terr')   el=buildTerrCap(s);
+    else if(t==='lb')     el=buildLb(s);
+    else if(t==='streak') el=buildStreak(s);
+    if(el){d.appendChild(el);s._hud=el;}
   }
 });
 
-/* game map */
+/* ── game map SVG ── */
 (function(){
   const NS='http://www.w3.org/2000/svg';
   const svg=document.createElementNS(NS,'svg');
@@ -216,24 +308,27 @@ SCENES.forEach(s=>{
     `M450,1620 C560,1530 730,1580 760,1720 C790,1860 640,1950 500,1900 C360,1850 350,1700 450,1620 Z`,
   ];
   let inner='';
-  blobs.forEach((d,i)=>{inner+=`<path id="gt${i}" class="terr" d="${d}" fill="${TERR_COLORS[i]}" fill-opacity=".34" stroke="${TERR_COLORS[i]}" stroke-width="5"/>`;});
+  blobs.forEach((d,i)=>{
+    inner+=`<path id="gt${i}" class="terr" d="${d}" fill="${TERR_COLORS[i]}" fill-opacity=".34" stroke="${TERR_COLORS[i]}" stroke-width="5" style="transform:scale(0);transform-origin:50% 50%"/>`;
+  });
   [`M510,560 C560,600 620,640 660,690`,`M520,1240 C580,1290 640,1340 690,1400`,
    `M560,1500 C600,1560 640,1620 670,1680`,`M460,700 C440,790 420,880 430,960`].forEach((d,i)=>{
-    inner+=`<path id="ge${i}" class="energy" d="${d}"/>`;});
+    inner+=`<path id="ge${i}" class="energy" d="${d}"/>`;
+  });
   svg.innerHTML=grid+inner;
   document.getElementById('gm-map').appendChild(svg);
   const chips=[['#FF2E97','PINK CREW','28%'],['#3AE880','FOREST','22%'],['#FF8800','PEAK','17%'],['#00CCFF','RIVER','14%'],['#E8FF47','TEAM GELB','19%']];
   chips.forEach((c,i)=>{
     const d=document.createElement('div');
     d.className='hud-chip';d.id='gchip'+i;
-    d.style.cssText+=`;left:${i%2?580:70}px;top:${500+Math.floor(i/2)*420}px`;
+    d.style.cssText=`left:${i%2?580:70}px;top:${500+Math.floor(i/2)*420}px`;
     d.innerHTML=`<div class="hud-dot" style="background:${c[0]};box-shadow:0 0 16px ${c[0]}"></div>
       <div><div class="hud-nm">${c[1]}</div><div class="hud-pct">${c[2]}</div></div>`;
     gmScene.appendChild(d);
   });
 })();
 
-/* finale letters + sparks */
+/* ── finale letters + sparks ── */
 (function(){
   const w1=document.getElementById('fin-w1'),w2=document.getElementById('fin-w2');
   'RUNNERS'.split('').forEach(ch=>{const s=document.createElement('span');s.textContent=ch;w1.appendChild(s);});
@@ -247,7 +342,7 @@ SCENES.forEach(s=>{
 })();
 
 /* ══════════════════════════════════════════
-   PLAYBACK CONTROL + MASTER TIMELINE
+   MASTER TIMELINE
 ══════════════════════════════════════════ */
 window.__timelines=window.__timelines||{};
 const tl=gsap.timeline({paused:true});
@@ -255,101 +350,186 @@ const tl=gsap.timeline({paused:true});
 function vEl(s){return document.getElementById('v_'+s.id);}
 function showScene(el){gsap.set(el,{visibility:'visible',opacity:1});}
 function hideScene(el){gsap.set(el,{visibility:'hidden',opacity:0});}
-/* Memory management: keep at most ~2 clips buffered. Attach src shortly
-   before a scene, fully detach + free the decoder right after it ends. */
+
+/* Memory management: buffer 3s ahead, free 0.4s after */
 function loadClip(s){
   const v=vEl(s);
   if(!v||v.getAttribute('src'))return;
-  v.style.display='';
-  v.src=v.dataset.src;
-  v.preload='auto';
-  v.load();
+  v.style.display='';v.src=v.dataset.src;v.preload='auto';v.load();
 }
 function unloadClip(s){
   const v=vEl(s);
   if(!v)return;
-  v.pause();
-  v.removeAttribute('src');
-  v.load(); /* releases buffer + decoder */
+  v.pause();v.removeAttribute('src');v.load();
 }
+
 function whip(at){
-  tl.fromTo('#flash',{opacity:0},{opacity:.55,duration:.07,ease:'power4.in'},at-.07);
-  tl.to('#flash',{opacity:0,duration:.14,ease:'power2.out'},at);
+  tl.fromTo('#flash',{opacity:0},{opacity:.6,duration:.04,ease:'power4.in'},at-.04);
+  tl.to('#flash',{opacity:0,duration:.09,ease:'power2.out'},at);
+}
+function chromatic(at){
+  tl.fromTo('#chromatic',{opacity:0},{opacity:.35,duration:.06,ease:'power2.in'},at-.06);
+  tl.to('#chromatic',{opacity:0,duration:.12,ease:'power2.out'},at);
 }
 
-/* HOOK 0–3 */
-tl.from('#h0-t .big',{y:70,opacity:0,duration:.7,ease:'power3.out'},.25);
-tl.to('#h0-t .big',{scale:1.06,duration:2.4,ease:'none'},.5);
+/* ── HOOK 0–2.0s ── */
+tl.to('#h0-runners',{opacity:1,duration:.25,ease:'power2.out'},.15);
+tl.to('#h0-conquer',{opacity:1,duration:.3,ease:'power2.out'},.35);
+tl.to('#h0-conquer',{textShadow:'0 0 120px rgba(232,255,71,.95),0 0 300px rgba(232,255,71,.55)',duration:.6,ease:'sine.inOut'},.5);
+/* Three ping rings expand */
+[0,1,2].forEach(i=>{
+  const pid='#p'+i;
+  const delay=.4+i*.5;
+  tl.fromTo(pid,
+    {opacity:.95,width:'30px',height:'30px',x:'-50%',y:'-50%'},
+    {opacity:0,width:'680px',height:'680px',x:'-50%',y:'-50%',duration:1.6,ease:'power2.out'},
+    delay);
+});
 
-/* footage scenes */
+/* ── FOOTAGE SCENES ── */
 SCENES.forEach((s,idx)=>{
-  const [t0,t1]=s.t,el=document.getElementById('sc_'+s.id);
-  /* attach + buffer 4s before the cut */
-  tl.call(()=>loadClip(s),null,Math.max(0,t0-4));
-  /* hard cut in */
+  const [t0,t1]=s.t;
+  const el=document.getElementById('sc_'+s.id);
+  const dur=t1-t0;
+
+  /* buffer clip 3s ahead */
+  tl.call(()=>loadClip(s),null,Math.max(0,t0-3));
+
+  /* whip cut + chromatic at each scene boundary */
   whip(t0);
-  tl.call(()=>{showScene(el);loadClip(s);const v=vEl(s);if(v){try{if(v.readyState>0)v.currentTime=0;}catch(e){}v.play().catch(()=>{});}},null,t0);
-  /* hide previous scene */
+  chromatic(t0);
+
+  tl.call(()=>{
+    showScene(el);loadClip(s);
+    const v=vEl(s);
+    if(v){try{if(v.readyState>0)v.currentTime=0;}catch(e){}v.play().catch(()=>{});}
+  },null,t0);
+
+  /* hide hook on first scene */
   if(idx===0)tl.call(()=>hideScene(document.getElementById('h0')),null,t0+.05);
-  /* slow push-in on footage for cinema feel */
-  tl.fromTo(el.querySelector('.clip'),{scale:1.12},{scale:1,duration:t1-t0,ease:'none'},t0);
-  /* type in */
+
+  /* slow push-in */
+  const clip=el.querySelector('.clip');
+  if(clip)tl.fromTo(clip,{scale:1.08},{scale:1,duration:dur,ease:'none'},t0);
+
+  /* text clip-path reveal (slides UP from behind mask) */
   const k=document.getElementById('k_'+s.id);
-  if(k.querySelector('.tag'))tl.fromTo(k.querySelector('.tag'),{y:-36,opacity:0},{y:0,opacity:1,duration:.4,ease:'back.out(2)'},t0+.12);
-  tl.fromTo(k.querySelector('.big'),{y:64,opacity:0},{y:0,opacity:1,duration:.5,ease:'power3.out'},t0+.2);
-  /* wash grows */
-  if(s.wash)tl.fromTo('#w_'+s.id,{scale:0},{scale:1,duration:(t1-t0)*.9,ease:'power1.inOut'},t0+.3);
-  /* hex overlay flickers in + cells light up */
-  if(s._lits){
-    tl.fromTo('#hx_'+s.id,{opacity:0},{opacity:.5,duration:.8},t0+.5);
-    s._lits.slice(0,7).forEach((p,i)=>{
-      tl.to(p,{opacity:1,duration:.3},t0+.8+i*((t1-t0-1.4)/7));
-    });
+  const bigEl=k.querySelector('.big');
+  tl.fromTo(bigEl,
+    {clipPath:'inset(110% 0% 0% 0%)'},
+    {clipPath:'inset(0% 0% 0% 0%)',duration:.20,ease:'power4.out'},
+    t0+.10);
+
+  /* color wash */
+  if(s.wash){
+    const wEl=document.getElementById('w_'+s.id);
+    if(wEl)tl.fromTo(wEl,{scale:0},{scale:1,duration:dur*.88,ease:'power1.inOut'},t0+.18);
   }
-  /* city blobs on drone scene */
-  if(s.blobs)for(let i=0;i<5;i++){
-    tl.to('#cb'+i,{opacity:.75,duration:.8,ease:'power2.out'},t0+.6+i*.5);
-    tl.to('#cb'+i,{scale:1.25,duration:t1-t0-1,ease:'none'},t0+.6+i*.5);
+
+  /* HUD popup */
+  if(s._hud){
+    const hi='#hud_'+s.id;
+    const htype=s.hud.type;
+    const hudIn=t0+.45;
+    const hudOut=t1-.30;
+    if(htype==='score'||htype==='streak'){
+      tl.fromTo(hi,{x:'-110%'},{x:'0%',duration:.22,ease:'power3.out'},hudIn);
+      tl.to(hi,{x:'-110%',duration:.16},hudOut);
+    } else if(htype==='terr'){
+      tl.fromTo(hi,{scaleX:0},{scaleX:1,duration:.24,ease:'power3.out'},hudIn);
+      tl.to(hi,{scaleX:0,duration:.14},hudOut);
+    } else if(htype==='lb'){
+      tl.fromTo(hi,{x:'110%'},{x:'0%',duration:.22,ease:'power3.out'},hudIn);
+      tl.to(hi,{x:'110%',duration:.16},hudOut);
+    }
   }
-  /* out: text exits, scene hides at next cut, clip fully unloaded to free RAM */
-  tl.to(k,{opacity:0,y:-30,duration:.3},t1-.32);
+
+  /* text wipe UP on exit */
+  tl.to(bigEl,{clipPath:'inset(0% 0% 100% 0%)',duration:.14},t1-.18);
+
+  /* hide scene + free memory */
   tl.call(()=>{hideScene(el);unloadClip(s);},null,t1+.4);
 });
 
-/* GAME MAP interlude */
+/* ── GM INTERLUDE 23.0–27.2 ── */
 whip(GM_T[0]);
+chromatic(GM_T[0]);
 tl.call(()=>showScene(gmScene),null,GM_T[0]);
-tl.fromTo('#gm-t',{y:64,opacity:0},{y:0,opacity:1,duration:.5,ease:'power3.out'},GM_T[0]+.15);
+/* territory text clip-path reveal */
+tl.fromTo('#gm-t',
+  {clipPath:'inset(110% 0% 0% 0%)'},
+  {clipPath:'inset(0% 0% 0% 0%)',duration:.28,ease:'power4.out'},
+  GM_T[0]+.15);
+/* blobs scale in with elastic ease, stagger 0.3s */
 for(let i=0;i<5;i++)
-  tl.fromTo('#gt'+i,{scale:0,transformOrigin:'50% 50%'},{scale:1,duration:1.3,ease:'elastic.out(1,.7)'},GM_T[0]+.3+i*.6);
+  tl.fromTo('#gt'+i,{scale:0,transformOrigin:'50% 50%'},{scale:1,duration:1.1,ease:'elastic.out(1,.75)'},GM_T[0]+.3+i*.3);
+/* energy paths */
 for(let i=0;i<4;i++){
-  tl.to('#ge'+i,{opacity:1,duration:.25},GM_T[0]+3.4+i*.5);
-  tl.to('#ge'+i,{strokeDashoffset:-300,duration:3.6,ease:'none'},GM_T[0]+3.4+i*.5);
+  tl.to('#ge'+i,{opacity:1,duration:.20},GM_T[0]+1.8+i*.3);
+  tl.to('#ge'+i,{strokeDashoffset:-260,duration:2.8,ease:'none'},GM_T[0]+1.8+i*.3);
 }
+/* faction chips */
 for(let i=0;i<5;i++)
-  tl.fromTo('#gchip'+i,{opacity:0,y:24},{opacity:1,y:0,duration:.45,ease:'power3.out'},GM_T[0]+3.8+i*.3);
-tl.fromTo('#gm-map',{scale:1.22},{scale:1,duration:GM_T[1]-GM_T[0],ease:'none'},GM_T[0]);
-tl.to('#gm .kin',{opacity:0,y:-30,duration:.3},GM_T[1]-.32);
+  tl.fromTo('#gchip'+i,{opacity:0,y:20},{opacity:1,y:0,duration:.36,ease:'power3.out'},GM_T[0]+1.6+i*.22);
+/* map subtle zoom */
+tl.fromTo('#gm-map',{scale:1.18},{scale:1,duration:GM_T[1]-GM_T[0],ease:'none'},GM_T[0]);
+/* total score counter fades in at GM+2.5s */
+tl.to('#gm-score',{opacity:1,duration:.4,ease:'power2.out'},GM_T[0]+2.5);
+/* text wipe UP out */
+tl.to('#gm-t',{clipPath:'inset(0% 0% 100% 0%)',duration:.18},GM_T[1]-.28);
 tl.call(()=>hideScene(gmScene),null,GM_T[1]+.08);
 
-/* FINALE */
+/* ── FINALE 48.2–56.0 ── */
 whip(FIN_T);
+chromatic(FIN_T);
 tl.call(()=>showScene(document.getElementById('fin')),null,FIN_T);
-tl.from('#fin-w1 span',{y:90,opacity:0,duration:.5,stagger:.06,ease:'back.out(1.8)'},FIN_T+.4);
-tl.from('#fin-w2 span',{y:110,opacity:0,scale:.6,duration:.55,stagger:.07,ease:'back.out(1.9)'},FIN_T+1.0);
-tl.from('#fin-bars i',{scaleX:0,duration:.45,stagger:.07,ease:'power3.out'},FIN_T+2.0);
-tl.from('#fin-tag',{opacity:0,letterSpacing:'26px',duration:.8,ease:'power2.out'},FIN_T+2.4);
-tl.to('#fin-title',{scale:1.05,duration:TOTAL-FIN_T-2.8,ease:'sine.inOut'},FIN_T+2.8);
-tl.to({},{duration:.01},TOTAL); /* pin total duration */
+
+/* RUNNERS letters clip-path reveal stagger */
+tl.fromTo('#fin-w1 span',
+  {clipPath:'inset(110% 0% 0% 0%)'},
+  {clipPath:'inset(0% 0% 0% 0%)',duration:.35,ease:'power4.out',stagger:.05},
+  FIN_T+.3);
+
+/* CONQUER letters — bigger, starts 0.5s after RUNNERS */
+tl.fromTo('#fin-w2 span',
+  {clipPath:'inset(110% 0% 0% 0%)'},
+  {clipPath:'inset(0% 0% 0% 0%)',duration:.35,ease:'power4.out',stagger:.05},
+  FIN_T+.8);
+
+/* bars scaleX from left */
+tl.fromTo('#fin-bars i',
+  {scaleX:0,transformOrigin:'left center'},
+  {scaleX:1,duration:.38,ease:'power3.out',stagger:.08},
+  FIN_T+1.8);
+
+/* tag reveal: letterSpacing 22px→10px + opacity */
+tl.fromTo('#fin-tag',
+  {opacity:0,letterSpacing:'22px'},
+  {opacity:1,letterSpacing:'10px',duration:.7,ease:'power2.out'},
+  FIN_T+2.2);
+
+/* XP bar fill */
+tl.to('#fin-xp-fill',{width:'100%',duration:1.8,ease:'power2.inOut'},FIN_T+2.6);
+
+/* points fade in at finale+3.5s */
+tl.to('#fin-pts',{opacity:1,duration:.5,ease:'power2.out'},FIN_T+3.5);
+
+/* gentle title scale over remaining duration */
+tl.to('#fin-title',{scale:1.06,duration:TOTAL-FIN_T-2.8,ease:'sine.inOut'},FIN_T+2.8);
+
+/* timeline sentinel */
+tl.to({},{duration:.01},TOTAL);
 
 window.__timelines['main']=tl;
 
 if(typeof window.__hyperframes==='undefined'){
   tl.play();
   tl.eventCallback('onComplete',function(){
-    /* reset scenes then loop */
-    document.querySelectorAll('.scene').forEach(s=>{s.style.visibility='hidden';s.style.opacity='0';});
-    const h=document.getElementById('h0');h.style.visibility='visible';h.style.opacity='1';
+    document.querySelectorAll('.scene').forEach(s=>{
+      s.style.visibility='hidden';s.style.opacity='0';
+    });
+    const h=document.getElementById('h0');
+    h.style.visibility='visible';h.style.opacity='1';
     tl.restart();
   });
 }

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'runconquer-v19';
+const CACHE_NAME = 'runconquer-v21';
 const PRECACHE = ['/', '/index.html', '/manifest.json'];
 
 self.addEventListener('install', e => {
@@ -22,9 +22,9 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (url.origin !== location.origin) return;
 
-  // Navigation requests (HTML) → network-first so updates go live instantly
+  // All HTML + navigation → network-first so updates go live instantly
   const isNav = e.request.mode === 'navigate' ||
-    url.pathname === '/' || url.pathname === '/index.html';
+    url.pathname === '/' || url.pathname.endsWith('.html');
 
   if (isNav) {
     e.respondWith(
