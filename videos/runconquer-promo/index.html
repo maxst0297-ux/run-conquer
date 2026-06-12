@@ -2,750 +2,417 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
 <script src="gsap.min.js"></script>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  width: 1080px;
-  height: 1920px;
-  overflow: hidden;
-  background: #09090F;
-  font-family: 'Poppins', sans-serif;
-}
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:1080px;height:1920px;overflow:hidden;background:#06060A;font-family:'Poppins',sans-serif}
+#root{position:relative;width:1080px;height:1920px;background:#06060A}
+.scene{position:absolute;inset:0;overflow:hidden;opacity:0;visibility:hidden}
+.scene.boot{opacity:1;visibility:visible}
 
-/* ── ROOT ── */
-#root {
-  position: relative;
-  width: 1080px;
-  height: 1920px;
-}
+/* ── REAL FOOTAGE ── */
+.clip{position:absolute;inset:0;width:1080px;height:1920px;object-fit:cover;background:#0a0a12}
+.grade{position:absolute;inset:0;mix-blend-mode:color;opacity:.38;pointer-events:none}
+.dark{position:absolute;inset:0;background:linear-gradient(180deg,rgba(4,4,10,.68) 0%,transparent 28%,transparent 60%,rgba(4,4,10,.82) 100%);pointer-events:none}
+.wash{position:absolute;left:-30%;right:-30%;bottom:-22%;height:74%;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 100%,var(--c) 0%,color-mix(in srgb,var(--c) 55%,transparent) 38%,transparent 68%);
+  mix-blend-mode:screen;opacity:.85;transform:scale(0)}
+.vign{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,transparent 52%,rgba(0,0,0,.55) 100%);pointer-events:none}
 
-/* ── SCENES ── */
-.scene {
-  position: absolute;
-  top: 0; left: 0;
-  width: 1080px;
-  height: 1920px;
-  overflow: hidden;
-}
-/* Scene 1: visible by default */
-#s1 { background: #09090F; z-index: 1; }
-/* Scenes 2-6: hidden, revealed by GSAP */
-#s2 { background: #09090F; z-index: 2; opacity: 0; }
-#s3 { background: #09090F; z-index: 3; opacity: 0; }
-#s4 { background: #0D0D18; z-index: 4; opacity: 0; }
-#s5 { background: #09090F; z-index: 5; opacity: 0; }
-#s6 { background: #09090F; z-index: 6; opacity: 0; }
+/* ── TYPOGRAPHY ── */
+.kin{position:absolute;left:0;right:0;z-index:30;text-align:center;padding:0 52px}
+.kin .tag{display:inline-block;font-size:24px;font-weight:800;letter-spacing:7px;color:#fff;
+  background:color-mix(in srgb,var(--c) 80%,#000);
+  padding:11px 28px;border-radius:50px;text-transform:uppercase;margin-bottom:24px;box-shadow:0 0 34px var(--c)}
+.kin .big{font-family:'Bebas Neue',sans-serif;color:#fff;line-height:.92;letter-spacing:3px;
+  text-shadow:0 4px 30px rgba(0,0,0,.9)}
+.kin .big em{font-style:normal;color:var(--c);text-shadow:0 0 52px var(--c),0 4px 30px rgba(0,0,0,.8)}
+.top{top:140px}.bot{bottom:180px}.mid{top:50%;transform:translateY(-50%)}
 
-/* ── SHARED LAYOUT ── */
-.scene-content {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  padding: 140px 80px;
-  gap: 24px;
-  box-sizing: border-box;
-}
+/* ── GAME HUD OVERLAYS ── */
+/* Score popup – left mid */
+.score-pop{position:absolute;z-index:40;pointer-events:none;left:52px;top:860px;
+  background:rgba(4,4,10,.90);border:2.5px solid var(--c);border-radius:22px;
+  padding:24px 38px;box-shadow:0 0 44px color-mix(in srgb,var(--c) 48%,transparent)}
+.score-pop .sp-pts{font-family:'Bebas Neue',sans-serif;font-size:92px;color:var(--c);
+  text-shadow:0 0 32px var(--c);line-height:1;letter-spacing:2px}
+.score-pop .sp-label{font-size:20px;letter-spacing:5px;color:rgba(255,255,255,.7);
+  text-transform:uppercase;margin-top:6px}
+/* Territory capture – bottom center */
+.terr-cap{position:absolute;z-index:40;left:0;right:0;bottom:360px;pointer-events:none;text-align:center}
+.terr-cap .tc-bar{display:inline-flex;flex-direction:column;align-items:center;
+  background:rgba(4,4,10,.92);border:2.5px solid var(--c);border-radius:20px;
+  padding:20px 46px;box-shadow:0 0 52px color-mix(in srgb,var(--c) 44%,transparent)}
+.terr-cap .tc-icon{font-size:17px;letter-spacing:6px;color:rgba(255,255,255,.52);margin-bottom:8px}
+.terr-cap .tc-name{font-family:'Bebas Neue',sans-serif;font-size:62px;color:#fff;letter-spacing:4px;line-height:1}
+.terr-cap .tc-pts{font-family:'Bebas Neue',sans-serif;font-size:46px;color:var(--c);
+  letter-spacing:2px;text-shadow:0 0 22px var(--c);margin-top:4px}
+/* Leaderboard – right */
+.lb-hud{position:absolute;z-index:40;right:52px;top:360px;pointer-events:none;
+  background:rgba(4,4,10,.90);border:2px solid rgba(255,255,255,.12);border-radius:22px;
+  padding:24px 30px;min-width:318px}
+.lb-hud .lb-title{font-size:15px;letter-spacing:6px;color:rgba(255,255,255,.42);
+  margin-bottom:18px;text-transform:uppercase}
+.lb-hud .lb-row{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+.lb-hud .lb-rank{font-family:'Bebas Neue',sans-serif;font-size:36px;color:rgba(255,255,255,.28);width:32px;flex-shrink:0}
+.lb-hud .lb-rank.me{color:#E8FF47;text-shadow:0 0 14px #E8FF47}
+.lb-hud .lb-name{font-size:18px;font-weight:600;color:#fff;flex:1}
+.lb-hud .lb-name.me{color:#E8FF47}
+.lb-hud .lb-sc{font-family:'Bebas Neue',sans-serif;font-size:32px;color:rgba(255,255,255,.65)}
+.lb-hud .lb-sc.me{color:#E8FF47;text-shadow:0 0 12px #E8FF47}
+/* Streak – left lower */
+.streak-hud{position:absolute;z-index:40;left:52px;bottom:400px;pointer-events:none;
+  background:rgba(4,4,10,.90);border:2.5px solid #FF8800;border-radius:20px;
+  padding:20px 32px;box-shadow:0 0 38px rgba(255,136,0,.42);text-align:center}
+.streak-hud .sh-fire{font-size:50px;line-height:1}
+.streak-hud .sh-num{font-family:'Bebas Neue',sans-serif;font-size:86px;color:#FF8800;
+  text-shadow:0 0 30px #FF8800;line-height:.9}
+.streak-hud .sh-label{font-size:16px;letter-spacing:4px;color:rgba(255,255,255,.6);margin-top:4px}
 
-/* ══════════════════════
-   SCENE 1 — HOOK
-══════════════════════ */
-.s1-glow {
-  position: absolute;
-  width: 900px; height: 900px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(232,255,71,.08) 0%, transparent 70%);
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-.s1-ghost {
-  position: absolute;
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 420px;
-  color: rgba(232,255,71,0.04);
-  /* decorative only — intentionally below contrast threshold */
-  letter-spacing: -8px;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  white-space: nowrap;
-  pointer-events: none;
-  user-select: none;
-}
-.s1-label {
-  font-size: 22px;
-  letter-spacing: 6px;
-  color: #9292AA;
-  text-transform: uppercase;
-  text-align: center;
-}
-.s1-headline {
-  font-family: 'Bebas Neue', sans-serif;
-  text-align: center;
-  line-height: 0.88;
-}
-.s1-headline .l1 {
-  display: block;
-  font-size: 180px;
-  color: #F0F0F8;
-  letter-spacing: 6px;
-}
-.s1-headline .l2 {
-  display: block;
-  font-size: 210px;
-  color: #E8FF47;
-  letter-spacing: 4px;
-  text-shadow: 0 0 60px rgba(232,255,71,.5), 0 0 120px rgba(232,255,71,.25);
-}
-.s1-sub {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 80px;
-  color: #F0F0F8;
-  text-align: center;
-  letter-spacing: 8px;
-}
-.s1-ping-wrap {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-top: 40px;
-  height: 100px;
-  position: relative;
-}
-.s1-dot {
-  width: 18px; height: 18px;
-  border-radius: 50%;
-  background: #E8FF47;
-  position: absolute;
-  box-shadow: 0 0 20px rgba(232,255,71,.8);
-}
-.s1-ring {
-  position: absolute;
-  border-radius: 50%;
-  border: 2px solid rgba(232,255,71,.5);
-  width: 18px; height: 18px;
-}
+/* ── HOOK ── */
+#h0{background:#06060A}
+#h0 .big{font-size:158px}
+#h0-ping{position:absolute;top:50%;left:50%;width:10px;height:10px}
+#h0-ping i{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  border:3px solid #E8FF47;border-radius:50%;width:30px;height:30px;opacity:0;
+  animation:ping 1.6s ease-out infinite}
+#h0-ping i:nth-child(2){animation-delay:.5s}
+#h0-ping i:nth-child(3){animation-delay:1s}
+@keyframes ping{0%{width:24px;height:24px;opacity:.95}100%{width:680px;height:680px;opacity:0}}
 
-/* ══════════════════════
-   SCENE 2 — GPS TRACK
-══════════════════════ */
-.s2-grid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(232,255,71,.4) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(232,255,71,.4) 1px, transparent 1px);
-  background-size: 60px 60px;
-  opacity: 0.05;
-  pointer-events: none;
-}
-.s2-label {
-  font-size: 22px;
-  letter-spacing: 5px;
-  color: #9292AA;
-  text-transform: uppercase;
-  text-align: center;
-}
-.s2-map-wrap {
-  display: flex;
-  justify-content: center;
-}
-#s2-svg {
-  width: 920px;
-  height: 580px;
-  border-radius: 20px;
-  overflow: hidden;
-}
-.s2-hud {
-  display: flex;
-  justify-content: center;
-  gap: 60px;
-}
-.s2-hud-item { text-align: center; }
-.s2-hud-val {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 80px;
-  color: #E8FF47;
-  line-height: 1;
-}
-.s2-hud-lbl {
-  font-size: 20px;
-  color: #9292AA;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-}
-.s2-heading {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 130px;
-  color: #F0F0F8;
-  text-align: center;
-  letter-spacing: 6px;
-  line-height: 1;
-}
-.s2-heading em {
-  font-style: normal;
-  color: #E8FF47;
-  text-shadow: 0 0 40px rgba(232,255,71,.4);
-}
+/* ── GAME MAP (territory interlude) ── */
+#gm{background:#0b0d18}
+#gm-map{position:absolute;inset:0}
+#gm-map svg{width:1080px;height:1920px}
+.terr{opacity:.88}
+.energy{fill:none;stroke:#fff;stroke-width:7;stroke-linecap:round;stroke-dasharray:34 22;opacity:0;
+  filter:drop-shadow(0 0 12px #fff) drop-shadow(0 0 26px rgba(180,220,255,.9))}
+.gridline{stroke:rgba(255,255,255,.07);stroke-width:2}
+.hud-chip{position:absolute;display:flex;align-items:center;gap:14px;
+  background:rgba(10,12,24,.88);border:2px solid rgba(255,255,255,.16);
+  border-radius:50px;padding:13px 28px;opacity:0;z-index:20}
+.hud-dot{width:24px;height:24px;border-radius:50%}
+.hud-pct{font-family:'Bebas Neue',sans-serif;font-size:40px;color:#fff}
+.hud-nm{font-size:18px;letter-spacing:3px;color:rgba(255,255,255,.6)}
 
-/* ══════════════════════
-   SCENE 3 — CONQUEST
-══════════════════════ */
-.s3-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  background: #FF4D6D;
-  color: #fff;
-  font-weight: 700;
-  font-size: 30px;
-  letter-spacing: 2px;
-  padding: 18px 40px;
-  border-radius: 50px;
-  align-self: center;
-}
-.s3-grid-wrap {
-  display: flex;
-  justify-content: center;
-}
-.s3-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 160px);
-  grid-template-rows: repeat(4, 100px);
-  gap: 8px;
-}
-.s3-cell {
-  border-radius: 14px;
-  background: #1A1A26;
-}
-.s3-cell.owned { background: rgba(232,255,71,.35); }
-.s3-cell.new {
-  background: #E8FF47;
-  box-shadow: 0 0 28px rgba(232,255,71,.7);
-}
-.s3-pts {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 180px;
-  color: #E8FF47;
-  text-align: center;
-  line-height: 0.85;
-  text-shadow: 0 0 80px rgba(232,255,71,.45);
-}
-.s3-pts-lbl {
-  font-size: 30px;
-  letter-spacing: 5px;
-  color: #9292AA;
-  text-align: center;
-  text-transform: uppercase;
-}
-.s3-sub {
-  font-size: 26px;
-  color: #F0F0F8;
-  text-align: center;
-  letter-spacing: 2px;
-  opacity: 0.55;
-}
+/* ── FINALE ── */
+#fin{background:radial-gradient(ellipse at 50% 42%,#15172a 0%,#050508 70%)}
+#fin-title{position:absolute;top:44%;left:0;right:0;transform:translateY(-50%);text-align:center}
+#fin-title .w1,#fin-title .w2{display:block;font-family:'Bebas Neue',sans-serif;letter-spacing:5px}
+#fin-title .w1{font-size:148px;color:#fff}
+#fin-title .w2{font-size:196px;color:#E8FF47;letter-spacing:3px;
+  text-shadow:0 0 70px rgba(232,255,71,.65),0 0 160px rgba(232,255,71,.3)}
+#fin-title span span{display:inline-block}
+#fin-bars{display:flex;gap:14px;justify-content:center;margin-top:42px}
+#fin-bars i{display:block;width:88px;height:10px;border-radius:6px}
+#fin-tag{margin-top:38px;font-size:29px;letter-spacing:10px;color:rgba(255,255,255,.72);text-transform:uppercase}
+.spark{position:absolute;width:9px;height:9px;border-radius:50%;background:var(--c);
+  box-shadow:0 0 14px var(--c);opacity:0;animation:sparkUp 3.2s ease-out infinite}
+@keyframes sparkUp{0%{opacity:0;transform:translateY(0) scale(.5)}15%{opacity:.95}100%{opacity:0;transform:translateY(-420px) scale(1.2)}}
 
-/* ══════════════════════
-   SCENE 4 — STATS
-══════════════════════ */
-.s4-intro {
-  font-size: 24px;
-  letter-spacing: 5px;
-  color: #9292AA;
-  text-transform: uppercase;
-  text-align: center;
-}
-.s4-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-.s4-card {
-  background: #1A1A26;
-  border-radius: 24px;
-  padding: 44px 60px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-top: 4px solid #E8FF47;
-}
-.s4-card-lbl {
-  font-size: 26px;
-  letter-spacing: 4px;
-  color: #9292AA;
-  text-transform: uppercase;
-}
-.s4-card-val {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 130px;
-  color: #E8FF47;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-/* ══════════════════════
-   SCENE 5 — LEADERBOARD
-══════════════════════ */
-.s5-lbl {
-  font-size: 22px;
-  letter-spacing: 5px;
-  color: #9292AA;
-  text-transform: uppercase;
-  text-align: center;
-}
-.s5-title {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 110px;
-  color: #E8FF47;
-  text-align: center;
-  letter-spacing: 4px;
-  line-height: 1;
-}
-.s5-sub {
-  font-size: 28px;
-  letter-spacing: 3px;
-  color: #F0F0F8;
-  text-align: center;
-  text-transform: uppercase;
-  opacity: 0.65;
-}
-.s5-rows { display: flex; flex-direction: column; gap: 16px; }
-.s5-row {
-  background: #1A1A26;
-  border-radius: 20px;
-  padding: 30px 40px;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-.s5-row.you {
-  background: rgba(232,255,71,.1);
-  border: 2px solid #E8FF47;
-}
-.s5-rank {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 60px;
-  color: #9292AA;
-  width: 54px;
-  text-align: center;
-  flex-shrink: 0;
-}
-.s5-row.you .s5-rank { color: #E8FF47; }
-.s5-player { flex: 1; }
-.s5-name {
-  font-weight: 600;
-  font-size: 30px;
-  color: #F0F0F8;
-}
-.s5-row.you .s5-name {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 52px;
-  letter-spacing: 3px;
-  color: #E8FF47;
-}
-.s5-meta { font-size: 20px; color: #9292AA; }
-.s5-pts {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 56px;
-  color: #E8FF47;
-  font-variant-numeric: tabular-nums;
-}
-.s5-row.you .s5-pts {
-  font-size: 36px;
-  color: #9292AA;
-}
-
-/* ══════════════════════
-   SCENE 6 — CTA
-══════════════════════ */
-.s6-glow {
-  position: absolute;
-  width: 1100px; height: 1100px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(232,255,71,.1) 0%, transparent 65%);
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-.s6-heading {
-  font-family: 'Bebas Neue', sans-serif;
-  text-align: center;
-  line-height: 0.88;
-}
-.s6-heading .l1 {
-  display: block;
-  font-size: 110px;
-  color: #F0F0F8;
-  letter-spacing: 10px;
-}
-.s6-heading .l2 {
-  display: block;
-  font-size: 220px;
-  color: #E8FF47;
-  letter-spacing: 2px;
-  text-shadow: 0 0 80px rgba(232,255,71,.5), 0 0 160px rgba(232,255,71,.2);
-}
-.s6-tagline {
-  font-size: 28px;
-  letter-spacing: 6px;
-  color: #9292AA;
-  text-align: center;
-  text-transform: uppercase;
-}
-.s6-cta {
-  background: #E8FF47;
-  color: #09090F;
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 60px;
-  letter-spacing: 5px;
-  padding: 40px 100px;
-  border-radius: 50px;
-  text-align: center;
-  align-self: center;
-}
-.s6-platforms {
-  font-size: 24px;
-  color: #9292AA;
-  text-align: center;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-}
-.s6-fade {
-  position: absolute;
-  inset: 0;
-  background: #09090F;
-  opacity: 0;
-  pointer-events: none;
-  z-index: 10;
-}
+/* whip-cut flash */
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:90}
 </style>
 </head>
 <body>
+<div id="root">
+<div id="flash"></div>
 
-<div id="root"
-  data-composition-id="main"
-  data-width="1080"
-  data-height="1920"
-  data-start="0"
-  data-duration="28">
-
-  <!-- ══ SCENE 1: HOOK ══ -->
-  <div id="s1" class="scene">
-    <div class="s1-glow" id="s1-glow"></div>
-    <div class="s1-ghost" data-layout-ignore>CONQUER</div>
-    <div class="scene-content" style="justify-content:center;gap:20px;">
-      <div class="s1-label" id="s1-lbl">GPS · GEBIETE · HERRSCHAFT</div>
-      <div class="s1-headline">
-        <span class="l1" id="s1-l1">DEINE</span>
-        <span class="l2" id="s1-l2">STADT</span>
-      </div>
-      <div class="s1-sub" id="s1-sub">GEHÖRT DIR.</div>
-      <div class="s1-ping-wrap">
-        <div class="s1-dot"></div>
-        <div class="s1-ring" id="ring1"></div>
-        <div class="s1-ring" id="ring2"></div>
-        <div class="s1-ring" id="ring3"></div>
-      </div>
-    </div>
+<!-- HOOK -->
+<div class="scene boot" id="h0" style="--c:#E8FF47">
+  <div id="h0-ping"><i></i><i></i><i></i></div>
+  <div class="kin mid" id="h0-t">
+    <div class="big">DEINE STADT.<br><em>DEIN SPIELFELD.</em></div>
   </div>
+</div>
 
-  <!-- ══ SCENE 2: GPS TRACK ══ -->
-  <div id="s2" class="scene">
-    <div class="s2-grid"></div>
-    <div class="scene-content" style="gap:28px;">
-      <div class="s2-label" id="s2-lbl">HINTERGRUND-GPS AKTIV</div>
-      <div class="s2-map-wrap">
-        <svg id="s2-svg" viewBox="0 0 920 580" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="920" height="580" fill="#111118" rx="20"/>
-          <!-- Street grid -->
-          <line x1="0" y1="290" x2="920" y2="290" stroke="#1A1A26" stroke-width="28"/>
-          <line x1="460" y1="0" x2="460" y2="580" stroke="#1A1A26" stroke-width="28"/>
-          <line x1="0" y1="145" x2="920" y2="145" stroke="#1A1A26" stroke-width="14"/>
-          <line x1="0" y1="435" x2="920" y2="435" stroke="#1A1A26" stroke-width="14"/>
-          <line x1="230" y1="0" x2="230" y2="580" stroke="#1A1A26" stroke-width="14"/>
-          <line x1="690" y1="0" x2="690" y2="580" stroke="#1A1A26" stroke-width="14"/>
-          <!-- Conquered territory fill -->
-          <polygon points="180,100 420,115 440,290 240,270 200,190"
-            fill="rgba(232,255,71,.15)" stroke="rgba(232,255,71,.3)" stroke-width="2"/>
-          <!-- GPS track (animated via stroke-dashoffset) -->
-          <polyline id="s2-track"
-            points="100,430 160,340 230,275 300,230 400,125 445,185 510,210 590,165 650,205 720,295 760,355 715,415 610,435 510,395 435,420 350,455 260,475 175,440 100,430"
-            fill="none"
-            stroke="#E8FF47"
-            stroke-width="6"
-            stroke-linecap="round"
-            stroke-linejoin="round"/>
-          <!-- Position dot + halo -->
-          <circle cx="720" cy="295" r="32" fill="rgba(232,255,71,.15)"/>
-          <circle id="s2-pos-dot" cx="720" cy="295" r="14" fill="#E8FF47"/>
-        </svg>
-      </div>
-      <div class="s2-hud" id="s2-hud">
-        <div class="s2-hud-item">
-          <div class="s2-hud-val">2.4</div>
-          <div class="s2-hud-lbl">KM</div>
-        </div>
-        <div class="s2-hud-item">
-          <div class="s2-hud-val">5:12</div>
-          <div class="s2-hud-lbl">MIN/KM</div>
-        </div>
-        <div class="s2-hud-item">
-          <div class="s2-hud-val">162</div>
-          <div class="s2-hud-lbl">BPM</div>
-        </div>
-      </div>
-      <div class="s2-heading" id="s2-heading">LAUF &amp; <em>EROBER</em></div>
+<!-- FINALE -->
+<div class="scene" id="fin">
+  <div id="fin-pt"></div>
+  <div id="fin-title">
+    <span class="w1" id="fin-w1"></span>
+    <span class="w2" id="fin-w2"></span>
+    <div id="fin-bars">
+      <i style="background:#FF2E97"></i><i style="background:#3AE880"></i>
+      <i style="background:#FF8800"></i><i style="background:#00CCFF"></i>
+      <i style="background:#E8FF47"></i>
     </div>
+    <div id="fin-tag">Lauf · Erobere · Herrsche</div>
   </div>
+</div>
 
-  <!-- ══ SCENE 3: CONQUEST ══ -->
-  <div id="s3" class="scene">
-    <div class="scene-content" style="gap:22px;">
-      <div class="s3-badge" id="s3-badge">⚔️ GEBIET EROBERT</div>
-      <div class="s3-grid-wrap">
-        <div class="s3-grid">
-          <div class="s3-cell owned"></div><div class="s3-cell owned"></div><div class="s3-cell owned"></div><div class="s3-cell owned"></div><div class="s3-cell owned"></div>
-          <div class="s3-cell owned"></div><div class="s3-cell new" id="s3-n1"></div><div class="s3-cell new" id="s3-n2"></div><div class="s3-cell owned"></div><div class="s3-cell"></div>
-          <div class="s3-cell owned"></div><div class="s3-cell new" id="s3-n3"></div><div class="s3-cell"></div><div class="s3-cell"></div><div class="s3-cell"></div>
-          <div class="s3-cell"></div><div class="s3-cell"></div><div class="s3-cell"></div><div class="s3-cell"></div><div class="s3-cell"></div>
-        </div>
-      </div>
-      <div class="s3-pts" id="s3-pts">+200</div>
-      <div class="s3-pts-lbl">PUNKTE</div>
-      <div class="s3-sub" id="s3-sub">+3 Gebiete heute · 47 gesamt</div>
-    </div>
+<!-- GAME MAP INTERLUDE -->
+<div class="scene" id="gm">
+  <div id="gm-map"></div>
+  <div class="kin top" style="--c:#E8FF47">
+    <div class="big" style="font-size:100px" id="gm-t">TERRITORIEN WACHSEN.<br><em>GRENZEN ENTSTEHEN.</em></div>
   </div>
+</div>
 
-  <!-- ══ SCENE 4: STATS ══ -->
-  <div id="s4" class="scene">
-    <div class="scene-content" style="gap:32px;">
-      <div class="s4-intro" id="s4-intro">DEIN FORTSCHRITT</div>
-      <div class="s4-cards">
-        <div class="s4-card" id="s4-c1">
-          <div class="s4-card-lbl">KM TOTAL</div>
-          <div class="s4-card-val" id="v-km">0</div>
-        </div>
-        <div class="s4-card" id="s4-c2">
-          <div class="s4-card-lbl">GEBIETE</div>
-          <div class="s4-card-val" id="v-geo">0</div>
-        </div>
-        <div class="s4-card" id="s4-c3">
-          <div class="s4-card-lbl">STREAK</div>
-          <div class="s4-card-val" style="font-size:100px;">12🔥</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══ SCENE 5: LEADERBOARD ══ -->
-  <div id="s5" class="scene">
-    <div class="scene-content" style="gap:20px;">
-      <div class="s5-lbl" id="s5-lbl">DEINE STADT</div>
-      <div class="s5-title" id="s5-title">🏆 RANGLISTE</div>
-      <div class="s5-sub" id="s5-sub">WER FÜHRT DEINE STADT?</div>
-      <div class="s5-rows">
-        <div class="s5-row" id="s5-r1">
-          <div class="s5-rank">1</div>
-          <div class="s5-player">
-            <div class="s5-name">SpeedKing</div>
-            <div class="s5-meta">48k m² · 7🔥</div>
-          </div>
-          <div class="s5-pts">6.840</div>
-        </div>
-        <div class="s5-row" id="s5-r2">
-          <div class="s5-rank">2</div>
-          <div class="s5-player">
-            <div class="s5-name">MountainGoat</div>
-            <div class="s5-meta">31k m² · 5🔥</div>
-          </div>
-          <div class="s5-pts">4.290</div>
-        </div>
-        <div class="s5-row" id="s5-r3">
-          <div class="s5-rank">3</div>
-          <div class="s5-player">
-            <div class="s5-name">NightOwl</div>
-            <div class="s5-meta">22k m² · 3🔥</div>
-          </div>
-          <div class="s5-pts">2.915</div>
-        </div>
-        <div class="s5-row you" id="s5-you">
-          <div class="s5-rank">?</div>
-          <div class="s5-player">
-            <div class="s5-name">DU?</div>
-            <div class="s5-meta" style="font-size:22px;">Tritt jetzt an</div>
-          </div>
-          <div class="s5-pts">STARTEN</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══ SCENE 6: CTA ══ -->
-  <div id="s6" class="scene">
-    <div class="s6-glow" id="s6-glow"></div>
-    <div class="scene-content" style="justify-content:center;align-items:center;gap:28px;">
-      <div class="s6-heading" id="s6-heading">
-        <span class="l1">RUN &amp;</span>
-        <span class="l2">CONQUER</span>
-      </div>
-      <div class="s6-tagline" id="s6-tagline">LAUFE · EROBER · HERRSCHE</div>
-      <div class="s6-cta" id="s6-cta">JETZT SPIELEN</div>
-      <div class="s6-platforms" id="s6-plat">KOSTENLOS · ANDROID &amp; IOS</div>
-    </div>
-    <div class="s6-fade" id="s6-fade"></div>
-  </div>
-
-</div><!-- /root -->
-
+</div>
 <script>
-window.__timelines = window.__timelines || {};
+/* ══════════════════════════════════════════
+   22 REAL RUNNING SCENES — Pexels free license
+   Each 2.5s, adventurous cuts, game HUD overlays
+══════════════════════════════════════════ */
+const SCENES=[
+ /* ─ CITY BLOCK ─ */
+ {id:'s1',  vid:5310858,  c:'#FF2E97', tag:'STADTLAUF',  pos:'top', big:'JEDER SCHRITT<br><em>ZÄHLT</em>',         sz:122, t:[3.0,5.5],  wash:1, hud:{type:'score',pts:'+200',label:'PTS'}},
+ {id:'s2',  vid:7877146,  c:'#00CCFF', tag:'',            pos:'mid', big:'<em>LAUF.</em>',                          sz:290, t:[5.5,8.0]},
+ {id:'s3',  vid:8533442,  c:'#FF8800', tag:'TEMPO',       pos:'bot', big:'DEINE ROUTE<br><em>WIRD GEBIET</em>',     sz:108, t:[8.0,10.5], wash:1, hud:{type:'score',pts:'+50',label:'PTS / 100 M'}},
+ /* ─ FOREST BLOCK ─ */
+ {id:'s4',  vid:5677382,  c:'#3AE880', tag:'WALD',        pos:'top', big:'<em>WALD.</em><br>ERKUNDET.',             sz:132, t:[10.5,13.0],wash:1, hud:{type:'terr',name:'WALDGEBIET',pts:'+400 PTS',col:'#3AE880'}},
+ {id:'s5',  vid:3028397,  c:'#3AE880', tag:'MORGENS',     pos:'bot', big:'FRÜH RAUS.<br><em>FRÜH VORN.</em>',       sz:108, t:[13.0,15.5],hud:{type:'streak',n:'7',label:'TAGE STREAK'}},
+ /* ─ STREETS BLOCK ─ */
+ {id:'s6',  vid:4763892,  c:'#FF2E97', tag:'BEZIRK',      pos:'top', big:'BEZIRK #7<br><em>EINGENOMMEN</em>',       sz:110, t:[15.5,18.0],wash:1, hud:{type:'score',pts:'+500',label:'TERRITORIUM!'}},
+ {id:'s7',  vid:7876920,  c:'#00CCFF', tag:'',            pos:'bot', big:'<em>EROBERE.</em>',                       sz:250, t:[18.0,20.5]},
+ /* ─ WATER BLOCK ─ */
+ {id:'s8',  vid:3028395,  c:'#00CCFF', tag:'FLUSSUFER',   pos:'top', big:'FLUSSUFER<br><em>MARKIERT</em>',          sz:114, t:[20.5,23.0],wash:1, hud:{type:'score',pts:'+100',label:'PTS / KM'}},
+ {id:'s9',  vid:5677451,  c:'#3AE880', tag:'FORSTGEBIET', pos:'bot', big:'DEINE FARBE.<br><em>DEINE SPUR.</em>',    sz:110, t:[23.0,25.5],wash:1, hud:{type:'terr',name:'FORSTGEBIET',pts:'+650 PTS',col:'#3AE880'}},
+ /* ─ POWER BLOCK ─ */
+ {id:'s10', vid:3048928,  c:'#FF2E97', tag:'',            pos:'top', big:'<em>HERRSCHE.</em>',                      sz:250, t:[25.5,28.0],hud:{type:'lb'}},
+ {id:'s11', vid:19539315, c:'#00CCFF', tag:'REGEN',       pos:'bot', big:'REGEN HÄLT<br><em>DICH NICHT</em>',       sz:112, t:[28.0,30.5]},
+ {id:'s12', vid:3125907,  c:'#FF8800', tag:'STRAND',      pos:'top', big:'STRANDGEBIET<br><em>EINGENOMMEN!</em>',   sz:104, t:[30.5,33.5],wash:1, hud:{type:'score',pts:'+300',label:'NEUE ZONE!'}},
+ /* ─ GAME MAP 33.5–41.0 ─ */
+ /* ─ MOUNTAIN BLOCK ─ */
+ {id:'s13', vid:8490468,  c:'#FF8800', tag:'BERGE',       pos:'top', big:'BIS ZUM<br><em>GIPFEL</em>',              sz:132, t:[41.0,43.5],wash:1, hud:{type:'score',pts:'+1000',label:'BERGZONE!'}},
+ {id:'s14', vid:5319527,  c:'#E8FF47', tag:'VON OBEN',    pos:'bot', big:'AUS JEDER<br><em>PERSPEKTIVE</em>',       sz:108, t:[43.5,46.0]},
+ /* ─ RACE BLOCK ─ */
+ {id:'s15', vid:31328832, c:'#FF2E97', tag:'MARATHON',    pos:'top', big:'WELTWEIT<br><em>ERKUNDET</em>',           sz:118, t:[46.0,48.5],wash:1, hud:{type:'terr',name:'MARATHON ROUTE',pts:'+2500 PTS',col:'#FF2E97'}},
+ {id:'s16', vid:8491151,  c:'#E8FF47', tag:'FRAKTION',    pos:'bot', big:'<em>GEMEINSAM</em><br>STÄRKER',           sz:118, t:[48.5,51.0],wash:1, hud:{type:'streak',n:'14',label:'TAGE STREAK'}},
+ /* ─ TEAM BLOCK ─ */
+ {id:'s17', vid:12510395, c:'#3AE880', tag:'TEAM',        pos:'top', big:'DEINE FRAKTION<br><em>FÜHRT!</em>',       sz:114, t:[51.0,53.5],wash:1, hud:{type:'lb'}},
+ {id:'s18', vid:12510396, c:'#3AE880', tag:'',            pos:'bot', big:'<em>LAUF.</em><br>EROBERE.',              sz:186, t:[53.5,56.0]},
+ /* ─ FINALE RUN BLOCK ─ */
+ {id:'s19', vid:32740423, c:'#FF8800', tag:'OPEN ROAD',   pos:'top', big:'OFFENE STRASSE<br><em>DEIN REVIER</em>',  sz:104, t:[56.0,58.5],wash:1, hud:{type:'score',pts:'+250',label:'ROUTE BONUS'}},
+ {id:'s20', vid:19771786, c:'#00CCFF', tag:'TÄGLICH',     pos:'bot', big:'TÄGLICH<br><em>MEHR.</em>',               sz:132, t:[58.5,61.0],hud:{type:'score',pts:'×3',label:'MULTIPLIKATOR!'}},
+ {id:'s21', vid:5488175,  c:'#FF2E97', tag:'24 GEBIETE',  pos:'top', big:'24 GEBIETE<br><em>DEIN!</em>',            sz:120, t:[61.0,63.5],wash:1, hud:{type:'terr',name:'STADTPARK',pts:'+750 PTS',col:'#FF2E97'}},
+ {id:'s22', vid:32067871, c:'#E8FF47', tag:'SPRINT',      pos:'bot', big:'<em>ALLES!</em>',                         sz:268, t:[63.5,66.0],hud:{type:'score',pts:'+5000',label:'SPRINT BONUS!!'}},
+];
 
-// ── SVG track dash setup ──
-var trackEl = document.getElementById('s2-track');
-var trackLen = trackEl ? Math.round(trackEl.getTotalLength()) : 1200;
-trackEl.setAttribute('stroke-dasharray', trackLen);
-trackEl.setAttribute('stroke-dashoffset', trackLen);
+const GM_T=[33.5,41.0];
+const FIN_T=66.0;
+const TOTAL=76.5;
+const TERR_COLORS=['#FF2E97','#3AE880','#FF8800','#00CCFF','#E8FF47'];
+const root=document.getElementById('root');
+const gmScene=document.getElementById('gm');
 
-// ── Counter proxy ──
-var cnt = { km: 0, geo: 0 };
+/* ── HUD element factories ── */
+function buildScorePop(s){
+  const h=s.hud,d=document.createElement('div');
+  d.className='score-pop';d.id='hud_'+s.id;
+  d.style.setProperty('--c',s.c);d.style.opacity='0';
+  d.innerHTML=`<div class="sp-pts">${h.pts}</div><div class="sp-label">${h.label}</div>`;
+  return d;
+}
+function buildTerrCap(s){
+  const h=s.hud,d=document.createElement('div');
+  d.className='terr-cap';d.id='hud_'+s.id;
+  d.style.setProperty('--c',h.col||s.c);d.style.opacity='0';
+  d.innerHTML=`<div class="tc-bar"><div class="tc-icon">▲ TERRITORIUM EINGENOMMEN ▲</div><div class="tc-name">${h.name}</div><div class="tc-pts">${h.pts}</div></div>`;
+  return d;
+}
+function buildLb(s){
+  const d=document.createElement('div');
+  d.className='lb-hud';d.id='hud_'+s.id;d.style.opacity='0';
+  d.innerHTML=`<div class="lb-title">RANGLISTE</div>
+    <div class="lb-row"><div class="lb-rank">#1</div><div class="lb-name">RunKing</div><div class="lb-sc">8.420</div></div>
+    <div class="lb-row"><div class="lb-rank me">#2</div><div class="lb-name me">DU</div><div class="lb-sc me">7.890 ↑</div></div>
+    <div class="lb-row"><div class="lb-rank">#3</div><div class="lb-name">SpeedX</div><div class="lb-sc">6.100</div></div>`;
+  return d;
+}
+function buildStreak(s){
+  const h=s.hud,d=document.createElement('div');
+  d.className='streak-hud';d.id='hud_'+s.id;d.style.opacity='0';
+  d.innerHTML=`<div class="sh-fire">🔥</div><div class="sh-num">${h.n}</div><div class="sh-label">${h.label}</div>`;
+  return d;
+}
 
-// ── Timeline ──
-var tl = gsap.timeline({ paused: true });
-
-/* ════════════════════════
-   SCENE 1 ENTRANCES (0–4s)
-   ════════════════════════ */
-// Ambient glow drift
-tl.fromTo('#s1-glow', { scale: 0.9, opacity: 0.5 }, { scale: 1.1, opacity: 1, duration: 4, ease: 'sine.inOut', repeat: 3, yoyo: true }, 0);
-// Ghost text slow drift
-tl.fromTo('#s1 .s1-ghost', { x: -15 }, { x: 15, duration: 4, ease: 'none' }, 0);
-// Content entrances
-tl.from('#s1-lbl',  { y: 30, opacity: 0, duration: 0.6, ease: 'power3.out' }, 0.25);
-tl.from('#s1-l1',   { y: 70, opacity: 0, duration: 0.7, ease: 'power4.out' }, 0.55);
-tl.from('#s1-l2',   { scale: 0.75, opacity: 0, duration: 0.8, ease: 'expo.out' }, 0.80);
-tl.from('#s1-sub',  { y: 40, opacity: 0, duration: 0.6, ease: 'power3.out' }, 1.15);
-// GPS ping rings (3 repeats × 1.2s = 3.6s total, fits within scene)
-tl.fromTo('#ring1', { width: 18, height: 18, x: -9, y: -9, opacity: 0.9 },
-  { width: 100, height: 100, x: -50, y: -50, opacity: 0, duration: 1.2, ease: 'power1.out', repeat: 3 }, 1.4);
-tl.fromTo('#ring2', { width: 18, height: 18, x: -9, y: -9, opacity: 0.7 },
-  { width: 100, height: 100, x: -50, y: -50, opacity: 0, duration: 1.2, ease: 'power1.out', repeat: 3 }, 1.8);
-tl.fromTo('#ring3', { width: 18, height: 18, x: -9, y: -9, opacity: 0.5 },
-  { width: 100, height: 100, x: -50, y: -50, opacity: 0, duration: 1.2, ease: 'power1.out', repeat: 3 }, 2.2);
-
-/* ════════════════════
-   TRANSITION 1→2 (T=4.0, crossfade)
-   ════════════════════ */
-var T1 = 4.0;
-tl.to('#s1', { opacity: 0, duration: 0.5, ease: 'power2.inOut' }, T1);
-tl.fromTo('#s2', { opacity: 0 }, { opacity: 1, duration: 0.5, ease: 'power2.inOut' }, T1);
-
-/* ════════════════════════
-   SCENE 2 ENTRANCES (4.0–8.5s)
-   ════════════════════════ */
-tl.from('#s2-lbl',     { y: 30, opacity: 0, duration: 0.5, ease: 'power3.out' }, T1 + 0.15);
-tl.from('#s2-svg',     { scale: 0.92, opacity: 0, duration: 0.65, ease: 'power2.out' }, T1 + 0.25);
-// GPS track drawing animation
-tl.to('#s2-track', { attr: { 'stroke-dashoffset': 0 }, duration: 2.6, ease: 'power1.inOut' }, T1 + 0.45);
-// Position dot pulse (finite: 4.5s scene / 1.0s cycle ≈ 4 repeats)
-tl.fromTo('#s2-pos-dot', { attr: { r: 14 } }, { attr: { r: 20 }, duration: 0.5, ease: 'sine.inOut', repeat: 8, yoyo: true }, T1 + 0.3);
-tl.from('#s2-hud',     { y: 40, opacity: 0, duration: 0.6, ease: 'power3.out' }, T1 + 0.8);
-tl.from('#s2-heading', { y: 50, opacity: 0, duration: 0.7, ease: 'expo.out' }, T1 + 1.1);
-
-/* ════════════════════
-   TRANSITION 2→3 (T=8.5, vertical push up)
-   ════════════════════ */
-var T2 = 8.5;
-tl.to('#s2', { y: -1920, duration: 0.5, ease: 'power3.inOut' }, T2);
-tl.fromTo('#s3', { y: 1920, opacity: 1 }, { y: 0, duration: 0.5, ease: 'power3.inOut' }, T2);
-
-/* ════════════════════════
-   SCENE 3 ENTRANCES (8.5–13.0s)
-   ════════════════════════ */
-tl.from('#s3-badge', { scale: 0.65, opacity: 0, duration: 0.5, ease: 'back.out(2.5)' }, T2 + 0.25);
-// Territory cells stagger
-tl.fromTo('#s3-n1', { scale: 0 }, { scale: 1, duration: 0.4, ease: 'back.out(2.5)', transformOrigin: 'center' }, T2 + 0.55);
-tl.fromTo('#s3-n2', { scale: 0 }, { scale: 1, duration: 0.4, ease: 'back.out(2.5)', transformOrigin: 'center' }, T2 + 0.72);
-tl.fromTo('#s3-n3', { scale: 0 }, { scale: 1, duration: 0.4, ease: 'back.out(2.5)', transformOrigin: 'center' }, T2 + 0.89);
-tl.from('#s3-pts',  { scale: 0.55, opacity: 0, duration: 0.7, ease: 'elastic.out(1, 0.5)' }, T2 + 1.05);
-tl.from('.s3-pts-lbl', { y: 24, opacity: 0, duration: 0.4, ease: 'power2.out' }, T2 + 1.3);
-tl.from('#s3-sub',  { y: 20, opacity: 0, duration: 0.4, ease: 'power2.out' }, T2 + 1.55);
-
-/* ════════════════════
-   TRANSITION 3→4 (T=13.0, blur crossfade)
-   ════════════════════ */
-var T3 = 13.0;
-tl.to('#s3', { filter: 'blur(10px)', scale: 1.03, opacity: 0, duration: 0.5, ease: 'power2.inOut' }, T3);
-tl.fromTo('#s4',
-  { filter: 'blur(10px)', scale: 0.97, opacity: 0 },
-  { filter: 'blur(0px)', scale: 1, opacity: 1, duration: 0.5, ease: 'power2.inOut' }, T3 + 0.1);
-
-/* ════════════════════════
-   SCENE 4 ENTRANCES (13.0–17.5s)
-   ════════════════════════ */
-tl.from('#s4-intro', { y: 30, opacity: 0, duration: 0.5, ease: 'power3.out' }, T3 + 0.3);
-tl.from('#s4-c1', { y: 90, opacity: 0, duration: 0.55, ease: 'power3.out' }, T3 + 0.5);
-tl.from('#s4-c2', { y: 90, opacity: 0, duration: 0.55, ease: 'power3.out' }, T3 + 0.68);
-tl.from('#s4-c3', { y: 90, opacity: 0, duration: 0.55, ease: 'power3.out' }, T3 + 0.86);
-// Animated counters
-tl.to(cnt, {
-  km: 142, geo: 47,
-  duration: 1.9,
-  ease: 'power2.out',
-  onUpdate: function() {
-    document.getElementById('v-km').textContent  = Math.floor(cnt.km);
-    document.getElementById('v-geo').textContent = Math.floor(cnt.geo);
+/* ── build all footage scenes ── */
+SCENES.forEach(s=>{
+  const d=document.createElement('div');
+  d.className='scene';d.id='sc_'+s.id;
+  d.style.setProperty('--c',s.c);
+  d.style.background=`linear-gradient(160deg,color-mix(in srgb,${s.c} 22%,#0a0a14),#0a0a14 70%)`;
+  d.innerHTML=`
+    <video class="clip" id="v_${s.id}" muted playsinline loop preload="none"
+      data-src="https://www.pexels.com/download/video/${s.vid}/?w=960"></video>
+    <div class="grade" style="background:${s.c}"></div>
+    <div class="dark"></div>
+    ${s.wash?`<div class="wash" id="w_${s.id}"></div>`:''}
+    <div class="vign"></div>
+    <div class="kin ${s.pos}" id="k_${s.id}">
+      ${s.tag?`<div><span class="tag">${s.tag}</span></div>`:''}
+      <div class="big" style="font-size:${s.sz}px">${s.big}</div>
+    </div>`;
+  root.insertBefore(d,document.getElementById('flash'));
+  /* video load error → keep gradient background */
+  const v=d.querySelector('video');
+  v.addEventListener('error',()=>{if(v.getAttribute('src'))v.style.display='none';});
+  /* inject HUD overlay */
+  if(s.hud){
+    let el;
+    const t=s.hud.type;
+    if(t==='score')  el=buildScorePop(s);
+    else if(t==='terr')   el=buildTerrCap(s);
+    else if(t==='lb')     el=buildLb(s);
+    else if(t==='streak') el=buildStreak(s);
+    if(el){d.appendChild(el);s._hud=el;}
   }
-}, T3 + 0.9);
+});
 
-/* ════════════════════
-   TRANSITION 4→5 (T=17.5, push left)
-   ════════════════════ */
-var T4 = 17.5;
-tl.to('#s4', { x: -1080, duration: 0.5, ease: 'power3.inOut' }, T4);
-tl.fromTo('#s5', { x: 1080, opacity: 1 }, { x: 0, duration: 0.5, ease: 'power3.inOut' }, T4);
+/* ── game map ── */
+(function(){
+  const NS='http://www.w3.org/2000/svg';
+  const svg=document.createElementNS(NS,'svg');
+  svg.setAttribute('viewBox','0 0 1080 1920');
+  let grid='';
+  for(let y=0;y<1920;y+=110)grid+=`<line class="gridline" x1="0" y1="${y}" x2="1080" y2="${y}"/>`;
+  for(let x=0;x<1080;x+=110)grid+=`<line class="gridline" x1="${x}" y1="0" x2="${x}" y2="1920"/>`;
+  const blobs=[
+    `M170,540 C90,420 220,300 380,330 C540,360 560,520 480,640 C400,760 250,690 170,540 Z`,
+    `M760,420 C920,360 1040,480 990,640 C940,800 760,820 670,700 C580,580 620,470 760,420 Z`,
+    `M280,1130 C180,1000 320,880 470,930 C620,980 640,1150 540,1260 C440,1370 360,1270 280,1130 Z`,
+    `M790,1240 C950,1180 1060,1300 1000,1450 C940,1600 760,1610 680,1480 C600,1350 650,1290 790,1240 Z`,
+    `M450,1620 C560,1530 730,1580 760,1720 C790,1860 640,1950 500,1900 C360,1850 350,1700 450,1620 Z`,
+  ];
+  let inner='';
+  blobs.forEach((d,i)=>{
+    inner+=`<path id="gt${i}" class="terr" d="${d}" fill="${TERR_COLORS[i]}" fill-opacity=".34" stroke="${TERR_COLORS[i]}" stroke-width="5"/>`;
+  });
+  [`M510,560 C560,600 620,640 660,690`,`M520,1240 C580,1290 640,1340 690,1400`,
+   `M560,1500 C600,1560 640,1620 670,1680`,`M460,700 C440,790 420,880 430,960`].forEach((d,i)=>{
+    inner+=`<path id="ge${i}" class="energy" d="${d}"/>`;
+  });
+  svg.innerHTML=grid+inner;
+  document.getElementById('gm-map').appendChild(svg);
+  const chips=[['#FF2E97','PINK CREW','28%'],['#3AE880','FOREST','22%'],['#FF8800','PEAK','17%'],['#00CCFF','RIVER','14%'],['#E8FF47','TEAM GELB','19%']];
+  chips.forEach((c,i)=>{
+    const d=document.createElement('div');
+    d.className='hud-chip';d.id='gchip'+i;
+    d.style.cssText+=`;left:${i%2?580:70}px;top:${500+Math.floor(i/2)*420}px`;
+    d.innerHTML=`<div class="hud-dot" style="background:${c[0]};box-shadow:0 0 16px ${c[0]}"></div>
+      <div><div class="hud-nm">${c[1]}</div><div class="hud-pct">${c[2]}</div></div>`;
+    gmScene.appendChild(d);
+  });
+})();
 
-/* ════════════════════════
-   SCENE 5 ENTRANCES (17.5–22.0s)
-   ════════════════════════ */
-tl.from('#s5-lbl',   { y: 30, opacity: 0, duration: 0.5, ease: 'power3.out' }, T4 + 0.15);
-tl.from('#s5-title', { scale: 0.78, opacity: 0, duration: 0.65, ease: 'expo.out' }, T4 + 0.35);
-tl.from('#s5-sub',   { y: 24, opacity: 0, duration: 0.45, ease: 'power2.out' }, T4 + 0.7);
-tl.from('#s5-r1',    { x: 100, opacity: 0, duration: 0.5, ease: 'power3.out' }, T4 + 0.9);
-tl.from('#s5-r2',    { x: 100, opacity: 0, duration: 0.5, ease: 'power3.out' }, T4 + 1.1);
-tl.from('#s5-r3',    { x: 100, opacity: 0, duration: 0.5, ease: 'power3.out' }, T4 + 1.3);
-tl.from('#s5-you',   { y: 50, opacity: 0, duration: 0.6, ease: 'back.out(2)' }, T4 + 1.6);
+/* ── finale letters + sparks ── */
+(function(){
+  const w1=document.getElementById('fin-w1'),w2=document.getElementById('fin-w2');
+  'RUNNERS'.split('').forEach(ch=>{const s=document.createElement('span');s.textContent=ch;w1.appendChild(s);});
+  'CONQUER'.split('').forEach(ch=>{const s=document.createElement('span');s.textContent=ch;w2.appendChild(s);});
+  const pt=document.getElementById('fin-pt');
+  TERR_COLORS.forEach(c=>{for(let i=0;i<8;i++){
+    const s=document.createElement('div');s.className='spark';
+    s.style.cssText=`--c:${c};left:${Math.random()*1080}px;bottom:${Math.random()*560}px;animation-delay:${(Math.random()*3.2).toFixed(2)}s`;
+    pt.appendChild(s);
+  }});
+})();
 
-/* ════════════════════
-   TRANSITION 5→6 (T=22.0, color dip)
-   ════════════════════ */
-var T5 = 22.0;
-tl.to('#s5', { opacity: 0, duration: 0.25, ease: 'power2.in' }, T5);
-tl.fromTo('#s6', { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'power2.out' }, T5 + 0.3);
+/* ══════════════════════════════════════════
+   MASTER TIMELINE
+══════════════════════════════════════════ */
+window.__timelines=window.__timelines||{};
+const tl=gsap.timeline({paused:true});
 
-/* ════════════════════════
-   SCENE 6 ENTRANCES (22.0–28.0s)
-   ════════════════════════ */
-// Glow pulse (3 cycles × 2s = 6s, from T5+0.2=22.2 to 28.2s)
-tl.fromTo('#s6-glow',
-  { scale: 0.85, opacity: 0.5 },
-  { scale: 1.2, opacity: 1, duration: 2, ease: 'sine.inOut', repeat: 2, yoyo: true }, T5 + 0.2);
-tl.from('#s6-heading .l1', { y: 50, opacity: 0, duration: 0.6, ease: 'power3.out' }, T5 + 0.45);
-tl.from('#s6-heading .l2', { scale: 0.65, opacity: 0, duration: 0.85, ease: 'expo.out' }, T5 + 0.75);
-tl.from('#s6-tagline',     { y: 35, opacity: 0, duration: 0.5, ease: 'power2.out' }, T5 + 1.3);
-tl.from('#s6-cta',         { scale: 0.8, opacity: 0, duration: 0.65, ease: 'back.out(2.2)' }, T5 + 1.75);
-tl.from('#s6-plat',        { y: 24, opacity: 0, duration: 0.45, ease: 'power2.out' }, T5 + 2.2);
-// Fade to black (only last scene may have exit animation)
-tl.to('#s6-fade', { opacity: 1, duration: 0.7, ease: 'power2.in' }, 27.3);
+function vEl(s){return document.getElementById('v_'+s.id);}
+function showScene(el){gsap.set(el,{visibility:'visible',opacity:1});}
+function hideScene(el){gsap.set(el,{visibility:'hidden',opacity:0});}
+/* Memory management: max ~2 clips buffered at once */
+function loadClip(s){
+  const v=vEl(s);
+  if(!v||v.getAttribute('src'))return;
+  v.style.display='';v.src=v.dataset.src;v.preload='auto';v.load();
+}
+function unloadClip(s){
+  const v=vEl(s);
+  if(!v)return;
+  v.pause();v.removeAttribute('src');v.load();
+}
+function whip(at){
+  tl.fromTo('#flash',{opacity:0},{opacity:.52,duration:.07,ease:'power4.in'},at-.07);
+  tl.to('#flash',{opacity:0,duration:.13,ease:'power2.out'},at);
+}
 
-window.__timelines['main'] = tl;
+/* HOOK 0–3s */
+tl.from('#h0-t .big',{y:70,opacity:0,duration:.65,ease:'power3.out'},.2);
+tl.to('#h0-t .big',{scale:1.06,duration:2.4,ease:'none'},.45);
 
-// Auto-play + loop when viewed outside HyperFrames Studio
-if (typeof window.__hyperframes === 'undefined') {
+/* footage scenes */
+SCENES.forEach((s,idx)=>{
+  const [t0,t1]=s.t;
+  const el=document.getElementById('sc_'+s.id);
+  /* buffer clip 4s ahead */
+  tl.call(()=>loadClip(s),null,Math.max(0,t0-4));
+  /* whip cut + show */
+  whip(t0);
+  tl.call(()=>{
+    showScene(el);loadClip(s);
+    const v=vEl(s);
+    if(v){try{if(v.readyState>0)v.currentTime=0;}catch(e){}v.play().catch(()=>{});}
+  },null,t0);
+  if(idx===0)tl.call(()=>hideScene(document.getElementById('h0')),null,t0+.05);
+  /* slow push-in for cinematic feel */
+  tl.fromTo(el.querySelector('.clip'),{scale:1.1},{scale:1,duration:t1-t0,ease:'none'},t0);
+  /* text in */
+  const k=document.getElementById('k_'+s.id);
+  if(k.querySelector('.tag'))
+    tl.fromTo(k.querySelector('.tag'),{y:-28,opacity:0},{y:0,opacity:1,duration:.32,ease:'back.out(2)'},t0+.08);
+  tl.fromTo(k.querySelector('.big'),{y:52,opacity:0},{y:0,opacity:1,duration:.38,ease:'power3.out'},t0+.13);
+  /* color wash */
+  if(s.wash)tl.fromTo('#w_'+s.id,{scale:0},{scale:1,duration:(t1-t0)*.88,ease:'power1.inOut'},t0+.22);
+  /* HUD popup */
+  if(s._hud){
+    const hi='#hud_'+s.id;
+    tl.fromTo(hi,{opacity:0,y:18},{opacity:1,y:0,duration:.38,ease:'back.out(2)'},t0+.52);
+    tl.to(hi,{opacity:0,y:-14,duration:.28},t1-.42);
+  }
+  /* text out */
+  tl.to(k,{opacity:0,duration:.24},t1-.26);
+  /* hide scene + free memory */
+  tl.call(()=>{hideScene(el);unloadClip(s);},null,t1+.4);
+});
+
+/* GAME MAP interlude 33.5–41.0 */
+whip(GM_T[0]);
+tl.call(()=>showScene(gmScene),null,GM_T[0]);
+tl.fromTo('#gm-t',{y:64,opacity:0},{y:0,opacity:1,duration:.5,ease:'power3.out'},GM_T[0]+.15);
+for(let i=0;i<5;i++)
+  tl.fromTo('#gt'+i,{scale:0,transformOrigin:'50% 50%'},{scale:1,duration:1.2,ease:'elastic.out(1,.7)'},GM_T[0]+.3+i*.56);
+for(let i=0;i<4;i++){
+  tl.to('#ge'+i,{opacity:1,duration:.25},GM_T[0]+3.2+i*.46);
+  tl.to('#ge'+i,{strokeDashoffset:-300,duration:3.5,ease:'none'},GM_T[0]+3.2+i*.46);
+}
+for(let i=0;i<5;i++)
+  tl.fromTo('#gchip'+i,{opacity:0,y:24},{opacity:1,y:0,duration:.42,ease:'power3.out'},GM_T[0]+3.6+i*.28);
+tl.fromTo('#gm-map',{scale:1.22},{scale:1,duration:GM_T[1]-GM_T[0],ease:'none'},GM_T[0]);
+tl.to('#gm .kin',{opacity:0,y:-30,duration:.3},GM_T[1]-.34);
+tl.call(()=>hideScene(gmScene),null,GM_T[1]+.08);
+
+/* FINALE 66–76.5 */
+whip(FIN_T);
+tl.call(()=>showScene(document.getElementById('fin')),null,FIN_T);
+tl.from('#fin-w1 span',{y:90,opacity:0,duration:.5,stagger:.06,ease:'back.out(1.8)'},FIN_T+.4);
+tl.from('#fin-w2 span',{y:110,opacity:0,scale:.6,duration:.55,stagger:.07,ease:'back.out(1.9)'},FIN_T+1.0);
+tl.from('#fin-bars i',{scaleX:0,duration:.45,stagger:.07,ease:'power3.out'},FIN_T+2.0);
+tl.from('#fin-tag',{opacity:0,letterSpacing:'26px',duration:.8,ease:'power2.out'},FIN_T+2.4);
+tl.to('#fin-title',{scale:1.05,duration:TOTAL-FIN_T-2.8,ease:'sine.inOut'},FIN_T+2.8);
+tl.to({},{duration:.01},TOTAL);
+
+window.__timelines['main']=tl;
+
+if(typeof window.__hyperframes==='undefined'){
   tl.play();
-  tl.eventCallback('onComplete', function() { tl.restart(); });
+  tl.eventCallback('onComplete',function(){
+    document.querySelectorAll('.scene').forEach(s=>{
+      s.style.visibility='hidden';s.style.opacity='0';
+    });
+    const h=document.getElementById('h0');
+    h.style.visibility='visible';h.style.opacity='1';
+    tl.restart();
+  });
 }
 </script>
 </body>
