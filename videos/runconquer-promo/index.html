@@ -90,28 +90,36 @@ body{width:1080px;height:1920px;overflow:hidden;background:#06060A;font-family:'
 #h0-ping i{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
   border:3px solid #E8FF47;border-radius:50%;width:30px;height:30px;opacity:0}
 
-/* ── GAME MAP (territory interlude) ── */
-#gm{background:#0b0d18}
-#gm-map{position:absolute;inset:0}
-#gm-map svg{width:1080px;height:1920px}
-.terr{opacity:.88}
-.energy{fill:none;stroke:#fff;stroke-width:4;stroke-linecap:round;stroke-dasharray:28 18;opacity:0;
-  filter:drop-shadow(0 0 10px #fff) drop-shadow(0 0 22px rgba(180,220,255,.9))}
-.gridline{stroke:rgba(255,255,255,.04);stroke-width:1}
-.hud-chip{position:absolute;display:flex;align-items:center;gap:14px;
-  background:rgba(10,12,24,.88);border:2px solid rgba(255,255,255,.16);
-  border-radius:50px;padding:13px 28px;opacity:0;z-index:20}
-.hud-dot{width:24px;height:24px;border-radius:50%}
-.hud-pct{font-family:'Bebas Neue',sans-serif;font-size:40px;color:#fff}
-.hud-nm{font-size:18px;letter-spacing:3px;color:rgba(255,255,255,.6)}
-#gm-score{position:absolute;right:60px;bottom:220px;font-family:'Bebas Neue',sans-serif;
-  font-size:62px;color:#E8FF47;letter-spacing:3px;
-  text-shadow:0 0 28px rgba(232,255,71,.6);opacity:0;text-align:right}
-#gm-score span{display:block;font-size:22px;letter-spacing:6px;color:rgba(255,255,255,.5);margin-bottom:4px}
-#gm-t{font-family:'Bebas Neue',sans-serif;font-size:110px;color:#fff;letter-spacing:3px;
-  text-align:center;position:absolute;top:140px;left:0;right:0;padding:0 52px;
+/* ── CITY MAP SCENES ── */
+#cm1,#cm2{background:#0a0c14}
+.cm-street{stroke:rgba(255,255,255,.07);stroke-width:1.5;fill:none}
+.cm-step{font-family:'Poppins',sans-serif;font-weight:800;font-size:50px;color:#fff;
+  text-align:center;position:absolute;left:0;right:0;padding:0 60px;
   clip-path:inset(110% 0% 0% 0%)}
-#gm-t em{font-style:normal;color:#E8FF47;text-shadow:0 0 44px #E8FF47}
+#cm1-step1{top:160px}
+#cm1-step2{top:250px}
+#cm1-step3{top:340px}
+#cm2-expl{bottom:240px;font-family:'Bebas Neue',sans-serif;font-size:72px;color:#E8FF47;
+  clip-path:inset(110% 0% 0% 0%)}
+.cm-score{position:absolute;left:52px;top:1200px;
+  background:rgba(4,4,10,.92);border-left:5px solid #3AE880;
+  padding:22px 36px;transform:translateX(-110%);z-index:20}
+.cm-score .cs-pts{font-family:'Bebas Neue',sans-serif;font-size:88px;color:#3AE880;
+  text-shadow:0 0 24px #3AE880;line-height:1}
+.cm-score .cs-lbl{font-size:16px;letter-spacing:5px;color:rgba(255,255,255,.6);
+  text-transform:uppercase;margin-top:4px}
+.cm-lb{position:absolute;right:52px;top:800px;
+  background:rgba(4,4,10,.92);border-right:4px solid rgba(255,255,255,.14);
+  padding:26px 32px;min-width:300px;transform:translateX(110%);z-index:20}
+.cm-lb .cl-title{font-size:13px;letter-spacing:7px;color:rgba(255,255,255,.38);
+  margin-bottom:16px;text-transform:uppercase}
+.cm-lb .cl-row{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.cm-lb .cl-rank{font-family:'Bebas Neue',sans-serif;font-size:36px;color:rgba(255,255,255,.25);width:34px}
+.cm-lb .cl-rank.me{color:#E8FF47;text-shadow:0 0 14px #E8FF47}
+.cm-lb .cl-name{font-size:17px;font-weight:700;color:#fff;flex:1}
+.cm-lb .cl-name.me{color:#E8FF47}
+.cm-lb .cl-sc{font-family:'Bebas Neue',sans-serif;font-size:32px;color:rgba(255,255,255,.6)}
+.cm-lb .cl-sc.me{color:#E8FF47;text-shadow:0 0 12px #E8FF47}
 
 /* ── FINALE ── */
 #fin{background:radial-gradient(ellipse at 50% 42%,#15172a 0%,#050508 70%)}
@@ -159,11 +167,98 @@ body{width:1080px;height:1920px;overflow:hidden;background:#06060A;font-family:'
   <div id="h0-ping"><i id="p0"></i><i id="p1"></i><i id="p2"></i></div>
 </div>
 
-<!-- GAME MAP INTERLUDE -->
-<div class="scene" id="gm">
-  <div id="gm-map"></div>
-  <div id="gm-t">TERRITORIEN<br><em>FALLEN.</em></div>
-  <div id="gm-score"><span>GESAMT</span>12.450 PTS</div>
+<!-- CITY MAP 1: How the app works -->
+<div class="scene" id="cm1">
+  <svg width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <filter id="glow-dot">
+        <feGaussianBlur stdDeviation="8" result="blur"/>
+        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <!-- street grid horizontal -->
+    <line class="cm-street" x1="0" y1="380" x2="1080" y2="380"/>
+    <line class="cm-street" x1="0" y1="520" x2="1080" y2="520"/>
+    <line class="cm-street" x1="0" y1="660" x2="1080" y2="660"/>
+    <line class="cm-street" x1="0" y1="800" x2="1080" y2="800"/>
+    <line class="cm-street" x1="0" y1="940" x2="1080" y2="940"/>
+    <line class="cm-street" x1="0" y1="1080" x2="1080" y2="1080"/>
+    <line class="cm-street" x1="0" y1="1220" x2="1080" y2="1220"/>
+    <line class="cm-street" x1="0" y1="1360" x2="1080" y2="1360"/>
+    <!-- street grid vertical -->
+    <line class="cm-street" x1="120" y1="0" x2="120" y2="1920"/>
+    <line class="cm-street" x1="300" y1="0" x2="300" y2="1920"/>
+    <line class="cm-street" x1="480" y1="0" x2="480" y2="1920"/>
+    <line class="cm-street" x1="660" y1="0" x2="660" y2="1920"/>
+    <line class="cm-street" x1="840" y1="0" x2="840" y2="1920"/>
+    <line class="cm-street" x1="1020" y1="0" x2="1020" y2="1920"/>
+    <!-- pre-existing territories -->
+    <polygon id="cm1-pt0" points="120,380 480,380 480,800 120,800" fill="#FF2E97" fill-opacity="0" stroke="#FF2E97" stroke-width="1.5" stroke-opacity="0.4"/>
+    <polygon id="cm1-pt1" points="660,520 1020,520 1020,940 660,940" fill="#00CCFF" fill-opacity="0" stroke="#00CCFF" stroke-width="1.5" stroke-opacity="0.4"/>
+    <polygon id="cm1-pt2" points="300,940 660,940 660,1360 300,1360" fill="#FF8800" fill-opacity="0" stroke="#FF8800" stroke-width="1.5" stroke-opacity="0.4"/>
+    <!-- runner route (draws progressively) -->
+    <path id="cm1-route" d="M480,800 L660,800 L660,520 L480,520 Z"
+      stroke="#3AE880" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"
+      stroke-dasharray="760" stroke-dashoffset="760"/>
+    <!-- new territory fill -->
+    <polygon id="cm1-newterr" points="480,800 660,800 660,520 480,520" fill="#3AE880" fill-opacity="0" stroke="#3AE880" stroke-width="2"/>
+    <!-- runner dot -->
+    <circle id="cm1-dot" cx="480" cy="800" r="16" fill="#3AE880" filter="url(#glow-dot)"/>
+  </svg>
+  <!-- explanation steps -->
+  <div class="cm-step" id="cm1-step1">🏃&nbsp; LAUF &nbsp;→&nbsp; GEBIET</div>
+  <div class="cm-step" id="cm1-step2">🗺️&nbsp; GEBIET &nbsp;→&nbsp; +PTS</div>
+  <div class="cm-step" id="cm1-step3">🏆&nbsp; MEHR GEBIETE = MEHR MACHT</div>
+  <!-- score HUD -->
+  <div class="cm-score" id="cm1-score">
+    <div class="cs-pts">+400</div>
+    <div class="cs-lbl">PTS · GEBIET EINGENOMMEN</div>
+  </div>
+</div>
+
+<!-- CITY MAP 2: Dominance -->
+<div class="scene" id="cm2">
+  <svg width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <filter id="glow-dot2">
+        <feGaussianBlur stdDeviation="8" result="blur"/>
+        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <!-- street grid -->
+    <line class="cm-street" x1="0" y1="380" x2="1080" y2="380"/>
+    <line class="cm-street" x1="0" y1="520" x2="1080" y2="520"/>
+    <line class="cm-street" x1="0" y1="660" x2="1080" y2="660"/>
+    <line class="cm-street" x1="0" y1="800" x2="1080" y2="800"/>
+    <line class="cm-street" x1="0" y1="940" x2="1080" y2="940"/>
+    <line class="cm-street" x1="0" y1="1080" x2="1080" y2="1080"/>
+    <line class="cm-street" x1="120" y1="0" x2="120" y2="1920"/>
+    <line class="cm-street" x1="300" y1="0" x2="300" y2="1920"/>
+    <line class="cm-street" x1="480" y1="0" x2="480" y2="1920"/>
+    <line class="cm-street" x1="660" y1="0" x2="660" y2="1920"/>
+    <line class="cm-street" x1="840" y1="0" x2="840" y2="1920"/>
+    <line class="cm-street" x1="1020" y1="0" x2="1020" y2="1920"/>
+    <!-- existing territories (4 factions) -->
+    <polygon id="cm2-et0" points="120,380 480,380 480,660 120,660" fill="#FF2E97" fill-opacity="0" stroke="#FF2E97" stroke-width="1.5" stroke-opacity="0.5"/>
+    <polygon id="cm2-et1" points="480,380 840,380 840,660 480,660" fill="#3AE880" fill-opacity="0" stroke="#3AE880" stroke-width="1.5" stroke-opacity="0.5"/>
+    <polygon id="cm2-et2" points="120,660 480,660 480,1080 120,1080" fill="#00CCFF" fill-opacity="0" stroke="#00CCFF" stroke-width="1.5" stroke-opacity="0.5"/>
+    <polygon id="cm2-et3" points="480,660 840,660 840,1080 480,1080" fill="#FF8800" fill-opacity="0" stroke="#FF8800" stroke-width="1.5" stroke-opacity="0.5"/>
+    <!-- user runner route (yellow, claims rightmost strip) -->
+    <path id="cm2-route" d="M840,380 L1020,380 L1020,1080 L840,1080 Z"
+      stroke="#E8FF47" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"
+      stroke-dasharray="2280" stroke-dashoffset="2280"/>
+    <polygon id="cm2-newterr" points="840,380 1020,380 1020,1080 840,1080" fill="#E8FF47" fill-opacity="0" stroke="#E8FF47" stroke-width="2"/>
+    <circle id="cm2-dot" cx="840" cy="380" r="16" fill="#E8FF47" filter="url(#glow-dot2)"/>
+  </svg>
+  <!-- explanation text -->
+  <div class="cm-step" id="cm2-expl" style="font-family:'Bebas Neue',sans-serif;font-size:72px;color:#E8FF47;top:auto;bottom:240px">JEDES GEBIET = PUNKTE + MACHT</div>
+  <!-- leaderboard -->
+  <div class="cm-lb" id="cm2-lb">
+    <div class="cl-title">RANGLISTE</div>
+    <div class="cl-row"><div class="cl-rank">#1</div><div class="cl-name">CityKing</div><div class="cl-sc">12.840</div></div>
+    <div class="cl-row"><div class="cl-rank me">#2</div><div class="cl-name me">DU</div><div class="cl-sc me">11.290 ↑</div></div>
+    <div class="cl-row"><div class="cl-rank">#3</div><div class="cl-name">SpeedX</div><div class="cl-sc">8.100</div></div>
+  </div>
 </div>
 
 <!-- FINALE -->
@@ -185,48 +280,51 @@ body{width:1080px;height:1920px;overflow:hidden;background:#06060A;font-family:'
 </div>
 <script>
 /* ══════════════════════════════════════════
-   28 SCENES — Sports Brand Promo — RunConquer
-   Total duration: 56.0s
+   RunConquer Promo — 71.0s total
+   Hook: 0–2.0s
+   Scenes 1–10: 2.0–22.0s (2.0s each)
+   CityMap 1: 22.0–28.5s
+   Scenes 11–18: 28.5–44.5s (2.0s each)
+   CityMap 2: 44.5–51.0s
+   Scenes 19–24: 51.0–63.0s (2.0s each)
+   Finale: 63.0–71.0s
 ══════════════════════════════════════════ */
 const SCENES=[
-  /* ─ PRE-GM BLOCK (s1–s14) ─ */
-  {id:'s1',  vid:5310858,  c:'#E8FF47', pos:'mid', big:'LAUF.',                          sz:320, t:[2.0,3.5],   wash:false, hud:{type:'score',pts:'+150',label:'PTS / KM'}},
-  {id:'s2',  vid:7877146,  c:'#FF2E97', pos:'bot', big:'DEINE STADT.',                   sz:210, t:[3.5,5.0],   wash:true,  hud:{type:'terr',name:'INNENSTADT',pts:'+500 PTS',col:'#FF2E97'}},
-  {id:'s3',  vid:8533442,  c:'#00CCFF', pos:'top', big:'DEIN<br><em>SPIELFELD</em>',     sz:200, t:[5.0,6.5],   wash:false, hud:{type:'score',pts:'+80',label:'PTS / 100M'}},
-  {id:'s4',  vid:5677382,  c:'#3AE880', pos:'mid', big:'JETZT.',                         sz:320, t:[6.5,8.0],   wash:true,  hud:{type:'score',pts:'+300',label:'ZONE BONUS'}},
-  {id:'s5',  vid:3028397,  c:'#FF8800', pos:'bot', big:'FRÜH RAUS.<br><em>VORN.</em>',   sz:164, t:[8.0,9.5],   wash:false, hud:{type:'streak',n:'12',label:'TAGE STREAK'}},
-  {id:'s6',  vid:4763892,  c:'#FF2E97', pos:'top', big:'BEZIRK<br><em>EINGENOMMEN</em>',sz:152, t:[9.5,11.0],  wash:true,  hud:{type:'terr',name:'BEZIRK #7',pts:'+750 PTS',col:'#FF2E97'}},
-  {id:'s7',  vid:7876920,  c:'#E8FF47', pos:'mid', big:'EROBERE.',                       sz:268, t:[11.0,12.5], wash:false, hud:{type:'score',pts:'+300',label:'CONQUEST!'}},
-  {id:'s8',  vid:3028395,  c:'#00CCFF', pos:'bot', big:'JEDER SCHRITT<br><em>ZÄHLT</em>',sz:148,t:[12.5,14.0], wash:false, hud:{type:'score',pts:'+50',label:'PTS / SCHRITT'}},
-  {id:'s9',  vid:5677451,  c:'#3AE880', pos:'top', big:'MARKIERT.',                      sz:260, t:[14.0,15.5], wash:true,  hud:{type:'terr',name:'WALD NORD',pts:'+900 PTS',col:'#3AE880'}},
-  {id:'s10', vid:3048928,  c:'#FF2E97', pos:'mid', big:'HERRSCHE.',                      sz:268, t:[15.5,17.0], wash:false, hud:{type:'lb'}},
-  {id:'s11', vid:19539315, c:'#E8FF47', pos:'bot', big:'REGEN?<br><em>EGAL.</em>',       sz:210, t:[17.0,18.5], wash:false, hud:{type:'score',pts:'+100',label:'WET RUN BONUS'}},
-  {id:'s12', vid:3125907,  c:'#FF8800', pos:'top', big:'STRANDGEBIET<br><em>DEINS!</em>',sz:140, t:[18.5,20.0], wash:true,  hud:{type:'terr',name:'STRANDPARK',pts:'+1200 PTS',col:'#FF8800'}},
-  {id:'s13', vid:8490468,  c:'#FF8800', pos:'top', big:'BERGE.<br><em>BEZWUNGEN.</em>',  sz:160, t:[20.0,21.5], wash:true,  hud:{type:'score',pts:'+1500',label:'BERGZONE!'}},
-  {id:'s14', vid:5319527,  c:'#E8FF47', pos:'bot', big:'SIEG.',                          sz:320, t:[21.5,23.0], wash:false, hud:{type:'score',pts:'+400',label:'ROUTE BONUS'}},
-  /* ─ POST-GM BLOCK (s15–s28) ─ */
-  {id:'s15', vid:31328832, c:'#FF2E97', pos:'mid', big:'MEHR.',                          sz:320, t:[27.2,28.7], wash:true,  hud:{type:'terr',name:'MARATHON ROUTE',pts:'+2500 PTS',col:'#FF2E97'}},
-  {id:'s16', vid:8491151,  c:'#E8FF47', pos:'top', big:'GEMEINSAM<br><em>FÜHREN</em>',   sz:156, t:[28.7,30.2], wash:false, hud:{type:'streak',n:'21',label:'TAGE STREAK'}},
-  {id:'s17', vid:12510395, c:'#3AE880', pos:'bot', big:'FRAKTION<br><em>GEWINNT!</em>',  sz:150, t:[30.2,31.7], wash:true,  hud:{type:'lb'}},
-  {id:'s18', vid:12510396, c:'#FF2E97', pos:'mid', big:'LAUF.<br><em>EROBERE.</em>',     sz:210, t:[31.7,33.2], wash:false, hud:{type:'score',pts:'+600',label:'TEAM BONUS'}},
-  {id:'s19', vid:32740423, c:'#FF8800', pos:'top', big:'OFFENE STRASSE.<br><em>DEIN REVIER.</em>',sz:120,t:[33.2,34.7],wash:true,hud:{type:'terr',name:'AUTOBAHNRING',pts:'+1000 PTS',col:'#FF8800'}},
-  {id:'s20', vid:19771786, c:'#00CCFF', pos:'bot', big:'×3<br><em>MULTIPLIKATOR</em>',   sz:210, t:[34.7,36.2], wash:false, hud:{type:'score',pts:'×3',label:'BOOST AKTIV'}},
-  {id:'s21', vid:5488175,  c:'#FF2E97', pos:'top', big:'28 GEBIETE.<br><em>DEIN.</em>', sz:152, t:[36.2,37.7], wash:true,  hud:{type:'terr',name:'STADTPARK WEST',pts:'+850 PTS',col:'#FF2E97'}},
-  {id:'s22', vid:32067871, c:'#E8FF47', pos:'mid', big:'ALLES.',                         sz:320, t:[37.7,39.2], wash:false, hud:{type:'score',pts:'+5000',label:'SPRINT BONUS!!'}},
-  {id:'s23', vid:8533442,  c:'#3AE880', pos:'bot', big:'TÄGLICH<br><em>STÄRKER</em>',    sz:164, t:[39.2,40.7], wash:false, hud:{type:'score',pts:'+250',label:'DAILY STREAK'}},
-  {id:'s24', vid:5677382,  c:'#FF8800', pos:'top', big:'GRENZEN<br><em>ENTSTEHEN</em>',  sz:152, t:[40.7,42.2], wash:true,  hud:{type:'terr',name:'STADTMITTE',pts:'+1800 PTS',col:'#FF8800'}},
-  {id:'s25', vid:3028397,  c:'#FF2E97', pos:'mid', big:'JETZT.',                         sz:320, t:[42.2,43.7], wash:false, hud:{type:'lb'}},
-  {id:'s26', vid:4763892,  c:'#00CCFF', pos:'bot', big:'DEINE FARBE.<br><em>ÜBERALL.</em>',sz:152,t:[43.7,45.2],wash:true,hud:{type:'terr',name:'FLUSS NORD',pts:'+650 PTS',col:'#00CCFF'}},
-  {id:'s27', vid:7876920,  c:'#E8FF47', pos:'top', big:'LEVEL UP.',                      sz:228, t:[45.2,46.7], wash:false, hud:{type:'score',pts:'+2000',label:'LEVEL BONUS!'}},
-  {id:'s28', vid:3028395,  c:'#FF2E97', pos:'mid', big:'RUNNERS<br><em>CONQUER</em>',    sz:182, t:[46.7,48.2], wash:true,  hud:{type:'score',pts:'+9999',label:'CHAMPION!'}},
+  /* ─ BLOCK 1 (s1–s10): 2.0–22.0 ─ */
+  {id:'s1',  vid:5310858,  c:'#E8FF47', pos:'mid', big:'LAUF.',                          sz:320, t:[2.0,4.0],   wash:false, hud:{type:'score',pts:'+150',label:'PTS / KM'}},
+  {id:'s2',  vid:7877146,  c:'#FF2E97', pos:'bot', big:'DEINE STADT.',                   sz:210, t:[4.0,6.0],   wash:true,  hud:{type:'terr',name:'INNENSTADT',pts:'+500 PTS',col:'#FF2E97'}},
+  {id:'s3',  vid:8533442,  c:'#00CCFF', pos:'top', big:'DEIN<br><em>SPIELFELD</em>',     sz:200, t:[6.0,8.0],   wash:false, hud:{type:'score',pts:'+80',label:'PTS / 100M'}},
+  {id:'s4',  vid:5677382,  c:'#3AE880', pos:'mid', big:'JETZT.',                         sz:320, t:[8.0,10.0],  wash:true,  hud:{type:'score',pts:'+300',label:'ZONE BONUS'}},
+  {id:'s5',  vid:3028397,  c:'#FF8800', pos:'bot', big:'FRÜH RAUS.<br><em>VORN.</em>',   sz:164, t:[10.0,12.0], wash:false, hud:{type:'streak',n:'12',label:'TAGE STREAK'}},
+  {id:'s6',  vid:4763892,  c:'#FF2E97', pos:'top', big:'BEZIRK<br><em>EINGENOMMEN</em>',sz:152, t:[12.0,14.0], wash:true,  hud:{type:'terr',name:'BEZIRK #7',pts:'+750 PTS',col:'#FF2E97'}},
+  {id:'s7',  vid:7876920,  c:'#E8FF47', pos:'mid', big:'EROBERE.',                       sz:268, t:[14.0,16.0], wash:false, hud:{type:'score',pts:'+300',label:'CONQUEST!'}},
+  {id:'s8',  vid:3028395,  c:'#00CCFF', pos:'bot', big:'JEDER SCHRITT<br><em>ZÄHLT</em>',sz:148,t:[16.0,18.0], wash:false, hud:{type:'score',pts:'+50',label:'PTS / SCHRITT'}},
+  {id:'s9',  vid:5677451,  c:'#3AE880', pos:'top', big:'MARKIERT.',                      sz:260, t:[18.0,20.0], wash:true,  hud:{type:'terr',name:'WALD NORD',pts:'+900 PTS',col:'#3AE880'}},
+  {id:'s10', vid:3048928,  c:'#FF2E97', pos:'mid', big:'HERRSCHE.',                      sz:268, t:[20.0,22.0], wash:false, hud:{type:'lb'}},
+  /* ─ BLOCK 2 (s11–s18): 28.5–44.5 ─ */
+  {id:'s11', vid:19539315, c:'#E8FF47', pos:'bot', big:'REGEN?<br><em>EGAL.</em>',       sz:210, t:[28.5,30.5], wash:false, hud:{type:'score',pts:'+100',label:'WET RUN BONUS'}},
+  {id:'s12', vid:3125907,  c:'#FF8800', pos:'top', big:'STRANDGEBIET<br><em>DEINS!</em>',sz:140, t:[30.5,32.5], wash:true,  hud:{type:'terr',name:'STRANDPARK',pts:'+1200 PTS',col:'#FF8800'}},
+  {id:'s13', vid:8490468,  c:'#FF8800', pos:'top', big:'BERGE.<br><em>BEZWUNGEN.</em>',  sz:160, t:[32.5,34.5], wash:true,  hud:{type:'score',pts:'+1500',label:'BERGZONE!'}},
+  {id:'s14', vid:5319527,  c:'#E8FF47', pos:'bot', big:'SIEG.',                          sz:320, t:[34.5,36.5], wash:false, hud:{type:'score',pts:'+400',label:'ROUTE BONUS'}},
+  {id:'s15', vid:31328832, c:'#FF2E97', pos:'mid', big:'MEHR.',                          sz:320, t:[36.5,38.5], wash:true,  hud:{type:'terr',name:'MARATHON ROUTE',pts:'+2500 PTS',col:'#FF2E97'}},
+  {id:'s16', vid:8491151,  c:'#E8FF47', pos:'top', big:'GEMEINSAM<br><em>FÜHREN</em>',   sz:156, t:[38.5,40.5], wash:false, hud:{type:'streak',n:'21',label:'TAGE STREAK'}},
+  {id:'s17', vid:12510395, c:'#3AE880', pos:'bot', big:'FRAKTION<br><em>GEWINNT!</em>',  sz:150, t:[40.5,42.5], wash:true,  hud:{type:'lb'}},
+  {id:'s18', vid:12510396, c:'#FF2E97', pos:'mid', big:'LAUF.<br><em>EROBERE.</em>',     sz:210, t:[42.5,44.5], wash:false, hud:{type:'score',pts:'+600',label:'TEAM BONUS'}},
+  /* ─ BLOCK 3 (s19–s24): 51.0–63.0 ─ */
+  {id:'s19', vid:32740423, c:'#FF8800', pos:'top', big:'OFFENE STRASSE.<br><em>DEIN REVIER.</em>',sz:120,t:[51.0,53.0],wash:true,hud:{type:'terr',name:'AUTOBAHNRING',pts:'+1000 PTS',col:'#FF8800'}},
+  {id:'s20', vid:19771786, c:'#00CCFF', pos:'bot', big:'×3<br><em>MULTIPLIKATOR</em>',   sz:210, t:[53.0,55.0], wash:false, hud:{type:'score',pts:'×3',label:'BOOST AKTIV'}},
+  {id:'s21', vid:5488175,  c:'#FF2E97', pos:'top', big:'28 GEBIETE.<br><em>DEIN.</em>', sz:152, t:[55.0,57.0], wash:true,  hud:{type:'terr',name:'STADTPARK WEST',pts:'+850 PTS',col:'#FF2E97'}},
+  {id:'s22', vid:32067871, c:'#E8FF47', pos:'mid', big:'ALLES.',                         sz:320, t:[57.0,59.0], wash:false, hud:{type:'score',pts:'+5000',label:'SPRINT BONUS!!'}},
+  {id:'s23', vid:5310858,  c:'#3AE880', pos:'bot', big:'TÄGLICH<br><em>STÄRKER</em>',    sz:164, t:[59.0,61.0], wash:false, hud:{type:'score',pts:'+250',label:'DAILY STREAK'}},
+  {id:'s24', vid:7877146,  c:'#FF8800', pos:'top', big:'GRENZEN<br><em>ENTSTEHEN</em>',  sz:152, t:[61.0,63.0], wash:true,  hud:{type:'terr',name:'STADTMITTE',pts:'+1800 PTS',col:'#FF8800'}},
 ];
 
-const GM_T=[23.0,27.2];
-const FIN_T=48.2;
-const TOTAL=56.0;
+const CM1_T = 22.0;
+const CM2_T = 44.5;
+const FIN_T = 63.0;
+const TOTAL = 71.0;
 const TERR_COLORS=['#FF2E97','#3AE880','#FF8800','#00CCFF','#E8FF47'];
 const root=document.getElementById('root');
-const gmScene=document.getElementById('gm');
 
 /* ── HUD element factories ── */
 function buildScorePop(s){
@@ -291,42 +389,6 @@ SCENES.forEach(s=>{
     if(el){d.appendChild(el);s._hud=el;}
   }
 });
-
-/* ── game map SVG ── */
-(function(){
-  const NS='http://www.w3.org/2000/svg';
-  const svg=document.createElementNS(NS,'svg');
-  svg.setAttribute('viewBox','0 0 1080 1920');
-  let grid='';
-  for(let y=0;y<1920;y+=110)grid+=`<line class="gridline" x1="0" y1="${y}" x2="1080" y2="${y}"/>`;
-  for(let x=0;x<1080;x+=110)grid+=`<line class="gridline" x1="${x}" y1="0" x2="${x}" y2="1920"/>`;
-  const blobs=[
-    `M170,540 C90,420 220,300 380,330 C540,360 560,520 480,640 C400,760 250,690 170,540 Z`,
-    `M760,420 C920,360 1040,480 990,640 C940,800 760,820 670,700 C580,580 620,470 760,420 Z`,
-    `M280,1130 C180,1000 320,880 470,930 C620,980 640,1150 540,1260 C440,1370 360,1270 280,1130 Z`,
-    `M790,1240 C950,1180 1060,1300 1000,1450 C940,1600 760,1610 680,1480 C600,1350 650,1290 790,1240 Z`,
-    `M450,1620 C560,1530 730,1580 760,1720 C790,1860 640,1950 500,1900 C360,1850 350,1700 450,1620 Z`,
-  ];
-  let inner='';
-  blobs.forEach((d,i)=>{
-    inner+=`<path id="gt${i}" class="terr" d="${d}" fill="${TERR_COLORS[i]}" fill-opacity=".34" stroke="${TERR_COLORS[i]}" stroke-width="5" style="transform:scale(0);transform-origin:50% 50%"/>`;
-  });
-  [`M510,560 C560,600 620,640 660,690`,`M520,1240 C580,1290 640,1340 690,1400`,
-   `M560,1500 C600,1560 640,1620 670,1680`,`M460,700 C440,790 420,880 430,960`].forEach((d,i)=>{
-    inner+=`<path id="ge${i}" class="energy" d="${d}"/>`;
-  });
-  svg.innerHTML=grid+inner;
-  document.getElementById('gm-map').appendChild(svg);
-  const chips=[['#FF2E97','PINK CREW','28%'],['#3AE880','FOREST','22%'],['#FF8800','PEAK','17%'],['#00CCFF','RIVER','14%'],['#E8FF47','TEAM GELB','19%']];
-  chips.forEach((c,i)=>{
-    const d=document.createElement('div');
-    d.className='hud-chip';d.id='gchip'+i;
-    d.style.cssText=`left:${i%2?580:70}px;top:${500+Math.floor(i/2)*420}px`;
-    d.innerHTML=`<div class="hud-dot" style="background:${c[0]};box-shadow:0 0 16px ${c[0]}"></div>
-      <div><div class="hud-nm">${c[1]}</div><div class="hud-pct">${c[2]}</div></div>`;
-    gmScene.appendChild(d);
-  });
-})();
 
 /* ── finale letters + sparks ── */
 (function(){
@@ -451,35 +513,63 @@ SCENES.forEach((s,idx)=>{
   tl.call(()=>{hideScene(el);unloadClip(s);},null,t1+.4);
 });
 
-/* ── GM INTERLUDE 23.0–27.2 ── */
-whip(GM_T[0]);
-chromatic(GM_T[0]);
-tl.call(()=>showScene(gmScene),null,GM_T[0]);
-/* territory text clip-path reveal */
-tl.fromTo('#gm-t',
-  {clipPath:'inset(110% 0% 0% 0%)'},
-  {clipPath:'inset(0% 0% 0% 0%)',duration:.28,ease:'power4.out'},
-  GM_T[0]+.15);
-/* blobs scale in with elastic ease, stagger 0.3s */
-for(let i=0;i<5;i++)
-  tl.fromTo('#gt'+i,{scale:0,transformOrigin:'50% 50%'},{scale:1,duration:1.1,ease:'elastic.out(1,.75)'},GM_T[0]+.3+i*.3);
-/* energy paths */
-for(let i=0;i<4;i++){
-  tl.to('#ge'+i,{opacity:1,duration:.20},GM_T[0]+1.8+i*.3);
-  tl.to('#ge'+i,{strokeDashoffset:-260,duration:2.8,ease:'none'},GM_T[0]+1.8+i*.3);
-}
-/* faction chips */
-for(let i=0;i<5;i++)
-  tl.fromTo('#gchip'+i,{opacity:0,y:20},{opacity:1,y:0,duration:.36,ease:'power3.out'},GM_T[0]+1.6+i*.22);
-/* map subtle zoom */
-tl.fromTo('#gm-map',{scale:1.18},{scale:1,duration:GM_T[1]-GM_T[0],ease:'none'},GM_T[0]);
-/* total score counter fades in at GM+2.5s */
-tl.to('#gm-score',{opacity:1,duration:.4,ease:'power2.out'},GM_T[0]+2.5);
-/* text wipe UP out */
-tl.to('#gm-t',{clipPath:'inset(0% 0% 100% 0%)',duration:.18},GM_T[1]-.28);
-tl.call(()=>hideScene(gmScene),null,GM_T[1]+.08);
+/* ── CITY MAP 1 (22.0–28.5s) ── */
+whip(CM1_T);
+chromatic(CM1_T);
+tl.call(()=>showScene(document.getElementById('cm1')),null,CM1_T);
+tl.call(()=>hideScene(document.getElementById('cm1')),null,28.5+0.1);
 
-/* ── FINALE 48.2–56.0 ── */
+/* Explanation text step 1 */
+tl.to('#cm1-step1',{clipPath:'inset(0% 0% 0% 0%)',duration:0.3,ease:'power4.out'},CM1_T+0.4);
+/* Pre-existing territories */
+[0,1,2].forEach(i=>tl.to('#cm1-pt'+i,{attr:{fillOpacity:0.28},duration:0.5},CM1_T+i*0.3));
+/* Draw route */
+tl.to('#cm1-route',{attr:{strokeDashoffset:0},duration:2.4,ease:'none'},CM1_T+0.8);
+/* Move dot along waypoints */
+[[480,800],[660,800],[660,520],[480,520],[480,800]].forEach((pt,i,arr)=>{
+  if(i===0)return;
+  tl.to('#cm1-dot',{attr:{cx:pt[0],cy:pt[1]},duration:0.6,ease:'none'},CM1_T+0.8+(i-1)*0.6);
+});
+/* Step 2 text */
+tl.to('#cm1-step2',{clipPath:'inset(0% 0% 0% 0%)',duration:0.3,ease:'power4.out'},CM1_T+2.2);
+/* Territory fill on route close */
+tl.to('#cm1-newterr',{attr:{fillOpacity:0.4},duration:0.5,ease:'power2.out'},CM1_T+3.2);
+/* Score HUD slides in */
+tl.to('#cm1-score',{x:0,duration:0.3,ease:'power3.out'},CM1_T+3.6);
+/* Step 3 text */
+tl.to('#cm1-step3',{clipPath:'inset(0% 0% 0% 0%)',duration:0.3,ease:'power4.out'},CM1_T+4.0);
+/* Fade out everything */
+tl.to('#cm1',{opacity:0,duration:0.3},28.5-0.4);
+
+/* ── CITY MAP 2 (44.5–51.0s) ── */
+whip(CM2_T);
+chromatic(CM2_T);
+tl.call(()=>showScene(document.getElementById('cm2')),null,CM2_T);
+tl.call(()=>hideScene(document.getElementById('cm2')),null,51.0+0.1);
+
+/* Show existing territories */
+[0,1,2,3].forEach(i=>tl.to('#cm2-et'+i,{attr:{fillOpacity:0.25},duration:0.6},CM2_T+i*0.15));
+/* Draw runner route */
+tl.to('#cm2-route',{attr:{strokeDashoffset:0},duration:2.4,ease:'none'},CM2_T+1.0);
+/* Move dot along segments */
+const cm2pts=[[840,380],[1020,380],[1020,1080],[840,1080],[840,380]];
+const cm2durs=[0.35,1.37,0.35,1.37];
+let cm2t=CM2_T+1.0;
+cm2pts.forEach((pt,i)=>{
+  if(i===0){tl.set('#cm2-dot',{attr:{cx:pt[0],cy:pt[1]}},CM2_T+0.9);return;}
+  tl.to('#cm2-dot',{attr:{cx:pt[0],cy:pt[1]},duration:cm2durs[i-1],ease:'none'},cm2t);
+  cm2t+=cm2durs[i-1];
+});
+/* Fill new territory */
+tl.to('#cm2-newterr',{attr:{fillOpacity:0.4},duration:0.5},CM2_T+3.4);
+/* Leaderboard slides in */
+tl.to('#cm2-lb',{x:0,duration:0.35,ease:'power3.out'},CM2_T+3.8);
+/* Explanation text */
+tl.to('#cm2-expl',{clipPath:'inset(0% 0% 0% 0%)',duration:0.35,ease:'power4.out'},CM2_T+4.5);
+/* Fade out */
+tl.to('#cm2',{opacity:0,duration:0.3},51.0-0.4);
+
+/* ── FINALE 63.0–71.0 ── */
 whip(FIN_T);
 chromatic(FIN_T);
 tl.call(()=>showScene(document.getElementById('fin')),null,FIN_T);
