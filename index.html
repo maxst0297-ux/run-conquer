@@ -2819,7 +2819,6 @@ function startRun(){
   statusDot.style.background=energy>0?'var(--primary)':'var(--green)';statusBar.classList.add('running');
   startBtn.disabled=true;pauseBtn.disabled=false;pauseBtn.innerHTML='<i class="fas fa-pause"></i> PAUSE';stopBtn.disabled=false;
   updateRunPill();
-  const panel=$('mapPanel');if(panel&&!panel.classList.contains('open'))toggleMapPanel();
   liveRun.classList.add('on');idleStats.style.display='none';
   const pSB=$('panelStartBtn'),pRB=$('panelRunBox');
   if(pSB)pSB.style.display='none';
@@ -2933,7 +2932,6 @@ function stopRun(){
   statusBar.classList.remove('running');statusDot.style.background='var(--muted)';
   startBtn.disabled=false;pauseBtn.disabled=true;pauseBtn.innerHTML='<i class="fas fa-pause"></i> PAUSE';stopBtn.disabled=true;
   updateRunPill();
-  const stopPanel=$('mapPanel');if(stopPanel&&!stopPanel.classList.contains('open'))toggleMapPanel();
   liveRun.classList.remove('on');idleStats.style.display='';beep(330);
   /* Panel: RunBox ausblenden, START einblenden */
   const pSB2=$('panelStartBtn'),pRB2=$('panelRunBox');
