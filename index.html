@@ -2137,16 +2137,6 @@ function showOnboardingOverlay(){
         </div>
         <button id="obWeiter1" style="width:100%;padding:14px;background:#e8ff47;color:#09090f;border:none;border-radius:14px;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none">WEITER →</button>
       </div>`;
-    } else if(step===1){
-      const w=window.innerWidth,h=window.innerHeight;
-      const scale=Math.min(w/1080,h/1920)*0.9;
-      ov.innerHTML=`<div style="max-width:380px;width:100%;animation:modalIn .3s ease;display:flex;flex-direction:column;align-items:center;gap:14px">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:#e8ff47;letter-spacing:2px">RUNCONQUER</div>
-        <div style="position:relative;width:${Math.round(1080*scale)}px;height:${Math.round(1920*scale)}px;overflow:hidden;border-radius:16px;border:1px solid rgba(255,255,255,.1)">
-          <iframe src="/videos/runconquer-promo/index.html" style="width:1080px;height:1920px;border:none;transform:scale(${scale});transform-origin:top left;pointer-events:none" scrolling="no"></iframe>
-        </div>
-        <button id="obWeiter2" style="width:100%;max-width:380px;padding:14px;background:#e8ff47;color:#09090f;border:none;border-radius:14px;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;cursor:pointer;touch-action:manipulation">LOS GEHT'S →</button>
-      </div>`;
     }
   };
   /* Event-Delegation auf ov — zuverlässig unabhängig von innerHTML-Timing */
@@ -2167,8 +2157,7 @@ function showOnboardingOverlay(){
       if(wb&&stm){wb.style.background=stm.color;wb.style.color='#fff';}
       return;
     }
-    if(e.target.closest('#obWeiter1')){step=1;render();return;}
-    if(e.target.closest('#obWeiter2')){
+    if(e.target.closest('#obWeiter1')){
       localStorage.setItem('rc_ob_done_'+userId,'1');
       ov.style.transition='opacity .4s';ov.style.opacity='0';
       setTimeout(()=>{ov.remove();updateSettingsBadge();},400);
