@@ -5,661 +5,740 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@400;700;800&display=swap" rel="stylesheet">
 <script src="gsap.min.js"></script>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{width:1080px;height:1920px;overflow:hidden;background:#04040A;font-family:'Poppins',sans-serif}
-#root{position:relative;width:1080px;height:1920px}
-.scene{position:absolute;inset:0;overflow:hidden;opacity:0;visibility:hidden}
-.scene.boot{opacity:1;visibility:visible}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  width: 1080px;
+  height: 1920px;
+  overflow: hidden;
+  background: #09090F;
+  font-family: 'Poppins', sans-serif;
+}
 
-/* SPACE */
-#sc-space{background:radial-gradient(ellipse at 50% 55%,#040c1c 0%,#010106 70%)}
-#starfield{position:absolute;inset:0;width:1080px;height:1920px}
-#earth-wrap{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);transform-origin:center center}
-#earth-svg{display:block;overflow:visible}
-#sp-title{position:absolute;top:200px;left:0;right:0;text-align:center}
-#sp-w1{font-family:'Bebas Neue',sans-serif;font-size:90px;color:rgba(255,255,255,.82);letter-spacing:20px;
-  clip-path:inset(110% 0% 0% 0%)}
-#sp-w2{font-family:'Bebas Neue',sans-serif;font-size:200px;color:#E8FF47;letter-spacing:8px;line-height:.88;
-  text-shadow:0 0 80px rgba(232,255,71,.7),0 0 200px rgba(232,255,71,.3);
-  clip-path:inset(110% 0% 0% 0%)}
-#sp-sub{font-size:22px;letter-spacing:8px;color:rgba(255,255,255,.55);text-transform:uppercase;margin-top:28px;opacity:0}
-#sp-tagline{position:absolute;bottom:180px;left:0;right:0;text-align:center;
-  font-size:20px;letter-spacing:10px;color:rgba(255,255,255,.4);text-transform:uppercase;opacity:0}
+/* ── ROOT ── */
+#root {
+  position: relative;
+  width: 1080px;
+  height: 1920px;
+}
 
-/* CITY */
-#sc-city{background:#06080f}
-.city-bg{fill:#06080f}
-.city-block{fill:#0b0e18;stroke:none}
-.city-block-sm{fill:#0d1220;stroke:none}
-.city-park{fill:#0a1f14;stroke:#0f2a1c;stroke-width:1}
-.city-water{fill:#070f1f;stroke:#0d1830;stroke-width:1}
-.road-primary{stroke:#e8e4d0;stroke-width:4;fill:none;stroke-opacity:0.18}
-.road-secondary{stroke:#d0ccb8;stroke-width:2.5;fill:none;stroke-opacity:0.12}
-.road-minor{stroke:#c0bca8;stroke-width:1.5;fill:none;stroke-opacity:0.08}
-.road-lane{stroke:#b0ac98;stroke-width:1;fill:none;stroke-opacity:0.06}
-.terr-poly{fill-opacity:0;stroke-width:0;stroke-opacity:0}
-.runner-trail{fill:none;stroke-width:6;stroke-linecap:round;stroke-linejoin:round;opacity:0.95}
-.runner-dot{filter:url(#runner-glow-city)}
+/* ── SCENES ── */
+.scene {
+  position: absolute;
+  top: 0; left: 0;
+  width: 1080px;
+  height: 1920px;
+  overflow: hidden;
+}
+/* Scene 1: visible by default */
+#s1 { background: #09090F; z-index: 1; }
+/* Scenes 2-6: hidden, revealed by GSAP */
+#s2 { background: #09090F; z-index: 2; opacity: 0; }
+#s3 { background: #09090F; z-index: 3; opacity: 0; }
+#s4 { background: #0D0D18; z-index: 4; opacity: 0; }
+#s5 { background: #09090F; z-index: 5; opacity: 0; }
+#s6 { background: #09090F; z-index: 6; opacity: 0; }
 
-/* Callout cards */
-.callout{position:absolute;left:60px;right:60px;z-index:30;
-  background:rgba(4,6,18,.92);border-left:5px solid var(--cc);
-  padding:24px 32px;transform:translateX(-110%)}
-.callout .co-icon{font-size:38px;margin-bottom:10px;line-height:1}
-.callout .co-title{font-family:'Bebas Neue',sans-serif;font-size:68px;color:var(--cc);
-  letter-spacing:3px;line-height:1;text-shadow:0 0 24px var(--cc)}
-.callout .co-body{font-size:21px;color:rgba(255,255,255,.75);margin-top:8px;line-height:1.4;font-weight:600}
-.callout .co-pts{font-family:'Bebas Neue',sans-serif;font-size:52px;color:var(--cc);
-  margin-top:8px;text-shadow:0 0 18px var(--cc)}
-#co1{top:1280px;--cc:#3AE880}
-#co2{top:1280px;--cc:#FF2E97}
-#co3{top:1280px;--cc:#FF8800}
-#co4{top:1280px;--cc:#E8FF47}
+/* ── SHARED LAYOUT ── */
+.scene-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 140px 80px;
+  gap: 24px;
+  box-sizing: border-box;
+}
 
-/* leaderboard */
-#city-lb{position:absolute;right:60px;top:700px;z-index:30;
-  background:rgba(4,6,18,.92);border-right:4px solid rgba(255,255,255,.14);
-  padding:28px 34px;min-width:310px;transform:translateX(110%)}
-#city-lb .lb-title{font-size:14px;letter-spacing:7px;color:rgba(255,255,255,.38);
-  margin-bottom:18px;text-transform:uppercase}
-#city-lb .lb-row{display:flex;align-items:center;gap:14px;margin-bottom:14px}
-#city-lb .lb-rank{font-family:'Bebas Neue',sans-serif;font-size:38px;color:rgba(255,255,255,.25);width:36px}
-#city-lb .lb-rank.me{color:#E8FF47;text-shadow:0 0 14px #E8FF47}
-#city-lb .lb-name{font-size:17px;font-weight:700;color:#fff;flex:1}
-#city-lb .lb-name.me{color:#E8FF47}
-#city-lb .lb-sc{font-family:'Bebas Neue',sans-serif;font-size:33px;color:rgba(255,255,255,.6)}
-#city-lb .lb-sc.me{color:#E8FF47;text-shadow:0 0 12px #E8FF47}
+/* ══════════════════════
+   SCENE 1 — HOOK
+══════════════════════ */
+.s1-glow {
+  position: absolute;
+  width: 900px; height: 900px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(232,255,71,.08) 0%, transparent 70%);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.s1-ghost {
+  position: absolute;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 420px;
+  color: rgba(232,255,71,0.04);
+  letter-spacing: -8px;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+.s1-label {
+  font-size: 22px;
+  letter-spacing: 6px;
+  color: #9292AA;
+  text-transform: uppercase;
+  text-align: center;
+}
+.s1-headline {
+  font-family: 'Bebas Neue', sans-serif;
+  text-align: center;
+  line-height: 0.88;
+}
+.s1-headline .l1 {
+  display: block;
+  font-size: 180px;
+  color: #F0F0F8;
+  letter-spacing: 6px;
+}
+.s1-headline .l2 {
+  display: block;
+  font-size: 210px;
+  color: #E8FF47;
+  letter-spacing: 4px;
+  text-shadow: 0 0 60px rgba(232,255,71,.5), 0 0 120px rgba(232,255,71,.25);
+}
+.s1-sub {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 80px;
+  color: #F0F0F8;
+  text-align: center;
+  letter-spacing: 8px;
+}
+.s1-ping-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 40px;
+  height: 100px;
+  position: relative;
+}
+.s1-dot {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: #E8FF47;
+  position: absolute;
+  box-shadow: 0 0 20px rgba(232,255,71,.8);
+}
+.s1-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid rgba(232,255,71,.5);
+  width: 18px; height: 18px;
+}
 
-/* FINALE */
-#sc-fin{background:radial-gradient(ellipse at 50% 42%,#12172a 0%,#040408 70%)}
-#fin-title{position:absolute;top:42%;left:0;right:0;transform:translateY(-50%);text-align:center}
-#fin-w1{display:flex;justify-content:center;gap:2px;margin-bottom:6px}
-#fin-w2{display:flex;justify-content:center;gap:2px}
-#fin-w1 span{display:inline-block;font-family:'Bebas Neue',sans-serif;font-size:132px;color:#fff;letter-spacing:4px}
-#fin-w2 span{display:inline-block;font-family:'Bebas Neue',sans-serif;font-size:192px;color:#E8FF47;letter-spacing:3px;
-  text-shadow:0 0 70px rgba(232,255,71,.65),0 0 160px rgba(232,255,71,.3)}
-#fin-bars{display:flex;gap:10px;justify-content:center;margin-top:38px}
-#fin-bars i{display:block;width:82px;height:8px;border-radius:4px}
-#fin-tag{margin-top:32px;font-size:20px;letter-spacing:12px;color:rgba(255,255,255,.65);text-transform:uppercase;opacity:0}
-#fin-xp-wrap{position:absolute;bottom:340px;left:80px;right:80px;opacity:0}
-#fin-xp-lbl{font-size:14px;letter-spacing:6px;color:rgba(255,255,255,.4);margin-bottom:12px;text-transform:uppercase}
-#fin-xp-bar{height:8px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden}
-#fin-xp-fill{height:100%;width:0%;background:linear-gradient(90deg,#E8FF47,#00E676);border-radius:4px;box-shadow:0 0 16px rgba(232,255,71,.6)}
-#fin-pts{position:absolute;bottom:390px;right:80px;font-family:'Bebas Neue',sans-serif;font-size:68px;
-  color:#E8FF47;text-shadow:0 0 30px rgba(232,255,71,.7);opacity:0;letter-spacing:2px}
-.spark{position:absolute;width:7px;height:7px;border-radius:50%;background:var(--sc);
-  box-shadow:0 0 12px var(--sc);opacity:0;animation:sparkUp 3.5s ease-out infinite}
-@keyframes sparkUp{0%{opacity:0;transform:translateY(0) scale(.4)}12%{opacity:1}100%{opacity:0;transform:translateY(-450px) scale(1.3)}}
+/* ══════════════════════
+   SCENE 2 — GPS TRACK
+══════════════════════ */
+.s2-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(232,255,71,.4) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(232,255,71,.4) 1px, transparent 1px);
+  background-size: 60px 60px;
+  opacity: 0.05;
+  pointer-events: none;
+}
+.s2-label {
+  font-size: 22px;
+  letter-spacing: 5px;
+  color: #9292AA;
+  text-transform: uppercase;
+  text-align: center;
+}
+.s2-map-wrap {
+  display: flex;
+  justify-content: center;
+}
+#s2-svg {
+  width: 920px;
+  height: 580px;
+  border-radius: 20px;
+  overflow: hidden;
+}
+.s2-hud {
+  display: flex;
+  justify-content: center;
+  gap: 60px;
+}
+.s2-hud-item { text-align: center; }
+.s2-hud-val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 80px;
+  color: #E8FF47;
+  line-height: 1;
+}
+.s2-hud-lbl {
+  font-size: 20px;
+  color: #9292AA;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+.s2-heading {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 130px;
+  color: #F0F0F8;
+  text-align: center;
+  letter-spacing: 6px;
+  line-height: 1;
+}
+.s2-heading em {
+  font-style: normal;
+  color: #E8FF47;
+  text-shadow: 0 0 40px rgba(232,255,71,.4);
+}
 
-/* misc */
-#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:99}
+/* ══════════════════════
+   SCENE 3 — CONQUEST
+══════════════════════ */
+.s3-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  background: #FF4D6D;
+  color: #fff;
+  font-weight: 700;
+  font-size: 30px;
+  letter-spacing: 2px;
+  padding: 18px 40px;
+  border-radius: 50px;
+  align-self: center;
+}
+.s3-grid-wrap {
+  display: flex;
+  justify-content: center;
+}
+.s3-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 160px);
+  grid-template-rows: repeat(4, 100px);
+  gap: 8px;
+}
+.s3-cell {
+  border-radius: 14px;
+  background: #1A1A26;
+}
+.s3-cell.owned { background: rgba(232,255,71,.35); }
+.s3-cell.new {
+  background: #E8FF47;
+  box-shadow: 0 0 28px rgba(232,255,71,.7);
+}
+.s3-pts {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 180px;
+  color: #E8FF47;
+  text-align: center;
+  line-height: 0.85;
+  text-shadow: 0 0 80px rgba(232,255,71,.45);
+}
+.s3-pts-lbl {
+  font-size: 30px;
+  letter-spacing: 5px;
+  color: #9292AA;
+  text-align: center;
+  text-transform: uppercase;
+}
+.s3-sub {
+  font-size: 26px;
+  color: #F0F0F8;
+  text-align: center;
+  letter-spacing: 2px;
+  opacity: 0.55;
+}
+
+/* ══════════════════════
+   SCENE 4 — STATS
+══════════════════════ */
+.s4-intro {
+  font-size: 24px;
+  letter-spacing: 5px;
+  color: #9292AA;
+  text-transform: uppercase;
+  text-align: center;
+}
+.s4-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.s4-card {
+  background: #1A1A26;
+  border-radius: 24px;
+  padding: 44px 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 4px solid #E8FF47;
+}
+.s4-card-lbl {
+  font-size: 26px;
+  letter-spacing: 4px;
+  color: #9292AA;
+  text-transform: uppercase;
+}
+.s4-card-val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 130px;
+  color: #E8FF47;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ══════════════════════
+   SCENE 5 — LEADERBOARD
+══════════════════════ */
+.s5-lbl {
+  font-size: 22px;
+  letter-spacing: 5px;
+  color: #9292AA;
+  text-transform: uppercase;
+  text-align: center;
+}
+.s5-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 110px;
+  color: #E8FF47;
+  text-align: center;
+  letter-spacing: 4px;
+  line-height: 1;
+}
+.s5-sub {
+  font-size: 28px;
+  letter-spacing: 3px;
+  color: #F0F0F8;
+  text-align: center;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+.s5-rows { display: flex; flex-direction: column; gap: 16px; }
+.s5-row {
+  background: #1A1A26;
+  border-radius: 20px;
+  padding: 30px 40px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.s5-row.you {
+  background: rgba(232,255,71,.1);
+  border: 2px solid #E8FF47;
+}
+.s5-rank {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 60px;
+  color: #9292AA;
+  width: 54px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.s5-row.you .s5-rank { color: #E8FF47; }
+.s5-player { flex: 1; }
+.s5-name {
+  font-weight: 600;
+  font-size: 30px;
+  color: #F0F0F8;
+}
+.s5-row.you .s5-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 52px;
+  letter-spacing: 3px;
+  color: #E8FF47;
+}
+.s5-meta { font-size: 20px; color: #9292AA; }
+.s5-pts {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 56px;
+  color: #E8FF47;
+  font-variant-numeric: tabular-nums;
+}
+.s5-row.you .s5-pts {
+  font-size: 36px;
+  color: #9292AA;
+}
+
+/* ══════════════════════
+   SCENE 6 — CTA
+══════════════════════ */
+.s6-glow {
+  position: absolute;
+  width: 1100px; height: 1100px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(232,255,71,.1) 0%, transparent 65%);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.s6-heading {
+  font-family: 'Bebas Neue', sans-serif;
+  text-align: center;
+  line-height: 0.88;
+}
+.s6-heading .l1 {
+  display: block;
+  font-size: 110px;
+  color: #F0F0F8;
+  letter-spacing: 10px;
+}
+.s6-heading .l2 {
+  display: block;
+  font-size: 220px;
+  color: #E8FF47;
+  letter-spacing: 2px;
+  text-shadow: 0 0 80px rgba(232,255,71,.5), 0 0 160px rgba(232,255,71,.2);
+}
+.s6-tagline {
+  font-size: 28px;
+  letter-spacing: 6px;
+  color: #9292AA;
+  text-align: center;
+  text-transform: uppercase;
+}
+.s6-cta {
+  background: #E8FF47;
+  color: #09090F;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 60px;
+  letter-spacing: 5px;
+  padding: 40px 100px;
+  border-radius: 50px;
+  text-align: center;
+  align-self: center;
+}
+.s6-platforms {
+  font-size: 24px;
+  color: #9292AA;
+  text-align: center;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+.s6-fade {
+  position: absolute;
+  inset: 0;
+  background: #09090F;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 10;
+}
 </style>
 </head>
 <body>
-<div id="root">
-  <div id="flash"></div>
 
-  <!-- SCENE 1: SPACE -->
-  <div class="scene boot" id="sc-space">
-    <canvas id="starfield"></canvas>
-    <div id="earth-wrap">
-      <svg id="earth-svg" width="560" height="560" viewBox="0 0 560 560" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <radialGradient id="eGrad" cx="38%" cy="32%" r="65%">
-            <stop offset="0%"   stop-color="#5fb8e8"/>
-            <stop offset="45%"  stop-color="#1e72b0"/>
-            <stop offset="100%" stop-color="#071d42"/>
-          </radialGradient>
-          <radialGradient id="atmGrad" cx="50%" cy="50%" r="50%">
-            <stop offset="82%" stop-color="transparent"/>
-            <stop offset="100%" stop-color="rgba(80,160,255,.35)"/>
-          </radialGradient>
-          <clipPath id="eClip"><circle cx="280" cy="280" r="248"/></clipPath>
-          <filter id="eGlow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="18" result="b"/>
-            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
-          <filter id="runner-glow" x="-100%" y="-100%" width="300%" height="300%">
-            <feGaussianBlur stdDeviation="10" result="b"/>
-            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
-        </defs>
-        <!-- ocean base -->
-        <circle cx="280" cy="280" r="248" fill="url(#eGrad)"/>
-        <!-- continents — more accurate shapes -->
-        <g clip-path="url(#eClip)">
-          <!-- Greenland -->
-          <path d="M214,100 L228,88 L242,90 L248,102 L244,116 L232,120 L218,116 L210,108 Z" fill="#b8d8c0" opacity="0.65"/>
-          <!-- Scandinavia -->
-          <path d="M254,108 L260,94 L265,82 L272,78 L278,84 L280,96 L278,108 L270,114 L262,112 Z" fill="#2e7d45" opacity="0.9"/>
-          <!-- UK / Ireland -->
-          <path d="M226,146 L234,138 L240,138 L242,148 L238,158 L228,162 L222,155 Z" fill="#2e7d45" opacity="0.82"/>
-          <path d="M218,152 L222,148 L224,154 L220,160 L216,156 Z" fill="#2e7d45" opacity="0.75"/>
-          <!-- Western+Central Europe -->
-          <path d="M244,120 L254,108 L264,112 L278,110 L290,116 L298,126 L302,138 L296,148
-                   L284,156 L274,162 L268,170 L262,168 L254,160 L246,152 L240,145 L238,134 Z" fill="#2e7d45" opacity="0.9"/>
-          <!-- Iberian Peninsula -->
-          <path d="M224,162 L238,158 L244,165 L244,178 L238,188 L228,194 L218,190 L212,180
-                   L214,170 Z" fill="#2e7d45" opacity="0.88"/>
-          <!-- Italian boot -->
-          <path d="M268,170 L276,164 L282,170 L284,182 L282,194 L276,206 L270,212 L264,206
-                   L264,194 L268,182 Z" fill="#2e7d45" opacity="0.88"/>
-          <!-- Sicily -->
-          <path d="M268,212 L276,210 L280,216 L274,220 L268,218 Z" fill="#2e7d45" opacity="0.8"/>
-          <!-- Balkans / Greece -->
-          <path d="M284,156 L298,148 L310,152 L316,162 L312,174 L302,180 L292,182 L284,175 Z" fill="#2e7d45" opacity="0.88"/>
-          <!-- Greece peninsula -->
-          <path d="M294,182 L302,178 L306,186 L302,196 L294,198 L290,190 Z" fill="#2e7d45" opacity="0.85"/>
-          <!-- Africa -->
-          <path d="M258,202 L275,194 L293,196 L310,206 L324,222 L333,242 L337,265 L334,290
-                   L325,315 L312,338 L292,356 L270,362 L250,357 L233,342 L222,320 L216,295
-                   L216,270 L222,246 L232,226 L244,212 L254,204 Z" fill="#3a8c52" opacity="0.88"/>
-          <!-- Madagascar -->
-          <path d="M348,292 L354,280 L360,285 L358,302 L350,308 L344,300 Z" fill="#2e7d45" opacity="0.75"/>
-          <!-- Asia — Turkey / Middle East -->
-          <path d="M310,138 L328,130 L346,128 L364,134 L376,146 L378,160 L368,170
-                   L352,174 L336,168 L320,158 L312,148 Z" fill="#2a7040" opacity="0.88"/>
-          <!-- Arabian Peninsula -->
-          <path d="M322,196 L338,188 L352,193 L362,208 L363,226 L354,238 L338,244 L324,235
-                   L318,218 Z" fill="#c49a5a" opacity="0.72"/>
-          <!-- India (partial) -->
-          <path d="M362,168 L378,162 L388,170 L390,184 L384,200 L372,208 L360,202 L355,188
-                   L358,176 Z" fill="#2a7040" opacity="0.85"/>
-          <!-- Asia — Central/Russia (partial) -->
-          <path d="M298,126 L320,116 L346,112 L368,116 L380,128 L382,140 L376,146 L364,134
-                   L346,128 L328,130 L310,138 L302,138 Z" fill="#2a7040" opacity="0.82"/>
-          <!-- North America (visible edge) -->
-          <path d="M146,152 L163,144 L175,150 L180,164 L176,180 L164,188 L150,184 L142,172 Z" fill="#286635" opacity="0.82"/>
-          <path d="M132,190 L148,184 L158,190 L162,205 L156,220 L144,226 L130,220 L126,206 Z" fill="#286635" opacity="0.80"/>
-          <path d="M124,228 L138,222 L148,228 L150,242 L144,256 L132,260 L120,252 L118,238 Z" fill="#286635" opacity="0.78"/>
-          <!-- South America (partial) -->
-          <path d="M160,288 L174,278 L184,282 L188,298 L184,316 L174,326 L162,322 L156,306 Z" fill="#286635" opacity="0.76"/>
-          <!-- Polar ice -->
-          <ellipse cx="280" cy="64" rx="88" ry="32" fill="rgba(210,235,255,.55)"/>
-          <ellipse cx="280" cy="500" rx="60" ry="22" fill="rgba(210,235,255,.45)"/>
-        </g>
-        <!-- lat/lon grid -->
-        <g clip-path="url(#eClip)" stroke="rgba(255,255,255,.10)" stroke-width="0.8" fill="none">
-          <!-- latitude lines -->
-          <ellipse cx="280" cy="280" rx="248" ry="43"/>
-          <ellipse cx="280" cy="280" rx="248" ry="118"/>
-          <ellipse cx="280" cy="280" rx="248" ry="190"/>
-          <ellipse cx="280" cy="280" rx="164" ry="248"/>
-          <ellipse cx="280" cy="280" rx="248" ry="164" transform="translate(0,-80) scale(1,0.5) translate(0,160)"/>
-          <!-- longitude lines -->
-          <ellipse cx="280" cy="280" rx="55"  ry="248"/>
-          <ellipse cx="280" cy="280" rx="140" ry="248"/>
-          <ellipse cx="280" cy="280" rx="210" ry="248"/>
-          <!-- equator -->
-          <line x1="32" y1="280" x2="528" y2="280" stroke="rgba(255,255,255,.15)" stroke-width="1.2"/>
-          <!-- prime meridian -->
-          <ellipse cx="280" cy="280" rx="4" ry="248" stroke="rgba(255,255,255,.12)" stroke-width="1.2"/>
-        </g>
-        <!-- atmosphere glow ring -->
-        <circle cx="280" cy="280" r="258" fill="none" stroke="rgba(100,190,255,.5)" stroke-width="22"/>
-        <circle cx="280" cy="280" r="272" fill="none" stroke="rgba(100,190,255,.2)" stroke-width="12"/>
-        <!-- atmosphere fill -->
-        <circle cx="280" cy="280" r="284" fill="url(#atmGrad)"/>
-      </svg>
-    </div>
-    <div id="sp-title">
-      <div id="sp-w1">RUNNERS</div>
-      <div id="sp-w2">CONQUER</div>
-      <div id="sp-sub">DEINE STADT. DEIN SPIELFELD.</div>
-    </div>
-    <div id="sp-tagline">Lauf · Erobere · Herrsche</div>
-  </div>
+<div id="root"
+  data-composition-id="main"
+  data-width="1080"
+  data-height="1920"
+  data-start="0"
+  data-duration="28">
 
-  <!-- SCENE 2: CITY MAP -->
-  <div class="scene" id="sc-city">
-    <svg id="city-svg" width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-  <filter id="runner-glow-city" x="-100%" y="-100%" width="300%" height="300%">
-    <feGaussianBlur stdDeviation="12" result="b"/>
-    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-  </filter>
-  <filter id="terr-glow" x="-20%" y="-20%" width="140%" height="140%">
-    <feGaussianBlur stdDeviation="8" result="b"/>
-    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-  </filter>
-</defs>
-
-<!-- base background -->
-<rect width="1080" height="1920" class="city-bg"/>
-
-<!-- water / river (curves through city) -->
-<path class="city-water" d="M0,740 Q180,720 280,760 Q400,800 460,780 Q540,755 620,780 Q720,810 800,790 Q920,760 1080,780 L1080,830 Q920,810 800,840 Q720,860 620,830 Q540,805 460,830 Q400,850 280,810 Q180,770 0,790 Z"/>
-<!-- smaller stream -->
-<path class="city-water" d="M420,0 Q430,100 440,200 Q452,320 440,360 Q430,390 440,440 L460,440 Q452,390 462,360 Q474,320 462,200 Q452,100 462,0 Z"/>
-
-<!-- parks -->
-<ellipse class="city-park" cx="540" cy="520" rx="110" ry="80"/>
-<rect class="city-park" x="750" y="900" width="180" height="140" rx="20"/>
-<rect class="city-park" x="80" y="650" width="120" height="160" rx="15"/>
-<ellipse class="city-park" cx="540" cy="1300" rx="140" ry="90"/>
-
-<!-- building blocks (irregular sizes, more organic) -->
-<!-- top section -->
-<rect class="city-block" x="80"  y="280" width="100" height="80"/>
-<rect class="city-block" x="200" y="260" width="140" height="90"/>
-<rect class="city-block" x="370" y="270" width="60"  height="70"/>
-<rect class="city-block" x="470" y="260" width="90"  height="75"/>
-<rect class="city-block" x="660" y="265" width="130" height="85"/>
-<rect class="city-block" x="830" y="270" width="110" height="80"/>
-<rect class="city-block" x="960" y="260" width="80"  height="90"/>
-<rect class="city-block-sm" x="80" y="380" width="60" height="50"/>
-<rect class="city-block-sm" x="160" y="375" width="80" height="55"/>
-<rect class="city-block-sm" x="260" y="370" width="55" height="60"/>
-<rect class="city-block-sm" x="340" y="375" width="70" height="50"/>
-<rect class="city-block-sm" x="670" y="370" width="65" height="55"/>
-<rect class="city-block-sm" x="760" y="370" width="80" height="52"/>
-<rect class="city-block-sm" x="870" y="368" width="70" height="58"/>
-<rect class="city-block-sm" x="970" y="372" width="65" height="55"/>
-<!-- mid section (around park) -->
-<rect class="city-block" x="80"  y="455" width="115" height="90"/>
-<rect class="city-block" x="220" y="460" width="95"  height="85"/>
-<rect class="city-block" x="340" y="450" width="80"  height="95"/>
-<!-- skip park area 430-650 x, 440-600 y -->
-<rect class="city-block" x="670" y="455" width="70"  height="80"/>
-<rect class="city-block" x="765" y="450" width="100" height="90"/>
-<rect class="city-block" x="890" y="458" width="85"  height="82"/>
-<rect class="city-block" x="1000" y="454" width="50" height="78"/>
-<!-- water zone skip -->
-<rect class="city-block" x="80"  y="840" width="120" height="85"/>
-<rect class="city-block" x="230" y="838" width="90"  height="88"/>
-<rect class="city-block" x="350" y="842" width="70"  height="80"/>
-<!-- skip water 440-660 -->
-<rect class="city-block" x="680" y="842" width="60"  height="82"/>
-<rect class="city-block" x="770" y="838" width="110" height="88"/>
-<!-- park area 750-930 y:900-1040 skip -->
-<rect class="city-block" x="960" y="840" width="80"  height="85"/>
-<!-- lower section -->
-<rect class="city-block" x="80"  y="960" width="130" height="95"/>
-<rect class="city-block" x="240" y="955" width="100" height="100"/>
-<rect class="city-block" x="370" y="958" width="75"  height="92"/>
-<rect class="city-block" x="470" y="960" width="85"  height="90"/>
-<rect class="city-block" x="660" y="955" width="70"  height="95"/>
-<rect class="city-block" x="760" y="960" width="95"  height="88"/>
-<rect class="city-block" x="970" y="960" width="70"  height="90"/>
-<rect class="city-block-sm" x="80"  y="1075" width="80" height="55"/>
-<rect class="city-block-sm" x="185" y="1072" width="65" height="58"/>
-<rect class="city-block-sm" x="280" y="1070" width="75" height="60"/>
-<rect class="city-block-sm" x="385" y="1074" width="60" height="55"/>
-<rect class="city-block-sm" x="490" y="1072" width="70" height="57"/>
-<rect class="city-block-sm" x="680" y="1074" width="65" height="55"/>
-<rect class="city-block-sm" x="770" y="1070" width="80" height="60"/>
-<rect class="city-block-sm" x="880" y="1075" width="55" height="55"/>
-<rect class="city-block-sm" x="960" y="1072" width="75" height="58"/>
-<rect class="city-block" x="80"  y="1150" width="110" height="90"/>
-<rect class="city-block" x="220" y="1145" width="95"  height="95"/>
-<rect class="city-block" x="345" y="1148" width="85"  height="88"/>
-<rect class="city-block" x="460" y="1152" width="75"  height="85"/>
-<!-- skip lower park 400-680 y:1210-1390 -->
-<rect class="city-block" x="700" y="1148" width="100" height="90"/>
-<rect class="city-block" x="830" y="1145" width="115" height="95"/>
-<rect class="city-block" x="975" y="1150" width="65"  height="88"/>
-<!-- bottom dense area -->
-<rect class="city-block" x="80"  y="1420" width="120" height="85"/>
-<rect class="city-block" x="230" y="1415" width="100" height="90"/>
-<rect class="city-block" x="360" y="1418" width="85"  height="88"/>
-<rect class="city-block" x="475" y="1420" width="90"  height="85"/>
-<rect class="city-block" x="600" y="1416" width="75"  height="90"/>
-<rect class="city-block" x="710" y="1418" width="105" height="86"/>
-<rect class="city-block" x="850" y="1415" width="90"  height="90"/>
-<rect class="city-block" x="975" y="1420" width="65"  height="85"/>
-<rect class="city-block" x="80"  y="1540" width="95"  height="80"/>
-<rect class="city-block" x="210" y="1538" width="110" height="82"/>
-<rect class="city-block" x="355" y="1540" width="80"  height="80"/>
-<rect class="city-block" x="470" y="1538" width="90"  height="82"/>
-<rect class="city-block" x="600" y="1540" width="80"  height="80"/>
-<rect class="city-block" x="720" y="1536" width="100" height="84"/>
-<rect class="city-block" x="860" y="1540" width="85"  height="80"/>
-<rect class="city-block" x="980" y="1538" width="60"  height="82"/>
-
-<!-- PRIMARY roads (main arteries) -->
-<line class="road-primary" x1="0"    y1="440"  x2="1080" y2="440"/>
-<line class="road-primary" x1="0"    y1="840"  x2="1080" y2="840"/>
-<line class="road-primary" x1="0"    y1="1140" x2="1080" y2="1140"/>
-<line class="road-primary" x1="0"    y1="1420" x2="1080" y2="1420"/>
-<line class="road-primary" x1="200"  y1="0"    x2="200"  y2="1920"/>
-<line class="road-primary" x1="450"  y1="0"    x2="450"  y2="1920"/>
-<line class="road-primary" x1="660"  y1="0"    x2="660"  y2="1920"/>
-<line class="road-primary" x1="930"  y1="0"    x2="930"  y2="1920"/>
-<!-- diagonal boulevard -->
-<path class="road-primary" d="M0,600 Q200,550 450,440" />
-<path class="road-primary" d="M200,1920 Q350,1600 450,1140"/>
-
-<!-- SECONDARY roads -->
-<line class="road-secondary" x1="0"    y1="260"  x2="1080" y2="260"/>
-<line class="road-secondary" x1="0"    y1="640"  x2="1080" y2="640"/>
-<line class="road-secondary" x1="0"    y1="960"  x2="1080" y2="960"/>
-<line class="road-secondary" x1="0"    y1="1280" x2="1080" y2="1280"/>
-<line class="road-secondary" x1="0"    y1="1540" x2="1080" y2="1540"/>
-<line class="road-secondary" x1="80"   y1="0"    x2="80"   y2="1920"/>
-<line class="road-secondary" x1="340"  y1="0"    x2="340"  y2="1920"/>
-<line class="road-secondary" x1="560"  y1="0"    x2="560"  y2="1920"/>
-<line class="road-secondary" x1="760"  y1="0"    x2="760"  y2="1920"/>
-<line class="road-secondary" x1="1000" y1="0"    x2="1000" y2="1920"/>
-<path class="road-secondary" d="M450,840 Q540,760 660,640"/>
-<path class="road-secondary" d="M80,1140 Q200,1050 340,960"/>
-
-<!-- MINOR roads -->
-<line class="road-minor" x1="0"    y1="360"  x2="1080" y2="360"/>
-<line class="road-minor" x1="0"    y1="540"  x2="1080" y2="540"/>
-<line class="road-minor" x1="0"    y1="740"  x2="350"  y2="740"/>
-<line class="road-minor" x1="680"  y1="740"  x2="1080" y2="740"/>
-<line class="road-minor" x1="0"    y1="1060" x2="1080" y2="1060"/>
-<line class="road-minor" x1="0"    y1="1200" x2="1080" y2="1200"/>
-<line class="road-minor" x1="0"    y1="1640" x2="1080" y2="1640"/>
-<line class="road-minor" x1="140"  y1="0"    x2="140"  y2="1920"/>
-<line class="road-minor" x1="280"  y1="0"    x2="280"  y2="1920"/>
-<line class="road-minor" x1="420"  y1="0"    x2="420"  y2="440"/>
-<line class="road-minor" x1="420"  y1="640"  x2="420"  y2="1920"/>
-<line class="road-minor" x1="610"  y1="0"    x2="610"  y2="1920"/>
-<line class="road-minor" x1="820"  y1="0"    x2="820"  y2="1920"/>
-<line class="road-minor" x1="1050" y1="0"    x2="1050" y2="1920"/>
-<!-- alley roads -->
-<line class="road-lane" x1="0"    y1="310"  x2="1080" y2="310"/>
-<line class="road-lane" x1="0"    y1="490"  x2="1080" y2="490"/>
-<line class="road-lane" x1="0"    y1="890"  x2="1080" y2="890"/>
-<line class="road-lane" x1="0"    y1="1090" x2="1080" y2="1090"/>
-<line class="road-lane" x1="0"    y1="1470" x2="1080" y2="1470"/>
-<line class="road-lane" x1="175"  y1="0"    x2="175"  y2="1920"/>
-<line class="road-lane" x1="390"  y1="0"    x2="390"  y2="1920"/>
-<line class="road-lane" x1="510"  y1="0"    x2="510"  y2="1920"/>
-<line class="road-lane" x1="720"  y1="0"    x2="720"  y2="1920"/>
-<line class="road-lane" x1="870"  y1="0"    x2="870"  y2="1920"/>
-
-<!-- territory polygons (on top of roads) -->
-<polygon id="t1" class="terr-poly" points="200,440 660,440 660,840 200,840" fill="#3AE880" stroke="#3AE880" filter="url(#terr-glow)"/>
-<polygon id="t2" class="terr-poly" points="660,260 930,260 930,640 660,640" fill="#FF2E97" stroke="#FF2E97" filter="url(#terr-glow)"/>
-<polygon id="t3" class="terr-poly" points="80,840 450,840 450,1140 80,1140"  fill="#FF8800" stroke="#FF8800" filter="url(#terr-glow)"/>
-<polygon id="t4" class="terr-poly" points="660,840 1000,840 1000,1140 660,1140" fill="#00CCFF" stroke="#00CCFF" filter="url(#terr-glow)"/>
-<polygon id="t5" class="terr-poly" points="200,840 660,840 660,1140 200,1140"  fill="#E8FF47" stroke="#E8FF47" filter="url(#terr-glow)"/>
-
-<!-- runner trails -->
-<path id="tr1" class="runner-trail" d="M200,440 L660,440 L660,840 L200,840 Z" stroke="#3AE880" stroke-dasharray="1720" stroke-dashoffset="1720"/>
-<path id="tr2" class="runner-trail" d="M660,260 L930,260 L930,640 L660,640 Z" stroke="#FF2E97" stroke-dasharray="1220" stroke-dashoffset="1220"/>
-<path id="tr3" class="runner-trail" d="M80,840 L450,840 L450,1140 L80,1140 Z"  stroke="#FF8800" stroke-dasharray="1340" stroke-dashoffset="1340"/>
-<path id="tr4" class="runner-trail" d="M660,840 L1000,840 L1000,1140 L660,1140 Z" stroke="#00CCFF" stroke-dasharray="1380" stroke-dashoffset="1380"/>
-<path id="tr5" class="runner-trail" d="M200,840 L660,840 L660,1140 L200,1140 Z"  stroke="#E8FF47" stroke-dasharray="1720" stroke-dashoffset="1720"/>
-
-<!-- runner dots -->
-<circle id="rd1" cx="200" cy="440"  r="20" fill="#3AE880" filter="url(#runner-glow-city)"/>
-<circle id="rd2" cx="660" cy="260"  r="20" fill="#FF2E97" filter="url(#runner-glow-city)"/>
-<circle id="rd3" cx="80"  cy="840"  r="20" fill="#FF8800" filter="url(#runner-glow-city)"/>
-<circle id="rd4" cx="660" cy="840"  r="20" fill="#00CCFF" filter="url(#runner-glow-city)"/>
-<circle id="rd5" cx="200" cy="840"  r="20" fill="#E8FF47" filter="url(#runner-glow-city)"/>
-    </svg>
-
-    <!-- callout cards -->
-    <div class="callout" id="co1" style="--cc:#3AE880;top:1280px">
-      <div class="co-icon">🏃</div>
-      <div class="co-title">LAUF EIN GEBIET AB</div>
-      <div class="co-body">Umlaufe eine Zone deiner Stadt auf der Karte</div>
-      <div class="co-pts">+400 PTS</div>
-    </div>
-    <div class="callout" id="co2" style="--cc:#FF2E97;top:1280px">
-      <div class="co-icon">🗺️</div>
-      <div class="co-title">GEBIET WIRD DEIN</div>
-      <div class="co-body">Jedes abgelaufene Gebiet gehört dir — bis jemand es zurückerobert</div>
-      <div class="co-pts">+800 PTS</div>
-    </div>
-    <div class="callout" id="co3" style="--cc:#FF8800;top:1280px">
-      <div class="co-icon">⚔️</div>
-      <div class="co-title">FRAKTIONEN KÄMPFEN</div>
-      <div class="co-body">Verbünde dich, verteidige Gebiete, dominiere die Stadt</div>
-    </div>
-    <div class="callout" id="co4" style="--cc:#E8FF47;top:1280px">
-      <div class="co-icon">🏆</div>
-      <div class="co-title">DU FÜHRST! #1</div>
-      <div class="co-body">Mehr Gebiete = mehr Punkte = höhere Wertung</div>
-      <div class="co-pts">+12.450 PTS</div>
-    </div>
-    <div id="city-lb">
-      <div class="lb-title">RANGLISTE</div>
-      <div class="lb-row"><div class="lb-rank">#1</div><div class="lb-name">CityKing</div><div class="lb-sc">9.840</div></div>
-      <div class="lb-row"><div class="lb-rank me">#2</div><div class="lb-name me">DU</div><div class="lb-sc me">8.290 ↑</div></div>
-      <div class="lb-row"><div class="lb-rank">#3</div><div class="lb-name">SpeedX</div><div class="lb-sc">6.100</div></div>
-    </div>
-  </div>
-
-  <!-- SCENE 3: FINALE -->
-  <div class="scene" id="sc-fin">
-    <div id="fin-title">
-      <div id="fin-w1"></div>
-      <div id="fin-w2"></div>
-      <div id="fin-bars">
-        <i style="background:#FF2E97"></i>
-        <i style="background:#3AE880"></i>
-        <i style="background:#FF8800"></i>
-        <i style="background:#00CCFF"></i>
-        <i style="background:#E8FF47"></i>
+  <!-- ══ SCENE 1: HOOK ══ -->
+  <div id="s1" class="scene">
+    <div class="s1-glow" id="s1-glow"></div>
+    <div class="s1-ghost" data-layout-ignore>CONQUER</div>
+    <div class="scene-content" style="justify-content:center;gap:20px;">
+      <div class="s1-label" id="s1-lbl">GPS · GEBIETE · HERRSCHAFT</div>
+      <div class="s1-headline">
+        <span class="l1" id="s1-l1">DEINE</span>
+        <span class="l2" id="s1-l2">STADT</span>
       </div>
-      <div id="fin-tag">Lauf · Erobere · Herrsche</div>
+      <div class="s1-sub" id="s1-sub">GEHÖRT DIR.</div>
+      <div class="s1-ping-wrap">
+        <div class="s1-dot"></div>
+        <div class="s1-ring" id="ring1"></div>
+        <div class="s1-ring" id="ring2"></div>
+        <div class="s1-ring" id="ring3"></div>
+      </div>
     </div>
-    <div id="fin-xp-wrap">
-      <div id="fin-xp-lbl">SEASON XP</div>
-      <div id="fin-xp-bar"><div id="fin-xp-fill"></div></div>
-    </div>
-    <div id="fin-pts">+12.450 PTS</div>
   </div>
 
-</div>
+  <!-- ══ SCENE 2: GPS TRACK ══ -->
+  <div id="s2" class="scene">
+    <div class="s2-grid"></div>
+    <div class="scene-content" style="gap:28px;">
+      <div class="s2-label" id="s2-lbl">HINTERGRUND-GPS AKTIV</div>
+      <div class="s2-map-wrap">
+        <svg id="s2-svg" viewBox="0 0 920 580" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="920" height="580" fill="#111118" rx="20"/>
+          <!-- Street grid -->
+          <line x1="0" y1="290" x2="920" y2="290" stroke="#1A1A26" stroke-width="28"/>
+          <line x1="460" y1="0" x2="460" y2="580" stroke="#1A1A26" stroke-width="28"/>
+          <line x1="0" y1="145" x2="920" y2="145" stroke="#1A1A26" stroke-width="14"/>
+          <line x1="0" y1="435" x2="920" y2="435" stroke="#1A1A26" stroke-width="14"/>
+          <line x1="230" y1="0" x2="230" y2="580" stroke="#1A1A26" stroke-width="14"/>
+          <line x1="690" y1="0" x2="690" y2="580" stroke="#1A1A26" stroke-width="14"/>
+          <!-- Conquered territory fill -->
+          <polygon points="180,100 420,115 440,290 240,270 200,190"
+            fill="rgba(232,255,71,.15)" stroke="rgba(232,255,71,.3)" stroke-width="2"/>
+          <!-- GPS track (animated via stroke-dashoffset) -->
+          <polyline id="s2-track"
+            points="100,430 160,340 230,275 300,230 400,125 445,185 510,210 590,165 650,205 720,295 760,355 715,415 610,435 510,395 435,420 350,455 260,475 175,440 100,430"
+            fill="none"
+            stroke="#E8FF47"
+            stroke-width="6"
+            stroke-linecap="round"
+            stroke-linejoin="round"/>
+          <!-- Position dot + halo -->
+          <circle cx="720" cy="295" r="32" fill="rgba(232,255,71,.15)"/>
+          <circle id="s2-pos-dot" cx="720" cy="295" r="14" fill="#E8FF47"/>
+        </svg>
+      </div>
+      <div class="s2-hud" id="s2-hud">
+        <div class="s2-hud-item">
+          <div class="s2-hud-val">2.4</div>
+          <div class="s2-hud-lbl">KM</div>
+        </div>
+        <div class="s2-hud-item">
+          <div class="s2-hud-val">5:12</div>
+          <div class="s2-hud-lbl">MIN/KM</div>
+        </div>
+        <div class="s2-hud-item">
+          <div class="s2-hud-val">162</div>
+          <div class="s2-hud-lbl">BPM</div>
+        </div>
+      </div>
+      <div class="s2-heading" id="s2-heading">LAUF &amp; <em>EROBER</em></div>
+    </div>
+  </div>
+
+  <!-- ══ SCENE 3: CONQUEST ══ -->
+  <div id="s3" class="scene">
+    <div class="scene-content" style="gap:22px;">
+      <div class="s3-badge" id="s3-badge">⚔️ GEBIET EROBERT</div>
+      <div class="s3-grid-wrap">
+        <div class="s3-grid">
+          <div class="s3-cell owned"></div><div class="s3-cell owned"></div><div class="s3-cell owned"></div><div class="s3-cell owned"></div><div class="s3-cell owned"></div>
+          <div class="s3-cell owned"></div><div class="s3-cell new" id="s3-n1"></div><div class="s3-cell new" id="s3-n2"></div><div class="s3-cell owned"></div><div class="s3-cell"></div>
+          <div class="s3-cell owned"></div><div class="s3-cell new" id="s3-n3"></div><div class="s3-cell"></div><div class="s3-cell"></div><div class="s3-cell"></div>
+          <div class="s3-cell"></div><div class="s3-cell"></div><div class="s3-cell"></div><div class="s3-cell"></div><div class="s3-cell"></div>
+        </div>
+      </div>
+      <div class="s3-pts" id="s3-pts">+200</div>
+      <div class="s3-pts-lbl">PUNKTE</div>
+      <div class="s3-sub" id="s3-sub">+3 Gebiete heute · 47 gesamt</div>
+    </div>
+  </div>
+
+  <!-- ══ SCENE 4: STATS ══ -->
+  <div id="s4" class="scene">
+    <div class="scene-content" style="gap:32px;">
+      <div class="s4-intro" id="s4-intro">DEIN FORTSCHRITT</div>
+      <div class="s4-cards">
+        <div class="s4-card" id="s4-c1">
+          <div class="s4-card-lbl">KM TOTAL</div>
+          <div class="s4-card-val" id="v-km">0</div>
+        </div>
+        <div class="s4-card" id="s4-c2">
+          <div class="s4-card-lbl">GEBIETE</div>
+          <div class="s4-card-val" id="v-geo">0</div>
+        </div>
+        <div class="s4-card" id="s4-c3">
+          <div class="s4-card-lbl">STREAK</div>
+          <div class="s4-card-val" style="font-size:100px;">12🔥</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SCENE 5: LEADERBOARD ══ -->
+  <div id="s5" class="scene">
+    <div class="scene-content" style="gap:20px;">
+      <div class="s5-lbl" id="s5-lbl">DEINE STADT</div>
+      <div class="s5-title" id="s5-title">🏆 RANGLISTE</div>
+      <div class="s5-sub" id="s5-sub">WER FÜHRT DEINE STADT?</div>
+      <div class="s5-rows">
+        <div class="s5-row" id="s5-r1">
+          <div class="s5-rank">1</div>
+          <div class="s5-player">
+            <div class="s5-name">SpeedKing</div>
+            <div class="s5-meta">48k m² · 7🔥</div>
+          </div>
+          <div class="s5-pts">6.840</div>
+        </div>
+        <div class="s5-row" id="s5-r2">
+          <div class="s5-rank">2</div>
+          <div class="s5-player">
+            <div class="s5-name">MountainGoat</div>
+            <div class="s5-meta">31k m² · 5🔥</div>
+          </div>
+          <div class="s5-pts">4.290</div>
+        </div>
+        <div class="s5-row" id="s5-r3">
+          <div class="s5-rank">3</div>
+          <div class="s5-player">
+            <div class="s5-name">NightOwl</div>
+            <div class="s5-meta">22k m² · 3🔥</div>
+          </div>
+          <div class="s5-pts">2.915</div>
+        </div>
+        <div class="s5-row you" id="s5-you">
+          <div class="s5-rank">?</div>
+          <div class="s5-player">
+            <div class="s5-name">DU?</div>
+            <div class="s5-meta" style="font-size:22px;">Tritt jetzt an</div>
+          </div>
+          <div class="s5-pts">STARTEN</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SCENE 6: CTA ══ -->
+  <div id="s6" class="scene">
+    <div class="s6-glow" id="s6-glow"></div>
+    <div class="scene-content" style="justify-content:center;align-items:center;gap:28px;">
+      <div class="s6-heading" id="s6-heading">
+        <span class="l1">RUN &amp;</span>
+        <span class="l2">CONQUER</span>
+      </div>
+      <div class="s6-tagline" id="s6-tagline">LAUFE · EROBER · HERRSCHE</div>
+      <div class="s6-cta" id="s6-cta">JETZT SPIELEN</div>
+      <div class="s6-platforms" id="s6-plat">KOSTENLOS · ANDROID &amp; IOS</div>
+    </div>
+    <div class="s6-fade" id="s6-fade"></div>
+  </div>
+
+</div><!-- /root -->
+
 <script>
-/* ══════════════════════════════════════════
-   RunConquer Cinematic Promo — 46.0s
-   Scene 1: Space   0–9s
-   Scene 2: Zoom    5–9s (overlap)
-   Scene 3: City    8–32s
-   Scene 4: Finale  32–46s
-══════════════════════════════════════════ */
+window.__timelines = window.__timelines || {};
 
-/* ── Starfield ── */
-(function(){
-  const c=document.getElementById('starfield');
-  c.width=1080;c.height=1920;
-  const ctx=c.getContext('2d');
-  for(let i=0;i<280;i++){
-    const x=Math.random()*1080,y=Math.random()*1920;
-    const r=Math.random()<0.08?2:Math.random()<0.3?1.2:0.7;
-    const alpha=0.3+Math.random()*0.7;
-    ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
-    ctx.fillStyle=`rgba(${220+Math.round(Math.random()*35)},${220+Math.round(Math.random()*35)},255,${alpha})`;
-    ctx.fill();
+// ── SVG track dash setup ──
+var trackEl = document.getElementById('s2-track');
+var trackLen = trackEl ? Math.round(trackEl.getTotalLength()) : 1200;
+trackEl.setAttribute('stroke-dasharray', trackLen);
+trackEl.setAttribute('stroke-dashoffset', trackLen);
+
+// ── Counter proxy ──
+var cnt = { km: 0, geo: 0 };
+
+// ── Timeline ──
+var tl = gsap.timeline({ paused: true });
+
+/* ════════════════════════
+   SCENE 1 ENTRANCES (0–4s)
+   ════════════════════════ */
+tl.fromTo('#s1-glow', { scale: 0.9, opacity: 0.5 }, { scale: 1.1, opacity: 1, duration: 4, ease: 'sine.inOut', repeat: 3, yoyo: true }, 0);
+tl.fromTo('#s1 .s1-ghost', { x: -15 }, { x: 15, duration: 4, ease: 'none' }, 0);
+tl.from('#s1-lbl',  { y: 30, opacity: 0, duration: 0.6, ease: 'power3.out' }, 0.25);
+tl.from('#s1-l1',   { y: 70, opacity: 0, duration: 0.7, ease: 'power4.out' }, 0.55);
+tl.from('#s1-l2',   { scale: 0.75, opacity: 0, duration: 0.8, ease: 'expo.out' }, 0.80);
+tl.from('#s1-sub',  { y: 40, opacity: 0, duration: 0.6, ease: 'power3.out' }, 1.15);
+tl.fromTo('#ring1', { width: 18, height: 18, x: -9, y: -9, opacity: 0.9 },
+  { width: 100, height: 100, x: -50, y: -50, opacity: 0, duration: 1.2, ease: 'power1.out', repeat: 3 }, 1.4);
+tl.fromTo('#ring2', { width: 18, height: 18, x: -9, y: -9, opacity: 0.7 },
+  { width: 100, height: 100, x: -50, y: -50, opacity: 0, duration: 1.2, ease: 'power1.out', repeat: 3 }, 1.8);
+tl.fromTo('#ring3', { width: 18, height: 18, x: -9, y: -9, opacity: 0.5 },
+  { width: 100, height: 100, x: -50, y: -50, opacity: 0, duration: 1.2, ease: 'power1.out', repeat: 3 }, 2.2);
+
+/* ════════════════════
+   TRANSITION 1→2 (T=4.0)
+   ════════════════════ */
+var T1 = 4.0;
+tl.to('#s1', { opacity: 0, duration: 0.5, ease: 'power2.inOut' }, T1);
+tl.fromTo('#s2', { opacity: 0 }, { opacity: 1, duration: 0.5, ease: 'power2.inOut' }, T1);
+
+/* ════════════════════════
+   SCENE 2 ENTRANCES (4.0–8.5s)
+   ════════════════════════ */
+tl.from('#s2-lbl',     { y: 30, opacity: 0, duration: 0.5, ease: 'power3.out' }, T1 + 0.15);
+tl.from('#s2-svg',     { scale: 0.92, opacity: 0, duration: 0.65, ease: 'power2.out' }, T1 + 0.25);
+tl.to('#s2-track', { attr: { 'stroke-dashoffset': 0 }, duration: 2.6, ease: 'power1.inOut' }, T1 + 0.45);
+tl.fromTo('#s2-pos-dot', { attr: { r: 14 } }, { attr: { r: 20 }, duration: 0.5, ease: 'sine.inOut', repeat: 8, yoyo: true }, T1 + 0.3);
+tl.from('#s2-hud',     { y: 40, opacity: 0, duration: 0.6, ease: 'power3.out' }, T1 + 0.8);
+tl.from('#s2-heading', { y: 50, opacity: 0, duration: 0.7, ease: 'expo.out' }, T1 + 1.1);
+
+/* ════════════════════
+   TRANSITION 2→3 (T=8.5)
+   ════════════════════ */
+var T2 = 8.5;
+tl.to('#s2', { y: -1920, duration: 0.5, ease: 'power3.inOut' }, T2);
+tl.fromTo('#s3', { y: 1920, opacity: 1 }, { y: 0, duration: 0.5, ease: 'power3.inOut' }, T2);
+
+/* ════════════════════════
+   SCENE 3 ENTRANCES (8.5–13.0s)
+   ════════════════════════ */
+tl.from('#s3-badge', { scale: 0.65, opacity: 0, duration: 0.5, ease: 'back.out(2.5)' }, T2 + 0.25);
+tl.fromTo('#s3-n1', { scale: 0 }, { scale: 1, duration: 0.4, ease: 'back.out(2.5)', transformOrigin: 'center' }, T2 + 0.55);
+tl.fromTo('#s3-n2', { scale: 0 }, { scale: 1, duration: 0.4, ease: 'back.out(2.5)', transformOrigin: 'center' }, T2 + 0.72);
+tl.fromTo('#s3-n3', { scale: 0 }, { scale: 1, duration: 0.4, ease: 'back.out(2.5)', transformOrigin: 'center' }, T2 + 0.89);
+tl.from('#s3-pts',  { scale: 0.55, opacity: 0, duration: 0.7, ease: 'elastic.out(1, 0.5)' }, T2 + 1.05);
+tl.from('.s3-pts-lbl', { y: 24, opacity: 0, duration: 0.4, ease: 'power2.out' }, T2 + 1.3);
+tl.from('#s3-sub',  { y: 20, opacity: 0, duration: 0.4, ease: 'power2.out' }, T2 + 1.55);
+
+/* ════════════════════
+   TRANSITION 3→4 (T=13.0)
+   ════════════════════ */
+var T3 = 13.0;
+tl.to('#s3', { filter: 'blur(10px)', scale: 1.03, opacity: 0, duration: 0.5, ease: 'power2.inOut' }, T3);
+tl.fromTo('#s4',
+  { filter: 'blur(10px)', scale: 0.97, opacity: 0 },
+  { filter: 'blur(0px)', scale: 1, opacity: 1, duration: 0.5, ease: 'power2.inOut' }, T3 + 0.1);
+
+/* ════════════════════════
+   SCENE 4 ENTRANCES (13.0–17.5s)
+   ════════════════════════ */
+tl.from('#s4-intro', { y: 30, opacity: 0, duration: 0.5, ease: 'power3.out' }, T3 + 0.3);
+tl.from('#s4-c1', { y: 90, opacity: 0, duration: 0.55, ease: 'power3.out' }, T3 + 0.5);
+tl.from('#s4-c2', { y: 90, opacity: 0, duration: 0.55, ease: 'power3.out' }, T3 + 0.68);
+tl.from('#s4-c3', { y: 90, opacity: 0, duration: 0.55, ease: 'power3.out' }, T3 + 0.86);
+tl.to(cnt, {
+  km: 142, geo: 47,
+  duration: 1.9,
+  ease: 'power2.out',
+  onUpdate: function() {
+    document.getElementById('v-km').textContent  = Math.floor(cnt.km);
+    document.getElementById('v-geo').textContent = Math.floor(cnt.geo);
   }
-})();
+}, T3 + 0.9);
 
-/* ── Finale letters setup (must run before timeline builds) ── */
-(function(){
-  const w1=document.getElementById('fin-w1'),w2=document.getElementById('fin-w2');
-  'RUNNERS'.split('').forEach(ch=>{const s=document.createElement('span');s.textContent=ch;w1.appendChild(s);});
-  'CONQUER'.split('').forEach(ch=>{const s=document.createElement('span');s.textContent=ch;w2.appendChild(s);});
-})();
+/* ════════════════════
+   TRANSITION 4→5 (T=17.5)
+   ════════════════════ */
+var T4 = 17.5;
+tl.to('#s4', { x: -1080, duration: 0.5, ease: 'power3.inOut' }, T4);
+tl.fromTo('#s5', { x: 1080, opacity: 1 }, { x: 0, duration: 0.5, ease: 'power3.inOut' }, T4);
 
-/* ── Sparks setup ── */
-(function(){
-  const finColors=['#FF2E97','#3AE880','#FF8800','#00CCFF','#E8FF47'];
-  const sp=document.getElementById('sc-fin');
-  finColors.forEach(c=>{
-    for(let i=0;i<8;i++){
-      const d=document.createElement('div');
-      d.className='spark';
-      d.style.cssText=`--sc:${c};left:${Math.random()*1080}px;bottom:${Math.random()*520}px;animation-delay:${(Math.random()*3.5).toFixed(2)}s`;
-      sp.appendChild(d);
-    }
-  });
-})();
+/* ════════════════════════
+   SCENE 5 ENTRANCES (17.5–22.0s)
+   ════════════════════════ */
+tl.from('#s5-lbl',   { y: 30, opacity: 0, duration: 0.5, ease: 'power3.out' }, T4 + 0.15);
+tl.from('#s5-title', { scale: 0.78, opacity: 0, duration: 0.65, ease: 'expo.out' }, T4 + 0.35);
+tl.from('#s5-sub',   { y: 24, opacity: 0, duration: 0.45, ease: 'power2.out' }, T4 + 0.7);
+tl.from('#s5-r1',    { x: 100, opacity: 0, duration: 0.5, ease: 'power3.out' }, T4 + 0.9);
+tl.from('#s5-r2',    { x: 100, opacity: 0, duration: 0.5, ease: 'power3.out' }, T4 + 1.1);
+tl.from('#s5-r3',    { x: 100, opacity: 0, duration: 0.5, ease: 'power3.out' }, T4 + 1.3);
+tl.from('#s5-you',   { y: 50, opacity: 0, duration: 0.6, ease: 'back.out(2)' }, T4 + 1.6);
 
-/* ══ MASTER TIMELINE ══ */
-window.__timelines=window.__timelines||{};
-const TOTAL=46.0;
-const tl=gsap.timeline({paused:true});
+/* ════════════════════
+   TRANSITION 5→6 (T=22.0)
+   ════════════════════ */
+var T5 = 22.0;
+tl.to('#s5', { opacity: 0, duration: 0.25, ease: 'power2.in' }, T5);
+tl.fromTo('#s6', { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'power2.out' }, T5 + 0.3);
 
-function showScene(el){gsap.set(el,{visibility:'visible',opacity:1});}
-function hideScene(el){gsap.set(el,{visibility:'hidden',opacity:0});}
-function whip(at){
-  tl.fromTo('#flash',{opacity:0},{opacity:.55,duration:.05,ease:'power4.in'},at-.05);
-  tl.to('#flash',{opacity:0,duration:.10,ease:'power2.out'},at);
-}
+/* ════════════════════════
+   SCENE 6 ENTRANCES (22.0–28.0s)
+   ════════════════════════ */
+tl.fromTo('#s6-glow',
+  { scale: 0.85, opacity: 0.5 },
+  { scale: 1.2, opacity: 1, duration: 2, ease: 'sine.inOut', repeat: 2, yoyo: true }, T5 + 0.2);
+tl.from('#s6-heading .l1', { y: 50, opacity: 0, duration: 0.6, ease: 'power3.out' }, T5 + 0.45);
+tl.from('#s6-heading .l2', { scale: 0.65, opacity: 0, duration: 0.85, ease: 'expo.out' }, T5 + 0.75);
+tl.from('#s6-tagline',     { y: 35, opacity: 0, duration: 0.5, ease: 'power2.out' }, T5 + 1.3);
+tl.from('#s6-cta',         { scale: 0.8, opacity: 0, duration: 0.65, ease: 'back.out(2.2)' }, T5 + 1.75);
+tl.from('#s6-plat',        { y: 24, opacity: 0, duration: 0.45, ease: 'power2.out' }, T5 + 2.2);
+tl.to('#s6-fade', { opacity: 1, duration: 0.7, ease: 'power2.in' }, 27.3);
 
-/* ── Initial CSS states ── */
-gsap.set('#sp-w1,#sp-w2',{clipPath:'inset(110% 0% 0% 0%)'});
-gsap.set('#sp-sub,#sp-tagline',{opacity:0});
-gsap.set('.callout',{x:'-110%'});
-gsap.set('#city-lb',{x:'110%'});
-gsap.set('.terr-poly',{attr:{'fill-opacity':0}});
-gsap.set('#earth-wrap',{scale:0.7,opacity:0});
-gsap.set('#city-svg',{opacity:0});
-gsap.set('#fin-xp-wrap',{opacity:0});
-gsap.set('#fin-pts',{opacity:0});
-gsap.set('#fin-tag',{opacity:0});
+window.__timelines['main'] = tl;
 
-/* ── PHASE 1: SPACE (0–5s) ── */
-
-/* earth appears */
-tl.to('#earth-wrap',{scale:1,opacity:1,duration:1.2,ease:'power3.out'},0.3);
-
-/* slow earth rotation drift */
-tl.to('#earth-svg',{rotation:8,transformOrigin:'50% 50%',duration:9,ease:'sine.inOut'},0);
-
-/* title text reveals */
-tl.to('#sp-w1',{clipPath:'inset(0% 0% 0% 0%)',duration:0.35,ease:'power4.out'},1.0);
-tl.to('#sp-w2',{clipPath:'inset(0% 0% 0% 0%)',duration:0.40,ease:'power4.out'},1.5);
-tl.to('#sp-sub',{opacity:1,duration:0.8,ease:'power2.out'},2.5);
-tl.to('#sp-tagline',{opacity:1,duration:0.8,ease:'power2.out'},3.5);
-
-/* ── PHASE 2: ZOOM (5–9s) ── */
-
-/* title fades away */
-tl.to('#sp-title',{opacity:0,y:-60,duration:0.5,ease:'power2.in'},5.0);
-tl.to('#sp-tagline',{opacity:0,duration:0.4},5.2);
-
-/* earth scales UP dramatically */
-tl.to('#earth-wrap',{scale:22,duration:4.0,ease:'power3.in'},5.0);
-tl.to('#earth-wrap',{opacity:0,duration:0.6,ease:'power2.in'},7.8);
-
-/* city scene fades in from under */
-tl.call(()=>showScene(document.getElementById('sc-city')),null,7.0);
-tl.fromTo('#sc-city',{opacity:0},{opacity:1,duration:1.2,ease:'power2.out'},7.0);
-
-/* ── PHASE 3: CITY MATERIALISES (8–9s) ── */
-tl.to('#city-svg',{opacity:1,duration:1.5,ease:'power2.out'},8.0);
-
-/* ── PHASES 4–8: ALL RUNNERS SIMULTANEOUSLY (9–32s) ── */
-
-/* Update dasharray values to match new territory perimeters */
-gsap.set('#tr1',{attr:{strokeDasharray:1720,strokeDashoffset:1720}});
-gsap.set('#tr2',{attr:{strokeDasharray:1220,strokeDashoffset:1220}});
-gsap.set('#tr3',{attr:{strokeDasharray:1340,strokeDashoffset:1340}});
-gsap.set('#tr4',{attr:{strokeDasharray:1380,strokeDashoffset:1380}});
-gsap.set('#tr5',{attr:{strokeDasharray:1720,strokeDashoffset:1720}});
-
-const R_START = 9.5; /* all runners start roughly together */
-const R_DUR   = 5.5; /* each runner takes ~5.5s to complete circuit */
-
-/* ── RUNNER 1: GREEN  (t=9.5, circuit: 200,440→660,440→660,840→200,840→200,440) ── */
-/* perimeter 1720: seg1=460 seg2=400 seg3=460 seg4=400  durations proportional */
-tl.to('#tr1',{attr:{strokeDashoffset:0},duration:R_DUR,ease:'none'},R_START);
-tl.to('#rd1',{attr:{cx:660,cy:440}, duration:460/312,ease:'none'},R_START);
-tl.to('#rd1',{attr:{cx:660,cy:840}, duration:400/312,ease:'none'},R_START+460/312);
-tl.to('#rd1',{attr:{cx:200,cy:840}, duration:460/312,ease:'none'},R_START+860/312);
-tl.to('#rd1',{attr:{cx:200,cy:440}, duration:400/312,ease:'none'},R_START+1320/312);
-
-/* ── RUNNER 2: PINK   (t=9.8, circuit: 660,260→930,260→930,640→660,640→660,260) ── */
-/* perimeter 1220: seg1=270 seg2=380 seg3=270 seg4=300 */
-tl.to('#tr2',{attr:{strokeDashoffset:0},duration:R_DUR,ease:'none'},R_START+0.3);
-tl.to('#rd2',{attr:{cx:930,cy:260}, duration:270/222,ease:'none'},R_START+0.3);
-tl.to('#rd2',{attr:{cx:930,cy:640}, duration:380/222,ease:'none'},R_START+0.3+270/222);
-tl.to('#rd2',{attr:{cx:660,cy:640}, duration:270/222,ease:'none'},R_START+0.3+650/222);
-tl.to('#rd2',{attr:{cx:660,cy:260}, duration:300/222,ease:'none'},R_START+0.3+920/222);
-
-/* ── RUNNER 3: ORANGE (t=9.7, circuit: 80,840→450,840→450,1140→80,1140→80,840) ── */
-/* perimeter 1340: seg1=370 seg2=300 seg3=370 seg4=300 */
-tl.to('#tr3',{attr:{strokeDashoffset:0},duration:R_DUR,ease:'none'},R_START+0.2);
-tl.to('#rd3',{attr:{cx:450,cy:840},  duration:370/244,ease:'none'},R_START+0.2);
-tl.to('#rd3',{attr:{cx:450,cy:1140}, duration:300/244,ease:'none'},R_START+0.2+370/244);
-tl.to('#rd3',{attr:{cx:80, cy:1140}, duration:370/244,ease:'none'},R_START+0.2+670/244);
-tl.to('#rd3',{attr:{cx:80, cy:840},  duration:300/244,ease:'none'},R_START+0.2+1040/244);
-
-/* ── RUNNER 4: CYAN   (t=9.6, circuit: 660,840→1000,840→1000,1140→660,1140→660,840) ── */
-/* perimeter 1380: seg1=340 seg2=300 seg3=340 seg4=400 */
-tl.to('#tr4',{attr:{strokeDashoffset:0},duration:R_DUR,ease:'none'},R_START+0.1);
-tl.to('#rd4',{attr:{cx:1000,cy:840},  duration:340/251,ease:'none'},R_START+0.1);
-tl.to('#rd4',{attr:{cx:1000,cy:1140}, duration:300/251,ease:'none'},R_START+0.1+340/251);
-tl.to('#rd4',{attr:{cx:660, cy:1140}, duration:340/251,ease:'none'},R_START+0.1+640/251);
-tl.to('#rd4',{attr:{cx:660, cy:840},  duration:400/251,ease:'none'},R_START+0.1+980/251);
-
-/* ── RUNNER 5: YELLOW (t=9.5, circuit: 200,840→660,840→660,1140→200,1140→200,840) ── */
-/* perimeter 1720: seg1=460 seg2=300 seg3=460 seg4=300 */
-tl.to('#tr5',{attr:{strokeDashoffset:0},duration:R_DUR,ease:'none'},R_START+0.4);
-tl.to('#rd5',{attr:{cx:660,cy:840},  duration:460/312,ease:'none'},R_START+0.4);
-tl.to('#rd5',{attr:{cx:660,cy:1140}, duration:300/312,ease:'none'},R_START+0.4+460/312);
-tl.to('#rd5',{attr:{cx:200,cy:1140}, duration:460/312,ease:'none'},R_START+0.4+760/312);
-tl.to('#rd5',{attr:{cx:200,cy:840},  duration:300/312,ease:'none'},R_START+0.4+1220/312);
-
-/* territories fill in cascade as runners close their circuits */
-tl.to('#t1',{attr:{'fill-opacity':0.28},duration:0.7,ease:'power2.out'},R_START+R_DUR+0.1);
-tl.to('#t3',{attr:{'fill-opacity':0.28},duration:0.7,ease:'power2.out'},R_START+R_DUR+0.3);
-tl.to('#t4',{attr:{'fill-opacity':0.28},duration:0.7,ease:'power2.out'},R_START+R_DUR+0.5);
-tl.to('#t2',{attr:{'fill-opacity':0.28},duration:0.7,ease:'power2.out'},R_START+R_DUR+0.7);
-tl.to('#t5',{attr:{'fill-opacity':0.35},duration:0.8,ease:'power2.out'},R_START+R_DUR+0.9);
-
-/* callouts sequence AFTER territories fill */
-const CO_T = R_START + R_DUR + 2.0; /* t≈17s */
-tl.to('#co1',{x:0,duration:0.35,ease:'power3.out'},CO_T);
-tl.to('#co1',{x:'-110%',duration:0.28},CO_T+3.5);
-
-tl.to('#co2',{x:0,duration:0.35,ease:'power3.out'},CO_T+4.0);
-tl.to('#co2',{x:'-110%',duration:0.28},CO_T+7.5);
-
-tl.to('#co3',{x:0,duration:0.35,ease:'power3.out'},CO_T+8.0);
-tl.to('#co3',{x:'-110%',duration:0.28},CO_T+11.5);
-
-tl.to('#co4',{x:0,duration:0.35,ease:'power3.out'},CO_T+12.0);
-tl.to('#city-lb',{x:0,duration:0.38,ease:'power3.out'},CO_T+12.5);
-tl.to('#co4',{x:'-110%',duration:0.3},CO_T+15.5);
-
-/* ── PHASE 9: FINALE ── */
-whip(32.5);
-tl.call(()=>{
-  hideScene(document.getElementById('sc-city'));
-  showScene(document.getElementById('sc-fin'));
-},null,32.5);
-
-/* Letter stagger RUNNERS */
-tl.from('#fin-w1 span',{clipPath:'inset(110% 0% 0% 0%)',duration:0.4,stagger:0.06,ease:'power4.out'},33.2);
-tl.from('#fin-w2 span',{clipPath:'inset(110% 0% 0% 0%)',scale:0.7,duration:0.45,stagger:0.07,ease:'back.out(1.8)'},33.9);
-
-/* bars */
-tl.from('#fin-bars i',{scaleX:0,transformOrigin:'left center',duration:0.4,stagger:0.07,ease:'power3.out'},34.8);
-
-/* tag */
-tl.to('#fin-tag',{opacity:1,letterSpacing:'10px',duration:0.7,ease:'power2.out'},35.4);
-
-/* xp bar */
-tl.to('#fin-xp-wrap',{opacity:1,duration:0.5},36.0);
-tl.to('#fin-xp-fill',{width:'100%',duration:1.8,ease:'power2.inOut'},36.2);
-
-/* pts */
-tl.to('#fin-pts',{opacity:1,duration:0.5},37.7);
-
-/* gentle scale */
-tl.to('#fin-title',{scale:1.04,duration:TOTAL-38,ease:'sine.inOut'},38.0);
-
-/* timeline sentinel */
-tl.to({},{duration:.01},TOTAL);
-
-window.__timelines['main']=tl;
-
-if(typeof window.__hyperframes==='undefined'){
+if (typeof window.__hyperframes === 'undefined') {
   tl.play();
-  tl.eventCallback('onComplete',function(){
-    document.querySelectorAll('.scene').forEach(s=>{
-      s.style.visibility='hidden';s.style.opacity='0';
+  tl.eventCallback('onComplete', function() {
+    document.querySelectorAll('.scene').forEach(function(s) {
+      s.style.opacity = '0';
     });
-    document.getElementById('sc-space').style.visibility='visible';
-    document.getElementById('sc-space').style.opacity='1';
+    document.getElementById('s1').style.opacity = '1';
     tl.restart();
   });
 }
