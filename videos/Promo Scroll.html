@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="stone">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Runners Conquer — Promo</title>
+
+<link rel="stylesheet" href="styles/colors_and_type.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+<link rel="stylesheet" href="styles/promo.css" />
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body style="background-color: rgb(88, 36, 16)">
+
+<!-- ================= FIXED CHROME ================= -->
+<header class="topbar on-dark" id="topbar">
+  <div class="brand">
+    <span class="mk">RC</span>
+    <span class="wm">Runners&nbsp;Conquer</span>
+  </div>
+  <div class="bar-actions">
+    <button class="playpause" id="playBtn" type="button" aria-label="Auto-Play pausieren"><i class="fa-solid fa-pause"></i></button>
+    <a class="nav-cta" id="navCta" href="#play">Jetzt spielen</a>
+  </div>
+</header>
+
+<div class="autobar"><span class="autobar__fill" id="autofill"></span></div>
+
+<nav class="dots" id="dots" aria-label="Sektionen"></nav>
+
+<!-- ================= SCROLL DECK ================= -->
+<main class="deck" id="deck" data-anim="slide" data-scroll="hard" data-layout="alt">
+
+  <!-- 01 — HERO -->
+  <section class="panel hero" data-label="Hero" data-screen-label="01 · Hero">
+    <div class="hero__inner">
+      <img class="hero__logo" data-reveal style="--i:0" src="assets/logo-mark-t.png" alt="Runners Conquer" />
+      <h1 class="title" data-reveal style="--i:1">Runners<br /><span class="accent">Conquer</span></h1>
+      <div class="stamp" data-reveal style="--i:2"><span>Lauf</span><span class="sep">·</span><span>Erobere</span><span class="sep">·</span><span>Herrsche</span></div>
+      <p class="sub" data-reveal style="--i:3">Die Lauf-App, die deine Strecken in echtes Revier verwandelt. Jeder Kilometer ist Gebiet — jede Runde ein Zug im größten Strategiespiel der Stadt.</p>
+    </div>
+    <div class="scrollcue"><span>Scrollen</span><i class="fa-solid fa-chevron-down"></i></div>
+  </section>
+
+  <!-- 02 — FRAKTION -->
+  <section class="panel" data-label="Fraktion" data-screen-label="02 · Wähle deine Seite">
+    <div class="split">
+      <div class="col-media" data-reveal style="--i:1">
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/07-fraktion.jpg" alt="Fraktion wählen" loading="lazy" /></div></div>
+      </div>
+      <div class="col-text">
+        <p class="kicker" data-reveal style="--i:0"><span class="idx">01</span>&nbsp;Fraktion</p>
+        <h2 class="title" data-reveal style="--i:1">Wähle<br /><span class="accent">deine Seite</span></h2>
+        <p class="lead" data-reveal style="--i:2">Feuer, Eis, Sturm oder Schatten. Deine Fraktion bestimmt Farben, Stil und Community — mit wem eroberst du die Stadt?</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 — KARTE -->
+  <section class="panel panel--alt" data-label="Karte" data-screen-label="03 · Die Stadt ist die Arena">
+    <div class="split split--rev">
+      <div class="col-media" data-reveal style="--i:1">
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/08-karte.jpg" alt="Karte mit Revieren" loading="lazy" /></div></div>
+      </div>
+      <div class="col-text">
+        <p class="kicker" data-reveal style="--i:0"><span class="idx">02</span>&nbsp;Spielfeld</p>
+        <h2 class="title" data-reveal style="--i:1">Die Stadt<br /><span class="accent">ist die Arena</span></h2>
+        <p class="lead" data-reveal style="--i:2">Echte Straßen, echte Reviere. Ein Tipp auf Starten und dein Lauf verwandelt sich in eroberbares Territorium.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 — TRACKING -->
+  <section class="panel" data-label="Tracking" data-screen-label="04 · Jeder Kilometer zählt">
+    <div class="split">
+      <div class="col-media" data-reveal style="--i:1">
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/15-aktivitaet.jpg" alt="Aktivität & Tracking" loading="lazy" /></div></div>
+      </div>
+      <div class="col-text">
+        <p class="kicker" data-reveal style="--i:0"><span class="idx">03</span>&nbsp;Tracking</p>
+        <h2 class="title" data-reveal style="--i:1">Jeder<br /><span class="accent">Kilometer zählt</span></h2>
+        <p class="lead" data-reveal style="--i:2">Distanz, Zeit, Pace und Wochenziel — dein Lauf wird live getrackt und direkt in Punkte verwandelt.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 — REVIER / RAID -->
+  <section class="panel panel--alt" data-label="Erobern" data-screen-label="05 · Erobere & raide Reviere">
+    <div class="split split--rev">
+      <div class="col-media" data-reveal style="--i:1">
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/10-revier.jpg" alt="Revier-Detail & Raid" loading="lazy" /></div></div>
+      </div>
+      <div class="col-text">
+        <p class="kicker" data-reveal style="--i:0"><span class="idx">04</span>&nbsp;Erobern</p>
+        <h2 class="title" data-reveal style="--i:1">Erobere<br /><span class="accent">&amp; raide Reviere</span></h2>
+        <p class="lead" data-reveal style="--i:2">Schnapp dir fremde Gebiete, starte Raids und verteidige, was dir gehört. Am Ende entscheidet deine Stärke.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 — COMMUNITY -->
+  <section class="panel" data-label="Community" data-screen-label="06 · Die ganze Stadt spielt mit">
+    <div class="split">
+      <div class="col-media" data-reveal style="--i:1">
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/09-community.jpg" alt="Community-News" loading="lazy" /></div></div>
+      </div>
+      <div class="col-text">
+        <p class="kicker" data-reveal style="--i:0"><span class="idx">05</span>&nbsp;Live</p>
+        <h2 class="title" data-reveal style="--i:1">Die ganze<br /><span class="accent">Stadt spielt mit</span></h2>
+        <p class="lead" data-reveal style="--i:2">Wer verteidigt, wer läuft, wer einen Rekord bricht — im News-Feed siehst du jeden Zug deiner Rivalen in Echtzeit.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 07 — RANGLISTE -->
+  <section class="panel panel--alt" data-label="Rangliste" data-screen-label="07 · Klettere an die Spitze">
+    <div class="split split--rev">
+      <div class="col-media" data-reveal style="--i:1">
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/11-rangliste.jpg" alt="Rangliste" loading="lazy" /></div></div>
+      </div>
+      <div class="col-text">
+        <p class="kicker" data-reveal style="--i:0"><span class="idx">06</span>&nbsp;Rangliste</p>
+        <h2 class="title" data-reveal style="--i:1">Klettere<br /><span class="accent">an die Spitze</span></h2>
+        <p class="lead" data-reveal style="--i:2">Gebiete, Kilometer, wöchentliche Power-Rankings. Miss dich mit den Besten und kämpf dich Platz für Platz nach oben.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 08 — QUESTS -->
+  <section class="panel" data-label="Quests" data-screen-label="08 · Ziele, die dich antreiben">
+    <div class="split">
+      <div class="col-media" data-reveal style="--i:1">
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/16-quests.jpg" alt="Quests & Challenges" loading="lazy" /></div></div>
+      </div>
+      <div class="col-text">
+        <p class="kicker" data-reveal style="--i:0"><span class="idx">07</span>&nbsp;Quests</p>
+        <h2 class="title" data-reveal style="--i:1">Ziele, die<br /><span class="accent">dich antreiben</span></h2>
+        <p class="lead" data-reveal style="--i:2">Wochen-Challenges und Starter-Quests geben dir jeden Tag einen guten Grund, die Schuhe zu schnüren.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 09 — ERFOLGE -->
+  <section class="panel panel--alt" data-label="Erfolge" data-screen-label="09 · Sammle Trophäen">
+    <div class="split split--rev">
+      <div class="col-media" data-reveal style="--i:1">
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/18-erfolge.jpg" alt="Erfolge & Trophäen" loading="lazy" /></div></div>
+      </div>
+      <div class="col-text">
+        <p class="kicker" data-reveal style="--i:0"><span class="idx">08</span>&nbsp;Erfolge</p>
+        <h2 class="title" data-reveal style="--i:1">Sammle<br /><span class="gold">Trophäen</span></h2>
+        <p class="lead" data-reveal style="--i:2">Von der ersten Straße bis zum Imperator — jeder Meilenstein wird mit einem Erfolg in deiner Vitrine belohnt.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 — PROFIL -->
+  <section class="panel" data-label="Profil" data-screen-label="10 · Dein Aufstieg in Zahlen">
+    <div class="split">
+      <div class="col-media" data-reveal style="--i:1">
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/14-profil.jpg" alt="Profil" loading="lazy" /></div></div>
+      </div>
+      <div class="col-text">
+        <p class="kicker" data-reveal style="--i:0"><span class="idx">09</span>&nbsp;Profil</p>
+        <h2 class="title" data-reveal style="--i:1">Dein Aufstieg<br /><span class="accent">in Zahlen</span></h2>
+        <p class="lead" data-reveal style="--i:2">Level, Titel, Streak und Statistiken. Dein Profil zeigt auf einen Blick, wie weit du es schon gebracht hast.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11 — CLUB / WAPPEN -->
+  <section class="panel panel--alt" data-label="Club" data-screen-label="11 · Gründe deinen Club">
+    <div class="split split--rev">
+      <div class="col-media" data-reveal style="--i:1">
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/12-wappen.jpg" alt="Wappen-Baukasten" loading="lazy" /></div></div>
+      </div>
+      <div class="col-text">
+        <p class="kicker" data-reveal style="--i:0"><span class="idx">10</span>&nbsp;Club</p>
+        <h2 class="title" data-reveal style="--i:1">Gründe<br /><span class="gold">deinen Club</span></h2>
+        <p class="lead" data-reveal style="--i:2">Baue dein eigenes Wappen, gib ihm einen Namen und erobere die Stadt nicht allein, sondern im Team.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12 — ANLEITUNG -->
+  <section class="panel" data-label="Anleitung" data-screen-label="12 · Alles, was du wissen musst">
+    <div class="split">
+      <div class="col-media" data-reveal style="--i:1">
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/13-anleitung.jpg" alt="Spielanleitung" loading="lazy" /></div></div>
+      </div>
+      <div class="col-text">
+        <p class="kicker" data-reveal style="--i:0"><span class="idx">11</span>&nbsp;Anleitung</p>
+        <h2 class="title" data-reveal style="--i:1">Alles, was du<br /><span class="accent">wissen musst</span></h2>
+        <p class="lead" data-reveal style="--i:2">Gebiete, Stärke, Energie, Raids, Titel — die Spielanleitung erklärt dir jede Mechanik in Sekunden.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 13 — CTA -->
+  <section class="panel cta" id="play" data-label="Start" data-screen-label="13 · Bereit zu erobern?">
+    <div class="hero__inner">
+      <p class="kicker kicker--center" data-reveal style="--i:0">Saison läuft</p>
+      <h2 class="title" data-reveal style="--i:1">Bereit zu<br /><span class="accent">erobern?</span></h2>
+      <p class="sub" data-reveal style="--i:2">Schnür die Schuhe, starte deinen ersten Lauf und nimm dir deine erste Straße. Die Stadt wartet darauf, erobert zu werden.</p>
+      <div class="cta-actions" data-reveal style="--i:3">
+        <a class="btn btn--primary" href="#"><i class="fa-solid fa-play"></i>&nbsp;Jetzt spielen</a>
+        <a class="btn btn--ghost" href="#" id="toTop"><i class="fa-solid fa-arrow-up"></i>&nbsp;Nochmal ansehen</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ================= BEHAVIOUR ================= -->
+<script>
+(function () {
+  const deck = document.getElementById('deck');
+  const panels = Array.from(deck.querySelectorAll('.panel'));
+  const topbar = document.getElementById('topbar');
+  const dotsWrap = document.getElementById('dots');
+  const playBtn = document.getElementById('playBtn');
+  const autofill = document.getElementById('autofill');
+
+  // ---- dot nav ----
+  panels.forEach((p, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('aria-label', p.dataset.label || ('Sektion ' + (i + 1)));
+    b.addEventListener('click', () => { pause(); goTo(i); });
+    dotsWrap.appendChild(b);
+  });
+  const dots = Array.from(dotsWrap.children);
+
+  // ---- active / reveal tracking ----
+  let curIdx = 0;
+  function update() {
+    const vh = window.innerHeight;
+    let activeIdx = 0, best = Infinity;
+    panels.forEach((p, i) => {
+      const r = p.getBoundingClientRect();
+      if (r.top < vh * 0.8 && r.bottom > vh * 0.2) p.classList.add('is-in');
+      const dist = Math.abs((r.top + r.height / 2) - vh / 2);
+      if (dist < best) { best = dist; activeIdx = i; }
+    });
+    curIdx = activeIdx;
+    dots.forEach((d, di) => d.classList.toggle('active', di === activeIdx));
+    const ap = panels[activeIdx];
+    const dark = ap.classList.contains('hero') || ap.classList.contains('cta');
+    topbar.classList.toggle('on-dark', dark);
+    topbar.classList.toggle('solid', !dark);
+  }
+  window.addEventListener('scroll', update, { passive: true });
+  window.addEventListener('resize', update);
+  update();
+
+  function goTo(i) {
+    const t = panels[Math.max(0, Math.min(panels.length - 1, i))];
+    window.scrollTo({ top: t.offsetTop, behavior: 'smooth' });
+  }
+
+  // ---- autoplay (~5s / page, loops, pauses on interaction) ----
+  let playing = false;
+  let secs = 5;
+  let timer = null;
+
+  function startFill() {
+    if (!autofill) return;
+    autofill.classList.remove('run');
+    void autofill.offsetWidth;            // reflow to restart animation
+    autofill.style.setProperty('--secs', secs + 's');
+    autofill.classList.add('run');
+  }
+  function clearFill() { if (autofill) autofill.classList.remove('run'); }
+
+  function tick() {
+    let next = curIdx + 1;
+    if (next >= panels.length) next = 0;   // loop back to start
+    goTo(next);
+    startFill();
+  }
+  function play() {
+    playing = true;
+    if (timer) clearInterval(timer);
+    timer = setInterval(tick, secs * 1000);
+    startFill();
+    if (playBtn) { playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>'; playBtn.setAttribute('aria-label', 'Auto-Play pausieren'); }
+  }
+  function pause() {
+    playing = false;
+    if (timer) { clearInterval(timer); timer = null; }
+    clearFill();
+    if (playBtn) { playBtn.innerHTML = '<i class="fa-solid fa-play"></i>'; playBtn.setAttribute('aria-label', 'Auto-Play starten'); }
+  }
+  if (playBtn) playBtn.addEventListener('click', () => playing ? pause() : play());
+
+  // pause when the user takes over
+  ['wheel', 'touchstart', 'keydown'].forEach(ev =>
+    window.addEventListener(ev, () => { if (playing) pause(); }, { passive: true }));
+
+  // ---- buttons ----
+  const toTop = document.getElementById('toTop');
+  if (toTop) toTop.addEventListener('click', (e) => { e.preventDefault(); pause(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+  const navCta = document.getElementById('navCta');
+  if (navCta) navCta.addEventListener('click', (e) => { e.preventDefault(); pause(); goTo(panels.length - 1); });
+
+  // expose for tweaks
+  window.__promo = {
+    setPlaying(v) { v ? play() : pause(); },
+    setSecs(v) { secs = v; if (playing) play(); },
+    isPlaying() { return playing; }
+  };
+
+  // start the reel
+  play();
+})();
+</script>
+
+<!-- ================= TWEAKS ================= -->
+<div id="tweak-root"></div>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel">
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "theme": "Stone",
+  "autoplay": true,
+  "secs": 4,
+  "anim": "Hochsliden",
+  "scroll": "Hart einrasten",
+  "layout": "Wechselnd (zweispaltig)",
+  "dots": true
+}/*EDITMODE-END*/;
+
+const THEME_MAP  = { "Stone": "stone", "Citrus": "citrus", "Pine": "pine", "Petrol": "petrol" };
+const ANIM_MAP   = { "Hochsliden": "slide", "Einfaden": "fade", "Zoom": "zoom", "Glow": "glow" };
+const SCROLL_MAP = { "Hart einrasten": "hard", "Sanft": "soft", "Frei": "free" };
+const LAYOUT_MAP = { "Wechselnd (zweispaltig)": "alt", "Gestapelt": "stacked" };
+
+function App() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+  React.useEffect(() => {
+    document.documentElement.setAttribute('data-theme', THEME_MAP[t.theme] || 'stone');
+  }, [t.theme]);
+  React.useEffect(() => {
+    const d = document.getElementById('deck'); if (!d) return;
+    d.setAttribute('data-anim', ANIM_MAP[t.anim] || 'slide');
+    d.setAttribute('data-layout', LAYOUT_MAP[t.layout] || 'alt');
+    document.documentElement.setAttribute('data-scroll', SCROLL_MAP[t.scroll] || 'hard');
+  }, [t.anim, t.scroll, t.layout]);
+  React.useEffect(() => {
+    const el = document.getElementById('dots'); if (el) el.style.display = t.dots ? '' : 'none';
+  }, [t.dots]);
+  React.useEffect(() => { if (window.__promo) window.__promo.setSecs(t.secs); }, [t.secs]);
+  React.useEffect(() => { if (window.__promo) window.__promo.setPlaying(t.autoplay); }, [t.autoplay]);
+
+  return (
+    <TweaksPanel>
+      <TweakSection label="Wiedergabe" />
+      <TweakToggle label="Auto-Play" value={t.autoplay}
+        onChange={(v) => setTweak('autoplay', v)} />
+      <TweakSlider label="Sekunden / Seite" value={t.secs} min={3} max={10} step={1} unit="s"
+        onChange={(v) => setTweak('secs', v)} />
+      <TweakSection label="Look" />
+      <TweakSelect label="Theme" value={t.theme}
+        options={["Stone", "Citrus", "Pine", "Petrol"]}
+        onChange={(v) => setTweak('theme', v)} />
+      <TweakSection label="Scroll-Effekt" />
+      <TweakSelect label="Einblendung" value={t.anim}
+        options={["Hochsliden", "Einfaden", "Zoom", "Glow"]}
+        onChange={(v) => setTweak('anim', v)} />
+      <TweakRadio label="Snap" value={t.scroll}
+        options={["Hart einrasten", "Sanft", "Frei"]}
+        onChange={(v) => setTweak('scroll', v)} />
+      <TweakSection label="Layout" />
+      <TweakRadio label="Anordnung" value={t.layout}
+        options={["Wechselnd (zweispaltig)", "Gestapelt"]}
+        onChange={(v) => setTweak('layout', v)} />
+      <TweakToggle label="Punkt-Navigation" value={t.dots}
+        onChange={(v) => setTweak('dots', v)} />
+    </TweaksPanel>
+  );
+}
+ReactDOM.createRoot(document.getElementById('tweak-root')).render(<App />);
+</script>
+
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <rect width="100" height="100" fill="#11241B"/>
+    <path d="M35 28 l8-10 4 7 4-7 4 7 4-7 8 10z" fill="#C8A227"/>
+    <text x="50" y="64" font-family="Oswald, sans-serif" font-size="30" font-weight="700" fill="#36A372" text-anchor="middle">RC</text>
+  </svg>
+</template>
+
+</body>
+</html>
