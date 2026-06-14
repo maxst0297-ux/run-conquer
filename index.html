@@ -2094,11 +2094,11 @@ function showFactionMonthlyOverlay(){
     <div style="font-family:'Bebas Neue',sans-serif;font-size:2.4rem;color:#e8ff47;text-align:center;letter-spacing:2px;margin-bottom:6px">NEUER MONAT!</div>
     <div style="font-size:.85rem;color:rgba(255,255,255,.6);text-align:center;margin-bottom:24px">Wähle deine Fraktion für diesen Monat.</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
-      \${TEAMS.map(tm=>\`<button class="ob-frak-btn" data-tid="\${tm.id}" style="padding:16px 10px;border-radius:16px;border:2px solid \${userTeam===tm.id?tm.color:'rgba(255,255,255,.12)'};background:\${userTeam===tm.id?tm.color+'22':'rgba(255,255,255,.04)'};cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;transition:.2s;-webkit-user-select:none;user-select:none;touch-action:manipulation">
-        <span style="font-size:2.2rem">\${tm.icon}</span>
-        <span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:\${tm.color};letter-spacing:1px">\${tm.name}</span>
-        <span style="font-size:.65rem;color:rgba(255,255,255,.5);line-height:1.4;text-align:center">\${TEAM_DESCS[tm.id]||''}</span>
-      </button>\`).join('')}
+      ${TEAMS.map(tm=>`<button class="ob-frak-btn" data-tid="${tm.id}" style="padding:16px 10px;border-radius:16px;border:2px solid ${userTeam===tm.id?tm.color:'rgba(255,255,255,.12)'};background:${userTeam===tm.id?tm.color+'22':'rgba(255,255,255,.04)'};cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;transition:.2s;-webkit-user-select:none;user-select:none;touch-action:manipulation">
+        <span style="font-size:2.2rem">${tm.icon}</span>
+        <span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:${tm.color};letter-spacing:1px">${tm.name}</span>
+        <span style="font-size:.65rem;color:rgba(255,255,255,.5);line-height:1.4;text-align:center">${TEAM_DESCS[tm.id]||''}</span>
+      </button>`).join('')}
     </div>
     <button id="obFrakWeiter" style="width:100%;padding:14px;background:#e8ff47;color:#09090f;border:none;border-radius:14px;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none">WEITER →</button>
   </div>`;
