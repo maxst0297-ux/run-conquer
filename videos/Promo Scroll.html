@@ -5,15 +5,314 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Runners Conquer — Promo</title>
 
-<link rel="stylesheet" href="styles/colors_and_type.css" />
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-<link rel="stylesheet" href="styles/promo.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" />
 
-<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Theme ── */
+:root {
+  --bg:       #0A0E1A;
+  --bg2:      #131826;
+  --surface:  #1C2336;
+  --border:   rgba(255,255,255,.08);
+  --text:     #E8EDF5;
+  --muted:    #5E6B8A;
+  --accent:   #E8FF47;
+  --gold:     #FFD700;
+  --radius:   14px;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+  min-height: 100svh;
+  overflow-x: hidden;
+}
+
+/* ── Scroll snap ── */
+[data-scroll="hard"]  { scroll-snap-type: y mandatory; }
+[data-scroll="soft"]  { scroll-snap-type: y proximity; }
+[data-scroll="free"]  { scroll-snap-type: none; }
+
+/* ── Topbar ── */
+.topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 22px;
+  transition: background .2s, border-color .2s;
+}
+.topbar.on-dark { background: transparent; color: #fff; }
+.topbar.solid   { background: rgba(10,14,26,.92); border-bottom: 1px solid var(--border); backdrop-filter: blur(14px); color: var(--text); }
+.brand          { display: flex; align-items: center; gap: 10px; }
+.mk             { font-weight: 800; font-size: 1.05rem; color: var(--accent); letter-spacing: .05em; }
+.wm             { font-size: .82rem; font-weight: 600; letter-spacing: .04em; }
+.bar-actions    { display: flex; align-items: center; gap: 10px; }
+.playpause {
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 50%;
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  color: inherit;
+  cursor: pointer;
+  font-size: .68rem;
+}
+.playpause:hover { background: rgba(255,255,255,.18); }
+.nav-cta {
+  background: var(--accent);
+  color: #0A0E1A;
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: .75rem;
+  font-weight: 700;
+  text-decoration: none;
+  letter-spacing: .05em;
+}
+
+/* ── Progress bar ── */
+.autobar { position: fixed; top: 0; left: 0; right: 0; height: 2px; z-index: 101; background: rgba(255,255,255,.08); }
+.autobar__fill { display: block; height: 100%; background: var(--accent); width: 0; }
+.autobar__fill.run { animation: autofill var(--secs, 5s) linear forwards; }
+@keyframes autofill { from { width: 0; } to { width: 100%; } }
+
+/* ── Dot nav ── */
+.dots {
+  position: fixed;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.dots button {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,.22);
+  cursor: pointer;
+  padding: 0;
+  transition: background .2s, transform .2s;
+}
+.dots button.active { background: var(--accent); transform: scale(1.4); }
+
+/* ── Deck / Panel ── */
+.panel {
+  min-height: 100svh;
+  scroll-snap-align: start;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 76px 24px 40px;
+  background: var(--bg);
+  position: relative;
+  overflow: hidden;
+}
+.panel--alt { background: var(--bg2); }
+
+/* ── Reveal animations ── */
+[data-reveal] {
+  opacity: 0;
+  transition: opacity .5s cubic-bezier(.16,1,.3,1), transform .5s cubic-bezier(.16,1,.3,1);
+  transition-delay: calc(var(--i, 0) * 80ms);
+}
+[data-anim="slide"] [data-reveal]          { transform: translateY(22px); }
+[data-anim="slide"] .is-in [data-reveal]   { opacity: 1; transform: translateY(0); }
+[data-anim="fade"]  [data-reveal]          { transform: none; }
+[data-anim="fade"]  .is-in [data-reveal]   { opacity: 1; }
+[data-anim="zoom"]  [data-reveal]          { transform: scale(.94); }
+[data-anim="zoom"]  .is-in [data-reveal]   { opacity: 1; transform: scale(1); }
+[data-anim="glow"]  [data-reveal]          { transform: translateY(14px); filter: blur(4px); }
+[data-anim="glow"]  .is-in [data-reveal]   { opacity: 1; transform: translateY(0); filter: blur(0); }
+
+/* ── Hero ── */
+.hero__inner {
+  max-width: 540px;
+  width: 100%;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+.hero__logo {
+  width: 72px; height: 72px;
+  object-fit: contain;
+  border-radius: 16px;
+}
+.hero__logo-fallback {
+  width: 72px; height: 72px;
+  background: var(--accent);
+  border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; font-weight: 900; color: #0A0E1A;
+}
+
+/* ── Typography ── */
+.title {
+  font-size: clamp(2.2rem, 7vw, 4rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -.02em;
+  color: var(--text);
+}
+.accent { color: var(--accent); }
+.gold   { color: var(--gold); }
+
+.stamp {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: .82rem;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.sep { color: var(--accent); opacity: .6; }
+
+.sub {
+  font-size: .95rem;
+  line-height: 1.65;
+  color: var(--muted);
+  max-width: 420px;
+}
+.lead {
+  font-size: .95rem;
+  line-height: 1.7;
+  color: var(--muted);
+}
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.kicker--center { justify-content: center; }
+.idx { color: rgba(232,255,71,.35); }
+
+/* ── Scroll cue ── */
+.scrollcue {
+  position: absolute;
+  bottom: 24px; left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  font-size: .6rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  animation: scrollbounce 2.2s ease-in-out infinite;
+}
+@keyframes scrollbounce {
+  0%, 100% { opacity: .4; transform: translateX(-50%) translateY(0); }
+  50%       { opacity: .9; transform: translateX(-50%) translateY(5px); }
+}
+
+/* ── Split layout ── */
+.split {
+  display: flex;
+  align-items: center;
+  gap: 36px;
+  max-width: 860px;
+  width: 100%;
+}
+.split--rev { flex-direction: row-reverse; }
+[data-layout="stacked"] .split,
+[data-layout="stacked"] .split--rev { flex-direction: column; }
+
+.col-media { flex: 0 0 auto; display: flex; justify-content: center; }
+.col-text  { flex: 1; display: flex; flex-direction: column; gap: 14px; }
+
+/* ── Phone mockup ── */
+.phone {
+  width: 190px;
+  border-radius: 30px;
+  background: #080C18;
+  border: 1.5px solid rgba(255,255,255,.1);
+  padding: 7px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.05);
+}
+.phone::before {
+  content: '';
+  display: block;
+  width: 52px; height: 6px;
+  background: rgba(255,255,255,.07);
+  border-radius: 3px;
+  margin: 0 auto 7px;
+}
+.phone__screen {
+  border-radius: 22px;
+  overflow: hidden;
+  background: var(--surface);
+  aspect-ratio: 9/19;
+}
+.phone__screen img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.phone__screen img[data-broken] {
+  display: none;
+}
+
+/* ── CTA ── */
+.cta-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 12px 22px;
+  border-radius: 8px;
+  font-size: .88rem;
+  font-weight: 700;
+  text-decoration: none;
+  letter-spacing: .04em;
+  cursor: pointer;
+  border: none;
+  transition: transform .12s;
+}
+.btn:hover { transform: scale(1.03); }
+.btn--primary { background: var(--accent); color: #0A0E1A; }
+.btn--ghost   { background: rgba(255,255,255,.07); color: var(--text); border: 1px solid rgba(255,255,255,.14); }
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .split, .split--rev { flex-direction: column !important; gap: 22px; }
+  .phone { width: 150px; }
+  .panel { padding: 68px 18px 32px; }
+  .dots  { right: 6px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}
+</style>
 </head>
-<body style="background-color: rgb(88, 36, 16)">
+<body>
 
 <!-- ================= FIXED CHROME ================= -->
 <header class="topbar on-dark" id="topbar">
@@ -37,7 +336,9 @@
   <!-- 01 — HERO -->
   <section class="panel hero" data-label="Hero" data-screen-label="01 · Hero">
     <div class="hero__inner">
-      <img class="hero__logo" data-reveal style="--i:0" src="assets/logo-mark-t.png" alt="Runners Conquer" />
+      <img class="hero__logo" data-reveal style="--i:0" src="assets/logo-mark-t.png" alt="Runners Conquer"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />
+      <div class="hero__logo-fallback" data-reveal style="--i:0;display:none">RC</div>
       <h1 class="title" data-reveal style="--i:1">Runners<br /><span class="accent">Conquer</span></h1>
       <div class="stamp" data-reveal style="--i:2"><span>Lauf</span><span class="sep">·</span><span>Erobere</span><span class="sep">·</span><span>Herrsche</span></div>
       <p class="sub" data-reveal style="--i:3">Die Lauf-App, die deine Strecken in echtes Revier verwandelt. Jeder Kilometer ist Gebiet — jede Runde ein Zug im größten Strategiespiel der Stadt.</p>
@@ -49,7 +350,7 @@
   <section class="panel" data-label="Fraktion" data-screen-label="02 · Wähle deine Seite">
     <div class="split">
       <div class="col-media" data-reveal style="--i:1">
-        <div class="phone"><div class="phone__screen"><img src="assets/shots/07-fraktion.jpg" alt="Fraktion wählen" loading="lazy" /></div></div>
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/07-fraktion.jpg" alt="Fraktion wählen" loading="lazy" onerror="this.setAttribute('data-broken','1')" /></div></div>
       </div>
       <div class="col-text">
         <p class="kicker" data-reveal style="--i:0"><span class="idx">01</span>&nbsp;Fraktion</p>
@@ -63,7 +364,7 @@
   <section class="panel panel--alt" data-label="Karte" data-screen-label="03 · Die Stadt ist die Arena">
     <div class="split split--rev">
       <div class="col-media" data-reveal style="--i:1">
-        <div class="phone"><div class="phone__screen"><img src="assets/shots/08-karte.jpg" alt="Karte mit Revieren" loading="lazy" /></div></div>
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/08-karte.jpg" alt="Karte mit Revieren" loading="lazy" onerror="this.setAttribute('data-broken','1')" /></div></div>
       </div>
       <div class="col-text">
         <p class="kicker" data-reveal style="--i:0"><span class="idx">02</span>&nbsp;Spielfeld</p>
@@ -77,7 +378,7 @@
   <section class="panel" data-label="Tracking" data-screen-label="04 · Jeder Kilometer zählt">
     <div class="split">
       <div class="col-media" data-reveal style="--i:1">
-        <div class="phone"><div class="phone__screen"><img src="assets/shots/15-aktivitaet.jpg" alt="Aktivität & Tracking" loading="lazy" /></div></div>
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/15-aktivitaet.jpg" alt="Aktivität & Tracking" loading="lazy" onerror="this.setAttribute('data-broken','1')" /></div></div>
       </div>
       <div class="col-text">
         <p class="kicker" data-reveal style="--i:0"><span class="idx">03</span>&nbsp;Tracking</p>
@@ -91,7 +392,7 @@
   <section class="panel panel--alt" data-label="Erobern" data-screen-label="05 · Erobere & raide Reviere">
     <div class="split split--rev">
       <div class="col-media" data-reveal style="--i:1">
-        <div class="phone"><div class="phone__screen"><img src="assets/shots/10-revier.jpg" alt="Revier-Detail & Raid" loading="lazy" /></div></div>
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/10-revier.jpg" alt="Revier-Detail & Raid" loading="lazy" onerror="this.setAttribute('data-broken','1')" /></div></div>
       </div>
       <div class="col-text">
         <p class="kicker" data-reveal style="--i:0"><span class="idx">04</span>&nbsp;Erobern</p>
@@ -105,7 +406,7 @@
   <section class="panel" data-label="Community" data-screen-label="06 · Die ganze Stadt spielt mit">
     <div class="split">
       <div class="col-media" data-reveal style="--i:1">
-        <div class="phone"><div class="phone__screen"><img src="assets/shots/09-community.jpg" alt="Community-News" loading="lazy" /></div></div>
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/09-community.jpg" alt="Community-News" loading="lazy" onerror="this.setAttribute('data-broken','1')" /></div></div>
       </div>
       <div class="col-text">
         <p class="kicker" data-reveal style="--i:0"><span class="idx">05</span>&nbsp;Live</p>
@@ -119,7 +420,7 @@
   <section class="panel panel--alt" data-label="Rangliste" data-screen-label="07 · Klettere an die Spitze">
     <div class="split split--rev">
       <div class="col-media" data-reveal style="--i:1">
-        <div class="phone"><div class="phone__screen"><img src="assets/shots/11-rangliste.jpg" alt="Rangliste" loading="lazy" /></div></div>
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/11-rangliste.jpg" alt="Rangliste" loading="lazy" onerror="this.setAttribute('data-broken','1')" /></div></div>
       </div>
       <div class="col-text">
         <p class="kicker" data-reveal style="--i:0"><span class="idx">06</span>&nbsp;Rangliste</p>
@@ -133,7 +434,7 @@
   <section class="panel" data-label="Quests" data-screen-label="08 · Ziele, die dich antreiben">
     <div class="split">
       <div class="col-media" data-reveal style="--i:1">
-        <div class="phone"><div class="phone__screen"><img src="assets/shots/16-quests.jpg" alt="Quests & Challenges" loading="lazy" /></div></div>
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/16-quests.jpg" alt="Quests & Challenges" loading="lazy" onerror="this.setAttribute('data-broken','1')" /></div></div>
       </div>
       <div class="col-text">
         <p class="kicker" data-reveal style="--i:0"><span class="idx">07</span>&nbsp;Quests</p>
@@ -147,7 +448,7 @@
   <section class="panel panel--alt" data-label="Erfolge" data-screen-label="09 · Sammle Trophäen">
     <div class="split split--rev">
       <div class="col-media" data-reveal style="--i:1">
-        <div class="phone"><div class="phone__screen"><img src="assets/shots/18-erfolge.jpg" alt="Erfolge & Trophäen" loading="lazy" /></div></div>
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/18-erfolge.jpg" alt="Erfolge & Trophäen" loading="lazy" onerror="this.setAttribute('data-broken','1')" /></div></div>
       </div>
       <div class="col-text">
         <p class="kicker" data-reveal style="--i:0"><span class="idx">08</span>&nbsp;Erfolge</p>
@@ -161,7 +462,7 @@
   <section class="panel" data-label="Profil" data-screen-label="10 · Dein Aufstieg in Zahlen">
     <div class="split">
       <div class="col-media" data-reveal style="--i:1">
-        <div class="phone"><div class="phone__screen"><img src="assets/shots/14-profil.jpg" alt="Profil" loading="lazy" /></div></div>
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/14-profil.jpg" alt="Profil" loading="lazy" onerror="this.setAttribute('data-broken','1')" /></div></div>
       </div>
       <div class="col-text">
         <p class="kicker" data-reveal style="--i:0"><span class="idx">09</span>&nbsp;Profil</p>
@@ -175,7 +476,7 @@
   <section class="panel panel--alt" data-label="Club" data-screen-label="11 · Gründe deinen Club">
     <div class="split split--rev">
       <div class="col-media" data-reveal style="--i:1">
-        <div class="phone"><div class="phone__screen"><img src="assets/shots/12-wappen.jpg" alt="Wappen-Baukasten" loading="lazy" /></div></div>
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/12-wappen.jpg" alt="Wappen-Baukasten" loading="lazy" onerror="this.setAttribute('data-broken','1')" /></div></div>
       </div>
       <div class="col-text">
         <p class="kicker" data-reveal style="--i:0"><span class="idx">10</span>&nbsp;Club</p>
@@ -189,7 +490,7 @@
   <section class="panel" data-label="Anleitung" data-screen-label="12 · Alles, was du wissen musst">
     <div class="split">
       <div class="col-media" data-reveal style="--i:1">
-        <div class="phone"><div class="phone__screen"><img src="assets/shots/13-anleitung.jpg" alt="Spielanleitung" loading="lazy" /></div></div>
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/13-anleitung.jpg" alt="Spielanleitung" loading="lazy" onerror="this.setAttribute('data-broken','1')" /></div></div>
       </div>
       <div class="col-text">
         <p class="kicker" data-reveal style="--i:0"><span class="idx">11</span>&nbsp;Anleitung</p>
@@ -206,7 +507,7 @@
       <h2 class="title" data-reveal style="--i:1">Bereit zu<br /><span class="accent">erobern?</span></h2>
       <p class="sub" data-reveal style="--i:2">Schnür die Schuhe, starte deinen ersten Lauf und nimm dir deine erste Straße. Die Stadt wartet darauf, erobert zu werden.</p>
       <div class="cta-actions" data-reveal style="--i:3">
-        <a class="btn btn--primary" href="#"><i class="fa-solid fa-play"></i>&nbsp;Jetzt spielen</a>
+        <a class="btn btn--primary" href="#" id="ctaStart"><i class="fa-solid fa-play"></i>&nbsp;Jetzt spielen</a>
         <a class="btn btn--ghost" href="#" id="toTop"><i class="fa-solid fa-arrow-up"></i>&nbsp;Nochmal ansehen</a>
       </div>
     </div>
@@ -223,6 +524,14 @@
   const dotsWrap = document.getElementById('dots');
   const playBtn = document.getElementById('playBtn');
   const autofill = document.getElementById('autofill');
+
+  // ---- postMessage signal to parent ----
+  let _promoDone = false;
+  function sendPromoDone() {
+    if (_promoDone) return;
+    _promoDone = true;
+    try { window.parent.postMessage('promo:done', '*'); } catch(e) {}
+  }
 
   // ---- dot nav ----
   panels.forEach((p, i) => {
@@ -251,6 +560,8 @@
     const dark = ap.classList.contains('hero') || ap.classList.contains('cta');
     topbar.classList.toggle('on-dark', dark);
     topbar.classList.toggle('solid', !dark);
+    // Signal done when last panel is reached
+    if (activeIdx === panels.length - 1) sendPromoDone();
   }
   window.addEventListener('scroll', update, { passive: true });
   window.addEventListener('resize', update);
@@ -269,7 +580,7 @@
   function startFill() {
     if (!autofill) return;
     autofill.classList.remove('run');
-    void autofill.offsetWidth;            // reflow to restart animation
+    void autofill.offsetWidth;
     autofill.style.setProperty('--secs', secs + 's');
     autofill.classList.add('run');
   }
@@ -277,7 +588,10 @@
 
   function tick() {
     let next = curIdx + 1;
-    if (next >= panels.length) next = 0;   // loop back to start
+    if (next >= panels.length) {
+      sendPromoDone();
+      next = 0;
+    }
     goTo(next);
     startFill();
   }
@@ -305,93 +619,13 @@
   if (toTop) toTop.addEventListener('click', (e) => { e.preventDefault(); pause(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
   const navCta = document.getElementById('navCta');
   if (navCta) navCta.addEventListener('click', (e) => { e.preventDefault(); pause(); goTo(panels.length - 1); });
-
-  // expose for tweaks
-  window.__promo = {
-    setPlaying(v) { v ? play() : pause(); },
-    setSecs(v) { secs = v; if (playing) play(); },
-    isPlaying() { return playing; }
-  };
+  const ctaStart = document.getElementById('ctaStart');
+  if (ctaStart) ctaStart.addEventListener('click', (e) => { e.preventDefault(); sendPromoDone(); });
 
   // start the reel
   play();
 })();
 </script>
-
-<!-- ================= TWEAKS ================= -->
-<div id="tweak-root"></div>
-<script type="text/babel" src="tweaks-panel.jsx"></script>
-<script type="text/babel">
-const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
-  "theme": "Stone",
-  "autoplay": true,
-  "secs": 4,
-  "anim": "Hochsliden",
-  "scroll": "Hart einrasten",
-  "layout": "Wechselnd (zweispaltig)",
-  "dots": true
-}/*EDITMODE-END*/;
-
-const THEME_MAP  = { "Stone": "stone", "Citrus": "citrus", "Pine": "pine", "Petrol": "petrol" };
-const ANIM_MAP   = { "Hochsliden": "slide", "Einfaden": "fade", "Zoom": "zoom", "Glow": "glow" };
-const SCROLL_MAP = { "Hart einrasten": "hard", "Sanft": "soft", "Frei": "free" };
-const LAYOUT_MAP = { "Wechselnd (zweispaltig)": "alt", "Gestapelt": "stacked" };
-
-function App() {
-  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
-
-  React.useEffect(() => {
-    document.documentElement.setAttribute('data-theme', THEME_MAP[t.theme] || 'stone');
-  }, [t.theme]);
-  React.useEffect(() => {
-    const d = document.getElementById('deck'); if (!d) return;
-    d.setAttribute('data-anim', ANIM_MAP[t.anim] || 'slide');
-    d.setAttribute('data-layout', LAYOUT_MAP[t.layout] || 'alt');
-    document.documentElement.setAttribute('data-scroll', SCROLL_MAP[t.scroll] || 'hard');
-  }, [t.anim, t.scroll, t.layout]);
-  React.useEffect(() => {
-    const el = document.getElementById('dots'); if (el) el.style.display = t.dots ? '' : 'none';
-  }, [t.dots]);
-  React.useEffect(() => { if (window.__promo) window.__promo.setSecs(t.secs); }, [t.secs]);
-  React.useEffect(() => { if (window.__promo) window.__promo.setPlaying(t.autoplay); }, [t.autoplay]);
-
-  return (
-    <TweaksPanel>
-      <TweakSection label="Wiedergabe" />
-      <TweakToggle label="Auto-Play" value={t.autoplay}
-        onChange={(v) => setTweak('autoplay', v)} />
-      <TweakSlider label="Sekunden / Seite" value={t.secs} min={3} max={10} step={1} unit="s"
-        onChange={(v) => setTweak('secs', v)} />
-      <TweakSection label="Look" />
-      <TweakSelect label="Theme" value={t.theme}
-        options={["Stone", "Citrus", "Pine", "Petrol"]}
-        onChange={(v) => setTweak('theme', v)} />
-      <TweakSection label="Scroll-Effekt" />
-      <TweakSelect label="Einblendung" value={t.anim}
-        options={["Hochsliden", "Einfaden", "Zoom", "Glow"]}
-        onChange={(v) => setTweak('anim', v)} />
-      <TweakRadio label="Snap" value={t.scroll}
-        options={["Hart einrasten", "Sanft", "Frei"]}
-        onChange={(v) => setTweak('scroll', v)} />
-      <TweakSection label="Layout" />
-      <TweakRadio label="Anordnung" value={t.layout}
-        options={["Wechselnd (zweispaltig)", "Gestapelt"]}
-        onChange={(v) => setTweak('layout', v)} />
-      <TweakToggle label="Punkt-Navigation" value={t.dots}
-        onChange={(v) => setTweak('dots', v)} />
-    </TweaksPanel>
-  );
-}
-ReactDOM.createRoot(document.getElementById('tweak-root')).render(<App />);
-</script>
-
-<template id="__bundler_thumbnail">
-  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-    <rect width="100" height="100" fill="#11241B"/>
-    <path d="M35 28 l8-10 4 7 4-7 4 7 4-7 8 10z" fill="#C8A227"/>
-    <text x="50" y="64" font-family="Oswald, sans-serif" font-size="30" font-weight="700" fill="#36A372" text-anchor="middle">RC</text>
-  </svg>
-</template>
 
 </body>
 </html>
