@@ -1805,12 +1805,14 @@ function checkDailyReward(){
       else{dailyLoginStreak=0;}
     }
   }
+  dailyLoginStreak=dailyLoginStreak+1;
+  dailyLoginDate=today;
+  save();
   showDailyRewardOverlay(shieldUsed);
 }
 
 function showDailyRewardOverlay(shieldUsed){
-  const today=new Date().toDateString();
-  const newStreak=dailyLoginStreak+1;
+  const newStreak=dailyLoginStreak;
   const reward=getDailyReward(newStreak);
   const pool=DAILY_QUOTES.filter(q=>!recentQuoteIds.includes(q.id));
   const quote=(pool.length>0?pool:DAILY_QUOTES)[Math.floor(Math.random()*Math.max(1,(pool.length||DAILY_QUOTES.length)))];
@@ -1860,8 +1862,6 @@ function showDailyRewardOverlay(shieldUsed){
       document.getElementById('drCheck').style.display='block';
       points+=reward.xp+reward.sp;
       if(newStreak===14||newStreak===30)streakShields=Math.min(3,streakShields+(newStreak===30?2:1));
-      dailyLoginDate=today;
-      dailyLoginStreak=newStreak;
       recentQuoteIds=[quote.id,...recentQuoteIds].slice(0,60);
       save();updateUI();
     },450);
