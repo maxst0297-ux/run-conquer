@@ -990,6 +990,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <div class="muted" style="font-size:.78rem">Punkte verdient</div>
     </div>
     <div id="postSplits"></div>
+    <div id="postInfluence"></div>
     <div id="postSong"></div>
     <div style="display:flex;gap:8px;margin-top:14px">
       <button class="btn btn-p" id="closePostBtn" style="flex:1">WEITER →</button>
@@ -1202,6 +1203,7 @@ let weekChart=null;
 let selectedTerrId=null,editAvatar=AVATARS[0];
 let notifications=[];
 let kmSplits=[],lastSplitKm=0,lastSplitSecs=0;
+let previewLayer=null,sessionNewTerrNames=[],sessionNewLandmarks=[];
 let liveInterval=null;
 let botActivities=[];
 /* ConqRun new state */
@@ -2555,10 +2557,19 @@ function renderLandmarks(){
   landmarkLayer.clearLayers();
   landmarks.forEach(lm=>{
     const captured=capturedLandmarks.includes(lm.id);
-    const icon=L.divIcon({html:captured?'✅':'⭐',className:'landmark-icon',iconSize:[22,22]});
+    const shortName=lm.name.length>14?lm.name.slice(0,14)+'…':lm.name;
+    const iconHtml=captured
+      ?`<div style="display:flex;flex-direction:column;align-items:center;gap:1px"><div style="background:${userColor};border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;box-shadow:0 0 8px ${userColor}80;color:#0A0E1A;font-weight:700">✓</div></div>`
+      :`<div style="display:flex;flex-direction:column;align-items:center;gap:2px"><div style="background:rgba(255,215,0,.15);border:1.5px solid #ffd700;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 0 12px #ffd70055;animation:blink 2.5s ease-in-out infinite">⭐</div><div style="background:rgba(0,0,0,.75);color:#ffd700;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;white-space:nowrap;letter-spacing:.3px">${shortName}</div></div>`;
+    const sz=captured?[22,22]:[28,44];
+    const anchor=captured?[11,11]:[14,22];
+    const icon=L.divIcon({html:iconHtml,className:'',iconSize:sz,iconAnchor:anchor});
     L.marker([lm.lat,lm.lng],{icon})
-      .bindPopup(`<b>${lm.name}</b><br><span style="font-size:.72rem;color:#6b6b82">${lm.type}</span>${captured?'<br><span style="color:#10b981;font-size:.72rem">✅ Entdeckt</span>':'<br><span style="font-size:.72rem;color:#ff9f1c">⭐ Näherungspunkt: 50 m</span>'}`)
+      .bindPopup(`<b>${lm.name}</b><br><span style="font-size:.72rem;color:#6b6b82">${lm.type}</span>${captured?'<br><span style="color:#10b981;font-size:.72rem">✅ Entdeckt</span>':'<br><span style="font-size:.72rem;color:#ffd700">⭐ Nähern: 50 m</span>'}`)
       .addTo(landmarkLayer);
+    if(!captured){
+      L.circle([lm.lat,lm.lng],{radius:50,color:'#ffd700',fillColor:'#ffd700',fillOpacity:.04,weight:1,opacity:.25,dashArray:'4 4'}).addTo(landmarkLayer);
+    }
   });
 }
 function lmsInPoly(poly){if(!poly)return[];return landmarks.filter(lm=>{try{return turf.booleanPointInPolygon(turf.point([lm.lng,lm.lat]),turf.feature(poly));}catch(e){return false}}).map(l=>l.id)}
@@ -2589,9 +2600,9 @@ function renderTerr(){
       fillColor=teamColor;
       borderCol=rs.borderCol||teamColor;
     } else {
-      /* Own = blue transparent, Enemy = red transparent */
-      fillColor=own?'#2255ff':'#ff3333';
-      borderCol=isDecaying?'#ff4d6d':(own?(rs.borderCol||'#6699ff'):(rs.borderCol||'#ff6666'));
+      /* Own = userColor transparent, Enemy = red transparent */
+      fillColor=own?userColor:'#ff3333';
+      borderCol=isDecaying?'#ff4d6d':(own?(rs.borderCol||userColor):(rs.borderCol||'#ff6666'));
     }
     const weight=isDecaying?3:(typeof rs.weight==='function'?rs.weight(own):rs.weight);
     const fillOpacity=own?Math.max(.18,strPct*.35):Math.max(.1,strPct*.22);
@@ -2599,7 +2610,13 @@ function renderTerr(){
     if(isDecaying)styleOpts.dashArray='4 3';
     else if(rs.dashArray)styleOpts.dashArray=rs.dashArray;
 
-    L.geoJSON(t.polygon,{style:styleOpts})
+    const terrLayer_=L.geoJSON(t.polygon,{style:styleOpts});
+    if(own&&window._newTerrIds&&window._newTerrIds.has(t.id)){
+      window._newTerrIds.delete(t.id);
+      const flashL=L.geoJSON(t.polygon,{style:{fillColor:'#ffffff',fillOpacity:.55,color:userColor,weight:3,opacity:.8}}).addTo(terrLayer);
+      let fop=.55;const fade=setInterval(()=>{fop-=.07;if(fop<=0){clearInterval(fade);terrLayer.removeLayer(flashL);}else flashL.setStyle({fillOpacity:fop});},60);
+    }
+    terrLayer_
       .bindPopup(()=>{
         const barW=Math.round(strPct*100);
         const barCol=strPct>.6?'#10b981':strPct>.3?'#ff9f1c':'#ff4d6d';
@@ -2612,7 +2629,7 @@ function renderTerr(){
         const terrName=t.customName||`Gebiet #${(t.id||'').slice(-4)}`;
         const decayMins=Math.max(0,Math.round(t.defense/(CFG.DECAY_PER_DAY/24/60)));
         /* Header */
-        let h=`<div style="font-family:'Bebas Neue',sans-serif;font-size:1.05rem;letter-spacing:1px;color:${own?'#6699ff':'#ff6666'}">${own?'🔵':'🔴'} ${terrName}</div>`;
+        let h=`<div style="font-family:'Bebas Neue',sans-serif;font-size:1.05rem;letter-spacing:1px;color:${own?userColor:'#ff6666'}">${own?'🔵':'🔴'} ${terrName}</div>`;
         /* Owner + Faction row */
         h+=`<div style="display:flex;align-items:center;gap:6px;margin:5px 0 3px;font-size:.72rem">`;
         h+=`<span style="color:var(--muted)">👤</span><span style="font-weight:600">${ownerName}</span>`;
@@ -2644,6 +2661,8 @@ function renderTerr(){
           if(!raid)h+=`<button onclick="window.startRaid('${t.id}')" style="flex:1;background:#ff9f1c;color:#fff;border:none;border-radius:8px;padding:4px 8px;cursor:pointer;font-size:.72rem">🔥 Raid</button>`;
           h+=`</div>`;
         }
+        const terrLms=(t.landmarkIds||[]).map(lid=>landmarks.find(l=>l.id===lid)).filter(Boolean);
+        if(terrLms.length){h+=`<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><div style="font-size:.6rem;font-weight:700;letter-spacing:1px;color:#ffd700;margin-bottom:4px">⭐ WAHRZEICHEN</div>${terrLms.map(lm=>`<div style="font-size:.72rem;color:var(--text);padding:1px 0">• ${lm.name}</div>`).join('')}</div>`;}
         return h;
       })
       .addTo(terrLayer);
@@ -2806,6 +2825,7 @@ function startRun(){
   if(localStorage.getItem('rc_gps_consent')!=='1'){showGpsConsent(startRun);return;}
   isRunning=true;isPaused=false;beep(440);
   runStart=Date.now();runSecs=0;path=[];lastPos=null;dist=0;kmSplits=[];lastSplitKm=0;lastSplitSecs=0;
+  sessionNewTerrNames=[];sessionNewLandmarks=[];window._lastPrevAt=0;
   gpsSpeed=null;gpsAlt=null;cadence=0;
   statusTxt.textContent=energy>0?`⚡ Boost aktiv (${energy}/${CFG.ENERGY_MAX})`:'Läuft…';
   statusDot.style.background=energy>0?'var(--primary)':'var(--green)';statusBar.classList.add('running');
@@ -2846,6 +2866,7 @@ function onGPS(pos){
     const d=turf.distance(turf.point([lastPos[1],lastPos[0]]),turf.point([lng,lat]),{units:'meters'});
     if(d>2&&d<100){
       dist+=d;path.push(pt);pathLayer.addLatLng(pt);distLive.textContent=fmtDist(dist);
+      if(path.length>=2&&Math.floor(dist/150)>(window._lastPrevAt||0)){window._lastPrevAt=Math.floor(dist/150);clearTimeout(window._prevTimer);window._prevTimer=setTimeout(()=>{const pv=mkPoly();if(pv){if(previewLayer)mapL.removeLayer(previewLayer);previewLayer=L.geoJSON({type:'Feature',geometry:pv.polyGeom.geometry},{style:{fillColor:userColor,fillOpacity:.12,color:userColor,weight:2,dashArray:'6 4',opacity:.5}}).addTo(mapL);}},200);}
       const km=Math.floor(dist/1000);
       if(km>lastSplitKm){const el=runSecs+Math.floor((Date.now()-runStart)/1000),ss=el-lastSplitSecs;kmSplits.push({km,pace:fmtPace(1000,ss),splitSecs:ss});lastSplitKm=km;lastSplitSecs=el;beep(660,.1);toast(`KM ${km} · ${fmtPace(1000,ss)}/km`);}
       heatPts.push([lat,lng,.5]);if(!heatPersonalOnly)heatLayer.addLatLng([lat,lng,.5]);
@@ -2857,6 +2878,7 @@ function onGPS(pos){
     const dist2=turf.distance(turf.point([lng,lat]),turf.point([lm.lng,lm.lat]),{units:'meters'});
     if(dist2<=50){
       capturedLandmarks.push(lm.id);
+      sessionNewLandmarks.push(lm.name);
       points+=CFG.LANDMARK_PTS;
       save();renderLandmarks();
       toast('⭐ Wahrzeichen entdeckt: '+lm.name+' +'+CFG.LANDMARK_PTS+' Pts!');beep(880,.1);vib(120);
@@ -2931,6 +2953,7 @@ function stopRun(){
   if(pRB2)pRB2.style.display='none';
   const pStats=$('panelRunStats');if(pStats)pStats.textContent='– km · 00:00';
   const elapsed=runSecs;
+  if(previewLayer){mapL.removeLayer(previewLayer);previewLayer=null;}window._lastPrevAt=0;clearTimeout(window._prevTimer);
   if(path.length<3||dist<CFG.MIN_DIST){toast('Zu kurz – mind. '+CFG.MIN_DIST+' m');if(pathLayer)mapL.removeLayer(pathLayer);path=[];dist=0;sessionConquests=0;return}
   const pd=mkPoly();if(!pd)return;
   const{polyGeom,gap}=pd,area=turf.area(polyGeom);
@@ -2991,6 +3014,8 @@ function processConquest(np,area,d,boosted=false){
       rarity,firstRunner:userId,firstRunnerName:playerName,_ownerRegisteredAt:registeredAt};
     if(lms.length){t.defense=Math.min(CFG.MAX_DEF,Math.floor(t.defense*CFG.LM_DEF_BONUS));pts+=CFG.LM_PTS;toast('🏛️ Wahrzeichen! +'+CFG.LM_PTS);}
     territories.push(t);
+    (window._newTerrIds||(window._newTerrIds=new Set())).add(t.id);
+    sessionNewTerrNames.push(t.customName||('Gebiet #'+(t.id||'').slice(-4)));
     totalDiscovered++;
     const gainXP=Math.round((CFG.XP_NEUTRAL+Math.min(CFG.XP_CONQUER_MAX-CFG.XP_NEUTRAL,Math.floor(area/500)))*comboMulN);
     pts+=gainXP;
@@ -3038,6 +3063,8 @@ function processConquest(np,area,d,boosted=false){
           pts+=conquestXP;conquered=true;
           t.owner=userId;t.color=userColor;t.defense=20;t.maxDefense=CFG.MAX_DEF;
           t.lastDefended=now;t._lastDecayTs=now;t.createdAt=now;t._lastBonus=0;t._ownerRegisteredAt=registeredAt;
+          (window._newTerrIds||(window._newTerrIds=new Set())).add(t.id);
+          sessionNewTerrNames.push(t.customName||('Gebiet #'+(t.id||'').slice(-4)));
           if(!t.rarity)t.rarity=pickRarity((t.landmarkIds||[]).length>0);
           [660,880,1100].forEach((f,i)=>setTimeout(()=>beep(f,.1),i*80));
           const rarLbl=t.rarity&&t.rarity!=='common'?(' · '+RARITY_LABELS[t.rarity]):'';
@@ -3080,6 +3107,8 @@ function showPostRun(rec){
   $('postSplits').innerHTML=rec.splits?.length?`<div class="splits-table"><div class="split-hdr"><span>KM</span><span>Pace</span><span>Zeit</span></div>${rec.splits.map(s=>`<div class="split-row"><span>${s.km}</span><span>${s.pace}</span><span>${fmtTime(s.splitSecs)}</span></div>`).join('')}</div>`:'';
   $('postSong').innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--card);border-radius:12px;color:var(--muted);font-size:.82rem"><i class="fas fa-music" style="color:var(--primary)"></i> Song wird analysiert…</div>`;
   setTimeout(()=>{const s=fallbackSong();$('postSong').innerHTML=`<div style="background:var(--card);border-radius:12px;padding:14px"><div style="font-size:.6rem;text-transform:uppercase;letter-spacing:2px;color:var(--primary);margin-bottom:6px">🎵 Dein Lauf-Song</div><div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem">${s.title}</div><div style="color:var(--muted);font-size:.75rem;margin-bottom:6px">${s.artist} · ${s.bpm} BPM</div><div style="font-size:.72rem;color:var(--muted)">${s.reason}</div></div>`;},1200);
+  const inflHTML=(sessionNewTerrNames.length||sessionNewLandmarks.length)?`<div style="background:rgba(var(--primary-rgb),.06);border:1px solid rgba(var(--primary-rgb),.2);border-radius:14px;padding:14px;margin-bottom:10px"><div style="font-size:.6rem;font-weight:700;letter-spacing:1.5px;color:var(--primary);margin-bottom:8px">🗺️ DEIN EINFLUSS</div>${sessionNewTerrNames.map(n=>`<div style="display:flex;align-items:center;gap:6px;font-size:.8rem;margin-bottom:4px"><span style="width:8px;height:8px;border-radius:50%;background:${userColor};flex-shrink:0;display:inline-block"></span>${n}</div>`).join('')}${sessionNewLandmarks.map(n=>`<div style="display:flex;align-items:center;gap:6px;font-size:.8rem;margin-bottom:4px"><span style="color:#ffd700">⭐</span>${n}</div>`).join('')}</div>`:'';
+  $('postInfluence').innerHTML=inflHTML;
   $('postRunModal').style.display='flex';
   document.getElementById('cardRunBtn')?.addEventListener('click',()=>{shareRunCard(rec,rec.path||[]);},{ once:true });
 }
