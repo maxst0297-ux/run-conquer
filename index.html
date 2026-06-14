@@ -2144,7 +2144,7 @@ function showOnboardingOverlay(){
   const render=()=>{
     if(step===0){
       ov.innerHTML=`<div style="position:relative;width:100%;height:100%">
-        <iframe src="/videos/Promo%20Scroll.html" style="width:100%;height:100%;border:none;display:block"></iframe>
+        <iframe src="/videos/Promo%20Slide/Promo%20Scroll.html" style="width:100%;height:100%;border:none;display:block"></iframe>
         <button id="obSkipBtn" style="position:absolute;top:20px;right:20px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.75);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:7px 18px;font-size:.72rem;letter-spacing:1px;cursor:pointer;font-family:'Poppins',sans-serif;backdrop-filter:blur(8px);-webkit-user-select:none;user-select:none;touch-action:manipulation">ÜBERSPRINGEN ›</button>
       </div>`;
     }
@@ -4029,7 +4029,7 @@ function renderSettingsTab(tab){
       close.style.cssText='position:absolute;top:16px;right:16px;background:#fff2;color:#fff;border:none;border-radius:50%;width:38px;height:38px;font-size:1.1rem;cursor:pointer;z-index:1';
       close.onclick=()=>ov.remove();
       const fr=document.createElement('iframe');
-      fr.src='/videos/Promo%20Scroll.html';
+      fr.src='/videos/Promo%20Slide/Promo%20Scroll.html';
       fr.style.cssText='width:100%;height:100%;border:none;display:block';
       ov.appendChild(fr);
       ov.appendChild(close);

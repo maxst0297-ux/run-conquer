@@ -224,6 +224,14 @@
   const playBtn = document.getElementById('playBtn');
   const autofill = document.getElementById('autofill');
 
+  // ---- signal completion to a parent app (onboarding auto-advance) ----
+  let _promoDone = false;
+  function sendPromoDone() {
+    if (_promoDone) return;
+    _promoDone = true;
+    try { window.parent.postMessage('promo:done', '*'); } catch (e) {}
+  }
+
   // ---- dot nav ----
   panels.forEach((p, i) => {
     const b = document.createElement('button');
@@ -251,6 +259,7 @@
     const dark = ap.classList.contains('hero') || ap.classList.contains('cta');
     topbar.classList.toggle('on-dark', dark);
     topbar.classList.toggle('solid', !dark);
+    if (activeIdx === panels.length - 1) sendPromoDone();
   }
   window.addEventListener('scroll', update, { passive: true });
   window.addEventListener('resize', update);
@@ -277,7 +286,7 @@
 
   function tick() {
     let next = curIdx + 1;
-    if (next >= panels.length) next = 0;   // loop back to start
+    if (next >= panels.length) { sendPromoDone(); next = 0; }   // loop back to start
     goTo(next);
     startFill();
   }
@@ -305,6 +314,8 @@
   if (toTop) toTop.addEventListener('click', (e) => { e.preventDefault(); pause(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
   const navCta = document.getElementById('navCta');
   if (navCta) navCta.addEventListener('click', (e) => { e.preventDefault(); pause(); goTo(panels.length - 1); });
+  const ctaPrimary = document.querySelector('.cta .btn--primary');
+  if (ctaPrimary) ctaPrimary.addEventListener('click', (e) => { e.preventDefault(); sendPromoDone(); });
 
   // expose for tweaks
   window.__promo = {
