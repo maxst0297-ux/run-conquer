@@ -30,6 +30,7 @@
   --primary:#E8FF47; --primary-rgb:232,255,71;
   --red:#ff4d6d; --green:#00E676; --cyan:#00d4ff;
   --muted:#5E6B8A; --text:#E8EDF5;
+  --gold:#FFD700; --gold-rgb:255,215,0;
   --radius:14px;
   --nav-h:72px; --hdr-h:64px;
   --sat: env(safe-area-inset-top,    0px);
@@ -515,6 +516,8 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 @keyframes confettiFly{0%{transform:translate(0,0) rotate(0deg);opacity:1}100%{transform:translate(var(--tx),var(--ty)) rotate(var(--rot));opacity:0}}
 @keyframes handPop{0%{transform:scale(0) translateY(30px);opacity:0}40%{transform:scale(1.3) translateY(-10px);opacity:1}60%{transform:scale(.9) translateY(0);opacity:1}80%{transform:scale(1.05) translateY(-4px);opacity:1}100%{transform:scale(1) translateY(0);opacity:0}}
 @keyframes bravoIn{0%{transform:scale(.2);opacity:0}50%{transform:scale(1.1);opacity:1}70%{transform:scale(.95)}85%{transform:scale(1.02)}100%{transform:scale(1);opacity:0}}
+.crest-banner{display:flex;align-items:center;justify-content:center;padding:6px 14px;background:linear-gradient(#FFE890,#F4C430 55%,#D9A406);clip-path:polygon(0% 50%,6% 0%,94% 0%,100% 50%,94% 100%,6% 100%);box-shadow:0 4px 10px rgba(0,0,0,.4)}
+.crest-banner span{font-family:'Bebas Neue',sans-serif;letter-spacing:1.5px;color:#2a2008;line-height:1;white-space:nowrap;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 </style>
 </head>
 <body class="theme-stone">
@@ -1876,148 +1879,159 @@ function showDailyRewardOverlay(shieldUsed){
 }
 
 
-/* ── WAPPEN SVG ── */
-let _wId=0;
-function wappenSVG({shape='shield',borderColor='#e8ff47',borderEffect='standard',pattern='solid',patternColor='#e8ff47',bg='#09090f',bg2='',symbol='',symbolColor='',extras=[]},size=60){
-  const id=++_wId;
-  const SH={
-    shield:'M50,4 L92,18 L92,56 L50,96 L8,56 L8,18Z',
-    shield2:'M14,10 Q50,4 86,10 L90,58 Q68,88 50,96 Q32,88 10,58Z',
-    shield3:'M10,10 Q50,2 90,10 L92,52 Q78,94 50,96 Q22,94 8,52Z',
-    shield4:'M12,10 Q50,4 88,10 L90,64 L50,88 L10,64Z',
-    shield5:'M50,4 L82,20 L82,60 L50,96 L18,60 L18,20Z',
-    hexa:'M50,4 L93,28 L93,72 L50,96 L7,72 L7,28Z',
-    round:'M50,5 A45,45 0 1,1 50,95 A45,45 0 1,1 50,5Z',
-    diamond:'M50,4 L96,50 L50,96 L4,50Z',
-    banner:'M8,8 L92,8 L92,74 L50,96 L8,74Z',
-    kite:'M50,2 L88,42 L50,96 L12,42Z',
-    oval:'M50,8 Q88,8 90,50 Q88,92 50,92 Q12,92 10,50 Q12,8 50,8Z',
-    arch:'M12,8 Q50,2 88,8 L90,68 Q70,96 50,96 Q30,96 10,68Z',
-    vaulted:'M8,20 Q50,4 92,20 L92,58 Q72,96 50,96 Q28,96 8,58Z',
-    cross_sh:'M32,4 L68,4 L68,32 L96,32 L96,68 L68,68 L68,96 L32,96 L32,68 L4,68 L4,32 L32,32Z'
-  };
-  const d=SH[shape]||SH.shield;
-  const pc=patternColor;
-  const sc=symbolColor||patternColor||'#fff';
-  /* Build defs */
-  let dfs=`<clipPath id="wcp${id}"><path d="${d}"/></clipPath>`;
-  if(bg2)dfs+=`<linearGradient id="wbg${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${bg}"/><stop offset="100%" stop-color="${bg2}"/></linearGradient>`;
-  if(pattern==='gradient2')dfs+=`<linearGradient id="wpg${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${pc}"/><stop offset="100%" stop-color="transparent"/></linearGradient>`;
-  /* Border effect */
-  let efStroke=borderColor,efSw=5,efDfs='',efOver='';
-  if(borderEffect==='gloss'){efDfs=`<linearGradient id="wgl${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="rgba(255,255,255,.45)"/><stop offset="40%" stop-color="rgba(255,255,255,.1)"/><stop offset="100%" stop-color="transparent"/></linearGradient>`;efOver=`<path d="${d}" fill="url(#wgl${id})"/>`;}
-  else if(borderEffect==='metallic'){efDfs=`<linearGradient id="wmtl${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff"/><stop offset="35%" stop-color="${borderColor}"/><stop offset="65%" stop-color="#555"/><stop offset="100%" stop-color="${borderColor}"/></linearGradient>`;efStroke=`url(#wmtl${id})`;efSw=7;}
-  else if(borderEffect==='neon'){efDfs=`<filter id="wneon${id}" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter>`;efOver=`<path d="${d}" fill="none" stroke="${borderColor}" stroke-width="14" opacity=".35" filter="url(#wneon${id})"/>`;}
-  else if(borderEffect==='gold'){efDfs=`<linearGradient id="wgld${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FFE566"/><stop offset="50%" stop-color="#B8860B"/><stop offset="100%" stop-color="#FFE566"/></linearGradient>`;efStroke=`url(#wgld${id})`;efSw=7;}
-  else if(borderEffect==='fire'){efDfs=`<linearGradient id="wfir${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FF6600"/><stop offset="50%" stop-color="#FF0000"/><stop offset="100%" stop-color="#FF6600"/></linearGradient>`;efStroke=`url(#wfir${id})`;efSw=6;}
-  else if(borderEffect==='ice'){efDfs=`<linearGradient id="wice${id}" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#A8F0FF"/><stop offset="50%" stop-color="#0099CC"/><stop offset="100%" stop-color="#A8F0FF"/></linearGradient>`;efStroke=`url(#wice${id})`;efOver=`<path d="${d}" fill="none" stroke="#E8FCFF" stroke-width="2" opacity=".5"/>`;}
-  else if(borderEffect==='electric'){efStroke='#00FFFF';efSw=4;efOver=`<path d="${d}" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="6,3" opacity=".7"/>`;}
-  dfs+=efDfs;
-  /* Patterns */
-  const pats={
-    solid:'',
-    stripes:`<rect x="0" y="14" width="100" height="7" fill="${pc}"/><rect x="0" y="34" width="100" height="7" fill="${pc}"/><rect x="0" y="54" width="100" height="7" fill="${pc}"/><rect x="0" y="74" width="100" height="7" fill="${pc}"/>`,
-    stripes_v:`<rect x="16" y="0" width="7" height="100" fill="${pc}"/><rect x="37" y="0" width="7" height="100" fill="${pc}"/><rect x="58" y="0" width="7" height="100" fill="${pc}"/><rect x="79" y="0" width="7" height="100" fill="${pc}"/>`,
-    cross:`<rect x="44" y="0" width="12" height="100" fill="${pc}"/><rect x="0" y="44" width="100" height="12" fill="${pc}"/>`,
-    diagonal:`<line x1="-5" y1="30" x2="30" y2="-5" stroke="${pc}" stroke-width="8"/><line x1="10" y1="108" x2="108" y2="10" stroke="${pc}" stroke-width="8"/><line x1="55" y1="108" x2="108" y2="55" stroke="${pc}" stroke-width="8"/>`,
-    chevron:`<polyline points="6,36 50,66 94,36" fill="none" stroke="${pc}" stroke-width="10"/><polyline points="6,58 50,88 94,58" fill="none" stroke="${pc}" stroke-width="10"/>`,
-    dots:`<circle cx="28" cy="32" r="9" fill="${pc}"/><circle cx="72" cy="32" r="9" fill="${pc}"/><circle cx="50" cy="54" r="9" fill="${pc}"/><circle cx="28" cy="76" r="8" fill="${pc}"/><circle cx="72" cy="76" r="8" fill="${pc}"/>`,
-    halves:`<rect x="50" y="0" width="50" height="100" fill="${pc}"/>`,
-    quarters:`<rect x="50" y="0" width="50" height="50" fill="${pc}"/><rect x="0" y="50" width="50" height="50" fill="${pc}"/>`,
-    check:`<rect x="0" y="0" width="25" height="25" fill="${pc}"/><rect x="50" y="0" width="25" height="25" fill="${pc}"/><rect x="25" y="25" width="25" height="25" fill="${pc}"/><rect x="75" y="25" width="25" height="25" fill="${pc}"/><rect x="0" y="50" width="25" height="25" fill="${pc}"/><rect x="50" y="50" width="25" height="25" fill="${pc}"/><rect x="25" y="75" width="25" height="25" fill="${pc}"/><rect x="75" y="75" width="25" height="25" fill="${pc}"/>`,
-    star_c:`<polygon points="50,18 57,38 78,38 62,50 68,70 50,58 32,70 38,50 22,38 43,38" fill="${pc}"/>`,
-    border_inner:`<path d="${d}" fill="none" stroke="${pc}" stroke-width="7" transform="scale(.82) translate(9,9)"/>`,
-    gradient2:`<path d="${d}" fill="url(#wpg${id})"/>`,
-  };
-  /* Symbols */
-  const syms={
-    '':'',
-    star:`<polygon points="50,18 57,38 78,38 62,50 68,70 50,58 32,70 38,50 22,38 43,38" fill="${sc}"/>`,
-    crossed_swords:`<g stroke="${sc}" stroke-width="5" stroke-linecap="round"><line x1="28" y1="28" x2="72" y2="72"/><line x1="72" y1="28" x2="28" y2="72"/></g><circle cx="28" cy="72" r="5" fill="${sc}"/><circle cx="72" cy="28" r="5" fill="${sc}"/>`,
-    sword:`<line x1="50" y1="18" x2="50" y2="76" stroke="${sc}" stroke-width="5" stroke-linecap="round"/><line x1="36" y1="40" x2="64" y2="40" stroke="${sc}" stroke-width="4.5" stroke-linecap="round"/><circle cx="50" cy="78" r="5" fill="${sc}"/>`,
-    shield_s:`<path d="M50,22 L70,30 L70,52 Q70,68 50,78 Q30,68 30,52 L30,30Z" fill="none" stroke="${sc}" stroke-width="5"/>`,
-    crown:`<path d="M24,64 L30,40 L42,54 L50,26 L58,54 L70,40 L76,64 L76,72 L24,72Z" fill="${sc}"/>`,
-    flame:`<path d="M50,20 C50,20 40,36 38,46 C36,54 40,60 44,62 C44,56 46,52 48,50 C48,56 50,64 50,68 C52,64 54,56 54,50 C56,52 58,56 58,62 C62,60 64,52 62,44 C60,34 50,20Z" fill="${sc}"/>`,
-    runner:`<circle cx="56" cy="26" r="7" fill="${sc}"/><path d="M50,33 L44,52 L38,62 M50,33 L54,46 L60,54 M50,33 L60,30 L66,38" stroke="${sc}" stroke-width="4.5" stroke-linecap="round" fill="none"/>`,
-    bolt:`<polygon points="58,18 38,54 52,54 44,82 64,44 50,44" fill="${sc}"/>`,
-    horse:`<path d="M36,78 L40,58 Q44,44 52,38 Q62,34 66,42 L66,52 L60,54 Q58,64 54,70 L50,78Z" fill="${sc}"/><path d="M64,42 L68,28 L72,30 L67,44" fill="${sc}"/><circle cx="54" cy="43" r="3.5" fill="${bg||'#000'}"/>`,
-    lion:`<circle cx="50" cy="50" r="15" fill="${sc}"/><circle cx="50" cy="50" r="23" fill="none" stroke="${sc}" stroke-width="5"/><circle cx="43" cy="46" r="3" fill="${bg||'#000'}"/><circle cx="57" cy="46" r="3" fill="${bg||'#000'}"/><path d="M43,57 Q50,64 57,57" fill="none" stroke="${bg||'#000'}" stroke-width="2.5" stroke-linecap="round"/>`,
-    eagle:`<path d="M50,46 Q30,22 14,34 Q24,40 29,50 Q19,49 14,60 Q28,54 40,62 L50,80 L60,62 Q72,54 86,60 Q81,49 71,50 Q76,40 86,34 Q70,22 50,46Z" fill="${sc}"/>`,
-    paw:`<circle cx="50" cy="60" r="13" fill="${sc}"/><circle cx="33" cy="46" r="8" fill="${sc}"/><circle cx="67" cy="46" r="8" fill="${sc}"/><circle cx="41" cy="34" r="7" fill="${sc}"/><circle cx="59" cy="34" r="7" fill="${sc}"/>`,
-    tree:`<polygon points="50,16 68,46 32,46" fill="${sc}"/><polygon points="50,30 72,62 28,62" fill="${sc}"/><rect x="44" y="62" width="12" height="18" fill="${sc}" rx="2"/>`,
-    axe:`<rect x="47" y="28" width="6" height="52" fill="${sc}" rx="3"/><path d="M26,28 L53,20 L53,46Z" fill="${sc}"/><path d="M53,20 L76,28 L53,46Z" fill="${sc}"/>`,
-  };
-  /* Extras */
-  const extSvgs={
-    laurel:`<path d="M22,82 Q14,64 16,44 Q22,52 28,48 Q24,62 22,82Z M16,74 Q8,58 10,42 Q16,48 22,46" fill="#3d7a1a" opacity=".9"/><path d="M78,82 Q86,64 84,44 Q78,52 72,48 Q76,62 78,82Z M84,74 Q92,58 90,42 Q84,48 78,46" fill="#3d7a1a" opacity=".9"/>`,
-    stars3:`<g fill="${borderColor}"><polygon points="36,4 37.5,9 43,9 38.5,12 40,17 36,14 32,17 33.5,12 29,9 34.5,9"/><polygon points="50,2 51.5,7 57,7 52.5,10 54,15 50,12 46,15 47.5,10 43,7 48.5,7"/><polygon points="64,4 65.5,9 71,9 66.5,12 68,17 64,14 60,17 61.5,12 57,9 62.5,9"/></g>`,
-    stars5:`<g fill="${borderColor}"><polygon points="22,6 23,10 27,10 24,12 25,16 22,14 19,16 20,12 17,10 21,10"/><polygon points="34,2 35,6 39,6 36,8 37,12 34,10 31,12 32,8 29,6 33,6"/><polygon points="50,2 51.5,7 57,7 52.5,10 54,15 50,12 46,15 47.5,10 43,7 48.5,7"/><polygon points="66,2 67,6 71,6 68,8 69,12 66,10 63,12 64,8 61,6 65,6"/><polygon points="78,6 79,10 83,10 80,12 81,16 78,14 75,16 76,12 73,10 77,10"/></g>`,
-    band_gold:`<path d="M14,84 Q50,92 86,84 L88,94 Q50,102 12,94Z" fill="#B8860B"/><path d="M14,84 Q50,90 86,84" fill="none" stroke="#FFE566" stroke-width="2" opacity=".8"/>`,
-    band_red:`<path d="M14,84 Q50,92 86,84 L88,94 Q50,102 12,94Z" fill="#990000"/><path d="M14,84 Q50,90 86,84" fill="none" stroke="#FF4444" stroke-width="2" opacity=".8"/>`,
-    band_dark:`<path d="M14,84 Q50,92 86,84 L88,94 Q50,102 12,94Z" fill="#1a1a1a"/><path d="M14,84 Q50,90 86,84" fill="none" stroke="#555" stroke-width="2" opacity=".8"/>`,
-  };
-  const extraSvg=(extras||[]).map(e=>extSvgs[e]||'').join('');
-  const bgFill=bg2?`url(#wbg${id})`:bg;
-  return`<svg viewBox="-10 -10 120 120" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg"><defs>${dfs}</defs>${extraSvg}<path d="${d}" fill="${bgFill}"/><g clip-path="url(#wcp${id})">${pats[pattern]||''}</g>${syms[symbol]||''}<path d="${d}" fill="none" stroke="${efStroke}" stroke-width="${efSw}"/>${efOver}</svg>`;
+/* ── WAPPEN / CREST (Claude Design — Wappen-Schmiede port) ── */
+const CREST_SHAPES=[
+  {id:'heater',  label:'Klassisch',  d:'M10 8 H90 V58 C90 88 72 104 50 112 C28 104 10 88 10 58 Z'},
+  {id:'mandel',  label:'Mandel',     d:'M50 2 C78 22 88 40 88 58 C88 86 70 106 50 114 C30 106 12 86 12 58 C12 40 22 22 50 2 Z'},
+  {id:'rund',    label:'Rund',       d:'M0 58 A50 50 0 1 0 100 58 A50 50 0 1 0 0 58 Z'},
+  {id:'hexagon', label:'Hexagon',    d:'M50 4 L92 30 L92 86 L50 112 L8 86 L8 30 Z'},
+  {id:'french',  label:'Französisch',d:'M12 8 H88 V62 C88 92 66 106 50 112 C34 106 12 92 12 62 Z'},
+  {id:'swallow', label:'Schwalbe',   d:'M12 10 H88 V94 L66 82 L50 100 L34 82 L12 94 Z'},
+  {id:'oval',    label:'Oval',       d:'M8 58 A42 54 0 1 0 92 58 A42 54 0 1 0 8 58 Z'},
+  {id:'raute',   label:'Raute',      d:'M50 4 L94 58 L50 112 L6 58 Z'},
+  {id:'altdeut', label:'Altdeutsch', d:'M14 14 C32 4 68 4 86 14 V58 C86 90 66 104 50 112 C34 104 14 90 14 58 Z'},
+  {id:'plaque',  label:'Plakette',   d:'M22 10 H78 Q90 10 90 22 V94 Q90 106 78 106 H22 Q10 106 10 94 V22 Q10 10 22 10 Z'},
+];
+const CREST_DIVISIONS=[
+  {id:'voll',label:'Voll'},{id:'pfahl',label:'Pfahl'},{id:'balken',label:'Balken'},
+  {id:'schraeg',label:'Schräg'},{id:'geviert',label:'Geviert'},
+];
+function crestDivB(div,c){
+  if(div==='pfahl')  return `<rect x="50" y="-3" width="55" height="122" fill="${c}"/>`;
+  if(div==='balken') return `<rect x="-3" y="58" width="106" height="61" fill="${c}"/>`;
+  if(div==='schraeg')return `<polygon points="-3,-3 102,119 -3,119" fill="${c}"/>`;
+  if(div==='geviert')return `<g fill="${c}"><rect x="50" y="-3" width="55" height="61"/><rect x="-3" y="58" width="53" height="61"/></g>`;
+  return '';
 }
-const WAPPEN_SHAPES=[
-  {v:'shield',  l:'Klassisch', png:'/assets/wappen/shape_s5.png'},
-  {v:'shield2', l:'Gerundet',  png:'/assets/wappen/shape_s2.png'},
-  {v:'shield3', l:'Kurvig',    png:'/assets/wappen/shape_s1.png'},
-  {v:'shield4', l:'Flach',     png:'/assets/wappen/shape_s7.png'},
-  {v:'shield5', l:'Spitz',     png:'/assets/wappen/shape_s6.png'},
-  {v:'hexa',    l:'Hexagon',   png:'/assets/wappen/shape_s4.png'},
-  {v:'round',   l:'Rund',      png:'/assets/wappen/shape_s10.png'},
-  {v:'diamond', l:'Raute',     png:'/assets/wappen/shape_s11.png'},
-  {v:'banner',  l:'Banner',    png:'/assets/wappen/shape_s3.png'},
-  {v:'kite',    l:'Kite',      png:'/assets/wappen/shape_s8.png'},
-  {v:'oval',    l:'Oval',      png:'/assets/wappen/shape_s9.png'},
-  {v:'arch',    l:'Bogen',     png:'/assets/wappen/shape_s14.png'},
-  {v:'vaulted', l:'Gewölbt',   png:'/assets/wappen/shape_s15.png'},
-  {v:'cross_sh',l:'Kreuz',     png:null},
+const CREST_PATTERNS=[
+  {id:'keine',label:'Keine'},{id:'streifen',label:'Streifen'},{id:'schraeg',label:'Schräg'},
+  {id:'karos',label:'Karos'},{id:'punkte',label:'Punkte'},{id:'topo',label:'Topo'},
+  {id:'schuppen',label:'Schuppen'},{id:'gitter',label:'Gitter'},{id:'chevron',label:'Chevron'},{id:'waben',label:'Waben'},
 ];
-const WAPPEN_PATTERNS=[
-  {v:'solid',l:'Uni'},{v:'stripes',l:'H-Streifen'},{v:'stripes_v',l:'V-Streifen'},
-  {v:'cross',l:'Kreuz'},{v:'diagonal',l:'Diagonal'},{v:'chevron',l:'Chevron'},
-  {v:'dots',l:'Punkte'},{v:'halves',l:'Hälften'},{v:'quarters',l:'Viertel'},
-  {v:'check',l:'Karo'},{v:'star_c',l:'Stern'},{v:'gradient2',l:'Verlauf'},
-  {v:'border_inner',l:'Innenrand'}
+const CREST_SYMBOLS=[
+  {id:'run',fa:'fa-person-running',label:'Läufer'},{id:'crown',fa:'fa-crown',label:'Krone'},
+  {id:'trophy',fa:'fa-trophy',label:'Pokal'},{id:'bolt',fa:'fa-bolt',label:'Blitz'},
+  {id:'fire',fa:'fa-fire',label:'Feuer'},{id:'shield',fa:'fa-shield-halved',label:'Schild'},
+  {id:'mountain',fa:'fa-mountain',label:'Berg'},{id:'compass',fa:'fa-compass',label:'Kompass'},
+  {id:'star',fa:'fa-star',label:'Stern'},{id:'heart',fa:'fa-heart',label:'Herz'},
+  {id:'arrow',fa:'fa-location-arrow',label:'Pfeil'},{id:'route',fa:'fa-route',label:'Route'},
+  {id:'paw',fa:'fa-paw',label:'Pfote'},{id:'dragon',fa:'fa-dragon',label:'Drache'},
+  {id:'feather',fa:'fa-feather',label:'Feder'},{id:'gem',fa:'fa-gem',label:'Juwel'},
+  {id:'skull',fa:'fa-skull',label:'Totenkopf'},{id:'tower',fa:'fa-chess-rook',label:'Turm'},
+  {id:'target',fa:'fa-bullseye',label:'Ziel'},{id:'flag',fa:'fa-flag-checkered',label:'Flagge'},
 ];
-const WAPPEN_SYMBOLS=[
-  {v:'',l:'–'},{v:'runner',l:'Läufer'},{v:'horse',l:'Pferd'},{v:'lion',l:'Löwe'},
-  {v:'crown',l:'Krone'},{v:'crossed_swords',l:'Schwerter'},{v:'axe',l:'Axt'},
-  {v:'flame',l:'Flamme'},{v:'eagle',l:'Adler'},{v:'bolt',l:'Blitz'},
-  {v:'paw',l:'Pfote'},{v:'tree',l:'Baum'},{v:'star',l:'Stern'},
-  {v:'sword',l:'Schwert'},{v:'shield_s',l:'Schild'}
+const CREST_PALETTE=[
+  {name:'Tiefgrün',hex:'#042D22'},{name:'Wald',hex:'#0D3D2C'},{name:'Smaragd',hex:'#10B981'},
+  {name:'Petrol',hex:'#1F7A8C'},{name:'Cyan',hex:'#00D4FF'},{name:'Mitternacht',hex:'#102A4A'},
+  {name:'Lila',hex:'#9B5DE5'},{name:'Magenta',hex:'#E84AA7'},{name:'Rubin',hex:'#C0143C'},
+  {name:'Rot',hex:'#FF4D6D'},{name:'Orange',hex:'#FF9F1C'},{name:'Lime',hex:'#E6FF55'},
+  {name:'Gold',hex:'#FFD700'},{name:'Bronze',hex:'#B0793A'},{name:'Silber',hex:'#C7D0CE'},
+  {name:'Sand',hex:'#E9D8A6'},{name:'Weiß',hex:'#F4FBEF'},{name:'Anthrazit',hex:'#18211C'},
 ];
-const WAPPEN_EFFECTS=[
-  {v:'standard',l:'Standard'},{v:'gloss',l:'Glanz'},{v:'metallic',l:'Metallisch'},
-  {v:'neon',l:'Neon'},{v:'gold',l:'Gold'},{v:'fire',l:'Feuer'},
-  {v:'ice',l:'Eis'},{v:'electric',l:'Elektrisch'}
+const CREST_EXTRAS=[
+  {id:'crown',fa:'fa-crown',label:'Krone'},{id:'banner',fa:'fa-ribbon',label:'Banner'},
+  {id:'stars',fa:'fa-star',label:'Sterne'},{id:'laurel',fa:'fa-leaf',label:'Lorbeer'},
+  {id:'swords',fa:'fa-khanda',label:'Schwerter'},
 ];
-const WAPPEN_EXTRAS=[
-  {v:'laurel',l:'Lorbeer'},{v:'stars3',l:'3 Sterne'},{v:'stars5',l:'5 Sterne'},
-  {v:'band_gold',l:'Gold-Band'},{v:'band_red',l:'Rot-Band'},{v:'band_dark',l:'Dunkel-Band'}
+const CREST_EFFECTS=[
+  {id:'lime',fa:'fa-bolt',label:'Lime-Glow'},{id:'gold',fa:'fa-crown',label:'Gold-Glanz',gold:true},
+  {id:'metallic',fa:'fa-gem',label:'Metallic'},{id:'inner',fa:'fa-circle-half-stroke',label:'Tiefe'},
 ];
-const WAPPEN_COLORS=[
-  '#660000','#AA0000','#DD1111','#FF4400','#FF6600','#FF8800','#FFAA00',
-  '#003300','#005500','#008800','#00AA44','#00BBAA','#007799','#004466',
-  '#000044','#0000AA','#1155CC','#2277EE','#440099','#7700CC','#AA00AA',
-  '#0a0a0a','#222222','#444444','#777777','#AAAAAA','#DDDDDD','#FFFFFF',
-  '#3B1800','#8B6914','#1a0a3a','#E8FF47','#FF69B4','#00FFCC','#FF0077',
-];
-const WAPPEN_PRESETS=[
-  {shape:'shield', bg:'#080c18',bg2:'#0e1a36',borderColor:'#4d80e6',borderEffect:'neon',  pattern:'cross',    patternColor:'#2255bb',symbol:'star',          symbolColor:'#ffffff',extras:['stars3']},
-  {shape:'hexa',   bg:'#180808',bg2:'#2e0a0a',borderColor:'#e63020',borderEffect:'fire',  pattern:'diagonal', patternColor:'#993311',symbol:'flame',         symbolColor:'#FFD700',extras:['stars3']},
-  {shape:'shield2',bg:'#081808',bg2:'#0a2e0a',borderColor:'#e6a820',borderEffect:'gold',  pattern:'chevron',  patternColor:'#3d7a20',symbol:'runner',        symbolColor:'#e6a820',extras:['laurel']},
-  {shape:'shield3',bg:'#0a0818',bg2:'#160a2a',borderColor:'#9933FF',borderEffect:'neon',  pattern:'dots',     patternColor:'#6611cc',symbol:'bolt',          symbolColor:'#ffffff',extras:['stars5']},
-  {shape:'shield4',bg:'#080808',bg2:'#181818',borderColor:'#FF8800',borderEffect:'fire',  pattern:'solid',    patternColor:'#FF8800',symbol:'lion',          symbolColor:'#FF8800',extras:[]},
-  {shape:'arch',   bg:'#080808',bg2:'#181818',borderColor:'#00CCFF',borderEffect:'ice',   pattern:'border_inner',patternColor:'#004466',symbol:'eagle',     symbolColor:'#00CCFF',extras:[]},
-  {shape:'banner', bg:'#180a00',bg2:'#2e1800',borderColor:'#FFD700',borderEffect:'gold',  pattern:'halves',   patternColor:'#7a3300',symbol:'crown',         symbolColor:'#FFD700',extras:['band_gold']},
-  {shape:'vaulted',bg:'#080808',bg2:'#141414',borderColor:'#3dba72',borderEffect:'gloss', pattern:'stripes_v',patternColor:'#1a5e3a',symbol:'tree',          symbolColor:'#ffffff',extras:['laurel']},
-  {shape:'kite',   bg:'#10080a',bg2:'#201018',borderColor:'#FF4466',borderEffect:'neon',  pattern:'diagonal', patternColor:'#881122',symbol:'crossed_swords',symbolColor:'#ffffff',extras:['stars3']},
-  {shape:'hexa',   bg:'#060a14',bg2:'#0a1428',borderColor:'#88AAFF',borderEffect:'metallic',pattern:'solid', patternColor:'#88AAFF',symbol:'shield_s',      symbolColor:'#88AAFF',extras:[]},
-];
+const CREST_DEFAULT={
+  name:'Sturmläufer',shape:'heater',division:'voll',pattern:'topo',symbol:'run',symColor:'auto',
+  bg:'#0D3D2C',bg2:'#042D22',border:'#E6FF55',
+  extras:{crown:true,banner:true,stars:true,laurel:true,swords:true},
+  effects:{lime:true,gold:false,metallic:false,inner:true},
+};
+function crestEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function crestIsLight(hex){
+  const c=(hex||'#000').replace('#','');
+  const r=parseInt(c.slice(0,2),16),g=parseInt(c.slice(2,4),16),b=parseInt(c.slice(4,6),16);
+  return (0.299*r+0.587*g+0.114*b)>150;
+}
+function crestPatternDef(pat,uid,tone){
+  const id='pat'+uid;
+  if(pat==='keine')return '';
+  if(pat==='streifen')return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="16" height="16"><rect x="0" y="0" width="8" height="16" fill="${tone}"/></pattern>`;
+  if(pat==='schraeg')return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="16" height="16" patternTransform="rotate(45)"><rect x="0" y="0" width="8" height="16" fill="${tone}"/></pattern>`;
+  if(pat==='karos')return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="16" height="16"><rect x="0" y="0" width="8" height="8" fill="${tone}"/><rect x="8" y="8" width="8" height="8" fill="${tone}"/></pattern>`;
+  if(pat==='punkte')return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="14" height="14"><circle cx="7" cy="7" r="2.3" fill="${tone}"/></pattern>`;
+  if(pat==='topo')return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="34" height="16"><path d="M0 9 Q8.5 1 17 9 T34 9" fill="none" stroke="${tone}" stroke-width="1.8"/></pattern>`;
+  if(pat==='schuppen')return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="18" height="9"><path d="M0 9 A9 9 0 0 1 18 9" fill="none" stroke="${tone}" stroke-width="1.6"/><path d="M-9 9 A9 9 0 0 1 9 9" fill="none" stroke="${tone}" stroke-width="1.6"/><path d="M9 9 A9 9 0 0 1 27 9" fill="none" stroke="${tone}" stroke-width="1.6"/></pattern>`;
+  if(pat==='gitter')return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="15" height="15"><path d="M0 0 H15 M0 0 V15" stroke="${tone}" stroke-width="1" fill="none"/></pattern>`;
+  if(pat==='chevron')return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="18" height="12"><path d="M0 11 L9 3 L18 11" fill="none" stroke="${tone}" stroke-width="1.8"/></pattern>`;
+  if(pat==='waben')return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="20" height="17.32" patternTransform="scale(.9)"><path d="M10 0 L20 5.77 L20 11.55 L10 17.32 L0 11.55 L0 5.77 Z" fill="none" stroke="${tone}" stroke-width="1.4"/></pattern>`;
+  return '';
+}
+function crestRandom(prev){
+  const pick=a=>a[Math.floor(Math.random()*a.length)];
+  const col=()=>pick(CREST_PALETTE).hex;
+  const names=['Sturmläufer','Wald Wölfe','Asphalt Kings','Nordwind','Revier Hüter',
+    'Tempo Titanen','Eisen Beine','Phoenix Pace','Granit Garde','Meilen Meute'];
+  return {...prev,
+    name:pick(names),shape:pick(CREST_SHAPES).id,division:pick(CREST_DIVISIONS).id,
+    pattern:pick(CREST_PATTERNS).id,symbol:pick(CREST_SYMBOLS).id,
+    symColor:Math.random()<0.5?'auto':col(),bg:col(),bg2:col(),border:col(),
+    extras:{crown:Math.random()<.5,banner:Math.random()<.7,stars:Math.random()<.5,laurel:Math.random()<.4,swords:Math.random()<.4},
+    effects:{lime:Math.random()<.5,gold:Math.random()<.35,metallic:Math.random()<.45,inner:Math.random()<.6},
+  };
+}
+let _crestId=0;
+function crestSVG(cfgIn,size){
+  size=size||216;
+  const ci=cfgIn||{};
+  const cfg={...CREST_DEFAULT,...ci,extras:{...CREST_DEFAULT.extras,...(ci.extras||{})},effects:{...CREST_DEFAULT.effects,...(ci.effects||{})}};
+  const uid='c'+(++_crestId);
+  const sc=size/220;
+  const sh=CREST_SHAPES.find(s=>s.id===cfg.shape)||CREST_SHAPES[0];
+  const sym=CREST_SYMBOLS.find(s=>s.id===cfg.symbol)||CREST_SYMBOLS[0];
+  const ex=cfg.extras||{},eff=cfg.effects||{};
+  const div=cfg.division||'voll';
+  const light=crestIsLight(cfg.bg);
+  const tone=light?'rgba(0,0,0,.20)':'rgba(255,255,255,.15)';
+  const autoSym=eff.gold?'#FFD700':(light?'#10271d':'#F4FBEF');
+  const symColor=(!cfg.symColor||cfg.symColor==='auto')?autoSym:cfg.symColor;
+  const glow=[];
+  if(eff.lime)glow.push('drop-shadow(0 0 9px rgba(230,255,85,.7))');
+  if(eff.gold)glow.push('drop-shadow(0 0 12px rgba(255,215,0,.62))');
+  glow.push('drop-shadow(0 6px 10px rgba(0,0,0,.45))');
+  const metalStops=eff.gold
+    ?[['0','#FFE9A0'],['.28','#FFD24A'],['.5','#9A7415'],['.72','#FFD24A'],['1','#C9A227']]
+    :[['0','#FFFFFF'],['.28','#D6DEDB'],['.5','#7E8A84'],['.74','#E2E9E6'],['1','#A7B2AD']];
+  const strokeCol=eff.metallic?`url(#metal${uid})`:cfg.border;
+  function laurel(){
+    const P0=[106,250],P1=[4,250],P2=[42,96];
+    const bez=t=>{const u=1-t;return[u*u*P0[0]+2*u*t*P1[0]+t*t*P2[0],u*u*P0[1]+2*u*t*P1[1]+t*t*P2[1]];};
+    let leaves='';const N=8;
+    for(let i=0;i<N;i++){const t=0.08+(i/(N-1))*0.86;const a=bez(t);const b=bez(Math.min(1,t+0.001));const ang=Math.atan2(b[1]-a[1],b[0]-a[0])*180/Math.PI;leaves+=`<ellipse cx="${a[0]}" cy="${a[1]}" rx="9" ry="3.5" fill="url(#leaf${uid})" transform="rotate(${ang-34} ${a[0]} ${a[1]})"/>`;}
+    return `<g><path d="M${P0[0]} ${P0[1]} Q${P1[0]} ${P1[1]} ${P2[0]} ${P2[1]}" fill="none" stroke="#9c7a22" stroke-width="2.4" stroke-linecap="round"/>${leaves}</g>`;
+  }
+  const sword=`<g><path d="M110 8 L106 220 L114 220 Z" fill="url(#blade${uid})" stroke="#6c756f" stroke-width=".6"/><line x1="110" y1="24" x2="110" y2="214" stroke="rgba(255,255,255,.55)" stroke-width="1"/><rect x="95" y="218" width="30" height="7" rx="2" fill="#E8C34A" stroke="#9c7a22" stroke-width=".6"/><rect x="106" y="224" width="8" height="30" rx="3" fill="#5d3f23"/><circle cx="110" cy="260" r="6.5" fill="#E8C34A" stroke="#9c7a22" stroke-width=".6"/></g>`;
+  const nameTxt=(cfg.name||'DEIN CLUB').trim()||'DEIN CLUB';
+  const bannerFont=(nameTxt.length>14?14.5:nameTxt.length>10?16:19)*sc;
+  const backSvg=`<svg viewBox="0 0 220 300" width="${size}" height="${300*sc}" style="position:absolute;inset:0;overflow:visible;z-index:1"><defs><linearGradient id="blade${uid}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9aa6a0"/><stop offset=".5" stop-color="#EFF4F2"/><stop offset="1" stop-color="#7d877f"/></linearGradient><linearGradient id="leaf${uid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F0D67A"/><stop offset="1" stop-color="#A9821f"/></linearGradient></defs><ellipse cx="110" cy="292" rx="64" ry="7" fill="rgba(0,0,0,.32)"/>${ex.swords?`<g><g transform="rotate(30 110 140)">${sword}</g><g transform="rotate(-30 110 140)">${sword}</g></g>`:''}${ex.laurel?`<g>${laurel()}<g transform="translate(220,0) scale(-1,1)">${laurel()}</g></g>`:''}</svg>`;
+  const innerFilter=eff.inner?`<filter id="ins${uid}" x="-20%" y="-20%" width="140%" height="140%"><feComponentTransfer in="SourceAlpha" result="a"><feFuncA type="table" tableValues="1 0"/></feComponentTransfer><feGaussianBlur in="a" stdDeviation="3.6"/><feOffset dy="1.8" result="b"/><feFlood flood-color="#000" flood-opacity="0.55"/><feComposite in2="b" operator="in" result="s"/><feComposite in="s" in2="SourceAlpha" operator="in"/></filter>`:'';
+  const metalGrad=eff.metallic?`<linearGradient id="metal${uid}" x1="0" y1="0" x2="0" y2="1">${metalStops.map(s=>`<stop offset="${s[0]}" stop-color="${s[1]}"/>`).join('')}</linearGradient>`:'';
+  const glossGrad=`<linearGradient id="gloss${uid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".30"/><stop offset=".44" stop-color="#fff" stop-opacity="0"/><stop offset=".74" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".18"/></linearGradient>`;
+  const shieldSvg=`<svg viewBox="0 0 100 116" style="position:absolute;left:${25*sc}px;top:${40*sc}px;width:${170*sc}px;height:${198*sc}px;overflow:visible;filter:${glow.join(' ')};z-index:2"><defs><clipPath id="clip${uid}"><path d="${sh.d}"/></clipPath>${crestPatternDef(cfg.pattern,uid,tone)}${glossGrad}${metalGrad}${innerFilter}</defs><g clip-path="url(#clip${uid})"><rect x="-3" y="-3" width="106" height="122" fill="${cfg.bg}"/>${crestDivB(div,cfg.bg2)}${cfg.pattern!=='keine'?`<rect x="-3" y="-3" width="106" height="122" fill="url(#pat${uid})"/>`:''}${eff.metallic?`<rect x="-3" y="-3" width="106" height="122" fill="url(#gloss${uid})"/>`:''}</g>${eff.inner?`<path d="${sh.d}" fill="#000" filter="url(#ins${uid})"/>`:''}<path d="${sh.d}" fill="none" stroke="${strokeCol}" stroke-width="5" stroke-linejoin="round"/>${eff.gold?`<path d="${sh.d}" fill="none" stroke="rgba(255,215,0,.92)" stroke-width="1.6" style="transform-box:fill-box;transform-origin:center;transform:scale(.9)"/>`:''}</svg>`;
+  const symI=`<i class="fa-solid ${sym.fa}" style="position:absolute;left:50%;top:${128*sc}px;transform:translate(-50%,-50%);font-size:${58*sc}px;color:${symColor};z-index:4;text-shadow:${crestIsLight(symColor)?'0 1px 2px rgba(0,0,0,.35)':'0 2px 6px rgba(0,0,0,.5)'}"></i>`;
+  const crownI=ex.crown?`<i class="fa-solid fa-crown" style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:${38*sc}px;color:#FFD700;filter:drop-shadow(0 0 8px rgba(255,215,0,.6));z-index:6"></i>`:'';
+  const bannerD=ex.banner?`<div class="crest-banner" style="position:absolute;left:50%;top:${206*sc}px;transform:translateX(-50%);width:${212*sc}px;z-index:5"><span style="font-size:${bannerFont}px">${crestEsc(nameTxt)}</span></div>`:'';
+  const starsD=ex.stars?`<div style="position:absolute;top:${264*sc}px;left:50%;transform:translateX(-50%);display:flex;gap:${7*sc}px;z-index:5">${[0,1,2].map(()=>`<i class="fa-solid fa-star" style="font-size:${13*sc}px;color:#FFD700;filter:drop-shadow(0 0 5px rgba(255,215,0,.55))"></i>`).join('')}</div>`:'';
+  return `<div class="crest" style="position:relative;width:${size}px;height:${300*sc}px">${backSvg}${shieldSvg}${symI}${crownI}${bannerD}${starsD}</div>`;
+}
+function crestShapeMini(d,sel){
+  return `<svg width="38" height="44" viewBox="0 0 100 116"><path d="${d}" fill="${sel?'rgba(230,255,85,.16)':'rgba(255,255,255,.07)'}" stroke="${sel?'#E6FF55':'#5A8A6E'}" stroke-width="5" stroke-linejoin="round"/></svg>`;
+}
+function crestPatternMini(pat,sel){
+  const uid='pm'+(++_crestId);
+  return `<svg width="40" height="40" viewBox="0 0 40 40"><defs>${crestPatternDef(pat,uid,'rgba(230,255,85,.55)')}</defs><rect x="1" y="1" width="38" height="38" rx="9" fill="${sel?'rgba(230,255,85,.12)':'#0a2f22'}" stroke="${sel?'#E6FF55':'rgba(255,255,255,.15)'}"/>${pat!=='keine'?`<rect x="1" y="1" width="38" height="38" rx="9" fill="url(#pat${uid})"/>`:''}${pat==='keine'?'<text x="20" y="24" text-anchor="middle" font-size="9" fill="#5A8A6E" font-family="Poppins">leer</text>':''}</svg>`;
+}
+function crestDivisionMini(div,sel){
+  const uid='dm'+(++_crestId);
+  const A=sel?'#103a2a':'#0a2f22',B=sel?'rgba(230,255,85,.5)':'rgba(255,255,255,.2)';
+  return `<svg width="40" height="40" viewBox="0 0 40 40"><defs><clipPath id="dm${uid}"><rect x="2" y="2" width="36" height="36" rx="9"/></clipPath></defs><g clip-path="url(#dm${uid})"><rect x="2" y="2" width="36" height="36" fill="${A}"/>${div==='pfahl'?`<rect x="20" y="2" width="20" height="36" fill="${B}"/>`:''}${div==='balken'?`<rect x="2" y="20" width="36" height="20" fill="${B}"/>`:''}${div==='schraeg'?`<polygon points="2,2 38,38 2,38" fill="${B}"/>`:''}${div==='geviert'?`<g fill="${B}"><rect x="20" y="2" width="20" height="18"/><rect x="2" y="20" width="18" height="18"/></g>`:''}</g><rect x="2" y="2" width="36" height="36" rx="9" fill="none" stroke="${sel?'#E6FF55':'rgba(255,255,255,.15)'}" stroke-width="1.5"/></svg>`;
+}
 
 /* ── FRAKTIONS-BESCHREIBUNGEN ── */
 const TEAM_DESCS={
@@ -3744,7 +3758,7 @@ function renderSettingsTab(tab){
   } else if(tab==='club'){
     const CLUB_ICONS=['⚔️','🔥','❄️','⚡','🌑','🦅','🐺','🏔️','🌊','🌟'];
     if(userClub){
-      const wHtml=wappenSVG(userClub.wappen||{},70);
+      const wHtml=crestSVG(userClub.wappen||{},86);
       body.innerHTML=`<div class="club-card-info" style="align-items:center;gap:14px"><div style="flex-shrink:0">${wHtml}</div><div style="flex:1"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:1px">${userClub.name}</div><div style="font-size:.68rem;color:var(--muted)">Gegründet ${new Date(userClub.foundedAt).toLocaleDateString('de')}</div></div></div><div id="clubMemberList" style="margin:10px 0"></div><div style="font-size:.75rem;color:var(--muted);margin-bottom:4px;text-align:center">Club-Code (antippen zum Kopieren)</div><div class="club-code-box" id="clubCodeBox">${userClub.code}</div><div style="font-size:.65rem;color:var(--muted);text-align:center;margin-bottom:14px">Teile diesen Code mit anderen Spielern</div><button class="btn" id="leaveClubBtn" style="width:100%;border-color:var(--red);color:var(--red)"><i class="fas fa-sign-out-alt"></i> Club verlassen</button>`;
       $('clubCodeBox')?.addEventListener('click',()=>{navigator.clipboard?.writeText(userClub.code).then(()=>toast('📋 Code kopiert: '+userClub.code)).catch(()=>toast('Code: '+userClub.code));});
       $('leaveClubBtn')?.addEventListener('click',()=>{if(!confirm('Club wirklich verlassen?'))return;userClub=null;saveProfile();renderSettingsTab('club');toast('Club verlassen');});
@@ -3752,163 +3766,129 @@ function renderSettingsTab(tab){
       // Club Activity Feed
       if(sb){(async()=>{try{const{data}=await sb.from('profiles').select('player_name,points,updated_at,user_team').eq('club_code',userClub.code).order('updated_at',{ascending:false}).limit(8);const feedEl=document.getElementById('clubMemberList');if(!feedEl||!data?.length)return;const feedDiv=document.createElement('div');feedDiv.style.cssText='margin-top:12px;border-top:1px solid var(--border);padding-top:10px';feedDiv.innerHTML='<div style="font-size:.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700;margin-bottom:6px">⚡ Letzte Aktivitäten</div>'+data.map(p=>{const tm=TEAMS.find(t=>t.id===p.user_team);const diff=Math.round((Date.now()-new Date(p.updated_at).getTime())/60000);const t=diff<1?'gerade':diff<60?`vor ${diff} Min.`:diff<1440?`vor ${Math.floor(diff/60)} Std.`:`vor ${Math.floor(diff/1440)} T.`;return`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:.75rem"><span>${tm?tm.icon:'👤'}</span><span style="flex:1">${p.player_name||'?'}</span><span style="color:var(--muted);font-size:.65rem">${t}</span></div>`;}).join('');feedEl.appendChild(feedDiv);}catch(e){}})();}
     } else {
-      let wCfg={shape:'shield',borderColor:'#e8ff47',borderEffect:'standard',pattern:'solid',patternColor:'#e8ff47',bg:'#0d1a3d',bg2:'#1a2e6e',symbol:'runner',symbolColor:'#fff',extras:[]};
+      let wCfg=window._clubDraft?JSON.parse(JSON.stringify(window._clubDraft)):Object.assign(JSON.parse(JSON.stringify(CREST_DEFAULT)),{name:''});
+      window._clubDraft=wCfg;
       body.innerHTML=`<style>
-.wb-sec{margin-bottom:14px}
-.wb-lbl{font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:6px;display:flex;align-items:center;gap:6px}
-.wb-lbl span{background:var(--primary);color:#000;border-radius:50%;width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;font-size:.55rem;font-weight:800;flex-shrink:0}
-.wb-row{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
-.wb-row::-webkit-scrollbar{display:none}
-.wb-thumb{flex-shrink:0;border-radius:8px;border:2.5px solid var(--border);cursor:pointer;background:var(--card);padding:2px;transition:border-color .15s,transform .1s;touch-action:manipulation}
-.wb-thumb:active{transform:scale(.93)}
-.wb-thumb.sel{border-color:var(--primary);box-shadow:0 0 10px rgba(232,255,71,.35)}
-.wb-sym-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
-.wb-color-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
-.wb-swatch{width:100%;aspect-ratio:1;border-radius:6px;cursor:pointer;border:2.5px solid transparent;transition:border-color .12s,transform .1s;touch-action:manipulation}
-.wb-swatch:active{transform:scale(.88)}
-.wb-swatch.sel{border-color:#fff;box-shadow:0 0 6px rgba(255,255,255,.6)}
-.wb-chip-row{display:flex;gap:5px;flex-wrap:wrap}
-.wb-chip{font-size:.68rem;padding:5px 10px;border-radius:8px;border:2px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;transition:all .14s;white-space:nowrap;touch-action:manipulation}
-.wb-chip:active{transform:scale(.92)}
-.wb-chip.sel{border-color:var(--primary);background:rgba(232,255,71,.12);color:var(--primary);font-weight:700}
-.wb-extra{font-size:.66rem;padding:5px 10px;border-radius:8px;border:2px solid var(--border);background:var(--card);color:var(--muted);cursor:pointer;transition:all .14s;white-space:nowrap;touch-action:manipulation}
-.wb-extra.on{border-color:var(--primary);background:rgba(232,255,71,.1);color:var(--primary);font-weight:600}
-.wb-preview-wrap{display:flex;justify-content:center;margin:4px 0 16px;position:relative}
-.wb-name-overlay{position:absolute;bottom:-2px;left:50%;transform:translateX(-50%);font-family:'Bebas Neue',sans-serif;font-size:.75rem;letter-spacing:2px;color:rgba(255,255,255,.7);white-space:nowrap;pointer-events:none;text-shadow:0 1px 4px #000}
+.wsmith{padding:2px 0 8px}
+.wsmith-title{font-family:'Bebas Neue',sans-serif;font-size:1.15rem;letter-spacing:2px;color:var(--primary);margin-bottom:12px;text-align:center}
+.wsmith .bld-stage{position:relative;border-radius:18px;margin-bottom:16px;padding:14px;display:flex;flex-direction:column;align-items:center;overflow:hidden;background:linear-gradient(165deg,#0e4030 0%,#072e23 48%,#04201a 100%);border:1px solid var(--border)}
+.wsmith .stage-glow{position:absolute;top:-40%;left:50%;transform:translateX(-50%);width:280px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(var(--primary-rgb),.16),transparent 68%);pointer-events:none}
+.wsmith .stage-tag{margin-top:4px;font:600 .56rem/1 'Poppins',sans-serif;text-transform:uppercase;letter-spacing:1.6px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.wsmith .stage-tag i{color:var(--primary);font-size:.6rem}
+.wsmith .field2{margin-bottom:6px}
+.wsmith .lbl2{display:block;font:600 .58rem/1 'Poppins',sans-serif;text-transform:uppercase;letter-spacing:1.6px;color:var(--muted);margin:2px 2px 7px}
+.wsmith .field2 input{width:100%;padding:12px 14px;font-size:.95rem;background:var(--bg2);border:1px solid var(--border);border-radius:12px;color:var(--text);outline:none;font-family:'Poppins',sans-serif}
+.wsmith .field2 input:focus{border-color:var(--primary)}
+.wsmith .wb2-sec{margin-top:15px}
+.wsmith .wb2-hd{display:flex;align-items:center;gap:8px;font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:1px;color:var(--text);margin-bottom:9px}
+.wsmith .wb2-hd i{color:var(--primary);font-size:.8rem}
+.wsmith .grid-row{display:flex;flex-wrap:wrap;gap:8px}
+.wsmith .chip{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:9px 9px 7px;width:62px;cursor:pointer;color:var(--muted);font:600 .54rem/1 'Poppins',sans-serif;text-transform:uppercase;letter-spacing:.4px;transition:transform .12s,border-color .2s,background .2s,color .2s;touch-action:manipulation}
+.wsmith .chip span{text-align:center;white-space:nowrap}
+.wsmith .chip:active{transform:scale(.94)}
+.wsmith .chip.sel{border-color:var(--primary);background:rgba(var(--primary-rgb),.10);color:var(--text);box-shadow:0 0 0 1px var(--primary),0 0 14px rgba(var(--primary-rgb),.22)}
+.wsmith .icon-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.wsmith .icon-chip{aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:var(--card);border:1.5px solid var(--border);border-radius:12px;color:var(--muted);font-size:1.15rem;cursor:pointer;transition:transform .12s,border-color .2s,background .2s,color .2s;touch-action:manipulation}
+.wsmith .icon-chip:active{transform:scale(.92)}
+.wsmith .icon-chip.sel{border-color:var(--primary);color:var(--primary);background:rgba(var(--primary-rgb),.12);box-shadow:0 0 12px rgba(var(--primary-rgb),.25)}
+.wsmith .sw-row{display:flex;flex-wrap:wrap;gap:9px}
+.wsmith .sw{width:32px;height:32px;border-radius:50%;cursor:pointer;padding:0;border:2px solid rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;transition:transform .12s,box-shadow .2s;font-size:.7rem;touch-action:manipulation}
+.wsmith .sw:active{transform:scale(.9)}
+.wsmith .sw.sel{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--primary)}
+.wsmith .sw-auto{background:var(--card);border-color:rgba(var(--primary-rgb),.5);color:var(--primary)}
+.wsmith .tog-row{display:flex;flex-wrap:wrap;gap:8px}
+.wsmith .tog{display:flex;align-items:center;gap:7px;background:var(--card);border:1.5px solid var(--border);border-radius:40px;padding:9px 15px;cursor:pointer;color:var(--muted);font:700 .72rem/1 'Bebas Neue',sans-serif;letter-spacing:1.3px;text-transform:uppercase;transition:transform .12s,border-color .2s,background .2s,color .2s;touch-action:manipulation}
+.wsmith .tog i{font-size:.8rem}
+.wsmith .tog:active{transform:scale(.95)}
+.wsmith .tog.on{border-color:var(--primary);color:var(--text);background:rgba(var(--primary-rgb),.12);box-shadow:0 0 12px rgba(var(--primary-rgb),.2)}
+.wsmith .tog.on i{color:var(--primary)}
+.wsmith .tog.gold.on{border-color:var(--gold);color:#fff;background:rgba(var(--gold-rgb),.14)}
+.wsmith .tog.gold.on i{color:var(--gold)}
+.wsmith .wb2-dice{width:100%;margin-top:10px;padding:11px;background:transparent;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font:600 .64rem/1 'Poppins',sans-serif;text-transform:uppercase;letter-spacing:1.4px;color:var(--muted)}
+.wsmith .wb2-dice i{color:var(--primary)}
 </style>
-<div style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:var(--primary);margin-bottom:12px;text-align:center">🏰 WAPPEN BAUKASTEN</div>
-<div class="wb-preview-wrap"><div id="wbPrev" style="filter:drop-shadow(0 6px 24px rgba(0,0,0,.7))"></div><div class="wb-name-overlay" id="wbNameOverlay"></div></div>
-<input type="text" id="clubNameInput" class="modal-input" placeholder="Club-Name…" maxlength="20" style="margin-bottom:14px;text-align:center;font-size:.88rem">
-<div class="wb-sec"><div class="wb-lbl"><span>V</span>Vorlagen</div><div class="wb-row" id="wbPresets"></div></div>
-<div class="wb-sec"><div class="wb-lbl"><span>1</span>Form</div><div class="wb-row" id="wbShapes"></div></div>
-<div class="wb-sec"><div class="wb-lbl"><span>2</span>Muster</div><div class="wb-row" id="wbPats"></div></div>
-<div class="wb-sec"><div class="wb-lbl"><span>3</span>Symbol</div><div class="wb-sym-grid" id="wbSyms"></div></div>
-<div class="wb-sec"><div class="wb-lbl"><span>4</span>Hintergrund-Farbe</div><div class="wb-color-grid" id="wbBgColors"></div></div>
-<div class="wb-sec"><div class="wb-lbl"><span>5</span>Rahmen-Farbe</div><div class="wb-color-grid" id="wbBrColors"></div></div>
-<div class="wb-sec"><div class="wb-lbl"><span>6</span>Rahmen-Effekt</div><div class="wb-chip-row" id="wbEffects"></div></div>
-<div class="wb-sec"><div class="wb-lbl"><span>7</span>Zusätze</div><div style="display:flex;gap:5px;flex-wrap:wrap" id="wbExtras"></div></div>
-<button class="btn btn-p" id="createClubBtn" style="width:100%;margin-bottom:16px;margin-top:4px"><i class="fas fa-shield-alt"></i> Club gründen</button>
-<div style="height:1px;background:var(--border);margin-bottom:14px"></div>
-<div style="font-size:.8rem;font-weight:600;margin-bottom:8px">🔑 Club beitreten</div>
-<div style="display:flex;gap:8px"><input type="text" id="clubJoinInput" class="modal-input" placeholder="6-stelliger Code…" maxlength="6" style="flex:1;text-transform:uppercase"><button class="btn btn-p" id="joinClubBtn"><i class="fas fa-arrow-right"></i></button></div>`;
+<div class="wsmith">
+  <div class="wsmith-title">🛡️ WAPPEN-SCHMIEDE</div>
+  <div class="bld-stage"><div class="stage-glow"></div><div id="wbPrev"></div><div class="stage-tag"><i class="fa-solid fa-bolt"></i> Live-Vorschau</div></div>
+  <div class="field2"><label class="lbl2">Vereinsname</label><input type="text" id="clubNameInput" maxlength="18" placeholder="z.B. Sturmläufer"></div>
+  <div class="wb2-sec"><div class="wb2-hd"><i class="fa-solid fa-shapes"></i> Form</div><div class="grid-row" id="wbShapes"></div></div>
+  <div class="wb2-sec"><div class="wb2-hd"><i class="fa-solid fa-table-columns"></i> Teilung</div><div class="grid-row" id="wbDivs"></div></div>
+  <div class="wb2-sec"><div class="wb2-hd"><i class="fa-solid fa-border-all"></i> Muster</div><div class="grid-row" id="wbPats"></div></div>
+  <div class="wb2-sec"><div class="wb2-hd"><i class="fa-solid fa-icons"></i> Symbol</div><div class="icon-grid" id="wbSyms"></div></div>
+  <div class="wb2-sec"><div class="wb2-hd"><i class="fa-solid fa-palette"></i> Symbol-Farbe</div><div class="sw-row" id="wbSymColor"></div></div>
+  <div class="wb2-sec"><div class="wb2-hd"><i class="fa-solid fa-fill-drip"></i> Hintergrund</div><div class="sw-row" id="wbBg"></div></div>
+  <div class="wb2-sec" id="wbBg2Sec"><div class="wb2-hd"><i class="fa-solid fa-fill-drip"></i> Zweitfarbe</div><div class="sw-row" id="wbBg2"></div></div>
+  <div class="wb2-sec"><div class="wb2-hd"><i class="fa-solid fa-circle-notch"></i> Rahmen</div><div class="sw-row" id="wbBorder"></div></div>
+  <div class="wb2-sec"><div class="wb2-hd"><i class="fa-solid fa-plus"></i> Extras</div><div class="tog-row" id="wbExtras"></div></div>
+  <div class="wb2-sec"><div class="wb2-hd"><i class="fa-solid fa-wand-magic-sparkles"></i> Effekte</div><div class="tog-row" id="wbEffects"></div></div>
+  <button class="btn btn-p" id="createClubBtn" style="width:100%;margin-top:14px"><i class="fa-solid fa-shield-halved"></i> Club gründen</button>
+  <button class="wb2-dice" id="wbDice"><i class="fa-solid fa-dice"></i> Zufällig würfeln</button>
+  <div style="height:1px;background:var(--border);margin:14px 0"></div>
+  <div style="font-size:.8rem;font-weight:600;margin-bottom:8px">🔑 Club beitreten</div>
+  <div style="display:flex;gap:8px"><input type="text" id="clubJoinInput" class="modal-input" placeholder="6-stelliger Code…" maxlength="6" style="flex:1;text-transform:uppercase"><button class="btn btn-p" id="joinClubBtn"><i class="fas fa-arrow-right"></i></button></div>
+</div>`;
 
-      const rPrev=()=>{
-        const el=document.getElementById('wbPrev');
-        if(el)el.innerHTML=wappenSVG(wCfg,110);
-        const ov=document.getElementById('wbNameOverlay');
-        if(ov){const n=(document.getElementById('clubNameInput')?.value||'').trim();ov.textContent=n||'';}
+      const $w=id=>document.getElementById(id);
+      const rPrev=()=>{const el=$w('wbPrev');if(el)el.innerHTML=crestSVG(wCfg,200);const s2=$w('wbBg2Sec');if(s2)s2.style.display=(wCfg.division==='voll')?'none':'';};
+      const selIn=(cont,val)=>{cont.querySelectorAll('[data-v]').forEach(b=>b.classList.toggle('sel',b.dataset.v===val));};
+
+      const shRow=$w('wbShapes');
+      CREST_SHAPES.forEach(s=>{const b=document.createElement('button');b.className='chip'+(s.id===wCfg.shape?' sel':'');b.dataset.v=s.id;b.innerHTML=crestShapeMini(s.d,s.id===wCfg.shape)+`<span>${s.label}</span>`;b.addEventListener('click',()=>{wCfg.shape=s.id;selIn(shRow,s.id);rPrev();});shRow.appendChild(b);});
+
+      const dvRow=$w('wbDivs');
+      CREST_DIVISIONS.forEach(d=>{const b=document.createElement('button');b.className='chip'+(d.id===wCfg.division?' sel':'');b.dataset.v=d.id;b.innerHTML=crestDivisionMini(d.id,d.id===wCfg.division)+`<span>${d.label}</span>`;b.addEventListener('click',()=>{wCfg.division=d.id;selIn(dvRow,d.id);rPrev();});dvRow.appendChild(b);});
+
+      const ptRow=$w('wbPats');
+      CREST_PATTERNS.forEach(p=>{const b=document.createElement('button');b.className='chip'+(p.id===wCfg.pattern?' sel':'');b.dataset.v=p.id;b.innerHTML=crestPatternMini(p.id,p.id===wCfg.pattern)+`<span>${p.label}</span>`;b.addEventListener('click',()=>{wCfg.pattern=p.id;selIn(ptRow,p.id);rPrev();});ptRow.appendChild(b);});
+
+      const syRow=$w('wbSyms');
+      CREST_SYMBOLS.forEach(s=>{const b=document.createElement('button');b.className='icon-chip'+(s.id===wCfg.symbol?' sel':'');b.dataset.v=s.id;b.title=s.label;b.innerHTML=`<i class="fa-solid ${s.fa}"></i>`;b.addEventListener('click',()=>{wCfg.symbol=s.id;selIn(syRow,s.id);rPrev();});syRow.appendChild(b);});
+
+      const mkSw=(cont,getVal,onPick,auto)=>{
+        const paint=()=>{cont.querySelectorAll('.sw').forEach(x=>{const v=x.dataset.v;const on=getVal()===v;x.classList.toggle('sel',on);if(x.classList.contains('sw-auto')){x.innerHTML='<i class="fa-solid fa-wand-magic-sparkles"></i>';}else{x.innerHTML=on?`<i class="fa-solid fa-check" style="color:${crestIsLight(v)?'#10271d':'#fff'}"></i>`:'';}});};
+        if(auto){const b=document.createElement('button');b.className='sw sw-auto';b.dataset.v='auto';b.title='Automatisch';b.addEventListener('click',()=>{onPick('auto');paint();rPrev();});cont.appendChild(b);}
+        CREST_PALETTE.forEach(c=>{const b=document.createElement('button');b.className='sw';b.dataset.v=c.hex;b.title=c.name;b.style.background=c.hex;b.addEventListener('click',()=>{onPick(c.hex);paint();rPrev();});cont.appendChild(b);});
+        paint();
       };
-      const selThumb=(row,v)=>{document.querySelectorAll('#'+row+' .wb-thumb').forEach(b=>b.classList.toggle('sel',b.dataset.v===v));};
-      const selSwatch=(grid,v)=>{document.querySelectorAll('#'+grid+' .wb-swatch').forEach(b=>b.classList.toggle('sel',b.dataset.v===v));};
-      const selChip=(row,v)=>{document.querySelectorAll('#'+row+' .wb-chip').forEach(b=>b.classList.toggle('sel',b.dataset.v===v));};
+      mkSw($w('wbSymColor'),()=>wCfg.symColor,v=>wCfg.symColor=v,true);
+      mkSw($w('wbBg'),()=>wCfg.bg,v=>wCfg.bg=v,false);
+      mkSw($w('wbBg2'),()=>wCfg.bg2,v=>wCfg.bg2=v,false);
+      mkSw($w('wbBorder'),()=>wCfg.border,v=>wCfg.border=v,false);
 
-      /* Build preset row */
-      const presRow=document.getElementById('wbPresets');
-      WAPPEN_PRESETS.forEach((p,i)=>{
-        const d=document.createElement('div');
-        d.className='wb-thumb';d.dataset.v=String(i);
-        d.innerHTML=wappenSVG(p,48);
-        d.addEventListener('click',()=>{Object.assign(wCfg,JSON.parse(JSON.stringify(p)));selThumb('wbPresets',String(i));selThumb('wbShapes',wCfg.shape);selThumb('wbPats',wCfg.pattern);selThumb('wbSyms',wCfg.symbol);selSwatch('wbBgColors',wCfg.bg);selSwatch('wbBrColors',wCfg.borderColor);selChip('wbEffects',wCfg.borderEffect);document.querySelectorAll('#wbExtras .wb-extra').forEach(b=>b.classList.toggle('on',(wCfg.extras||[]).includes(b.dataset.v)));rPrev();});
-        presRow.appendChild(d);
-      });
+      const exRow=$w('wbExtras');
+      CREST_EXTRAS.forEach(x=>{const b=document.createElement('button');b.className='tog'+(wCfg.extras[x.id]?' on':'');b.innerHTML=`<i class="fa-solid ${x.fa}"></i>${x.label}`;b.addEventListener('click',()=>{wCfg.extras[x.id]=!wCfg.extras[x.id];b.classList.toggle('on',wCfg.extras[x.id]);rPrev();});exRow.appendChild(b);});
 
-      /* Build shape row */
-      const shpRow=document.getElementById('wbShapes');
-      WAPPEN_SHAPES.forEach(s=>{
-        const d=document.createElement('div');
-        d.className='wb-thumb'+(s.v===wCfg.shape?' sel':'');d.dataset.v=s.v;
-        d.innerHTML=s.png
-          ?`<img src="${s.png}" width="46" height="46" style="object-fit:contain;display:block;border-radius:4px" loading="lazy">`
-          :wappenSVG({shape:s.v,bg:'#1a1a2e',bg2:'#0a0a1a',borderColor:'#4d80e6',borderEffect:'standard',pattern:'solid',patternColor:'#4d80e6',symbol:'',extras:[]},42);
-        d.title=s.l;
-        d.addEventListener('click',()=>{wCfg.shape=s.v;selThumb('wbShapes',s.v);rPrev();});
-        shpRow.appendChild(d);
-      });
+      const efRow=$w('wbEffects');
+      CREST_EFFECTS.forEach(x=>{const b=document.createElement('button');b.className='tog'+(x.gold?' gold':'')+(wCfg.effects[x.id]?' on':'');b.innerHTML=`<i class="fa-solid ${x.fa}"></i>${x.label}`;b.addEventListener('click',()=>{wCfg.effects[x.id]=!wCfg.effects[x.id];b.classList.toggle('on',wCfg.effects[x.id]);rPrev();});efRow.appendChild(b);});
 
-      /* Build pattern row */
-      const patRow=document.getElementById('wbPats');
-      WAPPEN_PATTERNS.forEach(p=>{
-        const d=document.createElement('div');
-        d.className='wb-thumb'+(p.v===wCfg.pattern?' sel':'');d.dataset.v=p.v;
-        d.innerHTML=wappenSVG({shape:wCfg.shape,bg:'#0a0a14',bg2:'',borderColor:'#555',borderEffect:'standard',pattern:p.v,patternColor:'#4d80e6',symbol:'',extras:[]},42);
-        d.title=p.l;
-        d.addEventListener('click',()=>{wCfg.pattern=p.v;selThumb('wbPats',p.v);rPrev();});
-        patRow.appendChild(d);
-      });
+      const nameInp=$w('clubNameInput');
+      if(nameInp){nameInp.value=wCfg.name||'';nameInp.addEventListener('input',e=>{wCfg.name=e.target.value;rPrev();});}
 
-      /* Build symbol grid */
-      const symGrid=document.getElementById('wbSyms');
-      WAPPEN_SYMBOLS.forEach(s=>{
-        const d=document.createElement('div');
-        d.className='wb-thumb'+(s.v===wCfg.symbol?' sel':'');d.dataset.v=s.v;d.style.cssText='border-radius:8px;border:2.5px solid var(--border);cursor:pointer;background:var(--card);padding:2px;transition:border-color .15s,transform .1s;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:2px';
-        d.innerHTML=wappenSVG({shape:'shield',bg:'#0d1a2e',bg2:'',borderColor:'#334',borderEffect:'standard',pattern:'solid',patternColor:'#555',symbol:s.v,symbolColor:'#e8ff47',extras:[]},44)+`<div style="font-size:.48rem;color:var(--muted);text-align:center;line-height:1">${s.l}</div>`;
-        d.addEventListener('click',()=>{wCfg.symbol=s.v;document.querySelectorAll('#wbSyms .wb-thumb').forEach(b=>b.classList.toggle('sel',b.dataset.v===s.v));rPrev();});
-        symGrid.appendChild(d);
-      });
+      $w('wbDice')?.addEventListener('click',()=>{const nm=wCfg.name;window._clubDraft=crestRandom(wCfg);window._clubDraft.name=nm;renderSettingsTab('club');});
 
-      /* Build color grids */
-      const mkColorGrid=(elId,onPick,selVal)=>{
-        const el=document.getElementById(elId);
-        WAPPEN_COLORS.forEach(c=>{
-          const d=document.createElement('div');
-          d.className='wb-swatch'+(c===selVal?' sel':'');
-          d.style.background=c;d.dataset.v=c;
-          d.addEventListener('click',()=>{onPick(c);selSwatch(elId,c);rPrev();});
-          el.appendChild(d);
-        });
-      };
-      mkColorGrid('wbBgColors',c=>{wCfg.bg=c;wCfg.bg2='';},wCfg.bg);
-      mkColorGrid('wbBrColors',c=>{wCfg.borderColor=c;},wCfg.borderColor);
-
-      /* Build effect chips */
-      const efRow=document.getElementById('wbEffects');
-      WAPPEN_EFFECTS.forEach(e=>{
-        const b=document.createElement('button');
-        b.className='wb-chip'+(e.v===wCfg.borderEffect?' sel':'');b.dataset.v=e.v;b.textContent=e.l;
-        b.addEventListener('click',()=>{wCfg.borderEffect=e.v;selChip('wbEffects',e.v);rPrev();});
-        efRow.appendChild(b);
-      });
-
-      /* Build extras */
-      const extRow=document.getElementById('wbExtras');
-      WAPPEN_EXTRAS.forEach(e=>{
-        const b=document.createElement('button');
-        b.className='wb-extra';b.dataset.v=e.v;b.textContent=e.l;
-        b.addEventListener('click',()=>{
-          wCfg.extras=wCfg.extras||[];
-          const i=wCfg.extras.indexOf(e.v);
-          if(i>=0)wCfg.extras.splice(i,1);else wCfg.extras.push(e.v);
-          b.classList.toggle('on',wCfg.extras.includes(e.v));
-          rPrev();
-        });
-        extRow.appendChild(b);
-      });
-
-      /* Name live-update */
-      document.getElementById('clubNameInput')?.addEventListener('input',()=>rPrev());
-
-      /* Initial render */
       rPrev();
 
-      /* Create/Join */
-      $('createClubBtn')?.addEventListener('click',()=>{
-        const n=($('clubNameInput')?.value||'').trim();
+      $w('createClubBtn')?.addEventListener('click',()=>{
+        const n=(wCfg.name||'').trim();
         if(n.length<2){toast('Mindestens 2 Zeichen');return;}
         const code=Math.random().toString(36).toUpperCase().substring(2,8);
-        userClub={code,name:n,wappen:{...wCfg,extras:[...(wCfg.extras||[])]},foundedAt:Date.now()};
+        wCfg.name=n;
+        userClub={code,name:n,wappen:JSON.parse(JSON.stringify(wCfg)),foundedAt:Date.now()};
         const allClubs=JSON.parse(localStorage.getItem('rc_clubs_db')||'{}');
         allClubs[code]={...userClub,founder:playerName};
         localStorage.setItem('rc_clubs_db',JSON.stringify(allClubs));
+        window._clubDraft=null;
         saveProfile();renderSettingsTab('club');toast('🏰 Club gegründet: '+n);
       });
-      $('joinClubBtn')?.addEventListener('click',()=>{
-        const code=($('clubJoinInput')?.value||'').trim().toUpperCase();
+      $w('joinClubBtn')?.addEventListener('click',()=>{
+        const code=($w('clubJoinInput')?.value||'').trim().toUpperCase();
         if(code.length!==6){toast('Ungültiger Code');return;}
         const allClubs=JSON.parse(localStorage.getItem('rc_clubs_db')||'{}');
-        if(allClubs[code]){userClub={code,name:allClubs[code].name,wappen:allClubs[code].wappen||{},foundedAt:allClubs[code].foundedAt};saveProfile();renderSettingsTab('club');toast('🏰 Beigetreten: '+userClub.name);}
+        if(allClubs[code]){userClub={code,name:allClubs[code].name,wappen:allClubs[code].wappen||{},foundedAt:allClubs[code].foundedAt};window._clubDraft=null;saveProfile();renderSettingsTab('club');toast('🏰 Beigetreten: '+userClub.name);}
         else toast('❌ Club-Code nicht gefunden');
       });
     }
+
   } else if(tab==='spiel'){
     body.innerHTML=`<div style="display:flex;flex-direction:column;gap:10px"><div style="font-size:.8rem;color:var(--muted);background:var(--card);padding:12px;border-radius:12px;border:1px solid var(--border)"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>⚡ Energie</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${energy}/${CFG.ENERGY_MAX}</span></div><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>🏆 Punkte</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${points}</span></div><div style="display:flex;justify-content:space-between"><span>📐 Gebiete</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${territories.filter(t=>t.owner===userId).length}</span></div></div><button class="btn btn-p" id="setPulsBtn"><i class="fas fa-heartbeat"></i> Pulsmesser koppeln</button><div id="setVersionTap" style="text-align:center;color:var(--muted);font-size:.6rem;margin-top:8px;cursor:pointer;-webkit-user-select:none;user-select:none">v2.0.0 · Runners Conquer</div></div>`;
     $('setPulsBtn').addEventListener('click',connectBT);
