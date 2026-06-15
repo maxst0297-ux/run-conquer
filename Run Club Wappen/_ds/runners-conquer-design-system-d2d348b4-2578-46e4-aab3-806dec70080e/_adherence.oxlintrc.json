@@ -1,0 +1,153 @@
+{
+  "plugins": [
+    "react",
+    "import"
+  ],
+  "rules": {
+    "react/forbid-elements": [
+      "warn",
+      {
+        "forbid": []
+      }
+    ],
+    "no-restricted-imports": [
+      "warn",
+      {
+        "patterns": [
+          {
+            "group": [
+              "ui_kits/app/**"
+            ],
+            "message": "Import design-system components from 'index.js', not component internals."
+          }
+        ]
+      }
+    ],
+    "no-restricted-syntax": [
+      "warn",
+      {
+        "selector": "Literal[value=/#[0-9a-fA-F]{3,8}\\b/]",
+        "message": "Raw hex color — use a design-system color token via var()."
+      },
+      {
+        "selector": "Literal[value=/\\b\\d+px\\b/]",
+        "message": "Raw px value — use a design-system spacing token via var()."
+      },
+      {
+        "selector": "Literal[value=/font-family\\s*:\\s*(?!['\\\"]?(?:Poppins|Bebas Neue))/i]",
+        "message": "Font not provided by the design system. Available: Poppins, Bebas Neue."
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/index.js"
+      ],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ],
+  "x-omelette": {
+    "components": {},
+    "tokens": [
+      "--bg",
+      "--bg2",
+      "--blur",
+      "--body",
+      "--border",
+      "--card",
+      "--cyan",
+      "--ease",
+      "--ease-out",
+      "--font-body",
+      "--font-display",
+      "--glow-gold",
+      "--glow-primary",
+      "--gold",
+      "--gold-rgb",
+      "--green",
+      "--h1",
+      "--h2",
+      "--h3",
+      "--hdr-h",
+      "--label",
+      "--micro",
+      "--muted",
+      "--nav-h",
+      "--player-cyan",
+      "--player-lime",
+      "--player-orange",
+      "--player-purple",
+      "--player-red",
+      "--primary",
+      "--primary-rgb",
+      "--radius",
+      "--radius-pill",
+      "--radius-sm",
+      "--rar-common",
+      "--rar-epic",
+      "--rar-legendary",
+      "--rar-rare",
+      "--red",
+      "--shadow-card",
+      "--shadow-pop",
+      "--stat",
+      "--text",
+      "--track-display",
+      "--track-label"
+    ],
+    "tokenKinds": {
+      "--bg": "color",
+      "--bg2": "color",
+      "--card": "color",
+      "--border": "color",
+      "--primary": "color",
+      "--primary-rgb": "other",
+      "--gold": "color",
+      "--gold-rgb": "other",
+      "--red": "color",
+      "--green": "color",
+      "--cyan": "color",
+      "--text": "font",
+      "--muted": "color",
+      "--radius": "radius",
+      "--radius-sm": "radius",
+      "--radius-pill": "radius",
+      "--nav-h": "spacing",
+      "--hdr-h": "spacing",
+      "--rar-common": "color",
+      "--rar-rare": "color",
+      "--rar-epic": "color",
+      "--rar-legendary": "color",
+      "--player-lime": "color",
+      "--player-red": "color",
+      "--player-cyan": "color",
+      "--player-purple": "color",
+      "--player-orange": "color",
+      "--font-display": "font",
+      "--font-body": "font",
+      "--h1": "color",
+      "--h2": "color",
+      "--h3": "color",
+      "--stat": "color",
+      "--body": "color",
+      "--label": "color",
+      "--micro": "color",
+      "--track-display": "spacing",
+      "--track-label": "spacing",
+      "--shadow-card": "shadow",
+      "--shadow-pop": "shadow",
+      "--glow-primary": "color",
+      "--glow-gold": "color",
+      "--blur": "other",
+      "--ease": "other",
+      "--ease-out": "other"
+    },
+    "fontFamilies": [
+      "Bebas Neue",
+      "Poppins"
+    ]
+  }
+}
