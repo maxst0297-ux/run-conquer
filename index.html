@@ -4813,7 +4813,7 @@ function updateProfile(){
   $('pvLvBar').style.width=lvD.pct+'%';
   $('pvLvXpTxt').textContent=points+' XP · noch '+lvD.xpLeft+' bis Lv.'+(lvD.lv<CFG.LVL_NAMES.length?lvD.lv+1:'MAX');
   const mine=territories.filter(t=>t.owner===userId);
-  $('ps-km').textContent=totalKm.toFixed(1);$('ps-runs').textContent=history.length;$('ps-streak').textContent=streakDays===0?'Starte heute deinen ersten Streak!':streakDays+'🔥';$('ps-terr').textContent=mine.length;$('ps-pts').textContent=points;
+  $('ps-km').textContent=totalKm.toFixed(1);$('ps-runs').textContent=history.length;$('ps-streak').textContent=streakDays+'🔥';$('ps-terr').textContent=mine.length;$('ps-pts').textContent=points;
   // Herrschertitel + Fraktion + Club-Badges
   const title=getTerritoryTitle();
   const sinceEl=$('pvSince');
@@ -4824,14 +4824,6 @@ function updateProfile(){
     if(userTeam){const tm=TEAMS.find(t=>t.id===userTeam);if(tm)badgeDiv.innerHTML+=`<span class="team-badge" style="background:${tm.color}22;color:${tm.color};border:1px solid ${tm.color}44">${tm.icon} ${tm.name}</span>`;}
     if(userClub)badgeDiv.innerHTML+=`<span class="club-badge">${userClub.icon} ${userClub.name}</span>`;
     sinceEl.insertAdjacentElement('afterend',badgeDiv);
-  }
-  // Entdeckungen-Stat + Challenge-Streak (einmalig anhängen)
-  const statsRow=document.querySelector('.pv-stats');
-  if(statsRow){
-    if(!document.querySelector('.disc-stat')){const discEl=document.createElement('div');discEl.className='pv-stat disc-stat';discEl.innerHTML=`<div class="pv-sv">${totalDiscovered}</div><div class="pv-sl">⭐ Entdeckt</div>`;statsRow.appendChild(discEl);}
-    const csStat=statsRow.querySelector('.chal-streak-stat');
-    if(!csStat){const csEl=document.createElement('div');csEl.className='pv-stat chal-streak-stat';csEl.innerHTML=`<div class="pv-sv">${chalStreak}</div><div class="pv-sl">🎯 Streak</div>`;statsRow.appendChild(csEl);}
-    else{csStat.querySelector('.pv-sv').textContent=chalStreak;}
   }
   // Daily streak card
   const dsEl=document.getElementById('pvDailyStreak');
