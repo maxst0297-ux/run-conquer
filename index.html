@@ -518,6 +518,49 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 @keyframes bravoIn{0%{transform:scale(.2);opacity:0}50%{transform:scale(1.1);opacity:1}70%{transform:scale(.95)}85%{transform:scale(1.02)}100%{transform:scale(1);opacity:0}}
 .crest-banner{display:flex;align-items:center;justify-content:center;padding:6px 14px;background:linear-gradient(#FFE890,#F4C430 55%,#D9A406);clip-path:polygon(0% 50%,6% 0%,94% 0%,100% 50%,94% 100%,6% 100%);box-shadow:0 4px 10px rgba(0,0,0,.4)}
 .crest-banner span{font-family:'Bebas Neue',sans-serif;letter-spacing:1.5px;color:#2a2008;line-height:1;white-space:nowrap;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+
+/* ═══ REDESIGN — NAV FAB ═══ */
+.bottom-nav.with-fab{overflow:visible;position:relative}
+.nav-fab{position:absolute;left:50%;top:-24px;transform:translateX(-50%);
+  width:58px;height:58px;border-radius:50%;background:var(--primary);color:var(--bg);
+  border:3px solid var(--bg);display:flex;align-items:center;justify-content:center;
+  font-size:1.2rem;cursor:pointer;z-index:5;touch-action:manipulation;
+  transition:background var(--motion-base),box-shadow var(--motion-base);
+  box-shadow:0 0 20px rgba(var(--primary-rgb),.45);-webkit-tap-highlight-color:transparent}
+.nav-fab.is-running{background:var(--red);box-shadow:0 0 22px rgba(255,77,109,.55)}
+.nav-fab:active{transform:translateX(-50%) scale(.92)}
+
+/* ═══ REDESIGN — HEADER ═══ */
+.hdr-greeting{display:flex;flex-direction:column;justify-content:center;flex:1;min-width:0;overflow:hidden}
+.hdr-hi{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:.5px;color:var(--text);line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdr-sub-date{font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.hdr-titlewrap{display:flex;flex-direction:column;justify-content:center;flex:1;min-width:0}
+.hdr-title{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.06em;color:var(--primary)}
+.hdr-flame-pill{display:flex;align-items:center;gap:5px;background:rgba(var(--primary-rgb),.1);
+  border:1px solid rgba(var(--primary-rgb),.25);border-radius:40px;padding:5px 12px;
+  font-family:'Bebas Neue',sans-serif;font-size:.95rem;color:var(--primary);white-space:nowrap;flex-shrink:0}
+.hdr-flame-pill i{font-size:.75rem}
+
+/* ═══ REDESIGN — START HUB ═══ */
+.start-hero{border-radius:18px;padding:20px;margin-bottom:14px;
+  background:linear-gradient(150deg,#0d3e2b 0%,#0a3020 50%,#071e14 100%);
+  border:1px solid rgba(255,255,255,.07)}
+.hero-eyebrow{font-size:.6rem;letter-spacing:2px;text-transform:uppercase;
+  color:rgba(var(--primary-rgb),.65);margin-bottom:5px}
+.hero-line{font-family:'Bebas Neue',sans-serif;font-size:2.1rem;letter-spacing:1px;
+  color:var(--text);margin-bottom:6px;line-height:1.1}
+.hero-body-txt{font-size:.76rem;color:var(--muted);margin-bottom:16px;line-height:1.5}
+.hero-row{display:flex;gap:10px;align-items:center}
+.hero-start-btn{flex:1;border:none;border-radius:14px;padding:15px 12px;
+  background:var(--primary);color:var(--bg);font-family:'Bebas Neue',sans-serif;
+  font-size:1.3rem;letter-spacing:2px;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;gap:8px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+  transition:transform var(--motion-fast)}
+.hero-start-btn:active{transform:scale(.97)}
+.hero-energy-pill{background:rgba(var(--primary-rgb),.08);border:1px solid rgba(var(--primary-rgb),.2);
+  border-radius:12px;padding:10px 14px;text-align:center;min-width:72px;cursor:pointer;flex-shrink:0}
+.he-v{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;color:var(--primary)}
+.he-l{font-size:.58rem;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-top:1px}
 </style>
 </head>
 <body class="theme-stone">
@@ -634,11 +677,22 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 <div id="app" style="display:none">
 
   <header class="hdr">
-    <span class="hdr-logo">RC</span>
-    <span class="hdr-badge" id="userBadge"><span id="hdrAvatar">🏃</span><span id="hdrName">Läufer</span><span id="hdrLevel" style="font-size:.6rem;color:var(--primary);margin-left:2px">Lv.1</span></span>
-    <button class="icon-btn" id="inboxBtn" aria-label="Posteingang" style="display:none"><i class="fas fa-envelope"></i><span id="inboxBadge" class="notif-badge" style="display:none">0</span></button>
-    <button class="icon-btn" id="settingsBtn" style="position:relative"><i class="fas fa-cog"></i><span id="settingsBadge" class="notif-badge" style="display:none;background:#ff4d6d;font-size:.55rem">!</span></button>
-    <button class="icon-btn" id="notifBtn" aria-label="Benachrichtigungen"><i class="fas fa-bell"></i><span id="notifBadge" class="notif-badge" style="display:none">0</span></button>
+    <!-- Greeting mode (Start tab) -->
+    <div class="hdr-greeting" id="hdrGreeting">
+      <span class="hdr-hi" id="hdrHi">Hallo, Läufer</span>
+      <span class="hdr-sub-date" id="hdrDateSub"></span>
+    </div>
+    <!-- Title mode (other tabs) -->
+    <div class="hdr-titlewrap" id="hdrTitleWrap" style="display:none">
+      <span class="hdr-title" id="hdrTabTitle">RC</span>
+    </div>
+    <!-- Hidden elements kept for JS compatibility -->
+    <span id="userBadge" style="display:none"><span id="hdrAvatar">🏃</span><span id="hdrName">Läufer</span><span id="hdrLevel">Lv.1</span></span>
+    <!-- Right actions -->
+    <span class="hdr-flame-pill" id="hdrFlamePill"><i class="fas fa-fire"></i><span id="hdrStreakVal">0</span></span>
+    <button class="icon-btn" id="inboxBtn" aria-label="Posteingang" style="display:none;flex-shrink:0"><i class="fas fa-envelope"></i><span id="inboxBadge" class="notif-badge" style="display:none">0</span></button>
+    <button class="icon-btn" id="settingsBtn" style="position:relative;flex-shrink:0"><i class="fas fa-gear"></i><span id="settingsBadge" class="notif-badge" style="display:none;background:#ff4d6d;font-size:.55rem">!</span></button>
+    <button class="icon-btn" id="notifBtn" aria-label="Benachrichtigungen" style="position:relative;flex-shrink:0"><i class="fas fa-bell"></i><span id="notifBadge" class="notif-badge" style="display:none">0</span></button>
   </header>
   <div id="notifPanel" class="notif-panel">
     <div class="notif-header"><span>Benachrichtigungen</span><button id="clearNotifBtn" style="background:none;border:none;color:var(--primary);font-size:.72rem;cursor:pointer">Alle löschen</button></div>
@@ -725,51 +779,27 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       </div>
     </div>
 
-    <!-- DASHBOARD -->
+    <!-- START HUB (redesign) -->
     <div id="dashView" class="view">
-      <div class="dash-hero-bg">
-        <svg viewBox="0 0 360 56" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block">
-          <rect width="360" height="56" fill="#07101e"/>
-          <!-- buildings -->
-          <rect x="0" y="20" width="20" height="36" fill="#121228" rx="1"/>
-          <rect x="4" y="12" width="12" height="44" fill="#151530" rx="1"/>
-          <rect x="22" y="18" width="18" height="38" fill="#111126" rx="1"/>
-          <rect x="42" y="8"  width="16" height="48" fill="#141432" rx="1"/>
-          <rect x="60" y="22" width="14" height="34" fill="#121228" rx="1"/>
-          <rect x="80" y="6"  width="22" height="50" fill="#151530" rx="1"/>
-          <rect x="105" y="16" width="18" height="40" fill="#111126" rx="1"/>
-          <rect x="126" y="10" width="20" height="46" fill="#141432" rx="1"/>
-          <rect x="150" y="20" width="16" height="36" fill="#121228" rx="1"/>
-          <rect x="170" y="4"  width="24" height="52" fill="#151530" rx="1"/>
-          <rect x="198" y="14" width="18" height="42" fill="#111126" rx="1"/>
-          <rect x="220" y="18" width="20" height="38" fill="#141432" rx="1"/>
-          <rect x="244" y="8"  width="16" height="48" fill="#121228" rx="1"/>
-          <rect x="263" y="14" width="22" height="42" fill="#151530" rx="1"/>
-          <rect x="288" y="20" width="18" height="36" fill="#111126" rx="1"/>
-          <rect x="310" y="10" width="16" height="46" fill="#141432" rx="1"/>
-          <rect x="330" y="16" width="20" height="40" fill="#121228" rx="1"/>
-          <!-- trees -->
-          <ellipse cx="75" cy="50" rx="7" ry="7" fill="rgba(14,60,24,.9)"/>
-          <ellipse cx="165" cy="51" rx="6" ry="6" fill="rgba(12,55,20,.85)"/>
-          <ellipse cx="260" cy="50" rx="7" ry="7" fill="rgba(14,60,24,.9)"/>
-          <!-- windows -->
-          <rect x="82" y="9"  width="5" height="7" fill="rgba(255,235,140,.3)" rx=".5"/>
-          <rect x="90" y="20" width="5" height="7" fill="rgba(255,235,140,.25)" rx=".5"/>
-          <rect x="130" y="13" width="5" height="7" fill="rgba(255,235,140,.3)" rx=".5"/>
-          <rect x="173" y="8"  width="5" height="7" fill="rgba(255,235,140,.35)" rx=".5"/>
-          <rect x="181" y="22" width="5" height="7" fill="rgba(255,235,140,.25)" rx=".5"/>
-          <!-- ground -->
-          <rect x="0" y="49" width="360" height="7" fill="#0b0b1a"/>
-          <!-- animated route -->
-          <path d="M 0 46 Q 50 42 90 47 Q 140 52 190 42 Q 240 34 290 44 Q 330 50 360 43" stroke="#e8ff47" stroke-width="2" stroke-dasharray="6 5" fill="none" opacity=".85">
-            <animate attributeName="stroke-dashoffset" from="250" to="0" dur="2.5s" repeatCount="indefinite"/>
-          </path>
-          <circle r="4" fill="#e8ff47" opacity=".9">
-            <animateMotion path="M 0 46 Q 50 42 90 47 Q 140 52 190 42 Q 240 34 290 44 Q 330 50 360 43" dur="2.5s" repeatCount="indefinite"/>
-          </circle>
-        </svg>
+
+      <!-- Hero -->
+      <div class="start-hero">
+        <div class="hero-eyebrow">Heute</div>
+        <div class="hero-line" id="heroGreetLine">Bereit, Läufer?</div>
+        <div class="hero-body-txt">Starte deinen Lauf und sichere dir neue Gebiete für dein Revier.</div>
+        <div class="hero-row">
+          <button class="hero-start-btn" id="heroStartBtn">
+            <i class="fas fa-play" id="heroStartIcon"></i><span id="heroStartLabel">START</span>
+          </button>
+          <div class="hero-energy-pill" onclick="showBoostInfo()" title="Energie / Boosts">
+            <div class="he-v" id="heroEnergyVal">⚡3</div>
+            <div class="he-l">Energie</div>
+          </div>
+        </div>
       </div>
-      <div class="hero-km"><div class="sv" id="heroKm">0.0</div><div class="sl">Gesamtkilometer</div></div>
+
+      <!-- Weekly goal -->
+      <div class="sec-hd"><i class="fas fa-chart-simple"></i> Diese Woche</div>
       <div class="goal-card">
         <div class="goal-top">
           <span class="goal-label"><i class="fas fa-bullseye" style="margin-right:4px"></i>Wochenziel</span>
@@ -778,25 +808,45 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <div class="goal-bar-bg"><div class="goal-bar" id="goalBar" style="width:0%"></div></div>
         <div class="goal-days" id="goalDays"></div>
       </div>
-      <div class="today-3">
+
+      <!-- Stat grid: total km · territories · streak -->
+      <div class="today-3" style="margin-top:8px">
+        <div class="stat-card"><div class="sv" id="heroKm">0.0</div><div class="sl">km gesamt</div></div>
+        <div class="stat-card"><div class="sv" id="statTerrCount">0</div><div class="sl">Gebiete</div></div>
+        <div class="stat-card"><div class="sv" id="statStreakHero">0🔥</div><div class="sl">Streak</div></div>
+      </div>
+
+      <!-- Today stats (secondary) -->
+      <div class="today-3" style="margin-top:8px">
         <div class="stat-card"><div class="sv" id="todayKm">0.0</div><div class="sl">km heute</div></div>
         <div class="stat-card"><div class="sv" id="todayTime">00:00</div><div class="sl">Zeit</div></div>
         <div class="stat-card"><div class="sv" id="todayPace">--</div><div class="sl">Pace</div></div>
       </div>
-      <div class="today-2">
-        <div class="stat-card"><div class="sv" id="todayKcal">0</div><div class="sl">kcal</div></div>
-        <div class="stat-card"><div class="sv" id="todaySteps">0</div><div class="sl">Schritte</div></div>
+
+      <!-- Hidden today stats kept for updateDash compat -->
+      <div style="display:none">
+        <span id="todayKcal">0</span>
+        <span id="todaySteps">0</span>
       </div>
+
+      <!-- Daily challenges -->
       <div id="dailyChalSection">
         <div class="sec-hd"><i class="fas fa-fire"></i> Tägliche Challenges<span id="chalStreakBadge" style="margin-left:auto;font-size:.7rem;font-family:'Bebas Neue',sans-serif;color:var(--primary)"></span></div>
         <div id="dailyChalDiv" style="margin-bottom:20px"></div>
       </div>
-      <div class="sec-hd"><i class="fas fa-scroll"></i> Aktive Quests</div>
+
+      <!-- Quests -->
+      <div class="sec-hd"><i class="fas fa-gift"></i> Heute zu tun</div>
       <div id="questsDiv" style="margin-bottom:20px"></div>
-      <div class="sec-hd"><i class="fas fa-history"></i> Letzte Läufe<button id="importActivityBtn" style="margin-left:auto;background:none;border:1px solid var(--border);color:var(--primary);border-radius:7px;padding:2px 10px;font-size:.85rem;cursor:pointer;line-height:1.4">＋</button></div>
+
+      <!-- Recent runs -->
+      <div class="sec-hd"><i class="fas fa-clock-rotate-left"></i> Letzte Läufe<button id="importActivityBtn" style="margin-left:auto;background:none;border:1px solid var(--border);color:var(--primary);border-radius:7px;padding:2px 10px;font-size:.85rem;cursor:pointer;line-height:1.4">＋</button></div>
       <div id="activityList"></div>
-      <div class="sec-hd" style="margin-top:8px"><i class="fas fa-chart-bar"></i> Diese Woche</div>
+
+      <!-- Week chart -->
+      <div class="sec-hd" style="margin-top:8px"><i class="fas fa-chart-bar"></i> Wochenübersicht</div>
       <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px"><canvas id="weekChart" height="110"></canvas></div>
+
     </div>
 
     <!-- COMMUNITY -->
@@ -933,6 +983,17 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <div id="pvSeasons"></div>
       </div>
       <div class="section-card">
+        <div class="section-title"><i class="fas fa-list"></i> Aktivitäten &amp; Mehr</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn" onclick="openDrawer('history')"><i class="fas fa-history"></i> Laufhistorie</button>
+          <button class="btn" onclick="openDrawer('quests')"><i class="fas fa-scroll"></i> Alle Quests</button>
+          <button class="btn" onclick="openDrawer('terr')"><i class="fas fa-map"></i> Gebietsübersicht</button>
+          <button class="btn" onclick="openDrawer('fitness')"><i class="fas fa-heartbeat"></i> Fitness &amp; Gesundheit</button>
+          <button class="btn" onclick="openDrawer('ach')"><i class="fas fa-medal"></i> Alle Erfolge</button>
+          <button class="btn" onclick="openDrawer('calendar')"><i class="fas fa-calendar-alt"></i> Kalender</button>
+        </div>
+      </div>
+      <div class="section-card">
         <div class="section-title"><i class="fas fa-cog"></i> Einstellungen</div>
         <div style="display:flex;flex-direction:column;gap:8px">
           <button class="btn btn-p" id="pvBtBtn"><i class="fas fa-heartbeat"></i> Pulsmesser koppeln</button>
@@ -943,12 +1004,12 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 
   </div><!-- /screens -->
 
-  <nav class="bottom-nav">
+  <nav class="bottom-nav with-fab">
     <div class="nav-item active" data-view="map"><div class="nav-indicator"></div><i class="fas fa-map"></i><span>Karte</span></div>
-    <div class="nav-item" data-view="dash"><div class="nav-indicator"></div><i class="fas fa-chart-pie"></i><span>Aktivität</span></div>
+    <div class="nav-item" data-view="start"><div class="nav-indicator"></div><i class="fas fa-house"></i><span>Start</span></div>
+    <button id="navFab" class="nav-fab" aria-label="Lauf starten"><i class="fas fa-play"></i></button>
     <div class="nav-item" data-view="community"><div class="nav-indicator"></div><i class="fas fa-globe"></i><span>Community</span></div>
     <div class="nav-item" data-view="profile"><div class="nav-indicator"></div><i class="fas fa-user"></i><span>Profil</span></div>
-    <div class="nav-item" data-view="menu"><div class="nav-indicator"></div><i class="fas fa-bars"></i><span>Menü</span></div>
   </nav>
 
   <div id="drawerOverlay"></div>
@@ -1441,6 +1502,7 @@ function saveProfile(){
   const theme=getActiveTheme();
   localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,friends}));
   $('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;
+  const hi=$('hdrHi');if(hi)hi.textContent='Hallo, '+(playerName||'Läufer');
   // Update theme-color meta for Android status bar
   const bgCol=getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
   const tcm=document.getElementById('themeColorMeta');if(tcm&&bgCol)tcm.content=bgCol;
@@ -2709,6 +2771,10 @@ function updateStatsUI(){
   $('areaVal').textContent=area>9999?Math.round(area/1000)+'k':Math.round(area);
   const eEl=$('energyVal');if(eEl)eEl.textContent='⚡'+energy+'/'+CFG.ENERGY_MAX;
   const lvEl=$('hdrLevel');if(lvEl)lvEl.textContent='Lv.'+getLevel(points);
+  /* Sync flame streak pill in header */
+  const sv=$('hdrStreakVal');if(sv)sv.textContent=streakDays||0;
+  /* Sync hero energy if on start tab */
+  const ev=$('heroEnergyVal');if(ev)ev.textContent='⚡'+energy;
 }
 
 /* STEPS */
@@ -2971,6 +3037,36 @@ function updateRunPill(){
     pause.innerHTML='<i class="fas fa-pause"></i> Pause';
     pill.classList.add('visible');
   }
+  updateNavFab();
+}
+function updateNavFab(){
+  const fab=$('navFab');if(!fab)return;
+  if(isRunning){
+    fab.classList.add('is-running');
+    fab.innerHTML='<i class="fas fa-stop"></i>';
+    fab.setAttribute('aria-label','Lauf stoppen');
+  }else{
+    fab.classList.remove('is-running');
+    fab.innerHTML='<i class="fas fa-play"></i>';
+    fab.setAttribute('aria-label','Lauf starten');
+  }
+  /* Sync hero start button */
+  const hi=$('heroStartIcon'),hl=$('heroStartLabel');
+  if(hi&&hl){hi.className='fas '+(isRunning?'fa-location-arrow':'fa-play');hl.textContent=isRunning?'KARTE':'START';}
+}
+function updateAppHeader(view){
+  const greeting=$('hdrGreeting'),titleWrap=$('hdrTitleWrap'),titleEl=$('hdrTabTitle');
+  if(!greeting||!titleWrap)return;
+  const titles={map:'Karte',community:'Community',profile:'Profil'};
+  if(view==='start'||view==='dash'){
+    greeting.style.display='';titleWrap.style.display='none';
+    const hi=$('hdrHi');if(hi)hi.textContent='Hallo, '+(playerName||'Läufer');
+    const ds=$('hdrDateSub');if(ds){const d=new Date();const days=['So','Mo','Di','Mi','Do','Fr','Sa'];const months=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];ds.textContent=days[d.getDay()]+' · '+d.getDate()+'. '+months[d.getMonth()];}
+  }else{
+    greeting.style.display='none';titleWrap.style.display='';
+    if(titleEl)titleEl.textContent=titles[view]||'RC';
+  }
+  const sv=$('hdrStreakVal');if(sv)sv.textContent=streakDays||0;
 }
 function stopRun(){
   if(!isRunning)return;
@@ -3154,6 +3250,12 @@ function updateDash(){
   const td=tr.reduce((s,r)=>s+r.distance,0),tt=tr.reduce((s,r)=>s+r.duration,0);
   $('todayKm').textContent=(td/1000).toFixed(1);$('todayTime').textContent=fmtTime(tt);$('todayPace').textContent=td>10?fmtPace(td,tt):'--';
   $('todayKcal').textContent=tr.reduce((s,r)=>s+(r.kcal||0),0);$('todaySteps').textContent=stepsToday;
+  /* Start Hub hero updates */
+  const gl=$('heroGreetLine');if(gl)gl.textContent='Bereit, '+(playerName||'Läufer')+'?';
+  const ev=$('heroEnergyVal');if(ev)ev.textContent='⚡'+energy;
+  const tc=$('statTerrCount');if(tc)tc.textContent=territories.filter(t=>t.owner===userId).length;
+  const sh=$('statStreakHero');if(sh)sh.textContent=(streakDays||0)+'🔥';
+  updateNavFab();
   renderGoal();renderDailyChallenges();renderQuestsDiv();renderActivityCards();renderWeekChart();
 }
 function getWeeklyKm(){const now=new Date(),dow=(now.getDay()+6)%7,ws=new Date(now);ws.setDate(now.getDate()-dow);ws.setHours(0,0,0,0);return history.filter(r=>r.date>=ws.getTime()).reduce((s,r)=>s+r.distance/1000,0)}
@@ -4515,7 +4617,7 @@ async function launchAppFromSession(user){
   $('onboarding').style.display='none';
   $('app').style.display='flex';
   window._hideCityBg?.();
-  setTimeout(()=>{updateRunPill();},350);
+  setTimeout(()=>{updateRunPill();updateAppHeader(currentView);},350);
   if(!mapL){
     initMap();
     setTimeout(async()=>{
@@ -4783,7 +4885,7 @@ function drawCalendar(){
 function setView(view){
   closeAllModals();
   if(drawer&&drawer.classList.contains('open'))closeDrawer();
-  const map2={map:'mapView',dash:'dashView',community:'communityView',profile:'profileView'};
+  const map2={map:'mapView',start:'dashView',dash:'dashView',community:'communityView',profile:'profileView'};
   const leaving=document.querySelector('.view.active');
   if(leaving&&leaving.id!==map2[view]){
     leaving.classList.add('leaving');
@@ -4798,13 +4900,14 @@ function setView(view){
   if(dockToggle)dockToggle.style.display=onMap?'':'none';
   if(runDock){if(!onMap)runDock.classList.remove('up');runDock.style.display=onMap?'':'none';}
   updateRunPill();
-  const _upd=view==='dash'?updateDash:view==='community'?updateCommunity:view==='profile'?updateProfile:null;
+  const _upd=(view==='dash'||view==='start')?updateDash:view==='community'?updateCommunity:view==='profile'?updateProfile:null;
+  updateAppHeader(view);
   /* Defer heavy content updates so they don't block the CSS animation */
   if(_upd)setTimeout(_upd,50);
   if(onMap&&mapL)setTimeout(()=>mapL.invalidateSize(),120);
 }
 function hideEmptySections(){document.querySelectorAll('section,[data-section]').forEach(s=>{const c=s.querySelector('[data-content]')||s;if(c.children.length===0&&c.textContent.trim()==='')s.classList.add('empty-section');else s.classList.remove('empty-section');})}
-function updateUI(){updateStatsUI();renderTerr();if(currentView==='dash')updateDash();if(currentView==='community')updateCommunity();if(currentView==='profile')updateProfile();if(drawer.classList.contains('open'))renderDrawer();}
+function updateUI(){updateStatsUI();renderTerr();if(currentView==='dash'||currentView==='start')updateDash();if(currentView==='community')updateCommunity();if(currentView==='profile')updateProfile();if(drawer.classList.contains('open'))renderDrawer();}
 
 /* BACKGROUND */
 function dailyDecay(territory,daysSinceVisit){return Math.max(0,territory.defense-(2*daysSinceVisit));}
@@ -4965,6 +5068,7 @@ window.initApp=function(){
   /* Impressum-Modal schließen */
   $('impressumCloseBtn')?.addEventListener('click',()=>{const m=$('impressumModal');if(m)m.style.display='none';});
   startBtn.addEventListener('click',startRun);
+  $('heroStartBtn')?.addEventListener('click',()=>{if(isRunning){setView('map');}else{startRun();setView('map');}});
   pauseBtn.addEventListener('click',()=>{isPaused?resumeRun():pauseRun();});
   stopBtn.addEventListener('click',stopRun);
   $('rcpStart')?.addEventListener('click',startRun);
@@ -4978,17 +5082,26 @@ window.initApp=function(){
     let _tapped=false;
     n.addEventListener('touchend',e=>{
       e.preventDefault();_tapped=true;
-      const v=n.dataset.view;
-      if(v==='menu'){closeAllModals();drawer.classList.contains('open')?closeDrawer():openDrawer();}
-      else setView(v);
+      setView(n.dataset.view);
     },{passive:false});
     n.addEventListener('click',()=>{
       if(_tapped){_tapped=false;return;}
-      const v=n.dataset.view;
-      if(v==='menu'){closeAllModals();drawer.classList.contains('open')?closeDrawer():openDrawer();}
-      else setView(v);
+      setView(n.dataset.view);
     });
   });
+  /* NAV FAB: start/stop run */
+  const navFab=$('navFab');
+  if(navFab){
+    let _fabTapped=false;
+    navFab.addEventListener('touchend',e=>{
+      e.preventDefault();_fabTapped=true;
+      if(isRunning){stopRun();}else{startRun();setView('map');}
+    },{passive:false});
+    navFab.addEventListener('click',()=>{
+      if(_fabTapped){_fabTapped=false;return;}
+      if(isRunning){stopRun();}else{startRun();setView('map');}
+    });
+  }
   document.querySelectorAll('#drawerTabs .tab-btn').forEach(b=>b.addEventListener('click',function(){const t=this.dataset.tab;if(t===currentTab)return;currentTab=t;renderDrawer();}));
   $('pvEditBtn').addEventListener('click',()=>{closeAllModals();$('settingsModal').style.display='flex';renderSettingsTab('profil');document.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.stab==='profil'));});
   $('userBadge').addEventListener('click',()=>{closeAllModals();$('settingsModal').style.display='flex';renderSettingsTab('profil');document.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.stab==='profil'));});
