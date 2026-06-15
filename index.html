@@ -520,7 +520,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .crest-banner span{font-family:'Bebas Neue',sans-serif;letter-spacing:1.5px;color:#2a2008;line-height:1;white-space:nowrap;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 
 /* ═══ REDESIGN — NAV FAB ═══ */
-.bottom-nav.with-fab{overflow:visible;position:relative}
+.bottom-nav.with-fab{overflow:visible}
 .nav-fab{position:absolute;left:50%;top:-26px;transform:translateX(-50%);
   width:62px;height:62px;border-radius:50%;background:var(--primary);color:var(--bg);
   border:4px solid var(--bg);display:flex;align-items:center;justify-content:center;
@@ -686,8 +686,8 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <span class="hdr-sub-date" id="hdrDateSub"></span>
     </div>
     <!-- Title mode (other tabs) -->
-    <div class="hdr-titlewrap" id="hdrTitleWrap" style="display:none">
-      <span class="hdr-title" id="hdrTabTitle">RC</span>
+    <div class="hdr-titlewrap" id="hdrTitleWrap">
+      <span class="hdr-title" id="hdrTabTitle">Karte</span>
     </div>
     <!-- Hidden elements kept for JS compatibility -->
     <span id="userBadge" style="display:none"><span id="hdrAvatar">🏃</span><span id="hdrName">Läufer</span><span id="hdrLevel">Lv.1</span></span>
@@ -3062,11 +3062,11 @@ function updateAppHeader(view){
   if(!greeting||!titleWrap)return;
   const titles={map:'Karte',community:'Community',profile:'Profil'};
   if(view==='start'||view==='dash'){
-    greeting.style.display='';titleWrap.style.display='none';
+    greeting.style.display='flex';titleWrap.style.display='none';
     const hi=$('hdrHi');if(hi)hi.textContent='Hallo, '+(playerName||'Läufer');
     const ds=$('hdrDateSub');if(ds){const d=new Date();const days=['So','Mo','Di','Mi','Do','Fr','Sa'];const months=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];ds.textContent=days[d.getDay()]+' · '+d.getDate()+'. '+months[d.getMonth()];}
   }else{
-    greeting.style.display='none';titleWrap.style.display='';
+    greeting.style.display='none';titleWrap.style.display='flex';
     if(titleEl)titleEl.textContent=titles[view]||'RC';
   }
   const sv=$('hdrStreakVal');if(sv)sv.textContent=streakDays||0;
