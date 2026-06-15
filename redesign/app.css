@@ -1,0 +1,74 @@
+/* Standalone runnable shell for the redesign.
+   Mobile: the phone screen fills the viewport (real app).
+   Desktop (>=900px): a centred 390×844 phone frame on a dark stage. */
+html, body, #root { height: 100%; margin: 0; }
+body { background: #05140e; font-family: var(--font-body); overflow: hidden; }
+.rc-stage { height: 100%; position: relative; }
+
+/* ── Mobile / default: full-bleed ── */
+.rc-phone {
+  width: 100% !important; height: 100% !important;
+  border-radius: 0 !important; padding: 0 !important;
+  box-shadow: none !important; background: var(--bg) !important;
+}
+.rc-phone .screen { border-radius: 0 !important; }
+.rc-app-phone { position: absolute; inset: 0; }
+
+/* ── Flow overlay (Onboarding / Lauf-Ende / Gebiet / Einstellungen) ── */
+.rc-flow { position: fixed; inset: 0; z-index: 200; background: var(--bg); }
+.rc-flow .rc-phone { position: absolute; inset: 0; }
+.rc-flow-close {
+  position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 210;
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(13,61,44,.92); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border: 1px solid var(--border); color: var(--text);
+  border-radius: 40px; padding: 9px 18px; cursor: pointer;
+  font-family: var(--font-display); letter-spacing: 1px; font-size: .82rem;
+  box-shadow: 0 8px 26px rgba(0,0,0,.5);
+}
+.rc-flow-close i { color: var(--primary); }
+
+/* ── Screens launcher (preview navigation, not part of the design) ── */
+.rc-launch { position: fixed; right: 14px; bottom: 98px; z-index: 300; }
+.rc-launch-btn {
+  width: 44px; height: 44px; border-radius: 14px; cursor: pointer;
+  background: rgba(13,61,44,.85); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border: 1px solid var(--border); color: var(--primary); font-size: 1rem;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 24px rgba(0,0,0,.45);
+}
+.rc-launch-menu {
+  position: absolute; right: 0; bottom: 54px; width: 200px;
+  background: rgba(13,61,44,.96); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border: 1px solid var(--border); border-radius: 16px; padding: 8px;
+  box-shadow: 0 18px 50px rgba(0,0,0,.55);
+}
+.rc-launch-hd {
+  font: var(--micro); text-transform: uppercase; letter-spacing: 2px;
+  color: var(--muted); padding: 6px 10px 8px;
+}
+.rc-launch-menu button {
+  width: 100%; display: flex; align-items: center; gap: 11px;
+  background: transparent; border: none; color: var(--text); cursor: pointer;
+  padding: 11px 10px; border-radius: 10px; font-size: .88rem; text-align: left;
+  font-family: var(--font-body);
+}
+.rc-launch-menu button:hover { background: rgba(255,255,255,.05); }
+.rc-launch-menu button i { width: 18px; text-align: center; color: var(--primary); }
+
+/* ── Desktop: framed phone on a stage ── */
+@media (min-width: 900px) {
+  body { overflow: auto; }
+  .rc-stage { display: flex; align-items: center; justify-content: center; min-height: 100%; padding: 30px; }
+  .rc-phone {
+    width: 390px !important; height: 844px !important; flex-shrink: 0;
+    border-radius: 52px !important; padding: 12px !important; background: #000 !important;
+    box-shadow: 0 30px 70px rgba(0,0,0,.55), 0 0 0 2px #1a1a1a, inset 0 0 0 2px #2a2a2a !important;
+  }
+  .rc-phone .screen { border-radius: 42px !important; }
+  .rc-app-phone { position: static; inset: auto; }
+  .rc-flow { display: flex; align-items: center; justify-content: center; padding: 30px; background: #05140e; }
+  .rc-flow .rc-phone { position: static; inset: auto; }
+  .rc-launch { right: 24px; bottom: auto; top: 24px; }
+  .rc-launch-menu { bottom: auto; top: 54px; }
+}
