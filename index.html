@@ -384,6 +384,35 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .ach-sg.next .ach-c{color:var(--primary)}
 .ach-sg.locked:not(.next) .ach-c{color:var(--muted)}
 
+/* ─── Achievement Card Header (Profile) ─── */
+.ach-card-hd{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.ach-card-hd .t{font-family:'Bebas Neue',sans-serif;letter-spacing:1.5px;font-size:1.05rem}
+.ach-card-hd .t i{color:var(--primary);margin-right:7px}
+.ach-card-hd .cnt{margin-left:auto;font-family:'Bebas Neue',sans-serif;letter-spacing:1px;font-size:1.05rem;color:var(--primary)}
+.ach-card-hd .cnt small{color:var(--muted);font-size:.78rem}
+.nxt-sub{font-size:.7rem;color:var(--muted);margin-bottom:12px}
+
+/* ─── Achievement Board Tiles (Drawer) ─── */
+.tier-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tier{display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;padding:10px 6px 11px;border-radius:14px;border:1px solid transparent;transition:border-color .2s}
+.tier.next{border-color:rgba(var(--primary-rgb),.35);background:rgba(var(--primary-rgb),.05)}
+.tier .ic{width:72px;height:72px;display:grid;place-items:center;position:relative}
+.tier .ic img{max-width:100%;max-height:100%;object-fit:contain;filter:drop-shadow(0 4px 10px rgba(0,0,0,.45))}
+.tier.locked .ic img{filter:grayscale(1) brightness(.42) contrast(.9)}
+.tier .lock{position:absolute;right:4px;bottom:2px;width:18px;height:18px;border-radius:50%;background:var(--card);border:1px solid var(--border);color:var(--muted);display:none;align-items:center;justify-content:center;font-size:.5rem}
+.tier.locked .lock{display:flex}
+.tier .nm{font-family:'Bebas Neue',sans-serif;font-size:.9rem;letter-spacing:1px;line-height:.95;margin-top:6px;color:var(--text)}
+.tier.locked .nm{color:var(--muted)}
+.tier .req{font-size:.56rem;color:var(--muted);margin-top:3px;line-height:1.3}
+.tier .prog{width:100%;max-width:88px;margin-top:7px}
+.tier .pbar{height:4px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden}
+.tier .pfill{height:100%;border-radius:4px;background:var(--primary)}
+.tier.done .pfill{background:var(--green)}
+.tier .ctr{font-family:'Bebas Neue',sans-serif;letter-spacing:.5px;font-size:.7rem;margin-top:5px;display:flex;align-items:center;justify-content:center;gap:3px}
+.tier.done .ctr{color:var(--green)}
+.tier.next .ctr{color:var(--primary)}
+.tier.locked:not(.next) .ctr{color:var(--muted)}
+
 /* ═══ BOTTOM NAV ═══ */
 .bottom-nav{position:fixed;bottom:0;left:0;right:0;height:var(--nav-total);background:var(--bg);border-top:1px solid rgba(255,255,255,.08);display:flex;align-items:flex-start;justify-content:space-around;padding:4px calc(8px + var(--sal)) var(--sab) calc(8px + var(--sar));z-index:710;-webkit-backdrop-filter:blur(20px) saturate(150%);backdrop-filter:blur(20px) saturate(150%)}
 .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--muted);font-size:.62rem;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;transition:color var(--motion-base);padding:8px 0;position:relative;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
@@ -4923,7 +4952,7 @@ function updateProfile(){
       return `<div class="ach-nxt-row"><div class="ach-nxt-ic"><img src="/assets/ach/${getAchIcon(next)}.png" alt="${next.name}"></div><div class="ach-nxt-mid"><div class="ach-nxt-nm">${next.name}</div><div class="ach-nxt-bar"><div class="ach-nxt-fill" style="width:${next.pct.toFixed(1)}%"></div></div></div><div class="ach-nxt-ctr">${rem}<small>${meta.unit} fehlen</small></div></div>`;
     }).join('');
     const allDone=!nxtRows;
-    $('pvAchs').innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-family:'Bebas Neue',sans-serif;font-size:1.05rem;letter-spacing:1.5px"><i class="fas fa-trophy" style="color:var(--primary);margin-right:7px"></i>ERFOLGE</span><span style="margin-left:auto;font-family:'Bebas Neue',sans-serif;font-size:1.05rem;color:var(--primary)">${totalEarned}<small style="color:var(--muted);font-size:.78rem">/${achievements.length}</small></span></div><div style="font-size:.7rem;color:var(--muted);margin-bottom:12px">${allDone?'Alle Ziele erreicht — Legende! 🏆':'Deine nächsten Ziele — und was noch fehlt'}</div>${nxtRows}<button class="ach-more-btn" onclick="openDrawer('ach')">ALLE ${achievements.length} ERFOLGE <i class="fas fa-chevron-right" style="font-size:.8rem"></i></button>`;
+    $('pvAchs').innerHTML=`<div class="ach-card-hd"><span class="t"><i class="fas fa-trophy"></i>ERFOLGE</span><span class="cnt">${totalEarned}<small>/${achievements.length}</small></span></div><div class="nxt-sub">${allDone?'Alle Ziele erreicht — Legende! 🏆':'Deine nächsten Ziele — und was noch fehlt'}</div>${nxtRows}<button class="ach-more-btn" onclick="openDrawer('ach')">ALLE ${achievements.length} ERFOLGE <i class="fas fa-chevron-right" style="font-size:.8rem"></i></button>`;
   }
   // Saisonhistorie
   const seasEl=document.getElementById('pvSeasons');
@@ -4973,16 +5002,20 @@ function renderDrawer(){
     fitness:()=>{setTimeout(()=>{document.getElementById('btBtn2')?.addEventListener('click',connectBT)},100);return`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${[['Schritte',stepsToday],['Puls',heartRate+' bpm'],['Laufzeit',fmtTime(runSecs)],['Pace',fmtPace(dist,runSecs)],['Gesamt km',totalKm.toFixed(1)],['Streak',streakDays+'🔥'],['kcal',history.reduce((s,r)=>s+(r.kcal||0),0)],['Gebiete',territories.filter(t=>t.owner===userId).length]].map(([l,v])=>`<div class="stat-card"><div class="sv">${v}</div><div class="sl">${l}</div></div>`).join('')}</div><button class="btn" id="btBtn2" style="width:100%;margin-top:14px"><i class="fas fa-heartbeat"></i> Pulsmesser koppeln</button>`},
     ach:()=>{
       const CAT_NAMES={conq:'Straßen erobert',km:'Kilometer gelaufen',atk:'Angriffe gewonnen',def:'Verteidigungen',disc:'Orte besucht',streak:'Tage in Folge'};
+      const CAT_UNITS={conq:'Straßen',km:'km',atk:'Siege',def:'Vert.',disc:'Orte',streak:'Tage'};
       const totalEarned=achievements.filter(a=>a.earned).length;
-      const summary=`<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:16px;display:flex;align-items:center;gap:14px"><div style="font-family:'Bebas Neue',sans-serif;font-size:2.2rem;line-height:.85;color:var(--primary)">${totalEarned}<span style="color:var(--muted);font-size:1.1rem">/${achievements.length}</span></div><div style="flex:1"><div style="font-family:'Bebas Neue',sans-serif;letter-spacing:2px;font-size:.9rem">ERFOLGE FREIGESCHALTET</div><div style="height:6px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden;margin-top:8px"><div style="height:100%;width:${Math.round(totalEarned/achievements.length*100)}%;background:linear-gradient(90deg,var(--primary),#b6e02e);border-radius:4px"></div></div></div></div>`;
+      const pct=Math.round(totalEarned/achievements.length*100);
+      const summary=`<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:16px;display:flex;align-items:center;gap:14px"><div style="font-family:'Bebas Neue',sans-serif;font-size:2.2rem;line-height:.85;color:var(--primary)">${totalEarned}<span style="color:var(--muted);font-size:1.1rem">/${achievements.length}</span></div><div style="flex:1"><div style="font-family:'Bebas Neue',sans-serif;letter-spacing:2px;font-size:.9rem">ERFOLGE FREIGESCHALTET</div><div style="font-size:.68rem;color:var(--muted);margin-top:3px">${pct} % geschafft · ${achievements.length-totalEarned} noch offen</div><div style="height:6px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden;margin-top:8px"><div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--primary),#b6e02e);border-radius:4px"></div></div></div></div>`;
       const groups=Object.keys(CAT_NAMES).map(cat=>{
         const tiers=getAchTiers(cat);const doneN=tiers.filter(t=>t.done).length;
-        const grid=tiers.map(t=>{
-          const cls='ach-sg'+(t.done?' done':t.state==='next'?' next locked':' locked');
-          const c=t.done?`<i class="fas fa-check"></i> Geschafft`:`Noch ${t.remaining.toLocaleString('de-DE')}`;
-          return `<div class="${cls}"><div class="ach-ic"><img src="/assets/ach/${getAchIcon(t)}.png" alt="${t.name}" onerror="this.style.opacity=.2"></div><div class="ach-n">${t.name}</div><div class="ach-c">${c}</div></div>`;
+        const u=CAT_UNITS[cat]||'';
+        const tiles=tiers.map(t=>{
+          const cls='tier'+(t.done?' done':t.state==='next'?' next locked':' locked');
+          const rem=t.remaining.toLocaleString('de-DE');
+          const ctr=t.done?'<i class="fas fa-check"></i> Geschafft':'Noch '+rem;
+          return `<div class="${cls}"><div class="ic"><img src="/assets/ach/${getAchIcon(t)}.png" alt="${t.name}" onerror="this.style.display='none'"><span class="lock"><i class="fas fa-lock"></i></span></div><div class="nm">${t.name}</div><div class="req">${t.target.toLocaleString('de-DE')} ${u}</div><div class="prog"><div class="pbar"><div class="pfill" style="width:${t.pct.toFixed(1)}%"></div></div><div class="ctr">${ctr}</div></div></div>`;
         }).join('');
-        return `<div class="ach-sheet-grp"><span class="ach-g">${CAT_NAMES[cat]}</span><span class="ach-gc">${doneN}/6</span><span class="ach-line"></span></div><div class="ach-sheet-grid">${grid}</div>`;
+        return `<div style="margin-top:28px"><div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border)"><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px">${CAT_NAMES[cat]}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary)">${doneN}/6</span></div><div class="tier-row">${tiles}</div></div>`;
       }).join('');
       return summary+groups;
     },
