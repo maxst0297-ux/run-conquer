@@ -20,6 +20,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="/territory.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Bebas+Neue&display=swap" rel="stylesheet">
 
 <style>
@@ -412,6 +413,45 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .tier.done .ctr{color:var(--green)}
 .tier.next .ctr{color:var(--primary)}
 .tier.locked:not(.next) .ctr{color:var(--muted)}
+
+/* ─── Share Card Editor ─── */
+#shareCardOverlay{position:fixed;inset:0;z-index:9500;background:#0b0f0d;display:none;flex-direction:column}
+#shareCardStage{flex:1;display:grid;place-items:center;overflow:hidden;min-height:0}
+#shareCardScaler{transform-origin:center center}
+.sc-backdrop{position:relative;overflow:hidden;border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.7)}
+.sc-backdrop.checker{background-color:#15151a;background-image:linear-gradient(45deg,#20222b 25%,transparent 25%),linear-gradient(-45deg,#20222b 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#20222b 75%),linear-gradient(-45deg,transparent 75%,#20222b 75%);background-size:40px 40px;background-position:0 0,0 20px,20px -20px,-20px 0}
+#scBdImg{position:absolute;inset:0;background-size:cover;background-position:center;pointer-events:none}
+.rc-share-card{position:relative;width:100%;height:100%;display:flex;flex-direction:column;padding:74px 64px 60px;color:#fff}
+.rc-scrim{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.45) 0%,rgba(0,0,0,0) 26%),linear-gradient(0deg,rgba(0,0,0,.5) 0%,rgba(0,0,0,0) 24%)}
+.rc-tagline{text-align:center;font-family:'Poppins',sans-serif;font-weight:600;font-size:22px;letter-spacing:8px;text-transform:uppercase;color:rgba(255,255,255,.82);text-shadow:0 2px 10px rgba(0,0,0,.5);margin:0}
+.rc-stats{display:grid;grid-template-columns:1fr 1px 1fr 1px 1fr;align-items:center;margin-top:54px}
+.rc-stat{text-align:center;padding:0 8px}
+.rc-stat i{font-size:34px;color:rgba(255,255,255,.92);filter:drop-shadow(0 2px 8px rgba(0,0,0,.45))}
+.rc-stat .v{font-family:'Bebas Neue',sans-serif;letter-spacing:1px;font-size:84px;line-height:.92;margin-top:18px;color:#fff;text-shadow:0 3px 16px rgba(0,0,0,.55)}
+.rc-stat .l{font-family:'Poppins',sans-serif;font-weight:600;font-size:19px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,.62);margin-top:12px;text-shadow:0 2px 8px rgba(0,0,0,.5)}
+.rc-div{width:1px;height:92px;background:linear-gradient(180deg,transparent,rgba(255,255,255,.22),transparent)}
+.rc-hero{flex:1;min-height:0;position:relative;margin:4px 0}
+.rc-hero svg{display:block;width:100%;height:100%}
+.rc-logo{text-align:center;flex-shrink:0}
+.rc-logo .mark{font-family:'Bebas Neue',sans-serif;font-size:96px;line-height:1;letter-spacing:4px;background:linear-gradient(180deg,#ffffff 0%,#ffffff 38%,#b9bcc4 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;filter:drop-shadow(0 4px 14px rgba(0,0,0,.5))}
+.rc-logo .underline{width:92px;height:5px;border-radius:3px;margin:12px auto 0}
+#scControls{padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:#0b0f0d;border-top:1px solid rgba(255,255,255,.08);flex-shrink:0}
+.sc-ctrl-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+#scBgBar{display:flex;align-items:center;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+#scBgBar::-webkit-scrollbar{display:none}
+.sc-bg-btn{width:30px;height:30px;border-radius:50%;border:2px solid rgba(255,255,255,.15);cursor:pointer;flex-shrink:0;display:grid;place-items:center;font-size:.65rem;color:rgba(255,255,255,.5);background:transparent;transition:transform .12s}
+.sc-bg-btn.on{border-color:#fff}
+.sc-bg-btn:active{transform:scale(.85)}
+.sc-swatch{width:26px;height:26px;border-radius:50%;border:2px solid transparent;cursor:pointer;flex-shrink:0;transition:transform .12s}
+.sc-swatch.on{border-color:#fff;transform:scale(1.15)}
+.sc-swatch:active{transform:scale(.85)}
+.sc-fmt{padding:4px 10px;border-radius:16px;border:1px solid rgba(255,255,255,.2);background:transparent;color:rgba(255,255,255,.5);font-size:.7rem;font-family:'Poppins',sans-serif;cursor:pointer;transition:all .15s}
+.sc-fmt.on{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.35);color:#fff}
+.sc-tog{display:flex;align-items:center;gap:5px;font-size:.7rem;color:rgba(255,255,255,.5);cursor:pointer;user-select:none}
+.sc-knob{width:30px;height:16px;border-radius:8px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);position:relative;flex-shrink:0;transition:background .2s}
+.sc-knob::after{content:'';position:absolute;left:2px;top:2px;width:10px;height:10px;border-radius:50%;background:#fff;transition:transform .2s}
+.sc-tog.on .sc-knob{background:var(--primary)}
+.sc-tog.on .sc-knob::after{transform:translateX(14px)}
 
 /* ═══ BOTTOM NAV ═══ */
 .bottom-nav{position:fixed;bottom:0;left:0;right:0;height:var(--nav-total);background:var(--bg);border-top:1px solid rgba(255,255,255,.08);display:flex;align-items:flex-start;justify-content:space-around;padding:4px calc(8px + var(--sal)) var(--sab) calc(8px + var(--sar));z-index:710;-webkit-backdrop-filter:blur(20px) saturate(150%);backdrop-filter:blur(20px) saturate(150%)}
@@ -2447,6 +2487,159 @@ function downloadCanvas(canvas){
   const a=document.createElement('a');a.href=canvas.toDataURL('image/png');a.download='conqrun_lauf.png';a.click();toast('📥 Bild gespeichert');
 }
 
+/* ── Share Card Editor ── */
+let _scRec=null,_scAccent='#9B5DE5',_scFormat='Quadrat',_scGlow=1,_scShowMap=true,_scShowFlag=true,_scScrim=false,_scBg='checker',_scBgPhoto=null;
+const SC_FMTS={Quadrat:{w:1080,h:1080},Hochkant:{w:1080,h:1350},Story:{w:1080,h:1920}};
+const SC_SWATCHES=['#9B5DE5','#E6FF55','#FF4D6D','#00D4FF','#FFD700','#FF9F1C','#10B981'];
+const SC_BGS={dark:'#0b0f0d',purple:'radial-gradient(120% 90% at 30% 10%,#3a2a5a,#160f24 60%,#0a0710)',sunset:'linear-gradient(160deg,#ff8a3c 0%,#c2305a 48%,#2a1633 100%)'};
+
+function scPathToXY(path){
+  if(!path||path.length<3)return null;
+  const lat0=path.reduce((s,p)=>s+p[0],0)/path.length;
+  const lng0=path.reduce((s,p)=>s+p[1],0)/path.length;
+  const lat0r=lat0*Math.PI/180,R=6371000;
+  return path.map(p=>[(p[1]-lng0)*Math.PI/180*R*Math.cos(lat0r),-(p[0]-lat0)*Math.PI/180*R]);
+}
+
+function scUpdateHero(){
+  const el=document.getElementById('scHero');if(!el||typeof RC==='undefined')return;
+  const fmt=SC_FMTS[_scFormat]||SC_FMTS.Quadrat;
+  const localPts=scPathToXY(_scRec?.path);
+  el.innerHTML=RC.renderTerritory({
+    points:localPts||undefined,
+    seed:localPts?undefined:(typeof (_scRec?.date)==='number'?_scRec.date%997:42),
+    accent:_scAccent,width:fmt.w,height:Math.round(fmt.h*0.52),
+    glow:_scGlow,showMap:_scShowMap,showFlag:_scShowFlag
+  });
+}
+
+function scUpdateCard(){
+  const card=document.getElementById('rcShareCard');if(!card)return;
+  card.style.setProperty('--accent',_scAccent);
+  let scrim=card.querySelector('.rc-scrim');
+  if(_scScrim&&!scrim){scrim=document.createElement('div');scrim.className='rc-scrim';card.insertBefore(scrim,card.firstChild);}
+  else if(!_scScrim&&scrim)scrim.remove();
+  const ul=document.getElementById('scUnderline');
+  if(ul){ul.style.background=_scAccent;ul.style.boxShadow='0 0 18px '+_scAccent;}
+}
+
+function scUpdateBg(){
+  const bd=document.getElementById('scBackdrop');
+  const img=document.getElementById('scBdImg');
+  if(!bd)return;
+  if(_scBg==='checker'){bd.className='sc-backdrop checker';bd.style.background='';if(img)img.style.backgroundImage='';}
+  else if(_scBg==='photo'&&_scBgPhoto){bd.className='sc-backdrop';bd.style.background='';if(img)img.style.backgroundImage='url('+_scBgPhoto+')';}
+  else{bd.className='sc-backdrop';bd.style.background=SC_BGS[_scBg]||'#0b0f0d';if(img)img.style.backgroundImage='';}
+}
+
+function scScale(){
+  const scaler=document.getElementById('shareCardScaler');
+  const bd=document.getElementById('scBackdrop');
+  const stage=document.getElementById('shareCardStage');
+  if(!scaler||!bd||!stage)return;
+  const fmt=SC_FMTS[_scFormat]||SC_FMTS.Quadrat;
+  bd.style.width=fmt.w+'px';bd.style.height=fmt.h+'px';
+  const s=Math.min((stage.clientWidth-24)/fmt.w,(stage.clientHeight-12)/fmt.h,.82);
+  scaler.style.transform='scale('+s+')';
+}
+
+function scRender(){scUpdateCard();scUpdateBg();scUpdateHero();scScale();}
+
+function scSetAccent(c){
+  _scAccent=c;
+  document.querySelectorAll('.sc-swatch').forEach(s=>s.classList.toggle('on',s.dataset.c===c));
+  const pk=document.getElementById('scColorPicker');if(pk)pk.value=(/^#[0-9a-f]{6}$/i.test(c))?c:'#9b5de5';
+  scRender();
+}
+
+function scSetBg(bg){
+  _scBg=bg;
+  document.querySelectorAll('.sc-bg-btn').forEach(b=>b.classList.toggle('on',b.dataset.bg===bg));
+  scRender();
+}
+
+function scToggle(k){
+  if(k==='map'){_scShowMap=!_scShowMap;document.getElementById('scTogMap').classList.toggle('on',_scShowMap);}
+  else if(k==='flag'){_scShowFlag=!_scShowFlag;document.getElementById('scTogFlag').classList.toggle('on',_scShowFlag);}
+  else if(k==='scrim'){_scScrim=!_scScrim;document.getElementById('scTogScrim').classList.toggle('on',_scScrim);}
+  scRender();
+}
+
+function showShareCardEditor(rec){
+  _scRec=rec;
+  _scAccent=userColor||'#9B5DE5';
+  _scFormat='Quadrat';_scGlow=1;_scShowMap=true;_scShowFlag=true;_scScrim=false;_scBg='checker';
+  if(_scBgPhoto){URL.revokeObjectURL(_scBgPhoto);_scBgPhoto=null;}
+  // stats
+  document.getElementById('scTime').textContent=fmtTime(rec.duration);
+  document.getElementById('scPace').textContent=fmtPace(rec.distance,rec.duration);
+  document.getElementById('scDist').textContent=(rec.distance/1000).toFixed(2).replace('.',',');
+  // swatches
+  const sw=document.getElementById('scSwatches');
+  if(sw)sw.innerHTML=SC_SWATCHES.map(c=>`<div class="sc-swatch${c===_scAccent?' on':''}" style="background:${c}" data-c="${c}" onclick="scSetAccent('${c}')"></div>`).join('');
+  // color picker
+  const pk=document.getElementById('scColorPicker');
+  if(pk){pk.value=(/^#[0-9a-f]{6}$/i.test(_scAccent))?_scAccent:'#9b5de5';pk.oninput=e=>scSetAccent(e.target.value);}
+  // format buttons
+  document.querySelectorAll('.sc-fmt').forEach(b=>{
+    b.classList.toggle('on',b.dataset.fmt===_scFormat);
+    b.onclick=()=>{_scFormat=b.dataset.fmt;document.querySelectorAll('.sc-fmt').forEach(x=>x.classList.toggle('on',x===b));scRender();};
+  });
+  // bg buttons
+  document.querySelectorAll('.sc-bg-btn').forEach(b=>{
+    b.classList.toggle('on',b.dataset.bg===_scBg);
+    b.onclick=()=>{
+      if(b.dataset.bg==='photo'){document.getElementById('scPhotoInput').click();return;}
+      scSetBg(b.dataset.bg);
+    };
+  });
+  // photo upload
+  const pi=document.getElementById('scPhotoInput');
+  if(pi)pi.onchange=e=>{const f=e.target.files[0];if(!f)return;if(_scBgPhoto)URL.revokeObjectURL(_scBgPhoto);_scBgPhoto=URL.createObjectURL(f);scSetBg('photo');};
+  // toggle states
+  document.getElementById('scTogMap').classList.toggle('on',_scShowMap);
+  document.getElementById('scTogFlag').classList.toggle('on',_scShowFlag);
+  document.getElementById('scTogScrim').classList.toggle('on',_scScrim);
+  // open overlay
+  document.getElementById('shareCardOverlay').style.display='flex';
+  requestAnimationFrame(()=>requestAnimationFrame(scRender));
+  window.addEventListener('resize',scScale);
+}
+
+function closeShareCard(){
+  document.getElementById('shareCardOverlay').style.display='none';
+  window.removeEventListener('resize',scScale);
+}
+
+async function exportShareCard(){
+  const bd=document.getElementById('scBackdrop');
+  const scaler=document.getElementById('shareCardScaler');
+  const stage=document.getElementById('shareCardStage');
+  if(!bd)return;
+  const fmt=SC_FMTS[_scFormat]||SC_FMTS.Quadrat;
+  toast('📸 Erstelle Bild…');
+  const prevT=scaler.style.transform;
+  const prevOvf=stage.style.overflow;
+  scaler.style.transform='none';
+  stage.style.overflow='visible';
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+  try{
+    const cv=await html2canvas(bd,{scale:1,useCORS:true,backgroundColor:_scBg==='checker'?'#15151a':null,logging:false,width:fmt.w,height:fmt.h});
+    scaler.style.transform=prevT;stage.style.overflow=prevOvf;
+    cv.toBlob(async blob=>{
+      if(!blob){toast('Export fehlgeschlagen');return;}
+      const file=new File([blob],'rq-lauf.png',{type:'image/png'});
+      if(navigator.share&&navigator.canShare?.({files:[file]})){
+        try{await navigator.share({files:[file],title:'Mein Lauf — RunConquer'});}
+        catch(e){if(e.name!=='AbortError')downloadCanvas(cv);}
+      }else{downloadCanvas(cv);}
+    },'image/png');
+  }catch(err){
+    scaler.style.transform=prevT;stage.style.overflow=prevOvf;
+    console.warn('Share card export:',err);toast('Export fehlgeschlagen');
+  }
+}
+
 /* ── MAP PANEL ── */
 function toggleMapPanel(){
   const panel=$('mapPanel'),arrow=$('mapPanelArrow'),icon=$('mapPanelIcon');
@@ -3389,7 +3582,7 @@ function showPostRun(rec){
   const inflHTML=(sessionNewTerrNames.length||sessionNewLandmarks.length)?`<div style="background:rgba(var(--primary-rgb),.06);border:1px solid rgba(var(--primary-rgb),.2);border-radius:14px;padding:14px;margin-bottom:10px"><div style="font-size:.6rem;font-weight:700;letter-spacing:1.5px;color:var(--primary);margin-bottom:8px">🗺️ DEIN EINFLUSS</div>${sessionNewTerrNames.map(n=>`<div style="display:flex;align-items:center;gap:6px;font-size:.8rem;margin-bottom:4px"><span style="width:8px;height:8px;border-radius:50%;background:${userColor};flex-shrink:0;display:inline-block"></span>${n}</div>`).join('')}${sessionNewLandmarks.map(n=>`<div style="display:flex;align-items:center;gap:6px;font-size:.8rem;margin-bottom:4px"><span style="color:#ffd700">⭐</span>${n}</div>`).join('')}</div>`:'';
   $('postInfluence').innerHTML=inflHTML;
   $('postRunModal').style.display='flex';
-  document.getElementById('cardRunBtn')?.addEventListener('click',()=>{shareRunCard(rec,rec.path||[]);},{ once:true });
+  document.getElementById('cardRunBtn')?.addEventListener('click',()=>{showShareCardEditor(rec);},{ once:true });
 }
 function fallbackSong(){const s=[{title:'Eye of the Tiger',artist:'Survivor',bpm:109,reason:'Dein Lauf hatte diese unnachgiebige Energie.'},{title:'Titanium',artist:'David Guetta ft. Sia',bpm:126,reason:'Nichts konnte dich aufhalten.'},{title:'Blinding Lights',artist:'The Weeknd',bpm:171,reason:'Freier Flow durch deine Straßen.'},{title:'Run the World',artist:'Beyoncé',bpm:130,reason:'Heute gehören die Straßen dir.'},{title:'Harder Better Faster',artist:'Daft Punk',bpm:123,reason:'Deine Pace war wie ein perfekter Rhythmus.'}];return s[Math.floor(Math.random()*s.length)]}
 
@@ -5479,5 +5672,63 @@ if('serviceWorker' in navigator){
 
 })();
 </script>
+
+<!-- ── Share Card Editor ── -->
+<div id="shareCardOverlay">
+  <div id="shareCardStage">
+    <div id="shareCardScaler">
+      <div class="sc-backdrop checker" id="scBackdrop">
+        <div id="scBdImg"></div>
+        <div class="rc-share-card" id="rcShareCard">
+          <p class="rc-tagline">RUN CONQUER. OWN THE WORLD.</p>
+          <div class="rc-stats">
+            <div class="rc-stat"><i class="fa-regular fa-clock"></i><div class="v" id="scTime">-</div><div class="l">Zeit</div></div>
+            <div class="rc-div"></div>
+            <div class="rc-stat"><i class="fa-solid fa-gauge-high"></i><div class="v" id="scPace">-</div><div class="l">Pace / km</div></div>
+            <div class="rc-div"></div>
+            <div class="rc-stat"><i class="fa-solid fa-route"></i><div class="v" id="scDist">-</div><div class="l">km</div></div>
+          </div>
+          <div class="rc-hero" id="scHero"></div>
+          <div class="rc-logo"><div class="mark">RQ</div><div class="underline" id="scUnderline"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="scControls">
+    <div class="sc-ctrl-row" style="margin-bottom:8px">
+      <span style="font-size:.6rem;color:rgba(255,255,255,.35);letter-spacing:.5px;flex-shrink:0">BG</span>
+      <div id="scBgBar">
+        <button class="sc-bg-btn on" data-bg="checker" title="Transparent"><i class="fa-solid fa-border-none"></i></button>
+        <button class="sc-bg-btn" data-bg="dark" style="background:#0b0f0d" title="Dunkel"></button>
+        <button class="sc-bg-btn" data-bg="purple" style="background:linear-gradient(135deg,#3a2a5a,#160f24)" title="Lila"></button>
+        <button class="sc-bg-btn" data-bg="sunset" style="background:linear-gradient(135deg,#ff8a3c,#c2305a)" title="Sunset"></button>
+        <div style="width:1px;height:20px;background:rgba(255,255,255,.1);flex-shrink:0"></div>
+        <button class="sc-bg-btn" data-bg="photo" title="Eigenes Foto"><i class="fa-solid fa-image"></i></button>
+        <input type="file" id="scPhotoInput" accept="image/*" style="display:none">
+      </div>
+    </div>
+    <div class="sc-ctrl-row">
+      <span style="font-size:.6rem;color:rgba(255,255,255,.35);letter-spacing:.5px;flex-shrink:0">COL</span>
+      <div id="scSwatches" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      <label style="position:relative;width:26px;height:26px;border-radius:50%;border:1.5px dashed rgba(255,255,255,.3);cursor:pointer;flex-shrink:0;overflow:hidden;display:grid;place-items:center;font-size:.7rem;color:rgba(255,255,255,.4)">
+        +<input type="color" id="scColorPicker" style="position:absolute;inset:-4px;opacity:0;width:140%;height:140%;cursor:pointer">
+      </label>
+    </div>
+    <div class="sc-ctrl-row" style="gap:6px;margin-bottom:8px">
+      <span style="font-size:.6rem;color:rgba(255,255,255,.35);letter-spacing:.5px;flex-shrink:0">FMT</span>
+      <button class="sc-fmt on" data-fmt="Quadrat">Quadrat</button>
+      <button class="sc-fmt" data-fmt="Hochkant">Hochkant</button>
+      <button class="sc-fmt" data-fmt="Story">Story</button>
+      <div style="width:1px;height:20px;background:rgba(255,255,255,.1);flex-shrink:0"></div>
+      <div class="sc-tog on" id="scTogMap" onclick="scToggle('map')"><div class="sc-knob"></div><span>Straßen</span></div>
+      <div class="sc-tog on" id="scTogFlag" onclick="scToggle('flag')"><div class="sc-knob"></div><span>Flagge</span></div>
+      <div class="sc-tog" id="scTogScrim" onclick="scToggle('scrim')"><div class="sc-knob"></div><span>Schatten</span></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn" onclick="closeShareCard()" style="flex:.35;padding:12px 8px"><i class="fas fa-times"></i></button>
+      <button class="btn btn-p" onclick="exportShareCard()" style="flex:1">TEILEN <i class="fas fa-share-alt"></i></button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
