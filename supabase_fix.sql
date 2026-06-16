@@ -1,0 +1,85 @@
+-- Run & Conquer – Sicherheits- und Schema-Fix
+-- Im Supabase Dashboard → SQL Editor ausführen.
+-- Dieses Script ist idempotent: es kann mehrfach ohne Fehler ausgeführt werden.
+
+-- ══════════════════════════════════════════════════════════════════════
+-- 1. Fehlende Spalten in public.profiles ergänzen
+-- ══════════════════════════════════════════════════════════════════════
+
+alter table public.profiles
+  add column if not exists user_id      text,
+  add column if not exists game_data    text,
+  add column if not exists user_team    text,
+  add column if not exists club_code    text;
+
+-- Index für Club- und Team-Abfragen
+create index if not exists profiles_club_idx  on public.profiles(club_code);
+create index if not exists profiles_team_idx  on public.profiles(user_team);
+
+-- ══════════════════════════════════════════════════════════════════════
+-- 2. Fehlende Spalten in public.support_messages ergänzen
+-- ══════════════════════════════════════════════════════════════════════
+
+alter table public.support_messages
+  add column if not exists admin_reply  text,
+  add column if not exists replied_at   timestamptz,
+  add column if not exists email        text;
+
+-- ══════════════════════════════════════════════════════════════════════
+-- 3. Tabelle direct_messages erstellen (Direktnachrichten)
+-- ══════════════════════════════════════════════════════════════════════
+
+create table if not exists public.direct_messages (
+  id          uuid primary key default gen_random_uuid(),
+  from_uid    uuid not null,
+  from_name   text,
+  to_uid      uuid not null,
+  to_name     text,
+  content     text not null,
+  read_at     timestamptz,
+  created_at  timestamptz default now()
+);
+
+create index if not exists dm_to_uid_idx   on public.direct_messages(to_uid, created_at desc);
+create index if not exists dm_from_uid_idx on public.direct_messages(from_uid, created_at desc);
+
+alter table public.direct_messages enable row level security;
+
+-- Nutzer kann eigene gesendeten/empfangenen Nachrichten lesen
+create policy "Nutzer liest eigene DMs"
+  on public.direct_messages for select
+  using (auth.uid() = from_uid or auth.uid() = to_uid);
+
+-- Nutzer kann Nachrichten senden (from_uid muss eigene uid sein)
+create policy "Nutzer sendet DMs"
+  on public.direct_messages for insert
+  with check (auth.uid() = from_uid);
+
+-- Empfänger kann als gelesen markieren
+create policy "Empfänger aktualisiert read_at"
+  on public.direct_messages for update
+  using (auth.uid() = to_uid)
+  with check (auth.uid() = to_uid);
+
+-- Nutzer kann eigene Konversationen löschen
+create policy "Nutzer löscht eigene DMs"
+  on public.direct_messages for delete
+  using (auth.uid() = from_uid or auth.uid() = to_uid);
+
+-- ══════════════════════════════════════════════════════════════════════
+-- 4. RLS auf ALLEN verbleibenden public-Tabellen erzwingen (Sicherheitsnetz)
+--    (sicher mehrfach auszuführen)
+-- ══════════════════════════════════════════════════════════════════════
+
+do $$
+declare
+  tbl text;
+begin
+  for tbl in
+    select tablename from pg_tables
+    where schemaname = 'public'
+  loop
+    execute format('alter table public.%I enable row level security', tbl);
+  end loop;
+end;
+$$;
