@@ -407,25 +407,15 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .nxt-sub{font-size:.7rem;color:var(--muted);margin-bottom:12px}
 
 /* ─── Achievement Board Tiles (Drawer) ─── */
-.tier-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.tier{display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;padding:14px 8px 13px;border-radius:16px;border:1px solid transparent;transition:border-color .2s}
+.tier-row{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.tier{display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;padding:5px 2px 4px;border-radius:12px;border:1px solid transparent;transition:border-color .2s,transform .1s;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.tier:active{transform:scale(.91)}
 .tier.next{border-color:rgba(var(--primary-rgb),.35);background:rgba(var(--primary-rgb),.05)}
-.tier .ic{width:88px;height:88px;display:grid;place-items:center;position:relative}
-.tier .ic img{max-width:100%;max-height:100%;object-fit:contain;filter:drop-shadow(0 4px 10px rgba(0,0,0,.5))}
-.tier.locked .ic img{filter:grayscale(1) brightness(.42) contrast(.9)}
-.tier .lock{position:absolute;right:8px;bottom:4px;width:24px;height:24px;border-radius:50%;background:var(--card);border:1px solid var(--border);color:var(--muted);display:none;align-items:center;justify-content:center;font-size:.6rem}
+.tier .ic{width:46px;height:46px;display:grid;place-items:center;position:relative}
+.tier .ic img{max-width:100%;max-height:100%;object-fit:contain;filter:drop-shadow(0 3px 6px rgba(0,0,0,.5))}
+.tier.locked .ic img{filter:grayscale(1) brightness(.38) contrast(.9)}
+.tier .lock{position:absolute;right:-3px;bottom:-3px;width:18px;height:18px;border-radius:50%;background:var(--card);border:1px solid var(--border);color:var(--muted);display:none;align-items:center;justify-content:center;font-size:.5rem}
 .tier.locked .lock{display:flex}
-.tier .nm{font-family:'Bebas Neue',sans-serif;font-size:1.04rem;letter-spacing:1px;line-height:.95;margin-top:8px;color:var(--text)}
-.tier.locked .nm{color:var(--muted)}
-.tier .req{font-size:.66rem;color:var(--muted);margin-top:4px;line-height:1.3;min-height:1.6em}
-.tier .prog{width:100%;max-width:104px;margin-top:9px}
-.tier .pbar{height:5px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden}
-.tier .pfill{height:100%;border-radius:4px;background:var(--primary)}
-.tier.done .pfill{background:var(--green)}
-.tier .ctr{font-family:'Bebas Neue',sans-serif;letter-spacing:.8px;font-size:.82rem;margin-top:6px;display:flex;align-items:center;justify-content:center;gap:3px}
-.tier.done .ctr{color:var(--green)}
-.tier.next .ctr{color:var(--primary)}
-.tier.locked:not(.next) .ctr{color:var(--muted)}
 
 /* ─── Share Card Editor ─── */
 #shareCardOverlay{position:fixed;inset:0;z-index:9500;background:#0b0f0d;display:none;flex-direction:column}
@@ -1062,6 +1052,8 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <div class="comm-card"><h3><i class="fas fa-shield-alt"></i> Fraktion-Rangliste</h3><div id="teamRankList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-swords"></i> Club Wars <span style="font-size:.62rem;color:var(--muted);font-weight:400">— diese Woche</span></h3><div id="clubWarsList"></div></div>
       <div class="comm-card" id="clubCommunityCard"><h3><i class="fas fa-users-cog"></i> Clubs</h3><div id="clubCommunityList"></div></div>
+      <div class="comm-card" id="playerDiscoveryCard"><h3><i class="fas fa-compass"></i> Spieler entdecken</h3><div id="playerDiscoveryList"></div></div>
+      <div class="comm-card" id="clubDiscoveryCard"><h3><i class="fas fa-search"></i> Clubs entdecken</h3><div id="clubDiscoveryList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-map-marked-alt"></i> Größte Gebiete</h3><div id="bigTerrList"></div></div>
       <div class="comm-card">
         <h3><i class="fas fa-location-arrow"></i> Nächste Gebiete</h3>
@@ -2957,6 +2949,28 @@ const ACH_ICONS={
   streak7:'bestaendig',streak30:'diszipliniert',streak100:'unaufhaltsam',streak180:'streak-legende',streak365:'unermuedlich',streak730:'ewige-legende'
 };
 function getAchIcon(a){return ACH_ICONS[a.id]||a.id;}
+window.showAchDetail=function(achId){
+  const a=achievements.find(x=>x.id===achId);if(!a)return;
+  const icon=getAchIcon(a);
+  const done=a.earned;
+  const pct=Math.min(100,(a.progress/a.target)*100);
+  const rem=Math.max(0,a.target-a.progress).toLocaleString('de-DE');
+  const ctr=done?'<i class="fas fa-check"></i>&nbsp;Geschafft':'Noch '+rem;
+  const u=CAT_UNITS[a.cat]||'';
+  document.body.insertAdjacentHTML('beforeend',`<div style="position:fixed;inset:0;z-index:6000;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:24px" id="achDetailPop" onclick="if(event.target===this)this.remove()">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px 20px;max-width:260px;width:100%;text-align:center">
+      <div style="width:88px;height:88px;margin:0 auto 14px;position:relative;display:grid;place-items:center">
+        <img src="/assets/ach/${icon}.png" style="max-width:100%;max-height:100%;object-fit:contain;filter:${done?'drop-shadow(0 4px 12px rgba(0,0,0,.6))':'grayscale(1) brightness(.42) contrast(.9)'}">
+        ${!done?'<span style="position:absolute;right:-2px;bottom:-2px;width:22px;height:22px;border-radius:50%;background:var(--card);border:1px solid var(--border);color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:.55rem"><i class=\'fas fa-lock\'></i></span>':''}
+      </div>
+      <div style="font-family:\'Bebas Neue\',sans-serif;font-size:1.25rem;letter-spacing:1px;margin-bottom:3px">${a.name}</div>
+      <div style="font-size:.7rem;color:var(--muted);margin-bottom:14px">${a.target.toLocaleString('de-DE')} ${u}</div>
+      <div style="height:5px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden;margin-bottom:8px"><div style="height:100%;width:${pct.toFixed(1)}%;background:${done?'var(--green)':'var(--primary)'};border-radius:4px"></div></div>
+      <div style="font-family:\'Bebas Neue\',sans-serif;font-size:.9rem;color:${done?'var(--green)':'var(--primary)'}">${ctr}</div>
+      <button onclick="document.getElementById('achDetailPop').remove()" style="margin-top:16px;background:none;border:1px solid var(--border);border-radius:10px;color:var(--muted);padding:6px 20px;font-size:.75rem;cursor:pointer;font-family:'Poppins',sans-serif">Schließen</button>
+    </div>
+  </div>`);
+};
 function getAchTiers(cat){
   const list=achievements.filter(a=>a.cat===cat).sort((a,b)=>a.target-b.target);
   let first=true;
@@ -4098,6 +4112,84 @@ async function renderClubWars(){
     el.innerHTML=sorted.length?sorted.map((c,i)=>`<div class="list-row" style="gap:8px"><span style="font-family:'Bebas Neue',sans-serif;color:var(--muted);width:20px">${i+1}</span><span style="flex:1;font-size:.82rem;font-weight:${c.code===userClub?.code?700:400}">${c.name}${c.code===userClub?.code?' 👈':''}</span><span style="font-size:.68rem;color:var(--muted)">${c.members} Mitgl.</span><span style="font-family:'Bebas Neue',sans-serif;color:var(--primary)">${c.totalPts.toLocaleString()} Pts</span></div>`).join(''):'<div style="color:var(--muted);font-size:.75rem">Keine Daten verfügbar</div>';
   }catch(e){el.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:6px">Club Wars nicht verfügbar</div>';}
 }
+/* PLAYER DISCOVERY */
+async function renderPlayerDiscovery(){
+  const el=$('playerDiscoveryList');if(!el)return;
+  el.innerHTML=`<div style="display:flex;gap:8px;margin-bottom:10px"><input type="text" id="discSearchInput" class="modal-input" placeholder="Spieler suchen…" style="flex:1;font-size:.8rem"><button class="btn btn-p" id="discSearchBtn" style="padding:6px 14px;flex-shrink:0"><i class="fas fa-search"></i></button></div><div id="discList"><div style="padding:10px;text-align:center;color:var(--muted);font-size:.78rem">⏳ Lade…</div></div>`;
+  document.getElementById('discSearchBtn')?.addEventListener('click',async()=>{
+    const name=(document.getElementById('discSearchInput')?.value||'').trim();if(name.length<2)return;
+    const dl=document.getElementById('discList');if(dl)dl.innerHTML='<div style="padding:8px;text-align:center;color:var(--muted);font-size:.75rem">⏳ Suche…</div>';
+    try{const{data}=await sb.from('profiles').select('user_id,player_name,user_avatar,user_color,points,total_km,user_team').ilike('player_name','%'+name+'%').limit(10);renderDiscoveryList(data||[]);}
+    catch(e){const dl=document.getElementById('discList');if(dl)dl.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:8px">Suche fehlgeschlagen</div>';}
+  });
+  try{const{data}=await sb.from('profiles').select('user_id,player_name,user_avatar,user_color,points,total_km,user_team').order('points',{ascending:false}).limit(20);renderDiscoveryList((data||[]).filter(r=>r.user_id!==userId));}
+  catch(e){const dl=document.getElementById('discList');if(dl)dl.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:8px">Keine Spieler verfügbar</div>';}
+}
+function renderDiscoveryList(players){
+  const dl=document.getElementById('discList');if(!dl)return;
+  const list=players.filter(r=>r.user_id!==userId).slice(0,15);
+  if(!list.length){dl.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:8px">Keine Spieler gefunden</div>';return;}
+  dl.innerHTML=list.map(r=>{
+    const following=isFollowing(r.user_id);
+    const tm=TEAMS.find(t=>t.id===r.user_team);
+    const col=r.user_color||'#e8ff47';
+    return`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="width:36px;height:36px;border-radius:50%;background:${col}22;border:2px solid ${col}55;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0">${r.user_avatar||'🏃'}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.82rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.player_name||'Läufer'}</div>
+        <div style="font-size:.63rem;color:var(--muted)">${tm?tm.icon+' '+tm.name+' · ':''}${(r.total_km||0).toFixed(1)} km</div>
+      </div>
+      <span style="font-family:'Bebas Neue',sans-serif;color:var(--primary);font-size:.9rem;flex-shrink:0">${r.points||0}</span>
+      <button class="follow-btn${following?' following':''}" data-uid="${r.user_id}" data-name="${r.player_name||''}" data-av="${r.user_avatar||'🏃'}" style="font-size:.68rem;padding:4px 10px;flex-shrink:0">${following?'✓':'+ Folgen'}</button>
+    </div>`;
+  }).join('');
+  dl.querySelectorAll('.follow-btn').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const{uid,name,av}=btn.dataset;
+      if(isFollowing(uid)){unfollowUser(uid,name);btn.textContent='+ Folgen';btn.classList.remove('following');}
+      else{followUser(uid,name,av);btn.textContent='✓';btn.classList.add('following');}
+    });
+  });
+}
+/* CLUB DISCOVERY */
+async function renderClubDiscovery(){
+  const el=$('clubDiscoveryList');if(!el)return;
+  el.innerHTML='<div style="padding:10px;text-align:center;color:var(--muted);font-size:.78rem">⏳ Lade Clubs…</div>';
+  try{
+    if(!sb)throw new Error('no sb');
+    const{data}=await sb.from('profiles').select('player_name,points,club_code').not('club_code','is',null).order('points',{ascending:false}).limit(100);
+    const clubs={};
+    (data||[]).forEach(p=>{if(!p.club_code)return;if(!clubs[p.club_code])clubs[p.club_code]={code:p.club_code,members:0,totalPts:0};clubs[p.club_code].members++;clubs[p.club_code].totalPts+=p.points||0;});
+    const localClubs=JSON.parse(localStorage.getItem('rc_clubs_db')||'{}');
+    Object.values(localClubs).forEach(lc=>{if(!clubs[lc.code])clubs[lc.code]={code:lc.code,members:0,totalPts:0};clubs[lc.code].name=lc.name;clubs[lc.code].wappen=lc.wappen;});
+    const sorted=Object.values(clubs).sort((a,b)=>b.members-a.members||b.totalPts-a.totalPts).slice(0,12);
+    if(!sorted.length){el.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:8px">Noch keine Clubs bekannt</div>';return;}
+    el.innerHTML=sorted.map(c=>{
+      const isMyClub=userClub?.code===c.code;
+      const wHtml=(c.wappen&&Object.keys(c.wappen).length)?`<div style="width:36px;height:36px;flex-shrink:0">${crestSVG(c.wappen,36)}</div>`:`<div style="width:36px;height:36px;border-radius:50%;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">🛡️</div>`;
+      const safeName=(c.name||c.code).replace(/'/g,"\\'");
+      return`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+        ${wHtml}
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.82rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.name||c.code}${isMyClub?' ✦':''}</div>
+          <div style="font-size:.63rem;color:var(--muted)">${c.members} Mitgl. · ${c.totalPts.toLocaleString()} Pts</div>
+        </div>
+        <span style="font-family:'Bebas Neue',sans-serif;font-size:.72rem;background:rgba(var(--primary-rgb),.1);color:var(--primary);border:1px solid rgba(var(--primary-rgb),.2);border-radius:6px;padding:2px 7px;cursor:pointer;flex-shrink:0" onclick="navigator.clipboard?.writeText('${c.code}').then(()=>toast('📋 Code: ${c.code}')).catch(()=>toast('Code: ${c.code}'))">${c.code}</span>
+        ${!isMyClub?`<button class="btn" style="font-size:.65rem;padding:4px 10px;flex-shrink:0" onclick="window.joinClubFromDisc('${c.code}','${safeName}')">Beitreten</button>`:'<span style="font-size:.68rem;color:var(--primary);flex-shrink:0">Mein Club</span>'}
+      </div>`;
+    }).join('');
+  }catch(e){el.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:8px">Clubs nicht verfügbar</div>';}
+}
+window.joinClubFromDisc=function(code,name){
+  if(userClub){toast('Verlasse zunächst deinen aktuellen Club');return;}
+  if(!confirm('Club "'+name+'" beitreten?\nCode: '+code))return;
+  const allClubs=JSON.parse(localStorage.getItem('rc_clubs_db')||'{}');
+  if(!allClubs[code])allClubs[code]={code,name};
+  userClub={code,name:allClubs[code].name||name,wappen:allClubs[code].wappen||{},foundedAt:allClubs[code].foundedAt||Date.now()};
+  localStorage.setItem('rc_clubs_db',JSON.stringify(allClubs));
+  saveProfile();toast('🏰 Beigetreten: '+name);renderClubDiscovery();
+};
 /* COMMUNITY */
 function updateCommunity(){
   const staticNews=[{icon:'📰',txt:'Neuer Wochenrekord gebrochen!',t:'vor 2 Std.'},{icon:'🏆',txt:'Kampf um den Stadtpark!',t:'vor 1 Std.'}];
@@ -4114,6 +4206,9 @@ function updateCommunity(){
   renderFriends();
   // Club Wars
   renderClubWars();
+  // Spieler & Club Discovery
+  renderPlayerDiscovery();
+  renderClubDiscovery();
   // Fraktion-Rangliste
   const teamEl=$('teamRankList');
   if(teamEl){
@@ -5385,9 +5480,7 @@ function renderDrawer(){
         const u=CAT_UNITS[cat]||'';
         const tiles=tiers.map(t=>{
           const cls='tier'+(t.done?' done':t.state==='next'?' next locked':' locked');
-          const rem=t.remaining.toLocaleString('de-DE');
-          const ctr=t.done?'<i class="fas fa-check"></i> Geschafft':'Noch '+rem;
-          return `<div class="${cls}"><div class="ic"><img src="/assets/ach/${getAchIcon(t)}.png" alt="${t.name}" onerror="this.style.display='none'"><span class="lock"><i class="fas fa-lock"></i></span></div><div class="nm">${t.name}</div><div class="req">${t.target.toLocaleString('de-DE')} ${u}</div><div class="prog"><div class="pbar"><div class="pfill" style="width:${t.pct.toFixed(1)}%"></div></div><div class="ctr">${ctr}</div></div></div>`;
+          return `<div class="${cls}" onclick="showAchDetail('${t.id}')"><div class="ic"><img src="/assets/ach/${getAchIcon(t)}.png" alt="${t.name}" onerror="this.style.display='none'"><span class="lock"><i class="fas fa-lock"></i></span></div></div>`;
         }).join('');
         return `<div style="margin-top:28px"><div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border)"><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px">${CAT_NAMES[cat]}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary)">${doneN}/6</span></div><div class="tier-row">${tiles}</div></div>`;
       }).join('');
