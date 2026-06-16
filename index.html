@@ -929,6 +929,21 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <span id="todaySteps">0</span>
       </div>
 
+      <!-- Garmin Health summary (shown only when data available) -->
+      <div id="garminHealthSection" style="display:none">
+        <div class="sec-hd"><i class="fas fa-heart-pulse"></i> Gesundheit<span id="garminHealthDate" style="margin-left:auto;font-size:.65rem;color:var(--muted)"></span></div>
+        <div class="today-3" style="margin-bottom:8px">
+          <div class="stat-card"><div class="sv" id="ghSteps">—</div><div class="sl">Schritte</div></div>
+          <div class="stat-card"><div class="sv" id="ghHR">—</div><div class="sl">Ruhepuls</div></div>
+          <div class="stat-card"><div class="sv" id="ghSleep">—</div><div class="sl">Schlaf</div></div>
+        </div>
+        <div class="today-3" style="margin-bottom:16px">
+          <div class="stat-card"><div class="sv" id="ghCal">—</div><div class="sl">akt. kcal</div></div>
+          <div class="stat-card"><div class="sv" id="ghStress">—</div><div class="sl">Stress</div></div>
+          <div class="stat-card"><div class="sv" id="ghMaxHR">—</div><div class="sl">Max HR</div></div>
+        </div>
+      </div>
+
       <!-- Daily challenges -->
       <div id="dailyChalSection">
         <div class="sec-hd"><i class="fas fa-fire"></i> Tägliche Challenges<span id="chalStreakBadge" style="margin-left:auto;font-size:.7rem;font-family:'Bebas Neue',sans-serif;color:var(--primary)"></span></div>
@@ -3595,13 +3610,40 @@ function updateDash(){
   const td=tr.reduce((s,r)=>s+r.distance,0),tt=tr.reduce((s,r)=>s+r.duration,0);
   $('todayKm').textContent=(td/1000).toFixed(1);$('todayTime').textContent=fmtTime(tt);$('todayPace').textContent=td>10?fmtPace(td,tt):'--';
   $('todayKcal').textContent=tr.reduce((s,r)=>s+(r.kcal||0),0);$('todaySteps').textContent=stepsToday;
-  /* Start Hub hero updates */
   const gl=$('heroGreetLine');if(gl)gl.textContent='Bereit, '+(playerName||'Läufer')+'?';
   const ev=$('heroEnergyVal');if(ev)ev.textContent='⚡'+energy;
   const tc=$('statTerrCount');if(tc)tc.textContent=territories.filter(t=>t.owner===userId).length;
   const sh=$('statStreakHero');if(sh)sh.textContent=(streakDays||0)+'🔥';
   updateNavFab();
   renderGoal();renderDailyChallenges();renderQuestsDiv();renderActivityCards();renderWeekChart();
+  loadGarminHealth();
+}
+async function loadGarminHealth(){
+  try{
+    const tok=await sbAccessToken();if(!tok)return;
+    const cache=window._ghCache;
+    const now=Date.now();
+    if(cache&&now-cache.ts<300000){renderGarminHealth(cache.data);return;}
+    const r=await fetch('/api/garmin/health?token='+tok+'&days=1');
+    if(!r.ok)return;
+    const{data}=await r.json();
+    window._ghCache={data,ts:now};
+    renderGarminHealth(data);
+  }catch(e){}
+}
+function renderGarminHealth(data){
+  const sec=$('garminHealthSection');if(!sec)return;
+  if(!data||!data.length){sec.style.display='none';return;}
+  const d=data[0];
+  sec.style.display='';
+  $('garminHealthDate').textContent=d.summary_date||'';
+  $('ghSteps').textContent=d.steps!=null?Number(d.steps).toLocaleString('de-DE'):'—';
+  $('ghHR').textContent=d.resting_hr!=null?d.resting_hr+' bpm':'—';
+  if(d.sleep_seconds!=null){const h=Math.floor(d.sleep_seconds/3600),m=Math.round((d.sleep_seconds%3600)/60);$('ghSleep').textContent=h+'h '+m+'m';}
+  else $('ghSleep').textContent='—';
+  $('ghCal').textContent=d.active_calories!=null?d.active_calories+' kcal':'—';
+  $('ghStress').textContent=d.avg_stress!=null?d.avg_stress+'/100':'—';
+  $('ghMaxHR').textContent=d.max_hr!=null?d.max_hr+' bpm':'—';
 }
 function getWeeklyKm(){const now=new Date(),dow=(now.getDay()+6)%7,ws=new Date(now);ws.setDate(now.getDate()-dow);ws.setHours(0,0,0,0);return history.filter(r=>r.date>=ws.getTime()).reduce((s,r)=>s+r.distance/1000,0)}
 function xpForKm(km,totalKmThisWeek){const baseXP=km*10;if(totalKmThisWeek<20)return Math.round(baseXP*1.0);if(totalKmThisWeek<50)return Math.round(baseXP*0.7);else return Math.round(baseXP*0.4);}
