@@ -81,15 +81,28 @@ body{
 
 /* ═══ SPLASH ═══ */
 html,body{background:#042D22}
-#splash{position:fixed;top:0;left:0;right:0;bottom:0;background:#042D22;display:flex;align-items:center;justify-content:center;z-index:10000;transition:opacity .7s;overflow:hidden}
+#splash{position:fixed;top:0;left:0;right:0;bottom:0;background:#000;display:flex;align-items:center;justify-content:center;z-index:10000;transition:opacity .7s;overflow:hidden}
 .splash-logo{text-align:center}
-.splash-word{display:flex;justify-content:center;gap:2px;overflow:hidden}
-.splash-word span{font-family:'Bebas Neue',sans-serif;font-size:min(18vw,72px);color:#E6FF55;opacity:0;transform:translateY(40px);animation:letterDrop .5s cubic-bezier(.16,1,.3,1) forwards}
-#splWord1 span:nth-child(1){animation-delay:.08s}#splWord1 span:nth-child(2){animation-delay:.16s}#splWord1 span:nth-child(3){animation-delay:.24s}#splWord1 span:nth-child(4){animation-delay:.32s}#splWord1 span:nth-child(5){animation-delay:.40s}#splWord1 span:nth-child(6){animation-delay:.48s}#splWord1 span:nth-child(7){animation-delay:.56s}
-#splWord2 span:nth-child(1){animation-delay:.78s}#splWord2 span:nth-child(2){animation-delay:.86s}#splWord2 span:nth-child(3){animation-delay:.94s}#splWord2 span:nth-child(4){animation-delay:1.02s}#splWord2 span:nth-child(5){animation-delay:1.10s}#splWord2 span:nth-child(6){animation-delay:1.18s}#splWord2 span:nth-child(7){animation-delay:1.26s}
-.splash-sub{font-size:min(3.5vw,12px);color:rgba(230,255,85,.6);letter-spacing:4px;text-transform:uppercase;opacity:0;animation:subFadeIn .6s ease forwards 1.7s;margin-top:6px}
-@keyframes letterDrop{0%{opacity:0;transform:translateY(40px)}60%{opacity:1;transform:translateY(-6px)}80%{transform:translateY(3px)}100%{opacity:1;transform:translateY(0)}}
-@keyframes subFadeIn{from{opacity:0;letter-spacing:8px}to{opacity:1;letter-spacing:4px}}
+/* animated logo lockup: crown + RC monogram + wordmark */
+.spl-lockup{position:relative;display:flex;flex-direction:column;align-items:center;width:min(46vmin,300px);transform:translateY(-2%)}
+.spl-mark{position:relative;width:100%;aspect-ratio:487/493;animation:splBreathe 6s ease-in-out infinite}
+.spl-mark img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.spl-rc{filter:drop-shadow(0 10px 30px rgba(0,0,0,.45));opacity:0;animation:splMarkIn .7s cubic-bezier(.16,1,.3,1) forwards .1s}
+.spl-crown{transform-origin:50% 100%;opacity:0;animation:splCrownIn .6s cubic-bezier(.34,1.15,.64,1) forwards .45s,splCrownGlow 4.5s ease-in-out infinite 1.1s}
+.spl-wordmark{margin-top:5%;display:flex;flex-direction:column;align-items:center;gap:.5em}
+.spl-word{display:flex}
+.spl-word span{display:inline-block;font-family:'Bebas Neue',sans-serif;line-height:1}
+.spl-runners span{font-weight:300;color:#EEF7F2;font-size:clamp(20px,6vmin,42px);letter-spacing:.12em;padding:0 .14em;opacity:0;animation:splLetterUp .55s cubic-bezier(.34,1.15,.64,1) both;animation-delay:calc(.6s + var(--i)*.06s)}
+.spl-conquer-row{display:flex;align-items:center;gap:.7em}
+.spl-conquer-row .spl-dash{width:clamp(14px,3.4vmin,26px);height:2px;background:#FFD700;transform-origin:center;animation:splDashIn .5s ease 1.2s both}
+.spl-conquer span{font-weight:400;color:#FFD700;font-size:clamp(13px,3.6vmin,25px);letter-spacing:.16em;padding:0 .08em;opacity:0;animation:splLetterUp .55s cubic-bezier(.34,1.15,.64,1) both;animation-delay:calc(1.3s + var(--i)*.05s)}
+@keyframes splBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.012)}}
+@keyframes splMarkIn{0%{opacity:0;transform:scale(.92)}100%{opacity:1;transform:scale(1)}}
+@keyframes splCrownIn{0%{opacity:0;transform:translateY(-30%) scale(.8)}100%{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes splCrownGlow{0%,100%{filter:drop-shadow(0 0 12px rgba(255,215,0,.35))}50%{filter:drop-shadow(0 0 22px rgba(255,215,0,.6))}}
+@keyframes splLetterUp{0%{opacity:0;transform:translateY(60%);filter:blur(4px)}100%{opacity:1;transform:translateY(0);filter:blur(0)}}
+@keyframes splDashIn{0%{transform:scaleX(0);opacity:0}100%{transform:scaleX(1);opacity:1}}
+@media (prefers-reduced-motion:reduce){.spl-mark,.spl-rc,.spl-crown,.spl-runners span,.spl-conquer span,.spl-conquer-row .spl-dash{animation:none!important;opacity:1!important;filter:none!important;transform:none!important}}
 
 /* ═══ ONBOARDING ═══ */
 #bgVideo{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;object-fit:cover;pointer-events:none}
@@ -668,10 +681,23 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 
 <!-- SPLASH -->
 <div id="splash">
-  <div class="splash-logo">
-    <div class="splash-word" id="splWord1"><span>R</span><span>U</span><span>N</span><span>N</span><span>E</span><span>R</span><span>S</span></div>
-    <div class="splash-word" id="splWord2"><span>C</span><span>O</span><span>N</span><span>Q</span><span>U</span><span>E</span><span>R</span></div>
-    <div class="splash-sub">LAUF · EROBERE · HERRSCHE</div>
+  <div class="spl-lockup">
+    <div class="spl-mark">
+      <img class="spl-rc" src="/assets/logo/lyr_rc.png" alt="Runners Conquer Monogramm">
+      <img class="spl-crown" src="/assets/logo/lyr_crown.png" alt="Krone">
+    </div>
+    <div class="spl-wordmark">
+      <div class="spl-word spl-runners" aria-label="RUNNERS">
+        <span style="--i:0">R</span><span style="--i:1">U</span><span style="--i:2">N</span><span style="--i:3">N</span><span style="--i:4">E</span><span style="--i:5">R</span><span style="--i:6">S</span>
+      </div>
+      <div class="spl-conquer-row">
+        <span class="spl-dash"></span>
+        <div class="spl-word spl-conquer" aria-label="CONQUER">
+          <span style="--i:0">C</span><span style="--i:1">O</span><span style="--i:2">N</span><span style="--i:3">Q</span><span style="--i:4">U</span><span style="--i:5">E</span><span style="--i:6">R</span>
+        </div>
+        <span class="spl-dash"></span>
+      </div>
+    </div>
   </div>
 </div>
 
