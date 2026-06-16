@@ -9,6 +9,7 @@
     { "src": "/screenshots/(.*)", "dest": "/screenshots/$1" },
     { "src": "/videos/(.*)", "dest": "/videos/$1" },
     { "src": "/assets/(.*)", "dest": "/assets/$1" },
+    { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
   ],
   "headers": [

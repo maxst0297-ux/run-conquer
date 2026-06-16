@@ -1169,6 +1169,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <button class="imp-tab active" id="impTabManual">✏️ Manuell</button>
       <button class="imp-tab" id="impTabGpx">📂 Datei</button>
       <button class="imp-tab" id="impTabStrava">🔴 Strava</button>
+      <button class="imp-tab" id="impTabGarmin">⌚ Garmin</button>
     </div>
     <div id="impPanManual">
       <div class="field"><label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:4px">Datum</label><input type="date" id="impDate" class="modal-input" style="margin-bottom:10px"></div>
@@ -1198,6 +1199,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <textarea id="gpxText" class="modal-input" rows="4" placeholder="Oder GPX/TCX/KML-Inhalt hier einfügen…" style="resize:none;font-size:.68rem;font-family:monospace;margin-bottom:6px"></textarea>
     </div>
     <div id="impPanStrava" style="display:none"></div>
+    <div id="impPanGarmin" style="display:none"></div>
     <div id="impPreview" style="display:none;margin:8px 0 10px">
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center;margin-bottom:8px" id="impPreviewStats"></div>
       <canvas id="impMapCanvas" width="300" height="110" style="width:100%;border-radius:8px;border:1px solid var(--border);display:block"></canvas>
@@ -3750,10 +3752,10 @@ function openImportModal(){
   $('impPreview').style.display='none';
   $('impError').style.display='none';
   impCurrentPath=null; /* reset parsed file result */
-  ['impTabGpx','impTabStrava'].forEach(id=>$(id)?.classList.remove('active'));
+  ['impTabGpx','impTabStrava','impTabGarmin'].forEach(id=>$(id)?.classList.remove('active'));
   $('impTabManual').classList.add('active');
   $('impPanManual').style.display='';
-  ['impPanGpx','impPanStrava'].forEach(id=>{const el=$(id);if(el)el.style.display='none';});
+  ['impPanGpx','impPanStrava','impPanGarmin'].forEach(id=>{const el=$(id);if(el)el.style.display='none';});
   $('importModal').style.display='flex';
 }
 function importActivity(distM,durSecs,dateMs,path,source,avgHR){
@@ -3791,6 +3793,16 @@ function checkStravaCallback(){
     localStorage.setItem('rc_strava_token',token);
     history.replaceState(null,'',location.pathname+location.search);
     window._openStravaOnInit=true;
+  }catch(e){}
+}
+function checkGarminCallback(){
+  try{
+    const p=new URLSearchParams(location.search);
+    const s=p.get('garmin');
+    if(!s)return;
+    history.replaceState(null,'',location.pathname);
+    if(s==='connected'){window._openGarminOnInit=true;}
+    else if(s==='error'||s==='expired'){toast('❌ Garmin-Verbindung fehlgeschlagen');}
   }catch(e){}
 }
 function connectStrava(){
@@ -3878,6 +3890,105 @@ async function importStravaActivity(id,distM,durSecs,dateMs,avgHR){
     if(sr.ok){const sd=await sr.json();if(sd.latlng?.data)path=sd.latlng.data;}
   }catch(e){}
   importActivity(distM,durSecs,dateMs,path,'strava',avgHR);
+}
+
+/* ── GARMIN INTEGRATION ──
+   Einmal verbinden (OAuth via Serverless-Functions), danach holt
+   die App nach jedem Login automatisch neue Aktivitäten ab. */
+let garminConnected=false;
+async function sbAccessToken(){
+  if(!sb)return null;
+  try{const{data:{session}}=await sb.auth.getSession();return session?.access_token||null;}catch(e){return null;}
+}
+async function connectGarmin(){
+  const tok=await sbAccessToken();
+  if(!tok){toast('Bitte zuerst einloggen');return;}
+  location.href='/api/garmin/oauth-start?token='+encodeURIComponent(tok);
+}
+async function disconnectGarmin(){
+  const tok=await sbAccessToken();if(!tok)return;
+  try{
+    await fetch('/api/garmin/disconnect?token='+encodeURIComponent(tok),{method:'POST'});
+    garminConnected=false;
+    localStorage.removeItem('rc_garmin_lastsync');
+    toast('Garmin getrennt');
+    renderGarminPanel();
+  }catch(e){toast('Trennen fehlgeschlagen');}
+}
+/* Holt neue Garmin-Aktivitäten und importiert noch unbekannte. */
+async function syncGarminActivities(opts={}){
+  const tok=await sbAccessToken();if(!tok)return{connected:false,configured:false,imported:0};
+  const since=localStorage.getItem('rc_garmin_lastsync');
+  let q='/api/garmin/activities?token='+encodeURIComponent(tok);
+  if(since&&!opts.full)q+='&since='+encodeURIComponent(since);
+  let data;
+  try{const r=await fetch(q);if(!r.ok)return{connected:false,configured:true,imported:0};data=await r.json();}
+  catch(e){return{connected:false,configured:false,imported:0};}
+  garminConnected=!!data.connected;
+  if(!data.connected)return{connected:false,configured:data.configured,imported:0};
+  // dedupe gegen bereits importierte Garmin-Läufe (per external_id)
+  const known=new Set(history.filter(h=>h.importSource==='garmin').map(h=>h.extId));
+  let imported=0,newest=since?new Date(since).getTime():0;
+  (data.activities||[]).slice().reverse().forEach(a=>{
+    const ts=a.start_time?new Date(a.start_time).getTime():Date.now();
+    if(ts>newest)newest=ts;
+    if(a.external_id&&known.has(a.external_id))return;
+    if(!a.distance_meters||!a.duration_seconds)return;
+    const path=(a.track||[]).filter(p=>p.lat!=null&&p.lng!=null).map(p=>[p.lat,p.lng]);
+    importGarminActivity(a.distance_meters,a.duration_seconds,ts,path,a.external_id);
+    imported++;
+  });
+  if(newest)localStorage.setItem('rc_garmin_lastsync',new Date(newest+1000).toISOString());
+  return{connected:true,configured:true,imported};
+}
+/* Wie importActivity, aber merkt sich die external_id für Dedup. */
+function importGarminActivity(distM,durSecs,dateMs,path,extId){
+  const kcal=calcKcal(distM,durSecs);
+  const kmXP=Math.round(xpForKm(distM/1000,getWeeklyKm()));
+  const rec={date:dateMs,distance:distM,area:0,pts:kmXP,
+    path:path?path.filter((_,i)=>i%3===0):[],conquered:false,defended:false,
+    duration:durSecs,gap:0,kcal,avgHR:0,splits:[],
+    imported:true,importSource:'garmin',extId:extId||null};
+  history.push(rec);if(history.length>30)history.shift();
+  totalKm+=distM/1000;points+=kmXP;
+  checkStarterQuests();save();
+  if(path&&path.length>=2&&mapL){
+    if(importedLayer)mapL.removeLayer(importedLayer);
+    importedLayer=L.polyline(path,{color:'#00D4FF',weight:3,dashArray:'6 4',opacity:.85}).addTo(mapL);
+    try{mapL.fitBounds(importedLayer.getBounds(),{padding:[40,40]});}catch(e){}
+  }
+}
+function renderGarminPanel(){
+  const pan=$('impPanGarmin');if(!pan)return;
+  pan.innerHTML='<div style="padding:14px;text-align:center;color:var(--muted);font-size:.8rem">⏳ Prüfe Verbindung…</div>';
+  syncGarminActivities().then(res=>{
+    if(!res.configured){
+      pan.innerHTML=`<div style="background:var(--card);border-radius:12px;padding:16px;font-size:.78rem;color:var(--muted);line-height:1.6">
+        <div style="font-size:1.4rem;margin-bottom:6px">⌚</div>
+        <b style="color:var(--text)">Garmin ist noch nicht freigeschaltet.</b><br>
+        Die Garmin-Health-API benötigt einen Partner-Zugang. Sobald die API-Keys im Server hinterlegt sind, erscheint hier der Verbinden-Button.</div>`;
+      return;
+    }
+    if(res.connected){
+      pan.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:.85rem">
+        <span style="color:#10b981">✅ Mit Garmin verbunden</span>
+        <button id="garminDiscBtn" class="btn" style="margin-left:auto;font-size:.7rem;padding:3px 9px">Trennen</button></div>
+        <div style="font-size:.76rem;color:var(--muted);line-height:1.6">Neue Läufe werden nach jedem Sync deiner Garmin-Uhr <b style="color:var(--text)">automatisch</b> übernommen und auf deiner Karte angezeigt.${res.imported?` <span style="color:var(--primary)">${res.imported} neue importiert.</span>`:''}</div>
+        <button id="garminSyncBtn" class="btn btn-p" style="width:100%;margin-top:12px"><i class="fas fa-rotate"></i> Jetzt synchronisieren</button>`;
+      $('garminDiscBtn')?.addEventListener('click',disconnectGarmin);
+      $('garminSyncBtn')?.addEventListener('click',async()=>{
+        const btn=$('garminSyncBtn');if(btn){btn.disabled=true;btn.innerHTML='⏳ Synchronisiere…';}
+        const r=await syncGarminActivities({full:true});
+        toast(r.imported?`✅ ${r.imported} Läufe importiert`:'Keine neuen Läufe');
+        renderGarminPanel();if(r.imported)updateUI();
+      });
+    }else{
+      pan.innerHTML=`<div style="background:var(--card);border-radius:12px;padding:14px;font-size:.78rem;color:var(--muted);line-height:1.6;margin-bottom:12px">
+        Verbinde dein Garmin-Konto <b style="color:var(--text)">einmalig</b> — danach landen alle Läufe deiner Garmin-Uhr automatisch hier, ganz ohne offene App.</div>
+        <button id="garminConBtn" class="btn btn-p" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px"><i class="fas fa-link"></i> Mit Garmin verbinden</button>`;
+      $('garminConBtn')?.addEventListener('click',connectGarmin);
+    }
+  });
 }
 
 /* FREUNDE */
@@ -4966,6 +5077,8 @@ async function launchAppFromSession(user){
     setTimeout(async()=>{
       load();updateUI();mapL?.invalidateSize();showInboxBtn();setTimeout(checkDailyReward,600);setTimeout(checkFirstLoginOnboarding,1800);
       if(window._openStravaOnInit){window._openStravaOnInit=false;setTimeout(()=>{openImportModal();$('impTabStrava')?.click();},400);}
+      if(window._openGarminOnInit){window._openGarminOnInit=false;setTimeout(()=>{openImportModal();switchImpTab('impTabGarmin');},400);}
+      syncGarminActivities().then(r=>{if(r&&r.imported>0){toast('⌚ '+r.imported+' Garmin-Lauf'+(r.imported>1?'läufe':'')+' synchronisiert');updateUI();}}).catch(()=>{});
       const restored=await loadFromCloud();
       if(!restored&&territories.filter(t=>t.owner!==userId).length===0){await genRivals();}
       renderTerr();updateUI();syncProfile();updateDmBadge();updateSettingsBadge();
@@ -5459,23 +5572,17 @@ window.initApp=function(){
   /* Import modal */
   $('importActivityBtn')?.addEventListener('click',openImportModal);
   $('impCancelBtn')?.addEventListener('click',()=>$('importModal').style.display='none');
-  $('impTabManual')?.addEventListener('click',()=>{
-    $('impTabManual').classList.add('active');$('impTabGpx').classList.remove('active');
-    $('impPanManual').style.display='';$('impPanGpx').style.display='none';
-  });
-  $('impTabGpx')?.addEventListener('click',()=>{
-    ['impTabManual','impTabStrava'].forEach(id=>$(id)?.classList.remove('active'));
-    $('impTabGpx').classList.add('active');
-    $('impPanGpx').style.display='';
-    ['impPanManual','impPanStrava'].forEach(id=>{const el=$(id);if(el)el.style.display='none';});
-  });
-  $('impTabStrava')?.addEventListener('click',()=>{
-    ['impTabManual','impTabGpx'].forEach(id=>$(id)?.classList.remove('active'));
-    $('impTabStrava').classList.add('active');
-    $('impPanStrava').style.display='';
-    ['impPanManual','impPanGpx'].forEach(id=>{const el=$(id);if(el)el.style.display='none';});
-    renderStravaPanel();
-  });
+  const IMP_TABS=[['impTabManual','impPanManual'],['impTabGpx','impPanGpx'],['impTabStrava','impPanStrava'],['impTabGarmin','impPanGarmin']];
+  function switchImpTab(tabId){
+    IMP_TABS.forEach(([t,p])=>{
+      const on=t===tabId;
+      $(t)?.classList.toggle('active',on);
+      const pan=$(p);if(pan)pan.style.display=on?'':'none';
+    });
+    if(tabId==='impTabStrava')renderStravaPanel();
+    if(tabId==='impTabGarmin')renderGarminPanel();
+  }
+  IMP_TABS.forEach(([t])=>$(t)?.addEventListener('click',()=>switchImpTab(t)));
   ['impKm','impMin'].forEach(id=>$(id)?.addEventListener('input',()=>{
     const km=parseFloat($('impKm').value),min=parseFloat($('impMin').value);
     if(km>0&&min>0)showImpPreview(km*1000,null,min*60,0);
@@ -5643,6 +5750,7 @@ window._hideCityBg=function(){
 
 /* BOOT */
 checkStravaCallback(); /* Strava OAuth-Rückkehr prüfen (liest URL-Hash) */
+checkGarminCallback(); /* Garmin OAuth-Rückkehr prüfen (liest URL-Query) */
 setTimeout(()=>{
   const sp=$('splash');
   if(sp){sp.style.opacity='0';setTimeout(()=>{sp.style.display='none';},600);}
