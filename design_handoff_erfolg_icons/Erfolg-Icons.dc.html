@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/runners-conquer-design-system-d2d348b4-2578-46e4-aab3-806dec70080e/colors_and_type.css">
+<link rel="stylesheet" href="_ds/runners-conquer-design-system-d2d348b4-2578-46e4-aab3-806dec70080e/ui_kits/app/kit.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+</style>
+</helmet>
+<div class="{{ rootClass }}" style="background:var(--bg);min-height:100vh;font-family:var(--font-body);color:var(--text);padding:44px 28px 90px;">
+ <div style="max-width:1180px;margin:0 auto;">
+
+  <!-- HEADER -->
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+    <span style="font-family:var(--font-display);letter-spacing:2px;color:var(--primary);font-size:20px;border:2px solid var(--primary);border-radius:8px;padding:0 8px;line-height:1.5;">RC</span>
+    <span style="font:600 .62rem/1 var(--font-body);letter-spacing:2px;text-transform:uppercase;color:var(--muted);">Runners Conquer · Erfolg-System</span>
+  </div>
+  <h1 style="font-family:var(--font-display);letter-spacing:2px;color:var(--primary);font-size:76px;line-height:.86;margin:0 0 10px;text-shadow:0 0 26px rgba(var(--primary-rgb),.25);">Erfolge</h1>
+  <p style="margin:0;color:var(--text);max-width:600px;font-size:.96rem;line-height:1.55;">Jeder Erfolg hat seine eigene Bildsprache — und <strong style="color:var(--primary);">wächst über sechs Stufen mit</strong>. Unter jedem Icon steht die <strong style="color:var(--primary);">Schwelle</strong>, die du erreichen musst. Die Farbe markiert die Stufe, von Bronze bis Imperial.</p>
+  <p style="font-family:var(--font-display);letter-spacing:3px;color:var(--muted);font-size:1.15rem;margin:14px 0 0;">Lauf · Erobere · Verteidige</p>
+
+  <!-- TIER RAMP LEGEND -->
+  <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin:30px 0 34px;padding:16px 20px;background:var(--card);border:1px solid var(--border);border-radius:16px;">
+    <span style="font:600 .6rem/1 var(--font-body);letter-spacing:2px;text-transform:uppercase;color:var(--muted);">Stufen-Farben</span>
+    <div style="display:flex;align-items:center;gap:8px;"><span style="width:14px;height:14px;border-radius:50%;background:#C0824A;box-shadow:0 0 8px rgba(192,130,74,.6);"></span><span style="font-family:var(--font-display);letter-spacing:1.4px;font-size:1rem;">Bronze</span></div>
+    <span style="color:var(--muted);">›</span>
+    <div style="display:flex;align-items:center;gap:8px;"><span style="width:14px;height:14px;border-radius:50%;background:#CBD5DA;box-shadow:0 0 8px rgba(203,213,218,.6);"></span><span style="font-family:var(--font-display);letter-spacing:1.4px;font-size:1rem;">Silber</span></div>
+    <span style="color:var(--muted);">›</span>
+    <div style="display:flex;align-items:center;gap:8px;"><span style="width:14px;height:14px;border-radius:50%;background:#E6FF55;box-shadow:0 0 8px rgba(230,255,85,.6);"></span><span style="font-family:var(--font-display);letter-spacing:1.4px;font-size:1rem;">Limette</span></div>
+    <span style="color:var(--muted);">›</span>
+    <div style="display:flex;align-items:center;gap:8px;"><span style="width:14px;height:14px;border-radius:50%;background:#00D4FF;box-shadow:0 0 8px rgba(0,212,255,.6);"></span><span style="font-family:var(--font-display);letter-spacing:1.4px;font-size:1rem;">Türkis</span></div>
+    <span style="color:var(--muted);">›</span>
+    <div style="display:flex;align-items:center;gap:8px;"><span style="width:14px;height:14px;border-radius:50%;background:#9B5DE5;box-shadow:0 0 8px rgba(155,93,229,.6);"></span><span style="font-family:var(--font-display);letter-spacing:1.4px;font-size:1rem;">Episch</span></div>
+    <span style="color:var(--muted);">›</span>
+    <div style="display:flex;align-items:center;gap:8px;"><span style="width:14px;height:14px;border-radius:50%;background:#FFD700;box-shadow:0 0 10px rgba(255,215,0,.7);"></span><span style="font-family:var(--font-display);letter-spacing:1.4px;font-size:1rem;">Imperial</span></div>
+  </div>
+
+  <!-- GALLERY -->
+  <sc-for list="{{ categories }}" as="cat" hint-placeholder-count="7">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px 22px;margin-bottom:18px;">
+      <div style="display:flex;align-items:center;gap:13px;margin-bottom:18px;">
+        <span style="width:42px;height:42px;border-radius:12px;background:rgba(var(--primary-rgb),.10);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:18px;flex:none;">
+          <i class="fas {{ cat.fa }}"></i>
+        </span>
+        <div>
+          <h2 style="font-family:var(--font-display);letter-spacing:2px;font-size:25px;color:var(--text);margin:0;line-height:1;">{{ cat.name }}</h2>
+          <p style="margin:3px 0 0;color:var(--muted);font-size:.76rem;">{{ cat.desc }}</p>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:14px;">
+        <sc-for list="{{ cat.tiers }}" as="tier" hint-placeholder-count="6">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:9px;">
+            <div style="width:100%;aspect-ratio:1;max-width:108px;transition:transform .18s var(--ease);cursor:pointer;" style-hover="transform:translateY(-4px) scale(1.05)">{{ tier.unlockedEl }}</div>
+            <span style="font-family:var(--font-display);letter-spacing:1.2px;font-size:1.05rem;color:{{ tier.color }};line-height:1;">{{ tier.goal }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-for>
+
+  <!-- STATES -->
+  <sc-if value="{{ showStates }}" hint-placeholder-val="{{ true }}">
+  <h3 style="font-family:var(--font-display);letter-spacing:2px;color:var(--primary);font-size:30px;margin:36px 0 14px;">Zustände</h3>
+  <div style="display:flex;align-items:center;gap:40px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:26px 28px;">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+      <div style="width:130px;height:130px;">{{ stateUnlockedEl }}</div>
+      <span style="font-family:var(--font-display);letter-spacing:1.6px;font-size:1.05rem;color:var(--primary);">Freigeschaltet</span>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+      <div style="width:130px;height:130px;">{{ stateLockedEl }}</div>
+      <span style="font-family:var(--font-display);letter-spacing:1.6px;font-size:1.05rem;color:var(--muted);">Gesperrt</span>
+    </div>
+    <p style="margin:0;color:var(--text);font-size:.9rem;line-height:1.6;max-width:380px;">Gesperrte Erfolge zeigen dieselbe Silhouette als verblasste Andeutung — der Läufer ahnt, was ihn erwartet, ohne das Ziel schon zu sehen. Die Punkte am unteren Rand verraten die erreichte Stufe (1–6).</p>
+  </div>
+  </sc-if>
+
+  <!-- APP CONTEXT -->
+  <sc-if value="{{ showApp }}" hint-placeholder-val="{{ true }}">
+  <h3 style="font-family:var(--font-display);letter-spacing:2px;color:var(--primary);font-size:30px;margin:40px 0 6px;">Im App-Kontext</h3>
+  <p style="margin:0 0 22px;color:var(--muted);font-size:.85rem;">So erscheinen die Icons im Profil-Tab „Erfolge".</p>
+  <div style="display:flex;justify-content:center;padding:8px;">
+    <div style="width:330px;background:var(--bg);border:10px solid #021c16;border-radius:46px;box-shadow:var(--shadow-pop);overflow:hidden;position:relative;">
+      <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:128px;height:26px;background:#021c16;border-radius:0 0 16px 16px;z-index:5;"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:13px 24px 6px;font-size:.72rem;color:var(--text);">
+        <span style="font-weight:600;">9:41</span>
+        <span style="display:flex;gap:7px;font-size:.7rem;"><i class="fas fa-signal"></i><i class="fas fa-wifi"></i><i class="fas fa-battery-full"></i></span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px 12px;border-bottom:1px solid var(--border);">
+        <span style="font-family:var(--font-display);letter-spacing:1.5px;color:var(--primary);font-size:16px;border:2px solid var(--primary);border-radius:7px;padding:0 6px;line-height:1.5;">RC</span>
+        <span style="font-family:var(--font-display);letter-spacing:2px;color:var(--text);font-size:18px;">Profil</span>
+        <i class="fas fa-cog" style="color:var(--muted);font-size:15px;"></i>
+      </div>
+      <div style="display:flex;align-items:center;gap:13px;padding:16px 18px 10px;">
+        <div style="width:54px;height:54px;border-radius:50%;background:var(--card);border:2px solid var(--primary);display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:var(--glow-primary);">🏃</div>
+        <div>
+          <div style="font-family:var(--font-display);letter-spacing:1.5px;font-size:22px;color:var(--text);line-height:1;">Max</div>
+          <span style="display:inline-flex;align-items:center;gap:5px;margin-top:5px;background:rgba(var(--gold-rgb),.14);color:var(--gold);border:1px solid rgba(var(--gold-rgb),.35);border-radius:40px;padding:2px 10px;font:600 .58rem/1.4 var(--font-body);letter-spacing:1px;text-transform:uppercase;"><i class="fas fa-crown" style="font-size:.6rem;"></i> König</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;padding:0 18px 14px;">
+        <div style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:8px 6px;text-align:center;"><div style="font-family:var(--font-display);color:var(--primary);font-size:21px;letter-spacing:.5px;line-height:1;">1.284</div><div style="font:600 .5rem/1.4 var(--font-body);letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-top:3px;">km</div></div>
+        <div style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:8px 6px;text-align:center;"><div style="font-family:var(--font-display);color:var(--primary);font-size:21px;letter-spacing:.5px;line-height:1;">48.200</div><div style="font:600 .5rem/1.4 var(--font-body);letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-top:3px;">m²</div></div>
+        <div style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:8px 6px;text-align:center;"><div style="font-family:var(--font-display);color:var(--primary);font-size:21px;letter-spacing:.5px;line-height:1;">12🔥</div><div style="font:600 .5rem/1.4 var(--font-body);letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-top:3px;">Streak</div></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:2px 18px 12px;">
+        <span style="font-family:var(--font-display);letter-spacing:2px;color:var(--primary);font-size:17px;">Erfolge</span>
+        <span style="font:600 .58rem/1 var(--font-body);text-transform:uppercase;letter-spacing:1px;color:var(--muted);">6 / 7 aktiv</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 18px 22px;">
+        <sc-for list="{{ profile }}" as="p" hint-placeholder-count="6">
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px 10px;display:flex;flex-direction:column;align-items:center;gap:7px;">
+            <div style="width:58px;height:58px;">{{ p.iconEl }}</div>
+            <span style="font-family:var(--font-display);letter-spacing:.8px;font-size:.92rem;color:var(--text);text-align:center;line-height:1;">{{ p.name }}</span>
+            <span style="font:600 .56rem/1 var(--font-body);text-transform:uppercase;letter-spacing:.6px;color:{{ p.color }};">{{ p.caption }}</span>
+            <div style="width:100%;height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;">
+              <div style="height:100%;width:{{ p.pct }}%;background:{{ p.color }};border-radius:3px;"></div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex;justify-content:space-around;align-items:center;padding:12px 8px;border-top:1px solid var(--border);background:var(--card);">
+        <i class="fas fa-map" style="color:var(--muted);font-size:17px;"></i>
+        <i class="fas fa-chart-pie" style="color:var(--muted);font-size:17px;"></i>
+        <i class="fas fa-globe" style="color:var(--muted);font-size:17px;"></i>
+        <span style="display:flex;flex-direction:column;align-items:center;gap:4px;"><i class="fas fa-user" style="color:var(--primary);font-size:17px;"></i><span style="width:18px;height:2px;border-radius:2px;background:var(--primary);"></span></span>
+        <i class="fas fa-bars" style="color:var(--muted);font-size:17px;"></i>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+ </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;citrus&quot;,&quot;stone&quot;,&quot;pine&quot;,&quot;petrol&quot;],&quot;default&quot;:&quot;citrus&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;showStates&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;showApp&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  _uid = 0;
+  TIERS = [
+    {name:'Bronze',   main:'#C0824A', soft:'rgba(192,130,74,.16)',  deep:'#8a5a2e'},
+    {name:'Silber',   main:'#CBD5DA', soft:'rgba(203,213,218,.16)', deep:'#7d878c'},
+    {name:'Limette',  main:'#E6FF55', soft:'rgba(230,255,85,.15)',  deep:'#9aae1f'},
+    {name:'Türkis',   main:'#00D4FF', soft:'rgba(0,212,255,.15)',   deep:'#0a7fa0'},
+    {name:'Episch',   main:'#9B5DE5', soft:'rgba(155,93,229,.18)',  deep:'#5e2fa0'},
+    {name:'Imperial', main:'#FFD700', soft:'rgba(255,215,0,.18)',   deep:'#b89500'},
+  ];
+  LOCKED = {name:'Gesperrt', main:'#33564a', soft:'rgba(255,255,255,.05)', deep:'#0c2c22'};
+  CATS = [
+    {key:'distance',  name:'Distanz',               fa:'fa-shoe-prints',   desc:'Gelaufene Kilometer',          goals:['10 km','50 km','100 km','250 km','500 km','1.000 km']},
+    {key:'territory', name:'Territorium',           fa:'fa-draw-polygon',  desc:'Eroberte Fläche',              goals:['1.000 m²','10.000 m²','50.000 m²','100.000 m²','500.000 m²','1 Mio. m²']},
+    {key:'raid',      name:'Raids & Verteidigung',  fa:'fa-shield-halved', desc:'Verteidigte & geraidete Reviere', goals:['5×','25×','50×','100×','250×','500×']},
+    {key:'rank',      name:'Herrschaft',            fa:'fa-crown',         desc:'Rang in der Saison',           goals:['Top 1000','Top 500','Top 100','Top 50','Top 10','Platz 1']},
+    {key:'streak',    name:'Streak',                fa:'fa-fire',          desc:'Tage am Stück gelaufen',       goals:['3 Tage','7 Tage','14 Tage','30 Tage','60 Tage','100 Tage']},
+    {key:'pace',      name:'Tempo',                 fa:'fa-bolt',          desc:'Beste Pace',                   goals:['6:30 /km','6:00 /km','5:30 /km','5:00 /km','4:30 /km','4:00 /km']},
+    {key:'landmark',  name:'Wahrzeichen',           fa:'fa-location-dot',  desc:'Gesammelte Landmarks',         goals:['1 ★','5 ★','10 ★','25 ★','50 ★','100 ★']},
+  ];
+
+  svgEl(html){
+    return React.createElement('div',{style:{width:'100%',height:'100%',display:'block'},dangerouslySetInnerHTML:{__html:html}});
+  }
+
+  star(cx,cy,r,c,op){
+    let pts='';
+    for(let i=0;i<10;i++){const rr=i%2?r*0.45:r;const a=-Math.PI/2+i*Math.PI/5;pts+=(cx+Math.cos(a)*rr).toFixed(1)+','+(cy+Math.sin(a)*rr).toFixed(1)+' ';}
+    return `<polygon points="${pts.trim()}" fill="${c}" opacity="${op}"/>`;
+  }
+
+  motif(key,t,c,soft){
+    if(key==='distance')  return this.mDistance(t,c);
+    if(key==='territory') return this.mTerritory(t,c,soft);
+    if(key==='raid')      return this.mRaid(t,c,soft);
+    if(key==='rank')      return this.mRank(t,c,soft);
+    if(key==='streak')    return this.mStreak(t,c,soft);
+    if(key==='pace')      return this.mPace(t,c,soft);
+    if(key==='landmark')  return this.mLandmark(t,c,soft);
+    return '';
+  }
+
+  // DISTANZ — Fußspuren-Trail mit Zielflagge
+  mDistance(t,c){
+    let s='';
+    const trail='M 34 70 C 36 54 50 58 52 46 C 54 34 62 36 58 26';
+    s+=`<path d="${trail}" fill="none" stroke="${c}" stroke-width="8" opacity=".10" stroke-linecap="round"/>`;
+    s+=`<path d="${trail}" fill="none" stroke="${c}" stroke-width="2.6" opacity=".4" stroke-linecap="round"/>`;
+    const fp=[[37,66,-22],[43,58,-30],[49,51,-18],[53,43,-34],[56,35,-20],[58,28,-30]];
+    for(let i=0;i<t;i++){const p=fp[i];s+=`<g transform="translate(${p[0]} ${p[1]}) rotate(${p[2]})"><ellipse cx="0" cy="0" rx="2.1" ry="3.4" fill="${c}"/><circle cx="0.5" cy="-3.6" r="1" fill="${c}"/></g>`;}
+    s+=`<circle cx="34" cy="70" r="3.2" fill="#072c21" stroke="${c}" stroke-width="2.2"/>`;
+    const px=58,ptop=15,fw=11,fh=8,fx0=px-fw;
+    s+=`<line x1="${px}" y1="28" x2="${px}" y2="${ptop}" stroke="${c}" stroke-width="2"/>`;
+    s+=`<rect x="${fx0}" y="${ptop}" width="${fw}" height="${fh}" fill="#072c21" stroke="${c}" stroke-width="1.4"/>`;
+    for(let col=0;col<3;col++)for(let row=0;row<2;row++){if((col+row)%2===0)s+=`<rect x="${(fx0+col*fw/3).toFixed(1)}" y="${(ptop+row*fh/2).toFixed(1)}" width="${(fw/3).toFixed(1)}" height="${(fh/2).toFixed(1)}" fill="${c}"/>`;}
+    return s;
+  }
+
+  // TERRITORIUM — erobertes Gebiet mit Kacheln + Wimpel
+  mTerritory(t,c,soft){
+    let s='';
+    const region='M 30 42 Q 28 30 40 27 Q 54 23 65 31 Q 74 40 69 52 Q 64 65 49 65 Q 33 64 31 53 Z';
+    s+=`<path d="${region}" fill="${soft}" stroke="${c}" stroke-width="2.8" stroke-linejoin="round"/>`;
+    const cells=[];
+    for(let r=0;r<4;r++)for(let col=0;col<4;col++) cells.push([37+col*7.5,33+r*7.5]);
+    const filled=Math.min(cells.length,Math.round(t*16/6));
+    cells.forEach((p,i)=>{const on=i<filled;s+=`<rect x="${p[0]}" y="${p[1]}" width="6" height="6" rx="1" fill="${on?c:'none'}" opacity="${on?'.5':'1'}" stroke="${on?'none':c}" stroke-opacity="${on?'0':'.16'}" stroke-width="1"/>`;});
+    if(t>=4) s+=`<path d="${region}" fill="none" stroke="${c}" stroke-width="1" stroke-dasharray="3 3" opacity=".5"/>`;
+    if(t>=2){const fx=49,fy=24;s+=`<line x1="${fx}" y1="${fy+1}" x2="${fx}" y2="${fy-13}" stroke="${c}" stroke-width="2"/><path d="M ${fx} ${fy-13} L ${fx+11} ${fy-10.5} L ${fx+8} ${fy-8} L ${fx+11} ${fy-5.5} L ${fx} ${fy-3} Z" fill="${c}"/>`;}
+    return s;
+  }
+
+  // RAIDS — heraldisches Wappen mit Blitz-Emblem, Schwertern, Krone
+  mRaid(t,c,soft){
+    const cx=50,cy=47;
+    let s='';
+    const sword=(rot)=>`<g transform="rotate(${rot} ${cx} ${cy})" opacity=".72"><line x1="${cx}" y1="${cy-23}" x2="${cx}" y2="${cy+21}" stroke="${c}" stroke-width="2.2" stroke-linecap="round"/><path d="M ${cx} ${cy-26} l -1.8 4 h3.6 z" fill="${c}"/><line x1="${cx-6}" y1="${cy+13}" x2="${cx+6}" y2="${cy+13}" stroke="${c}" stroke-width="2.4" stroke-linecap="round"/><circle cx="${cx}" cy="${cy+20}" r="2" fill="${c}"/></g>`;
+    if(t>=3) s+=sword(32)+sword(-32);
+    else if(t>=2) s+=sword(40);
+    if(t>=5){const ty=cy-25;s+=`<path d="M ${cx-9} ${ty} L ${cx-9} ${ty-5} L ${cx-4} ${ty-1} L ${cx} ${ty-7} L ${cx+4} ${ty-1} L ${cx+9} ${ty-5} L ${cx+9} ${ty} Z" fill="${c}"/>`;}
+    const sh=`M ${cx} ${cy-19} L ${cx+15} ${cy-13} L ${cx+15} ${cy+3} Q ${cx+15} ${cy+17} ${cx} ${cy+23} Q ${cx-15} ${cy+17} ${cx-15} ${cy+3} L ${cx-15} ${cy-13} Z`;
+    s+=`<path d="${sh}" fill="${soft}" stroke="${c}" stroke-width="2.8" stroke-linejoin="round"/>`;
+    s+=`<path d="M ${cx+3} ${cy-9} L ${cx-5} ${cy+2} L ${cx-0.5} ${cy+2} L ${cx-3} ${cy+11} L ${cx+6} ${cy-2} L ${cx+1.5} ${cy-2} Z" fill="${c}"/>`;
+    if(t>=4){[[cx-10,cy-9],[cx+10,cy-9]].forEach(p=>s+=`<circle cx="${p[0]}" cy="${p[1]}" r="1.5" fill="${c}"/>`);}
+    if(t>=6) s+=`<path d="M ${cx-19} ${cy+14} Q ${cx-26} ${cy-1} ${cx-17} ${cy-15}" fill="none" stroke="${c}" stroke-width="2"/><path d="M ${cx+19} ${cy+14} Q ${cx+26} ${cy-1} ${cx+17} ${cy-15}" fill="none" stroke="${c}" stroke-width="2"/>`;
+    return s;
+  }
+
+  // HERRSCHAFT — Königskrone mit Bügel, Juwelen, Reichsapfel
+  mRank(t,c,soft){
+    const cx=50,bw=36,lx=cx-bw/2,bandY=54,bandH=8,peaks=t+1,mid=Math.floor(peaks/2);
+    let s='';
+    let d=`M ${lx} ${bandY}`;
+    const tip=[];
+    for(let i=0;i<peaks;i++){const x1=lx+bw*(i+1)/peaks,xm=lx+bw*(i+0.5)/peaks,ph=17+(i===mid?7:0);tip.push([xm,bandY-ph]);d+=` L ${xm.toFixed(1)} ${(bandY-ph).toFixed(1)} L ${x1.toFixed(1)} ${bandY}`;}
+    d+=' Z';
+    if(t>=3) s+=`<path d="M ${lx+3} ${bandY} Q ${cx} ${bandY-26} ${lx+bw-3} ${bandY}" fill="none" stroke="${c}" stroke-width="1.6" opacity=".5"/>`;
+    s+=`<path d="${d}" fill="${soft}" stroke="${c}" stroke-width="2.6" stroke-linejoin="round"/>`;
+    s+=`<path d="M ${lx} ${bandY} L ${lx+bw} ${bandY} L ${lx+bw} ${bandY+bandH-2} Q ${cx} ${bandY+bandH+3} ${lx} ${bandY+bandH-2} Z" fill="${soft}" stroke="${c}" stroke-width="2.6" stroke-linejoin="round"/>`;
+    for(const p of tip) s+=`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2" fill="${c}"/>`;
+    for(let i=0;i<t;i++){const x=lx+bw*(i+0.5)/t;s+=`<circle cx="${x.toFixed(1)}" cy="${bandY+bandH/2-1}" r="1.5" fill="${c}"/>`;}
+    if(t>=5){const oy=bandY-28;s+=`<circle cx="${cx}" cy="${oy}" r="2.6" fill="none" stroke="${c}" stroke-width="1.6"/><line x1="${cx}" y1="${oy-2.6}" x2="${cx}" y2="${oy-8}" stroke="${c}" stroke-width="1.8"/><line x1="${cx-3}" y1="${oy-6}" x2="${cx+3}" y2="${oy-6}" stroke="${c}" stroke-width="1.8"/>`;}
+    if(t>=6) s+=`<path d="M ${cx-22} ${bandY+12} Q ${cx-30} ${bandY-4} ${cx-19} ${bandY-18}" fill="none" stroke="${c}" stroke-width="2" opacity=".8"/><path d="M ${cx+22} ${bandY+12} Q ${cx+30} ${bandY-4} ${cx+19} ${bandY-18}" fill="none" stroke="${c}" stroke-width="2" opacity=".8"/>`;
+    return s;
+  }
+
+  // STREAK — mehrschichtige Flamme mit Funken & Scheiten
+  mStreak(t,c,soft){
+    const cx=50,by=66,sc=0.78+t*0.055;
+    const flame=(k,fill,op,dx)=>`<path transform="translate(${cx+(dx||0)} ${by}) scale(${k.toFixed(3)})" d="M0 0 C -13 -7 -11 -23 -2 -36 C 0 -28 4 -27 5 -19 C 6 -13 13 -11 12 -2 C 11 6 5 5 0 0 Z" fill="${fill}" opacity="${op}" stroke="${fill}" stroke-width="${(1.2/k).toFixed(2)}" stroke-linejoin="round"/>`;
+    let s='';
+    s+=flame(sc,soft,1,0);
+    s+=flame(sc*0.72,c,.4,0);
+    if(t>=2) s+=flame(sc*0.4,c,.95,0.5);
+    for(let i=0;i<t;i++){const side=i%2?1:-1;const x=cx+side*(9+(i%3)*2);const y=by-16-i*5;s+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(1.2+(i%2)*0.5).toFixed(1)}" fill="${c}" opacity=".75"/>`;}
+    if(t>=3){s+=`<line x1="${cx-11}" y1="${by+4}" x2="${cx+9}" y2="${by-1}" stroke="${c}" stroke-width="2.6" stroke-linecap="round" opacity=".8"/><line x1="${cx-9}" y1="${by-1}" x2="${cx+11}" y2="${by+4}" stroke="${c}" stroke-width="2.6" stroke-linecap="round" opacity=".8"/>`;}
+    return s;
+  }
+
+  // TEMPO — geflügelter Blitz mit Speed-Lines
+  mPace(t,c,soft){
+    const cx=50,cy=46;
+    let s='';
+    const lines=Math.max(2,t);
+    for(let i=0;i<lines;i++){const y=cy-15+i*(30/lines);const len=6+(i%2?8:3);s+=`<line x1="${cx-28}" y1="${y.toFixed(1)}" x2="${(cx-28+len)}" y2="${y.toFixed(1)}" stroke="${c}" stroke-width="2" stroke-linecap="round" opacity=".55"/>`;}
+    if(t>=2){const ws=(0.4+t*0.07).toFixed(2);s+=`<g transform="translate(${cx} ${cy}) scale(${ws})" opacity=".45"><path d="M -4 -1 q -12 -3 -20 4 q 11 -1 16 2 q -10 1 -14 6 q 12 -2 18 0 Z" fill="${c}"/><path d="M 4 -1 q 12 -3 20 4 q -11 -1 -16 2 q 10 1 14 6 q -12 -2 -18 0 Z" fill="${c}"/></g>`;}
+    const bolt=(dx,op)=>`<path transform="translate(${dx} 0)" d="M ${cx+5} ${cy-21} L ${cx-8} ${cy+3} L ${cx-1} ${cy+3} L ${cx-5} ${cy+22} L ${cx+12} ${cy-6} L ${cx+3} ${cy-6} Z" fill="${c}" opacity="${op}"/>`;
+    if(t>=5) s+=bolt(-9,.4);
+    s+=bolt(0,1);
+    return s;
+  }
+
+  // WAHRZEICHEN — Monument mit Sternbild
+  mLandmark(t,c,soft){
+    const cx=50;
+    let s='';
+    s+=`<path d="M 26 70 Q 50 60 74 70" fill="none" stroke="${c}" stroke-width="2.4" stroke-linecap="round" opacity=".55"/>`;
+    const seg=Math.min(5,t+1),baseY=68,segH=6;
+    for(let i=0;i<seg;i++){const y=baseY-(i+1)*segH;const ww=Math.max(7,20-i*3);s+=`<rect x="${(cx-ww/2).toFixed(1)}" y="${y}" width="${ww.toFixed(1)}" height="${segH-1}" rx="1" fill="${soft}" stroke="${c}" stroke-width="2"/>`;}
+    const topY=baseY-seg*segH;
+    s+=`<path d="M ${cx-5} ${topY} L ${cx} ${topY-9} L ${cx+5} ${topY} Z" fill="${soft}" stroke="${c}" stroke-width="2" stroke-linejoin="round"/>`;
+    s+=this.star(cx,topY-12,3.2,c,1);
+    const extra=t-1,cp=[[31,30],[39,22],[61,23],[69,31],[34,44]];
+    let prev=null;
+    for(let i=0;i<extra;i++){const p=cp[i%cp.length];if(prev) s+=`<line x1="${prev[0]}" y1="${prev[1]}" x2="${p[0]}" y2="${p[1]}" stroke="${c}" stroke-width="0.8" opacity=".3"/>`;s+=this.star(p[0],p[1],2,c,.85);prev=p;}
+    return s;
+  }
+
+  // distinct frame silhouette per tier
+  frame(t,c,locked){
+    const op=locked?'.3':'1';
+    if(t===1){ // Bronze — schlichter Einzelring
+      return `<circle cx="50" cy="50" r="42" fill="none" stroke="${c}" stroke-width="1.6" opacity="${op}"/>`;
+    }
+    if(t===2){ // Silber — Doppelring
+      return `<circle cx="50" cy="50" r="42" fill="none" stroke="${c}" stroke-width="2.2" opacity="${op}"/>`+
+             `<circle cx="50" cy="50" r="37" fill="none" stroke="${c}" stroke-width="1.1" opacity="${locked?'.22':'.55'}"/>`;
+    }
+    if(t===3){ // Limette — gezahnter Zahnrad-Rand
+      let teeth='';const n=24;
+      for(let i=0;i<n;i++){const a=i/n*Math.PI*2;const r=i%2?44:40;teeth+=`${(50+Math.cos(a)*r).toFixed(1)},${(50+Math.sin(a)*r).toFixed(1)} `;}
+      return `<polygon points="${teeth.trim()}" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round" opacity="${op}"/>`+
+             `<circle cx="50" cy="50" r="36" fill="none" stroke="${c}" stroke-width="1.1" opacity="${locked?'.22':'.5'}"/>`;
+    }
+    if(t===4){ // Türkis — geschuppter Wellenrand + Eckpunkte
+      let d='';const n=18;
+      for(let i=0;i<=n;i++){const a=i/n*Math.PI*2;const r=i%2?43:39;const x=(50+Math.cos(a)*r).toFixed(1),y=(50+Math.sin(a)*r).toFixed(1);d+=(i===0?'M':'L')+x+' '+y+' ';}
+      d+='Z';
+      let dots='';for(let i=0;i<4;i++){const a=i/4*Math.PI*2-Math.PI/4;dots+=`<circle cx="${(50+Math.cos(a)*43).toFixed(1)}" cy="${(50+Math.sin(a)*43).toFixed(1)}" r="2.2" fill="${c}" opacity="${op}"/>`;}
+      return `<path d="${d}" fill="none" stroke="${c}" stroke-width="2.4" stroke-linejoin="round" opacity="${op}"/>`+
+             `<circle cx="50" cy="50" r="35" fill="none" stroke="${c}" stroke-width="1" opacity="${locked?'.2':'.45'}"/>`+dots;
+    }
+    if(t===5){ // Episch — facettierter Zackenkranz
+      let spikes='';const n=16;
+      for(let i=0;i<n*2;i++){const a=i/(n*2)*Math.PI*2;const r=i%2?45:38;spikes+=`${(50+Math.cos(a)*r).toFixed(1)},${(50+Math.sin(a)*r).toFixed(1)} `;}
+      let facet='';for(let i=0;i<n;i++){const a=i/n*Math.PI*2-Math.PI/2;facet+=`<line x1="${(50+Math.cos(a)*38).toFixed(1)}" y1="${(50+Math.sin(a)*38).toFixed(1)}" x2="${(50+Math.cos(a)*44.5).toFixed(1)}" y2="${(50+Math.sin(a)*44.5).toFixed(1)}" stroke="${c}" stroke-width="1" opacity="${locked?'.2':'.4'}"/>`;}
+      return `<polygon points="${spikes.trim()}" fill="none" stroke="${c}" stroke-width="2.4" stroke-linejoin="round" opacity="${op}"/>`+facet+
+             `<circle cx="50" cy="50" r="34" fill="none" stroke="${c}" stroke-width="1.2" opacity="${locked?'.22':'.55'}"/>`;
+    }
+    // t===6 Imperial — voller Strahlenkranz + Lorbeer + Krönchen
+    let rays='';const n=36;
+    for(let i=0;i<n;i++){const a=i/n*Math.PI*2;const lng=i%3===0;rays+=`<line x1="${(50+Math.cos(a)*40).toFixed(1)}" y1="${(50+Math.sin(a)*40).toFixed(1)}" x2="${(50+Math.cos(a)*(lng?47:44)).toFixed(1)}" y2="${(50+Math.sin(a)*(lng?47:44)).toFixed(1)}" stroke="${c}" stroke-width="${lng?'1.8':'1'}" stroke-linecap="round" opacity="${locked?'.3':(lng?'.8':'.5')}"/>`;}
+    const wreath=locked?'':`<path d="M 30 56 Q 26 67 37 72" fill="none" stroke="${c}" stroke-width="1.8" opacity=".6"/><path d="M 70 56 Q 74 67 63 72" fill="none" stroke="${c}" stroke-width="1.8" opacity=".6"/>`+
+      [0,1,2].map(k=>`<circle cx="${30+k*2}" cy="${60+k*4}" r="1.2" fill="${c}" opacity=".5"/><circle cx="${70-k*2}" cy="${60+k*4}" r="1.2" fill="${c}" opacity=".5"/>`).join('');
+    const crown=locked?'':`<path d="M 44 11 L 46.5 16 L 50 10.5 L 53.5 16 L 56 11 L 55 18 L 45 18 Z" fill="${c}"/>`;
+    return rays+
+      `<circle cx="50" cy="50" r="40" fill="none" stroke="${c}" stroke-width="3" opacity="${op}"/>`+
+      `<circle cx="50" cy="50" r="35" fill="none" stroke="${c}" stroke-width="1.2" opacity="${locked?'.22':'.6'}"/>`+
+      wreath+crown;
+  }
+
+  icon(key,t,tr,locked){
+    const c=tr.main,soft=tr.soft,deep=tr.deep;
+    const uid=key+t+(locked?'l':'u')+(++this._uid);
+    const glow=(!locked&&t>=4);
+    const fillStop=locked?'.4':(0.22+t*0.09).toFixed(2);
+    let defs=`<defs><radialGradient id="g${uid}" cx="50%" cy="34%" r="74%"><stop offset="0%" stop-color="${locked?'#0e3326':deep}" stop-opacity="${locked?'1':fillStop}"/><stop offset="100%" stop-color="#06291f" stop-opacity="1"/></radialGradient>`;
+    if(glow) defs+=`<filter id="f${uid}" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="${t>=6?'2.6':'1.7'}" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
+    defs+=`<clipPath id="c${uid}"><circle cx="50" cy="50" r="38"/></clipPath></defs>`;
+    let plate=`<circle cx="50" cy="50" r="38" fill="url(#g${uid})" ${glow?`filter="url(#f${uid})"`:''}/>`;
+    const frame=this.frame(t,c,locked);
+    let m=`<g clip-path="url(#c${uid})"${locked?' opacity=".3"':''}>${this.motif(key,t,c,soft)}</g>`;
+    let pips='';
+    {const gap=6,sx=50-(5*gap)/2,y=85;for(let i=0;i<6;i++){const on=i<t;pips+=`<circle cx="${(sx+i*gap).toFixed(1)}" cy="${y}" r="1.9" fill="${on?(locked?'#33564a':c):'none'}" stroke="${on?'none':'rgba(255,255,255,.16)'}" stroke-width="1"/>`;}}
+    let lock='';
+    if(locked) lock=`<g><circle cx="50" cy="51" r="13" fill="#05231a" stroke="rgba(255,255,255,.16)" stroke-width="1.4"/><rect x="44" y="49" width="12" height="9.5" rx="1.8" fill="#9fb4aa"/><path d="M46.2 49 v-2.6 a3.8 3.8 0 0 1 7.6 0 V49" fill="none" stroke="#9fb4aa" stroke-width="1.8"/><circle cx="50" cy="53.4" r="1.3" fill="#05231a"/></g>`;
+    return `<svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">${defs}${plate}${frame}${m}${lock}${pips}</svg>`;
+  }
+
+  renderVals(){
+    const theme=this.props.theme||'citrus';
+    const categories=this.CATS.map(cat=>({
+      name:cat.name,desc:cat.desc,fa:cat.fa,
+      tiers:this.TIERS.map((tr,ti)=>({goal:cat.goals[ti],color:tr.main,unlockedEl:this.svgEl(this.icon(cat.key,ti+1,tr,false))}))
+    }));
+    const currents=[5,4,6,3,4,0,2];
+    const profile=this.CATS.map((cat,i)=>{
+      const cur=currents[i],locked=cur===0,tr=this.TIERS[Math.max(0,cur-1)];
+      return {name:cat.name,caption:locked?'Gesperrt':cat.goals[cur-1],pct:Math.round((cur/6)*100),color:locked?'#5A8A6E':tr.main,iconEl:this.svgEl(this.icon(cat.key,Math.max(1,cur),locked?this.LOCKED:tr,locked))};
+    });
+    return {
+      rootClass:'theme-'+theme,
+      categories,
+      profile,
+      showApp:this.props.showApp!==false,
+      showStates:this.props.showStates!==false,
+      stateUnlockedEl:this.svgEl(this.icon('distance',4,this.TIERS[3],false)),
+      stateLockedEl:this.svgEl(this.icon('distance',4,this.LOCKED,true)),
+    };
+  }
+}
+</script>
+</body>
+</html>

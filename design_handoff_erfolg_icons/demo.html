@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Erfolg-Icons — Counter-Demo</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  :root{--bg:#042D22;--card:#0D3D2C;--bg2:#0a3526;--border:rgba(255,255,255,.09);--text:#EAF3EE;--muted:#7CА08F;--muted:#7ca08f;--primary:#E6FF55;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,'Segoe UI',sans-serif;padding:32px;}
+  h1{font-family:'Bebas Neue',sans-serif;letter-spacing:2px;color:var(--primary);font-weight:400;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;margin-top:20px;}
+  .badge{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .badge .svg{width:96px;height:96px;}
+  .badge .name{font-size:13px;font-weight:600;text-align:center;}
+  .badge .cap{font-size:12px;font-weight:700;}
+  .badge .bar{width:100%;height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;}
+  .badge .bar>div{height:100%;border-radius:3px;}
+  .ctrl{display:flex;flex-wrap:wrap;gap:14px;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 18px;}
+  .ctrl label{font-size:13px;color:var(--muted);}
+  input[type=range]{accent-color:var(--primary);}
+  code{background:#0a3526;padding:1px 6px;border-radius:5px;color:var(--primary);}
+</style>
+</head>
+<body>
+  <h1>Erfolg-Icons — Live-Counter</h1>
+  <p style="color:var(--muted);max-width:640px;">Ein <code>achievements.js</code>-Aufruf pro Badge. Zieh am Multiplikator — die Werte
+  steigen, Stufe/Locked-Status, Caption und Fortschrittsbalken aktualisieren sich automatisch.</p>
+
+  <div class="ctrl">
+    <label>Spielfortschritt: <b id="mlabel">35%</b></label>
+    <input id="mult" type="range" min="0" max="100" value="35" style="flex:1;min-width:240px;">
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+<script type="module">
+  import { CATEGORIES, renderAchievement, paceToSeconds } from './achievements.js';
+
+  // demo "save game": a max value per category; the slider scales toward it.
+  const MAXED = {
+    distance: 1400, territory: 1300000, raid: 620, rank: 1,
+    streak: 120, pace: paceToSeconds('3:45'), landmark: 130,
+  };
+  // rank & pace are "lower is better": interpolate from a weak start down to MAXED.
+  const START = { rank: 1500, pace: paceToSeconds('7:30') };
+
+  const grid = document.getElementById('grid');
+  const mult = document.getElementById('mult');
+  const mlabel = document.getElementById('mlabel');
+
+  function valueFor(key, p) {
+    const cat = CATEGORIES[key];
+    if (cat.higherIsBetter) return MAXED[key] * p;
+    const start = START[key];
+    return Math.round(start + (MAXED[key] - start) * p); // descends toward MAXED
+  }
+
+  function draw() {
+    const p = +mult.value / 100;
+    mlabel.textContent = mult.value + '%';
+    grid.innerHTML = '';
+    for (const key of Object.keys(CATEGORIES)) {
+      const value = valueFor(key, p);
+      const a = renderAchievement(key, value);
+      const cap = a.locked ? ('Ziel: ' + CATEGORIES[key].labels[0])
+                : a.nextGoal ? ('Nächstes Ziel: ' + a.nextGoal)
+                : 'Maximalstufe';
+      const el = document.createElement('div');
+      el.className = 'badge';
+      el.innerHTML =
+        `<div class="svg">${a.svg}</div>` +
+        `<div class="name">${CATEGORIES[key].name}</div>` +
+        `<div class="cap" style="color:${a.color}">${a.locked ? 'Gesperrt' : a.tierName}</div>` +
+        `<div style="font-size:11px;color:#7ca08f">${cap}</div>` +
+        `<div class="bar"><div style="width:${a.progressPct}%;background:${a.color}"></div></div>`;
+      grid.appendChild(el);
+    }
+  }
+  mult.addEventListener('input', draw);
+  draw();
+</script>
+</body>
+</html>
