@@ -29,11 +29,14 @@ alter table public.support_messages
 -- 3. Tabelle direct_messages erstellen (Direktnachrichten)
 -- ══════════════════════════════════════════════════════════════════════
 
+-- Hinweis: from_uid/to_uid sind text, da die App auth.uid() als String
+-- speichert. In den Policies wird auth.uid()::text verglichen, damit es
+-- unabhängig vom vorhandenen Spaltentyp funktioniert (uuid oder text).
 create table if not exists public.direct_messages (
   id          uuid primary key default gen_random_uuid(),
-  from_uid    uuid not null,
+  from_uid    text not null,
   from_name   text,
-  to_uid      uuid not null,
+  to_uid      text not null,
   to_name     text,
   content     text not null,
   read_at     timestamptz,
@@ -45,26 +48,32 @@ create index if not exists dm_from_uid_idx on public.direct_messages(from_uid, c
 
 alter table public.direct_messages enable row level security;
 
+-- alte Policies entfernen (falls ein Teil-Lauf bereits welche angelegt hat)
+drop policy if exists "Nutzer liest eigene DMs"        on public.direct_messages;
+drop policy if exists "Nutzer sendet DMs"              on public.direct_messages;
+drop policy if exists "Empfänger aktualisiert read_at" on public.direct_messages;
+drop policy if exists "Nutzer löscht eigene DMs"       on public.direct_messages;
+
 -- Nutzer kann eigene gesendeten/empfangenen Nachrichten lesen
 create policy "Nutzer liest eigene DMs"
   on public.direct_messages for select
-  using (auth.uid() = from_uid or auth.uid() = to_uid);
+  using (auth.uid()::text = from_uid or auth.uid()::text = to_uid);
 
 -- Nutzer kann Nachrichten senden (from_uid muss eigene uid sein)
 create policy "Nutzer sendet DMs"
   on public.direct_messages for insert
-  with check (auth.uid() = from_uid);
+  with check (auth.uid()::text = from_uid);
 
 -- Empfänger kann als gelesen markieren
 create policy "Empfänger aktualisiert read_at"
   on public.direct_messages for update
-  using (auth.uid() = to_uid)
-  with check (auth.uid() = to_uid);
+  using (auth.uid()::text = to_uid)
+  with check (auth.uid()::text = to_uid);
 
 -- Nutzer kann eigene Konversationen löschen
 create policy "Nutzer löscht eigene DMs"
   on public.direct_messages for delete
-  using (auth.uid() = from_uid or auth.uid() = to_uid);
+  using (auth.uid()::text = from_uid or auth.uid()::text = to_uid);
 
 -- ══════════════════════════════════════════════════════════════════════
 -- 4. RLS auf ALLEN verbleibenden public-Tabellen erzwingen (Sicherheitsnetz)
