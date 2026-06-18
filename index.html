@@ -2978,7 +2978,7 @@ function getAchTiers(cat){
     const done=a.earned;
     let state;
     if(done){state='done';}else if(first){state='next';first=false;}else{state='locked';}
-    return{...a,state,remaining:Math.max(0,a.target-a.progress),pct:Math.min(100,(a.progress/a.target)*100)};
+    return{...a,done,state,remaining:Math.max(0,a.target-a.progress),pct:Math.min(100,(a.progress/a.target)*100)};
   });
 }
 
