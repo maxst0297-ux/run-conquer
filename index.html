@@ -68,11 +68,12 @@ body.theme-petrol {
   --red:#C03355; --green:#2D7A5E; --cyan:#2277AA;
   --muted:#8A7F70; --text:#1A2832;
 }
-html{height:-webkit-fill-available;background:#000}
+html{height:-webkit-fill-available;background:var(--bg)}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{
   font-family:'Poppins',sans-serif;background:var(--bg);color:var(--text);
   height:100vh;height:100dvh;min-height:-webkit-fill-available;
+  height:calc(var(--dvh,1vh) * 100);
   overflow:hidden;display:flex;flex-direction:column;
   transition:background var(--motion-slow),color var(--motion-slow);
   overscroll-behavior:none;touch-action:manipulation;
@@ -1298,12 +1299,16 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 <div id="toast"></div>
 
 <script>
-/* iOS 100vh fix – set --vh CSS var to real inner height */
+/* iOS 100vh fix – set --vh CSS var to real visual viewport height */
 (function(){
-  function setVh(){document.documentElement.style.setProperty('--dvh',window.innerHeight*.01+'px');}
+  function setVh(){
+    const h=(window.visualViewport&&window.visualViewport.height)||window.innerHeight;
+    document.documentElement.style.setProperty('--dvh',h*.01+'px');
+  }
   setVh();
   window.addEventListener('resize',setVh);
   window.addEventListener('orientationchange',()=>setTimeout(setVh,200));
+  if(window.visualViewport)window.visualViewport.addEventListener('resize',setVh);
 })();
 </script>
 <script>
