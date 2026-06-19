@@ -5,6 +5,9 @@ on:
     branches: [main, claude/youthful-keller-KFHrk]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-latest
@@ -60,3 +63,38 @@ jobs:
           name: RunConquer-iOS
           path: ${{ runner.temp }}/ipa/RunConquer.ipa
           retention-days: 30
+
+      - name: Determine release version
+        if: github.ref == 'refs/heads/main'
+        id: ver
+        run: |
+          VERSION="1.0.${{ github.run_number }}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release with IPA
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ steps.ver.outputs.version }}" \
+            "$RUNNER_TEMP/ipa/RunConquer.ipa" \
+            --title "RunConquer v${{ steps.ver.outputs.version }}" \
+            --notes "Automated build from ${{ github.sha }}"
+
+      - name: Bump AltStore source version
+        if: github.ref == 'refs/heads/main'
+        run: |
+          SIZE=$(stat -f%z "$RUNNER_TEMP/ipa/RunConquer.ipa")
+          jq --arg v "${{ steps.ver.outputs.version }}" \
+             --arg d "${{ steps.ver.outputs.date }}" \
+             --arg u "https://github.com/${{ github.repository }}/releases/latest/download/RunConquer.ipa" \
+             --argjson s "$SIZE" \
+             '.apps[0].version=$v | .apps[0].versionDate=$d | .apps[0].downloadURL=$u | .apps[0].size=$s' \
+             altstore-source.json > altstore-source.tmp.json
+          mv altstore-source.tmp.json altstore-source.json
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add altstore-source.json
+          git diff --cached --quiet || git commit -m "Bump AltStore release to v${{ steps.ver.outputs.version }} [skip ci]"
+          git push origin main
