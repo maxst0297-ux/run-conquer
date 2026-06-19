@@ -8,10 +8,6 @@
 <link rel="stylesheet" href="styles/colors_and_type.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 <link rel="stylesheet" href="styles/promo.css" />
-
-<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 </head>
 <body style="background-color: rgb(88, 36, 16)">
 
@@ -327,73 +323,6 @@
   // start the reel
   play();
 })();
-</script>
-
-<!-- ================= TWEAKS ================= -->
-<div id="tweak-root"></div>
-<script type="text/babel" src="tweaks-panel.jsx"></script>
-<script type="text/babel">
-const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
-  "theme": "Stone",
-  "autoplay": true,
-  "secs": 4,
-  "anim": "Hochsliden",
-  "scroll": "Hart einrasten",
-  "layout": "Wechselnd (zweispaltig)",
-  "dots": true
-}/*EDITMODE-END*/;
-
-const THEME_MAP  = { "Stone": "stone", "Citrus": "citrus", "Pine": "pine", "Petrol": "petrol" };
-const ANIM_MAP   = { "Hochsliden": "slide", "Einfaden": "fade", "Zoom": "zoom", "Glow": "glow" };
-const SCROLL_MAP = { "Hart einrasten": "hard", "Sanft": "soft", "Frei": "free" };
-const LAYOUT_MAP = { "Wechselnd (zweispaltig)": "alt", "Gestapelt": "stacked" };
-
-function App() {
-  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
-
-  React.useEffect(() => {
-    document.documentElement.setAttribute('data-theme', THEME_MAP[t.theme] || 'stone');
-  }, [t.theme]);
-  React.useEffect(() => {
-    const d = document.getElementById('deck'); if (!d) return;
-    d.setAttribute('data-anim', ANIM_MAP[t.anim] || 'slide');
-    d.setAttribute('data-layout', LAYOUT_MAP[t.layout] || 'alt');
-    document.documentElement.setAttribute('data-scroll', SCROLL_MAP[t.scroll] || 'hard');
-  }, [t.anim, t.scroll, t.layout]);
-  React.useEffect(() => {
-    const el = document.getElementById('dots'); if (el) el.style.display = t.dots ? '' : 'none';
-  }, [t.dots]);
-  React.useEffect(() => { if (window.__promo) window.__promo.setSecs(t.secs); }, [t.secs]);
-  React.useEffect(() => { if (window.__promo) window.__promo.setPlaying(t.autoplay); }, [t.autoplay]);
-
-  return (
-    <TweaksPanel>
-      <TweakSection label="Wiedergabe" />
-      <TweakToggle label="Auto-Play" value={t.autoplay}
-        onChange={(v) => setTweak('autoplay', v)} />
-      <TweakSlider label="Sekunden / Seite" value={t.secs} min={3} max={10} step={1} unit="s"
-        onChange={(v) => setTweak('secs', v)} />
-      <TweakSection label="Look" />
-      <TweakSelect label="Theme" value={t.theme}
-        options={["Stone", "Citrus", "Pine", "Petrol"]}
-        onChange={(v) => setTweak('theme', v)} />
-      <TweakSection label="Scroll-Effekt" />
-      <TweakSelect label="Einblendung" value={t.anim}
-        options={["Hochsliden", "Einfaden", "Zoom", "Glow"]}
-        onChange={(v) => setTweak('anim', v)} />
-      <TweakRadio label="Snap" value={t.scroll}
-        options={["Hart einrasten", "Sanft", "Frei"]}
-        onChange={(v) => setTweak('scroll', v)} />
-      <TweakSection label="Layout" />
-      <TweakRadio label="Anordnung" value={t.layout}
-        options={["Wechselnd (zweispaltig)", "Gestapelt"]}
-        onChange={(v) => setTweak('layout', v)} />
-      <TweakToggle label="Punkt-Navigation" value={t.dots}
-        onChange={(v) => setTweak('dots', v)} />
-    </TweaksPanel>
-  );
-}
-ReactDOM.createRoot(document.getElementById('tweak-root')).render(<App />);
 </script>
 
 <template id="__bundler_thumbnail">
