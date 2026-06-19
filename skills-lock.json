@@ -115,6 +115,12 @@
       "skillPath": "skills/brutalist-skill/SKILL.md",
       "computedHash": "8fc355c4aadb7d29c53ca28bc41be3cd6eea765d121e3737c4dc2d0f90a8effa"
     },
+    "llm-council": {
+      "source": "gcpdev/llm-council-skill",
+      "sourceType": "github",
+      "skillPath": "llm-council/SKILL.md",
+      "computedHash": "7daba585e6fe31a517eb306bece0c17cd3d31d880543ec4496aaae70c1864b50"
+    },
     "lottie": {
       "source": "heygen-com/hyperframes",
       "sourceType": "github",
