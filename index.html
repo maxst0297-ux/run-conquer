@@ -46,6 +46,7 @@
   --motion-fast: 120ms;
   --motion-base: 200ms;
   --motion-slow: 300ms;
+  --ob-ease: cubic-bezier(.77,0,.18,1);
 }
 body.theme-stone {
   --bg:#F0EBE9; --bg2:#E8E2DE; --card:#EDE7E4;
@@ -108,10 +109,10 @@ body{
 #bgVideo::-webkit-media-controls,#bgVideo::-webkit-media-controls-enclosure,#bgVideo::-webkit-media-controls-overlay-play-button,#bgVideo::-webkit-media-controls-start-playback-button{display:none!important;opacity:0!important}
 #bgTapHint{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.45);font-size:.72rem;letter-spacing:2px;text-transform:uppercase;z-index:1999;pointer-events:none;animation:hintPulse 2s ease-in-out infinite}
 @keyframes hintPulse{0%,100%{opacity:.45}50%{opacity:.15}}
+#bgOverlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.25);z-index:1;pointer-events:none}
 #onboarding{position:fixed;top:0;left:0;right:0;bottom:0;background:transparent;display:flex;align-items:center;justify-content:center;z-index:2000;padding:calc(20px + var(--sat)) 20px calc(20px + var(--sab));overflow-y:auto;-webkit-overflow-scrolling:touch}
 body.onboarding-active{background:#000}
-body.onboarding-active::after{content:'';position:fixed;bottom:0;left:0;right:0;height:max(var(--sab,0px),env(safe-area-inset-bottom,0px));background:#000;z-index:1999;pointer-events:none}
-.ob-card{background:rgba(8,8,8,.42);border:1px solid rgba(255,255,255,.1);border-radius:28px;padding:28px 28px 36px;max-width:400px;width:100%;text-align:center;backdrop-filter:blur(28px) saturate(160%);-webkit-backdrop-filter:blur(28px) saturate(160%);box-shadow:0 16px 56px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08)}
+.ob-card{background:rgba(255,255,255,0.08);backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);border:1px solid rgba(255,255,255,0.15);box-shadow:0 8px 32px rgba(0,0,0,0.25);border-radius:24px;padding:28px 28px 36px;max-width:400px;width:100%;text-align:center}
 .ob-title{font-family:'Bebas Neue',sans-serif;font-size:3.2rem;letter-spacing:2px;color:#fff;line-height:1;text-shadow:0 2px 16px rgba(0,0,0,.8)}
 .ob-sub{color:rgba(255,255,255,.55);font-size:.75rem;text-transform:uppercase;letter-spacing:3px;margin:4px 0 28px;text-shadow:0 1px 8px rgba(0,0,0,.6)}
 .field{margin-bottom:20px;text-align:left}
@@ -123,13 +124,17 @@ body.onboarding-active::after{content:'';position:fixed;bottom:0;left:0;right:0;
 .avatar-row{display:flex;gap:8px;justify-content:center;margin-top:6px}
 .av-opt{font-size:1.8rem;cursor:pointer;padding:6px 10px;border-radius:12px;background:var(--bg2);border:2px solid transparent;transition:var(--motion-fast)}
 .av-opt.sel{border-color:var(--primary)}
-.btn-start{background:rgba(255,255,255,.92);color:#0a0a10;border:none;padding:17px;border-radius:14px;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;width:100%;cursor:pointer;margin-top:8px;transition:transform var(--motion-fast)}
+.btn-start{background:rgba(255,255,255,.92);color:#0a0a10;border:none;padding:17px;border-radius:14px;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;width:100%;cursor:pointer;margin-top:8px;transition:transform var(--motion-fast),box-shadow var(--motion-base)}
+.btn-start:hover{transform:scale(1.02);box-shadow:0 0 24px rgba(255,255,255,.4)}
 .btn-start:active{transform:scale(.97)}
-.ob-tabs{display:flex;gap:6px;margin-bottom:20px}
-.ob-tab{flex:1;padding:9px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:rgba(255,255,255,.55);border-radius:12px;font-family:'Poppins',sans-serif;font-weight:600;font-size:.8rem;cursor:pointer;transition:all var(--motion-base)}
-.ob-tab.active{background:rgba(255,255,255,.18);color:#fff;border-color:rgba(255,255,255,.3)}
+.ob-panels{position:relative}
+.ob-panel{transition:opacity .7s var(--ob-ease),transform .7s var(--ob-ease),filter .7s var(--ob-ease)}
+.ob-panel-floating{position:absolute;top:0;left:0;width:100%}
+.ob-onscreen{opacity:1;transform:translateX(0);filter:blur(0)}
+.ob-offscreen-left{opacity:0;transform:translateX(-80px);filter:blur(6px)}
+.ob-offscreen-right{opacity:0;transform:translateX(80px);filter:blur(6px)}
 .ob-card .field label{color:rgba(255,255,255,.5)}
-.ob-card input{width:100%;padding:13px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:12px;color:#fff;font-size:.95rem;margin-bottom:14px;outline:none;font-family:'Poppins',sans-serif}
+.ob-card input{width:100%;padding:13px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:12px;color:#fff;font-size:.95rem;margin-bottom:14px;outline:none;font-family:'Poppins',sans-serif;transition:border-color var(--motion-base),background var(--motion-base)}
 .ob-card input::placeholder{color:rgba(255,255,255,.3)}
 .ob-card input:focus{border-color:rgba(255,255,255,.32);background:rgba(255,255,255,.12)}
 /* Auth screen extras */
@@ -140,7 +145,9 @@ body.onboarding-active::after{content:'';position:fixed;bottom:0;left:0;right:0;
 .ob-err{font-size:.75rem;text-align:center;margin:0 0 8px;min-height:18px;display:none}
 .ob-err.err{color:#ff6b8a}
 .ob-err.ok{color:#4ade80}
-.ob-link{font-size:.72rem;color:rgba(255,255,255,.45);text-align:center;margin-top:10px;cursor:pointer;text-decoration:underline;background:none;border:none;width:100%;font-family:'Poppins',sans-serif}
+.ob-link{font-size:.72rem;color:rgba(255,255,255,.45);text-align:center;margin-top:10px;cursor:pointer;text-decoration:underline;background:none;border:none;width:100%;font-family:'Poppins',sans-serif;transition:color var(--motion-base)}
+.ob-link:hover{color:rgba(255,255,255,.85)}
+.ob-admin-link{margin-top:18px}
 /* GPS consent modal */
 #gpsConsentModal{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:3500;display:flex;align-items:center;justify-content:center;padding:20px}
 .consent-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;max-width:340px;width:100%;text-align:center}
@@ -694,6 +701,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 <video id="bgVideo" autoplay muted loop playsinline webkit-playsinline preload="auto" tabindex="-1">
   <source src="bg.mp4" type="video/mp4">
 </video>
+<div id="bgOverlay"></div>
 <div id="bgTapHint" style="display:none">▶ Tippen zum Starten</div>
 <script>
 (function(){
@@ -710,36 +718,44 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 </script>
 <div id="onboarding" style="display:none">
   <div class="ob-card">
-    <div class="ob-title">RUNNERS CONQUER</div>
-    <div class="ob-sub">Lauf · Erobere · Herrsche</div>
-    <div class="ob-tabs">
-      <button class="ob-tab active" id="obTabLogin">🔑 Anmelden</button>
-      <button class="ob-tab" id="obTabReg">📝 Registrieren</button>
-      <button class="ob-tab" id="obTabAdmin">🔐 Admin</button>
-    </div>
-    <!-- Register form -->
-    <div id="obRegForm" style="display:none">
-      <div class="field"><label>Name</label><input type="text" id="regName" placeholder="z.B. SpeedRunner" maxlength="20" autocomplete="nickname"></div>
-      <div class="field"><label>Passwort</label><input type="password" id="regPw" placeholder="Mindestens 8 Zeichen" autocomplete="new-password"></div>
-      <div class="field"><label>Passwort bestätigen</label><input type="password" id="regPw2" placeholder="Passwort wiederholen" autocomplete="new-password"></div>
-      <div class="ob-check-row"><input type="checkbox" id="regAge"><label for="regAge">Ich bin mindestens 16 Jahre alt.</label></div>
-      <div class="ob-check-row"><input type="checkbox" id="regPrivacy"><label for="regPrivacy">Ich habe die <a href="/privacy.html" target="_blank">Datenschutzerklärung</a> gelesen und stimme der Verarbeitung meiner GPS- und Aktivitätsdaten zu.</label></div>
-      <div class="ob-err" id="regErr"></div>
-      <button class="btn-start" id="regBtn">Loslegen →</button>
-    </div>
-    <!-- Login form -->
-    <div id="obLoginForm">
-      <div class="field"><label>Name</label><input type="text" id="loginName" placeholder="Dein Name" autocomplete="nickname"></div>
-      <div class="field"><label>Passwort</label><input type="password" id="loginPw" placeholder="Dein Passwort" autocomplete="current-password"></div>
-      <div class="ob-err" id="loginErr"></div>
-      <button class="btn-start" id="loginBtn">ANMELDEN →</button>
-    </div>
-    <!-- Admin form -->
-    <div id="obAdminForm" style="display:none">
-      <div class="field"><label>E-Mail</label><input type="email" id="adminEmail" class="modal-input" placeholder="E-Mail Adresse…" autocomplete="email"></div>
-      <div class="field"><label>Passwort</label><input type="password" id="adminPwd" class="modal-input" placeholder="Passwort…" autocomplete="current-password"></div>
-      <button class="btn-start" id="adminLoginBtn">ADMIN LOGIN →</button>
-      <div id="adminLoginStatus" style="text-align:center;margin-top:10px;font-size:.8rem"></div>
+    <div class="ob-panels" id="obPanels">
+      <!-- Bereich 1: Benutzer-Login / Registrierung -->
+      <div class="ob-panel ob-panel-user ob-onscreen" id="obPanelUser">
+        <div class="ob-title">RUNNERS CONQUER</div>
+        <div class="ob-sub">Lauf · Erobere · Herrsche</div>
+        <!-- Login form -->
+        <div id="obLoginForm">
+          <div class="field"><label>Name</label><input type="text" id="loginName" placeholder="Dein Name" autocomplete="nickname"></div>
+          <div class="field"><label>Passwort</label><input type="password" id="loginPw" placeholder="Dein Passwort" autocomplete="current-password"></div>
+          <div class="ob-err" id="loginErr"></div>
+          <button class="btn-start" id="loginBtn">ANMELDEN →</button>
+          <button class="ob-link" id="obToRegister">Neu hier? Konto erstellen</button>
+        </div>
+        <!-- Register form -->
+        <div id="obRegForm" style="display:none">
+          <div class="field"><label>Name</label><input type="text" id="regName" placeholder="z.B. SpeedRunner" maxlength="20" autocomplete="nickname"></div>
+          <div class="field"><label>Passwort</label><input type="password" id="regPw" placeholder="Mindestens 8 Zeichen" autocomplete="new-password"></div>
+          <div class="field"><label>Passwort bestätigen</label><input type="password" id="regPw2" placeholder="Passwort wiederholen" autocomplete="new-password"></div>
+          <div class="ob-check-row"><input type="checkbox" id="regAge"><label for="regAge">Ich bin mindestens 16 Jahre alt.</label></div>
+          <div class="ob-check-row"><input type="checkbox" id="regPrivacy"><label for="regPrivacy">Ich habe die <a href="/privacy.html" target="_blank">Datenschutzerklärung</a> gelesen und stimme der Verarbeitung meiner GPS- und Aktivitätsdaten zu.</label></div>
+          <div class="ob-err" id="regErr"></div>
+          <button class="btn-start" id="regBtn">Loslegen →</button>
+          <button class="ob-link" id="obToLoginFromReg">Bereits registriert? Anmelden</button>
+        </div>
+        <button class="ob-link ob-admin-link" id="obToAdminLink">Admin</button>
+      </div>
+      <!-- Bereich 2: Admin-Login -->
+      <div class="ob-panel ob-panel-admin ob-panel-floating ob-offscreen-right" id="obPanelAdmin" style="display:none">
+        <div class="ob-title" style="font-size:2.2rem">ADMIN</div>
+        <div class="ob-sub">Geschützter Bereich</div>
+        <div id="obAdminForm">
+          <div class="field"><label>E-Mail</label><input type="email" id="adminEmail" class="modal-input" placeholder="E-Mail Adresse…" autocomplete="email"></div>
+          <div class="field"><label>Passwort</label><input type="password" id="adminPwd" class="modal-input" placeholder="Passwort…" autocomplete="current-password"></div>
+          <button class="btn-start" id="adminLoginBtn">ADMIN LOGIN →</button>
+          <div id="adminLoginStatus" style="text-align:center;margin-top:10px;font-size:.8rem"></div>
+        </div>
+        <button class="ob-link" id="obToUserLink">‹ Zurück zum Login</button>
+      </div>
     </div>
     <div style="margin-top:14px;text-align:center;font-size:.63rem;color:rgba(255,255,255,.3)">
       <a href="/privacy.html" target="_blank" style="color:rgba(255,255,255,.35);text-decoration:none">Datenschutz</a>
@@ -4774,10 +4790,7 @@ let adminCharts=[];
 function openAdminLogin(){
   $('app').style.display='none';
   $('onboarding').style.display='flex';document.body.classList.add('onboarding-active');
-  ['obTabReg','obTabLogin','obTabAdmin'].forEach(id=>$(id)?.classList.remove('active'));
-  $('obTabAdmin')?.classList.add('active');
-  $('obRegForm').style.display='none';$('obLoginForm').style.display='none';$('obAdminForm').style.display='';
-  const s=$('adminLoginStatus');if(s)s.textContent='';
+  if(typeof window.obShowAdmin==='function')window.obShowAdmin();
 }
 function openAdminPanel(){
   if(!isAdmin){openAdminLogin();return;}
@@ -5630,17 +5643,45 @@ function toggleTheme(){const i=(THEME_CLASSES.indexOf(getActiveTheme())+1)%THEME
 
 /* INIT */
 window.initApp=function(){
-  /* Auth-Tab-Umschalter */
-  const switchAuthTab=tab=>{
-    ['obTabReg','obTabLogin','obTabAdmin'].forEach(id=>$(id)?.classList.remove('active'));
-    $(tab)?.classList.add('active');
-    $('obRegForm').style.display=tab==='obTabReg'?'':'none';
-    $('obLoginForm').style.display=tab==='obTabLogin'?'':'none';
-    $('obAdminForm').style.display=tab==='obTabAdmin'?'':'none';
+  /* Login ↔ Registrieren (innerhalb Bereich 1, kein Slide) */
+  $('obToRegister')?.addEventListener('click',()=>{$('obLoginForm').style.display='none';$('obRegForm').style.display='';});
+  $('obToLoginFromReg')?.addEventListener('click',()=>{$('obRegForm').style.display='none';$('obLoginForm').style.display='';});
+  /* Bereich 1 (User) ↔ Bereich 2 (Admin) — simultaner Slide/Fade/Blur-Wechsel */
+  const OB_ANIM_MS=700;
+  const obShowAdmin=()=>{
+    const userP=$('obPanelUser'),adminP=$('obPanelAdmin');
+    if(!userP||!adminP||adminP.classList.contains('ob-onscreen'))return;
+    adminP.style.display='block';
+    adminP.classList.add('ob-panel-floating');
+    adminP.classList.remove('ob-onscreen');adminP.classList.add('ob-offscreen-right');
+    void adminP.offsetWidth;
+    userP.classList.remove('ob-onscreen');userP.classList.add('ob-offscreen-left');
+    adminP.classList.remove('ob-offscreen-right');adminP.classList.add('ob-onscreen');
+    setTimeout(()=>{
+      userP.style.display='none';
+      userP.classList.add('ob-panel-floating');
+      adminP.classList.remove('ob-panel-floating');
+    },OB_ANIM_MS);
+    const s=$('adminLoginStatus');if(s)s.textContent='';
   };
-  $('obTabReg')?.addEventListener('click',()=>switchAuthTab('obTabReg'));
-  $('obTabLogin')?.addEventListener('click',()=>switchAuthTab('obTabLogin'));
-  $('obTabAdmin')?.addEventListener('click',()=>switchAuthTab('obTabAdmin'));
+  const obShowUser=()=>{
+    const userP=$('obPanelUser'),adminP=$('obPanelAdmin');
+    if(!userP||!adminP||userP.classList.contains('ob-onscreen'))return;
+    userP.style.display='block';
+    userP.classList.add('ob-panel-floating');
+    userP.classList.remove('ob-onscreen');userP.classList.add('ob-offscreen-left');
+    void userP.offsetWidth;
+    adminP.classList.remove('ob-onscreen');adminP.classList.add('ob-offscreen-right');
+    userP.classList.remove('ob-offscreen-left');userP.classList.add('ob-onscreen');
+    setTimeout(()=>{
+      adminP.style.display='none';
+      adminP.classList.add('ob-panel-floating');
+      userP.classList.remove('ob-panel-floating');
+    },OB_ANIM_MS);
+  };
+  window.obShowAdmin=obShowAdmin;window.obShowUser=obShowUser;
+  $('obToAdminLink')?.addEventListener('click',obShowAdmin);
+  $('obToUserLink')?.addEventListener('click',obShowUser);
   /* Name → interne E-Mail (Nutzer sieht diese nie) */
   const nameToEmail=n=>n.toLowerCase().replace(/[^a-z0-9]/g,'')+'@rc.runconquer.app';
   /* Registrieren */
