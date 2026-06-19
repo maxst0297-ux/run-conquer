@@ -1397,6 +1397,7 @@ const drawer=$('drawer'),drawerBody=$('drawerBody');
 
 /* UTILS */
 function toast(msg){toastEl.textContent=msg;toastEl.style.opacity=1;setTimeout(()=>toastEl.style.opacity=0,2600)}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function beep(f,d=.1){try{const c=new(window.AudioContext||window.webkitAudioContext)();if(c.state==='suspended')c.resume();const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=f;g.gain.value=.08;o.start();o.stop(c.currentTime+d);}catch(e){}}
 function vib(ms){if(navigator.vibrate)navigator.vibrate(ms)}
 function showBoostInfo(){toast('⚡ Boosts verdoppeln deine Punkte für einen Lauf. Du erhältst '+CFG.ENERGY_MAX+' neue Boosts pro Woche.');}
@@ -1723,7 +1724,7 @@ function renderPowerRankings(){
     const sorted=[...allPlayers].sort((a,b)=>b[field]-a[field]);
     const rows=sorted.slice(0,4).map((p,i)=>{
       const pos=i+1,medal=['🥇','🥈','🥉','4.'][i]||'';
-      return`<div class="prank-row"><span class="prank-pos ${p.isMe?'me':''}">${medal||pos}</span><span style="font-size:1rem">${p.avatar}</span><span style="flex:1;font-size:.8rem;${p.isMe?'font-weight:700;color:var(--primary)':''}">${p.name}</span><span class="prank-val">${fmt(p[field])}</span></div>`;
+      return`<div class="prank-row"><span class="prank-pos ${p.isMe?'me':''}">${medal||pos}</span><span style="font-size:1rem">${esc(p.avatar)}</span><span style="flex:1;font-size:.8rem;${p.isMe?'font-weight:700;color:var(--primary)':''}">${esc(p.name)}</span><span class="prank-val">${fmt(p[field])}</span></div>`;
     }).join('');
     return`<div class="prank-section"><div class="prank-title">${title}</div>${rows}</div>`;
   }
@@ -1742,7 +1743,7 @@ function renderClubCommunity(){
   el.innerHTML=`<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">
     ${wappenHtml}
     <div style="flex:1;min-width:0">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:.5px">${userClub.name}</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:.5px">${esc(userClub.name)}</div>
       <div id="clubCommStats" style="font-size:.65rem;color:var(--muted)">Lade Mitglieder…</div>
     </div>
     <span style="font-family:'Bebas Neue',sans-serif;font-size:.85rem;background:rgba(var(--primary-rgb),.12);color:var(--primary);border:1px solid rgba(var(--primary-rgb),.25);border-radius:8px;padding:3px 9px;cursor:pointer;flex-shrink:0" onclick="navigator.clipboard?.writeText('${code}').then(()=>toast('📋 Code kopiert')).catch(()=>toast('Code: ${code}'))">${code}</span>
@@ -1765,9 +1766,9 @@ function renderClubCommunity(){
         const col=p.user_color||'#e8ff47';
         return `<div class="club-member-row" data-idx="${i}" style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation">
           <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:${i<3?'var(--primary)':'var(--muted)'};width:22px;text-align:center;flex-shrink:0">${ranks[i]||i+1+'.'}</div>
-          <div style="width:38px;height:38px;border-radius:50%;background:${col}22;border:2px solid ${col}66;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">${p.user_avatar||'🏃'}</div>
+          <div style="width:38px;height:38px;border-radius:50%;background:${esc(col)}22;border:2px solid ${esc(col)}66;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">${esc(p.user_avatar||'🏃')}</div>
           <div style="flex:1;min-width:0">
-            <div style="font-size:.82rem;font-weight:600;color:${isMe?'var(--primary)':'var(--text)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.player_name||'Läufer'}${isMe?' ✦':''}</div>
+            <div style="font-size:.82rem;font-weight:600;color:${isMe?'var(--primary)':'var(--text)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.player_name||'Läufer')}${isMe?' ✦':''}</div>
             <div style="font-size:.63rem;color:var(--muted);margin-top:1px">${(p.total_km||0).toFixed(1)} km · ${p.total_conquered||0} Gebiete · ${p.streak_days||0}🔥</div>
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0">
@@ -2166,8 +2167,8 @@ async function loadFraktionMembers(teamId,container){
     const tm=TEAMS.find(t=>t.id===teamId);
     container.innerHTML=list.map((p,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
       <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--muted);width:20px;text-align:center;flex-shrink:0">${i+1}</div>
-      <div style="width:32px;height:32px;border-radius:50%;background:${p.user_color||'#e8ff47'}33;border:2px solid ${p.user_color||'#e8ff47'}66;display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0">${p.user_avatar||'🏃'}</div>
-      <div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600;color:${p.user_id===userId?'var(--primary)':'var(--text)'}">${p.player_name}${p.user_id===userId?' ✦':''}</div><div style="font-size:.65rem;color:var(--muted)">${(p.total_km||0).toFixed(1)} km · ${p.total_conquered||0} Gebiete</div></div>
+      <div style="width:32px;height:32px;border-radius:50%;background:${esc(p.user_color||'#e8ff47')}33;border:2px solid ${esc(p.user_color||'#e8ff47')}66;display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0">${esc(p.user_avatar||'🏃')}</div>
+      <div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600;color:${p.user_id===userId?'var(--primary)':'var(--text)'}">${esc(p.player_name)}${p.user_id===userId?' ✦':''}</div><div style="font-size:.65rem;color:var(--muted)">${(p.total_km||0).toFixed(1)} km · ${p.total_conquered||0} Gebiete</div></div>
       <div style="font-family:'Bebas Neue',sans-serif;color:${tm?.color||'var(--primary)'};font-size:.95rem;flex-shrink:0">${p.points||0}</div>
     </div>`).join('');
   }catch(e){container.innerHTML=`<div style="padding:12px;color:var(--muted);font-size:.75rem;text-align:center">Mitglieder nicht geladen</div>`;}
@@ -2184,8 +2185,8 @@ async function loadClubMembers(clubCode,container){
     if(!list.length){container.innerHTML='<div style="padding:10px;color:var(--muted);font-size:.75rem;text-align:center">Noch keine Mitglieder — teile deinen Club-Code!</div>';return;}
     container.innerHTML=list.map((p,i)=>`<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border)">
       <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--muted);width:18px;text-align:center;flex-shrink:0">${i+1}</div>
-      <div style="width:34px;height:34px;border-radius:50%;background:${p.user_color||'#e8ff47'}33;border:2px solid ${p.user_color||'#e8ff47'}66;display:flex;align-items:center;justify-content:center;font-size:.95rem;flex-shrink:0">${p.user_avatar||'🏃'}</div>
-      <div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600;color:${p.user_id===userId?'var(--primary)':'var(--text)'}">${p.player_name}${p.user_id===userId?' ✦':''}</div><div style="font-size:.65rem;color:var(--muted)">${(p.total_km||0).toFixed(1)} km · ${p.streak_days||0}🔥</div></div>
+      <div style="width:34px;height:34px;border-radius:50%;background:${esc(p.user_color||'#e8ff47')}33;border:2px solid ${esc(p.user_color||'#e8ff47')}66;display:flex;align-items:center;justify-content:center;font-size:.95rem;flex-shrink:0">${esc(p.user_avatar||'🏃')}</div>
+      <div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600;color:${p.user_id===userId?'var(--primary)':'var(--text)'}">${esc(p.player_name)}${p.user_id===userId?' ✦':''}</div><div style="font-size:.65rem;color:var(--muted)">${(p.total_km||0).toFixed(1)} km · ${p.streak_days||0}🔥</div></div>
       <div style="font-family:'Bebas Neue',sans-serif;color:var(--primary);font-size:.95rem;flex-shrink:0">${p.points||0} Pts</div>
     </div>`).join('');
   }catch(e){container.innerHTML=`<div style="padding:10px;color:var(--muted);font-size:.75rem;text-align:center">Mitglieder nicht geladen</div>`;}
@@ -2202,9 +2203,9 @@ function showPublicProfile(p){
     <div style="width:38px;height:4px;background:var(--border);border-radius:4px;margin:12px auto 18px"></div>
     <div style="padding:0 20px 24px">
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
-        <div style="width:58px;height:58px;border-radius:50%;background:${col}22;border:2.5px solid ${col};display:flex;align-items:center;justify-content:center;font-size:1.7rem;flex-shrink:0">${p.user_avatar||'🏃'}</div>
+        <div style="width:58px;height:58px;border-radius:50%;background:${esc(col)}22;border:2.5px solid ${esc(col)};display:flex;align-items:center;justify-content:center;font-size:1.7rem;flex-shrink:0">${esc(p.user_avatar||'🏃')}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.5px;color:var(--text)">${p.player_name||'Läufer'}</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.5px;color:var(--text)">${esc(p.player_name||'Läufer')}</div>
           <div style="font-size:.7rem;color:var(--muted)">${p.streak_days||0} Tage Streak 🔥</div>
         </div>
       </div>
@@ -2306,7 +2307,7 @@ function showOnboardingOverlay(){
     }
     if(step===1){
       ov.innerHTML=`<div style="max-width:380px;width:100%;animation:modalIn .3s ease">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:2.4rem;color:#e8ff47;text-align:center;letter-spacing:2px;margin-bottom:6px">WILLKOMMEN, ${playerName.toUpperCase()}!</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:2.4rem;color:#e8ff47;text-align:center;letter-spacing:2px;margin-bottom:6px">WILLKOMMEN, ${esc(playerName.toUpperCase())}!</div>
         <div style="font-size:.85rem;color:rgba(255,255,255,.6);text-align:center;margin-bottom:24px">Wähle deine Fraktion — sie bestimmt deine Farben und Community.</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
           ${TEAMS.map(tm=>`<button class="ob-frak-btn" data-tid="${tm.id}" style="padding:16px 10px;border-radius:16px;border:2px solid ${userTeam===tm.id?tm.color:'rgba(255,255,255,.12)'};background:${userTeam===tm.id?tm.color+'22':'rgba(255,255,255,.04)'};cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;transition:.2s;-webkit-user-select:none;user-select:none;touch-action:manipulation">
@@ -2758,7 +2759,7 @@ function renderLandmarks(){
   landmarkLayer.clearLayers();
   landmarks.forEach(lm=>{
     const captured=capturedLandmarks.includes(lm.id);
-    const shortName=lm.name.length>14?lm.name.slice(0,14)+'…':lm.name;
+    const shortName=esc(lm.name.length>14?lm.name.slice(0,14)+'…':lm.name);
     const iconHtml=captured
       ?`<div style="display:flex;flex-direction:column;align-items:center;gap:1px"><div style="background:${userColor};border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;box-shadow:0 0 8px ${userColor}80;color:#0A0E1A;font-weight:700">✓</div></div>`
       :`<div style="display:flex;flex-direction:column;align-items:center;gap:2px"><div style="background:rgba(255,215,0,.15);border:1.5px solid #ffd700;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 0 12px #ffd70055;animation:blink 2.5s ease-in-out infinite">⭐</div><div style="background:rgba(0,0,0,.75);color:#ffd700;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;white-space:nowrap;letter-spacing:.3px">${shortName}</div></div>`;
@@ -2766,7 +2767,7 @@ function renderLandmarks(){
     const anchor=captured?[11,11]:[14,22];
     const icon=L.divIcon({html:iconHtml,className:'',iconSize:sz,iconAnchor:anchor});
     L.marker([lm.lat,lm.lng],{icon})
-      .bindPopup(`<b>${lm.name}</b><br><span style="font-size:.72rem;color:#6b6b82">${lm.type}</span>${captured?'<br><span style="color:#10b981;font-size:.72rem">✅ Entdeckt</span>':'<br><span style="font-size:.72rem;color:#ffd700">⭐ Nähern: 50 m</span>'}`)
+      .bindPopup(`<b>${esc(lm.name)}</b><br><span style="font-size:.72rem;color:#6b6b82">${esc(lm.type)}</span>${captured?'<br><span style="color:#10b981;font-size:.72rem">✅ Entdeckt</span>':'<br><span style="font-size:.72rem;color:#ffd700">⭐ Nähern: 50 m</span>'}`)
       .addTo(landmarkLayer);
     if(!captured){
       L.circle([lm.lat,lm.lng],{radius:50,color:'#ffd700',fillColor:'#ffd700',fillOpacity:.04,weight:1,opacity:.25,dashArray:'4 4'}).addTo(landmarkLayer);
@@ -2825,9 +2826,9 @@ function renderTerr(){
         const rarCol=RARITY_COLORS[rar]||'';
         const ownerTeam=own?userTeam:(botOwner?botOwner.team||'':t.ownerTeam||'');
         const teamInfo=TEAMS.find(tm=>tm.id===ownerTeam);
-        const ownerName=own?playerName:(botOwner?botOwner.name:t.ownerName||'Unbekannt');
+        const ownerName=esc(own?playerName:(botOwner?botOwner.name:t.ownerName||'Unbekannt'));
         const areaRnd=t.area>=1000?`${(t.area/1000).toFixed(2)} km²`:`${Math.round(t.area)} m²`;
-        const terrName=t.customName||`Gebiet #${(t.id||'').slice(-4)}`;
+        const terrName=esc(t.customName||`Gebiet #${(t.id||'').slice(-4)}`);
         const decayMins=Math.max(0,Math.round(t.defense/(CFG.DECAY_PER_DAY/24/60)));
         /* Header */
         let h=`<div style="font-family:'Bebas Neue',sans-serif;font-size:1.05rem;letter-spacing:1px;color:${own?userColor:'#ff6666'}">${own?'🔵':'🔴'} ${terrName}</div>`;
@@ -2863,7 +2864,7 @@ function renderTerr(){
           h+=`</div>`;
         }
         const terrLms=(t.landmarkIds||[]).map(lid=>landmarks.find(l=>l.id===lid)).filter(Boolean);
-        if(terrLms.length){h+=`<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><div style="font-size:.6rem;font-weight:700;letter-spacing:1px;color:#ffd700;margin-bottom:4px">⭐ WAHRZEICHEN</div>${terrLms.map(lm=>`<div style="font-size:.72rem;color:var(--text);padding:1px 0">• ${lm.name}</div>`).join('')}</div>`;}
+        if(terrLms.length){h+=`<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><div style="font-size:.6rem;font-weight:700;letter-spacing:1px;color:#ffd700;margin-bottom:4px">⭐ WAHRZEICHEN</div>${terrLms.map(lm=>`<div style="font-size:.72rem;color:var(--text);padding:1px 0">• ${esc(lm.name)}</div>`).join('')}</div>`;}
         return h;
       })
       .addTo(terrLayer);
@@ -3342,7 +3343,7 @@ function showPostRun(rec){
   $('postSplits').innerHTML=rec.splits?.length?`<div class="splits-table"><div class="split-hdr"><span>KM</span><span>Pace</span><span>Zeit</span></div>${rec.splits.map(s=>`<div class="split-row"><span>${s.km}</span><span>${s.pace}</span><span>${fmtTime(s.splitSecs)}</span></div>`).join('')}</div>`:'';
   $('postSong').innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--card);border-radius:12px;color:var(--muted);font-size:.82rem"><i class="fas fa-music" style="color:var(--primary)"></i> Song wird analysiert…</div>`;
   setTimeout(()=>{const s=fallbackSong();$('postSong').innerHTML=`<div style="background:var(--card);border-radius:12px;padding:14px"><div style="font-size:.6rem;text-transform:uppercase;letter-spacing:2px;color:var(--primary);margin-bottom:6px">🎵 Dein Lauf-Song</div><div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem">${s.title}</div><div style="color:var(--muted);font-size:.75rem;margin-bottom:6px">${s.artist} · ${s.bpm} BPM</div><div style="font-size:.72rem;color:var(--muted)">${s.reason}</div></div>`;},1200);
-  const inflHTML=(sessionNewTerrNames.length||sessionNewLandmarks.length)?`<div style="background:rgba(var(--primary-rgb),.06);border:1px solid rgba(var(--primary-rgb),.2);border-radius:14px;padding:14px;margin-bottom:10px"><div style="font-size:.6rem;font-weight:700;letter-spacing:1.5px;color:var(--primary);margin-bottom:8px">🗺️ DEIN EINFLUSS</div>${sessionNewTerrNames.map(n=>`<div style="display:flex;align-items:center;gap:6px;font-size:.8rem;margin-bottom:4px"><span style="width:8px;height:8px;border-radius:50%;background:${userColor};flex-shrink:0;display:inline-block"></span>${n}</div>`).join('')}${sessionNewLandmarks.map(n=>`<div style="display:flex;align-items:center;gap:6px;font-size:.8rem;margin-bottom:4px"><span style="color:#ffd700">⭐</span>${n}</div>`).join('')}</div>`:'';
+  const inflHTML=(sessionNewTerrNames.length||sessionNewLandmarks.length)?`<div style="background:rgba(var(--primary-rgb),.06);border:1px solid rgba(var(--primary-rgb),.2);border-radius:14px;padding:14px;margin-bottom:10px"><div style="font-size:.6rem;font-weight:700;letter-spacing:1.5px;color:var(--primary);margin-bottom:8px">🗺️ DEIN EINFLUSS</div>${sessionNewTerrNames.map(n=>`<div style="display:flex;align-items:center;gap:6px;font-size:.8rem;margin-bottom:4px"><span style="width:8px;height:8px;border-radius:50%;background:${userColor};flex-shrink:0;display:inline-block"></span>${esc(n)}</div>`).join('')}${sessionNewLandmarks.map(n=>`<div style="display:flex;align-items:center;gap:6px;font-size:.8rem;margin-bottom:4px"><span style="color:#ffd700">⭐</span>${esc(n)}</div>`).join('')}</div>`:'';
   $('postInfluence').innerHTML=inflHTML;
   $('postRunModal').style.display='flex';
   document.getElementById('cardRunBtn')?.addEventListener('click',()=>{shareRunCard(rec,rec.path||[]);},{ once:true });
@@ -3609,7 +3610,7 @@ async function loadStravaActivitiesUI(){
       const hr=a.average_heartrate?`· ♥ ${Math.round(a.average_heartrate)} bpm`:'';
       return`<div class="strava-act-row" data-id="${a.id}" data-dist="${a.distance}" data-dur="${a.moving_time}" data-date="${new Date(a.start_date_local||a.start_date).getTime()}" data-hr="${Math.round(a.average_heartrate||0)}">
         <div style="flex:1;min-width:0">
-          <div style="font-size:.8rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.name||'Lauf'}</div>
+          <div style="font-size:.8rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.name||'Lauf')}</div>
           <div style="font-size:.68rem;color:var(--muted)">${ds} · ${km} km · ${t} ${hr}</div>
         </div>
         <button class="btn btn-p strava-imp-btn" style="font-size:.7rem;padding:5px 10px;flex-shrink:0">Import</button>
@@ -3663,7 +3664,7 @@ async function renderFriends(){
     try{const{data}=await sb.from('profiles').select('id,player_name,points,user_team').in('id',friends.map(f=>f.uid));
     const ranked=(data||[]).sort((a,b)=>(b.points||0)-(a.points||0));
     const rl=document.getElementById('friendsRankList');
-    if(rl)rl.innerHTML=ranked.map((f,i)=>{const tm=TEAMS.find(t=>t.id===f.user_team);return`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)"><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--muted);width:20px">${i+1}</span><div style="width:32px;height:32px;border-radius:50%;background:${tm?tm.color+'22':'var(--card)'};display:flex;align-items:center;justify-content:center;font-size:.9rem">${tm?tm.icon:'👤'}</div><span style="flex:1;font-size:.82rem">${f.player_name||'?'}</span><span style="font-family:'Bebas Neue',sans-serif;color:var(--primary)">${f.points||0} Pts</span><button class="btn" style="padding:3px 8px;font-size:.62rem;color:var(--muted);border-color:var(--muted)" onclick="friends=friends.filter(x=>x.uid!=='${f.id}');saveProfile();renderFriends()">✕</button></div>`;}).join('')||'<div style="color:var(--muted);font-size:.75rem;padding:8px">Freunde-Daten nicht verfügbar</div>';}catch(e){}}
+    if(rl)rl.innerHTML=ranked.map((f,i)=>{const tm=TEAMS.find(t=>t.id===f.user_team);return`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)"><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--muted);width:20px">${i+1}</span><div style="width:32px;height:32px;border-radius:50%;background:${tm?tm.color+'22':'var(--card)'};display:flex;align-items:center;justify-content:center;font-size:.9rem">${tm?tm.icon:'👤'}</div><span style="flex:1;font-size:.82rem">${esc(f.player_name||'?')}</span><span style="font-family:'Bebas Neue',sans-serif;color:var(--primary)">${f.points||0} Pts</span><button class="btn" style="padding:3px 8px;font-size:.62rem;color:var(--muted);border-color:var(--muted)" onclick="friends=friends.filter(x=>x.uid!=='${f.id}');saveProfile();renderFriends()">✕</button></div>`;}).join('')||'<div style="color:var(--muted);font-size:.75rem;padding:8px">Freunde-Daten nicht verfügbar</div>';}catch(e){}}
 }
 /* CLUB WARS */
 async function renderClubWars(){
@@ -3679,7 +3680,7 @@ async function renderClubWars(){
     // Add own club if not already
     if(userClub&&!wars[userClub.code]){wars[userClub.code]={name:userClub.name,code:userClub.code,totalPts:points,members:1};}
     const sorted=Object.values(wars).sort((a,b)=>b.totalPts-a.totalPts).slice(0,8);
-    el.innerHTML=sorted.length?sorted.map((c,i)=>`<div class="list-row" style="gap:8px"><span style="font-family:'Bebas Neue',sans-serif;color:var(--muted);width:20px">${i+1}</span><span style="flex:1;font-size:.82rem;font-weight:${c.code===userClub?.code?700:400}">${c.name}${c.code===userClub?.code?' 👈':''}</span><span style="font-size:.68rem;color:var(--muted)">${c.members} Mitgl.</span><span style="font-family:'Bebas Neue',sans-serif;color:var(--primary)">${c.totalPts.toLocaleString()} Pts</span></div>`).join(''):'<div style="color:var(--muted);font-size:.75rem">Keine Daten verfügbar</div>';
+    el.innerHTML=sorted.length?sorted.map((c,i)=>`<div class="list-row" style="gap:8px"><span style="font-family:'Bebas Neue',sans-serif;color:var(--muted);width:20px">${i+1}</span><span style="flex:1;font-size:.82rem;font-weight:${c.code===userClub?.code?700:400}">${esc(c.name)}${c.code===userClub?.code?' 👈':''}</span><span style="font-size:.68rem;color:var(--muted)">${c.members} Mitgl.</span><span style="font-family:'Bebas Neue',sans-serif;color:var(--primary)">${c.totalPts.toLocaleString()} Pts</span></div>`).join(''):'<div style="color:var(--muted);font-size:.75rem">Keine Daten verfügbar</div>';
   }catch(e){el.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:6px">Club Wars nicht verfügbar</div>';}
 }
 /* COMMUNITY */
@@ -3710,11 +3711,11 @@ function updateCommunity(){
     }).sort((a,b)=>b.total-a.total);
     teamEl.innerHTML=teamStats.map((tm,i)=>`<div class="list-row"><span style="font-size:1.1rem;width:24px">${['🥇','🥈','🥉','4.'][i]||''}</span><span style="font-size:1.1rem">${tm.icon}</span><span class="row-txt" style="color:${tm.color};font-weight:700">${tm.name}</span><span style="font-size:.72rem;color:var(--muted)">${tm.terrCount} Gebiete</span><span style="font-family:'Bebas Neue',sans-serif;color:${tm.color}">${tm.total} Pts</span></div>`).join('');
   }
-  $('bigTerrList').innerHTML=[...territories].sort((a,b)=>(b.area||0)-(a.area||0)).slice(0,5).map(t=>`<div class="list-row"><div class="terr-dot" style="background:${t.owner===userId?userColor:t.color}"></div><span class="row-txt">${t.customName||'Unbenannt'}</span><span class="muted" style="font-size:.72rem">${Math.round(t.area||0)} m²</span><span class="terr-owner" style="color:${t.owner===userId?'var(--primary)':'var(--red)'}">${t.owner===userId?'Deins':'Feind'}</span></div>`).join('')||'<div class="muted" style="padding:8px">Keine Gebiete</div>';
+  $('bigTerrList').innerHTML=[...territories].sort((a,b)=>(b.area||0)-(a.area||0)).slice(0,5).map(t=>`<div class="list-row"><div class="terr-dot" style="background:${t.owner===userId?userColor:t.color}"></div><span class="row-txt">${esc(t.customName||'Unbenannt')}</span><span class="muted" style="font-size:.72rem">${Math.round(t.area||0)} m²</span><span class="terr-owner" style="color:${t.owner===userId?'var(--primary)':'var(--red)'}">${t.owner===userId?'Deins':'Feind'}</span></div>`).join('')||'<div class="muted" style="padding:8px">Keine Gebiete</div>';
   if(userMarker){
     const pos=userMarker.getLatLng();
     const near=territories.map(t=>{try{const c=turf.centroid(turf.feature(t.polygon));return{...t,d:turf.distance(turf.point([pos.lng,pos.lat]),c,{units:'meters'})};}catch(e){return{...t,d:99999}}}).sort((a,b)=>a.d-b.d).slice(0,6);
-    $('nearTerrList').innerHTML=near.map(t=>`<div class="list-row" style="cursor:pointer" onclick="window.flyTo('${t.id}')"><div class="terr-dot" style="background:${t.owner===userId?userColor:t.owner.startsWith('rival')?'var(--red)':'var(--muted)'}"></div><span class="row-txt">${t.customName||'Unbenannt'}</span><span class="muted" style="font-size:.72rem">${Math.round(t.d)} m</span><span class="terr-owner" style="color:${t.owner===userId?'var(--primary)':t.owner.startsWith('rival')?'var(--red)':'var(--muted)'}">${t.owner===userId?'Deins':t.owner.startsWith('rival')?'Feind':'Neutral'}</span><button class="terr-fly">→ Karte</button></div>`).join('')||'<div class="muted" style="padding:8px">Keine in der Nähe</div>';
+    $('nearTerrList').innerHTML=near.map(t=>`<div class="list-row" style="cursor:pointer" onclick="window.flyTo('${t.id}')"><div class="terr-dot" style="background:${t.owner===userId?userColor:t.owner.startsWith('rival')?'var(--red)':'var(--muted)'}"></div><span class="row-txt">${esc(t.customName||'Unbenannt')}</span><span class="muted" style="font-size:.72rem">${Math.round(t.d)} m</span><span class="terr-owner" style="color:${t.owner===userId?'var(--primary)':t.owner.startsWith('rival')?'var(--red)':'var(--muted)'}">${t.owner===userId?'Deins':t.owner.startsWith('rival')?'Feind':'Neutral'}</span><button class="terr-fly">→ Karte</button></div>`).join('')||'<div class="muted" style="padding:8px">Keine in der Nähe</div>';
   }
 }
 window.flyTo=function(id){const t=territories.find(t=>t.id===id);if(!t)return;try{const c=turf.centroid(turf.feature(t.polygon)).geometry.coordinates;mapL.setView([c[1],c[0]],16);setView('map');}catch(e){}};
@@ -3844,11 +3845,11 @@ async function renderLeaderboard(){
       const following=!isMe&&isFollowing(r.user_id);
       return`<div class="list-row" style="background:${isMe?'rgba(232,255,71,.06)':''}">
         <span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:${i<3?'var(--primary)':'var(--muted)'};width:22px;flex-shrink:0">${i<3?medals[i]:i+1}</span>
-        <span class="row-icon" style="font-size:1.2rem">${r.user_avatar||'🏃'}</span>
-        <div class="row-txt"><b style="color:${isMe?'var(--primary)':'var(--text)'}">${r.player_name}</b>
+        <span class="row-icon" style="font-size:1.2rem">${esc(r.user_avatar||'🏃')}</span>
+        <div class="row-txt"><b style="color:${isMe?'var(--primary)':'var(--text)'}">${esc(r.player_name)}</b>
         <div style="font-size:.65rem;color:var(--muted)">${r.total_conquered||0} Gebiete · ${(r.total_km||0).toFixed(1)} km</div></div>
         <span style="font-family:'Bebas Neue',sans-serif;color:var(--primary);margin-left:auto">${r.points}</span>
-        ${!isMe?`<button class="follow-btn${following?' following':''}" data-uid="${r.user_id}" data-name="${r.player_name}" data-av="${r.user_avatar||'🏃'}">${following?'✓ Folge':'+ Folgen'}</button>`:''}
+        ${!isMe?`<button class="follow-btn${following?' following':''}" data-uid="${r.user_id}" data-name="${esc(r.player_name)}" data-av="${esc(r.user_avatar||'🏃')}">${following?'✓ Folge':'+ Folgen'}</button>`:''}
       </div>`;
     }).join('');
     lb.querySelectorAll('.follow-btn').forEach(btn=>{
@@ -3868,7 +3869,7 @@ async function renderLeaderboard(){
     ].sort((a,b)=>b.pts-a.pts);
     lb.innerHTML=board.map((r,i)=>{
       const isMe=r.name===(playerName||'Du');
-      return`<div class="list-row" style="background:${isMe?'rgba(232,255,71,.05)':''}"><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:${i<3?'var(--primary)':'var(--muted)'};width:22px">${i<3?medals[i]:i+1}</span><span class="row-icon">${r.av}</span><div class="row-txt"><b style="color:${isMe?'var(--primary)':'var(--text)'}">${r.name}</b><div style="font-size:.65rem;color:var(--muted)">${r.terr} Gebiete · ${r.km} km</div></div><span style="font-family:'Bebas Neue',sans-serif;color:var(--primary)">${r.pts}</span></div>`;
+      return`<div class="list-row" style="background:${isMe?'rgba(232,255,71,.05)':''}"><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:${i<3?'var(--primary)':'var(--muted)'};width:22px">${i<3?medals[i]:i+1}</span><span class="row-icon">${esc(r.av)}</span><div class="row-txt"><b style="color:${isMe?'var(--primary)':'var(--text)'}">${esc(r.name)}</b><div style="font-size:.65rem;color:var(--muted)">${r.terr} Gebiete · ${r.km} km</div></div><span style="font-family:'Bebas Neue',sans-serif;color:var(--primary)">${r.pts}</span></div>`;
     }).join('');
   }
 }
@@ -3899,7 +3900,7 @@ function renderSocialFeed(){
 function renderSettingsTab(tab){
   const body=$('settingsBody');
   if(tab==='profil'){
-    body.innerHTML=`<div class="field"><label>Name</label><input type="text" id="setName" class="modal-input" value="${playerName||''}"></div><div class="field"><label>Avatar</label><div class="avatar-row" id="setAvatarRow"></div></div><button class="btn btn-p" id="saveSetProfil" style="width:100%">Speichern</button><button id="logoutBtn" style="width:100%;margin-top:8px;background:none;border:1px solid #ff4d6d;color:#ff4d6d;border-radius:12px;padding:12px;font-size:.85rem;font-family:'Poppins',sans-serif;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent">🚪 Abmelden</button>`;
+    body.innerHTML=`<div class="field"><label>Name</label><input type="text" id="setName" class="modal-input" value="${esc(playerName||'')}"></div><div class="field"><label>Avatar</label><div class="avatar-row" id="setAvatarRow"></div></div><button class="btn btn-p" id="saveSetProfil" style="width:100%">Speichern</button><button id="logoutBtn" style="width:100%;margin-top:8px;background:none;border:1px solid #ff4d6d;color:#ff4d6d;border-radius:12px;padding:12px;font-size:.85rem;font-family:'Poppins',sans-serif;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent">🚪 Abmelden</button>`;
     const setAvatarRow=$('setAvatarRow');
     setAvatarRow.innerHTML=`<div style="display:flex;align-items:center;gap:12px">
   <div id="setAvatarPreview" style="width:54px;height:54px;border-radius:50%;background:var(--bg2);border:2px solid var(--border);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center">${avatarHTML(54)}</div>
@@ -3967,12 +3968,12 @@ function renderSettingsTab(tab){
     const CLUB_ICONS=['⚔️','🔥','❄️','⚡','🌑','🦅','🐺','🏔️','🌊','🌟'];
     if(userClub){
       const wHtml=crestSVG(userClub.wappen||{},86);
-      body.innerHTML=`<div class="club-card-info" style="align-items:center;gap:14px"><div style="flex-shrink:0">${wHtml}</div><div style="flex:1"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:1px">${userClub.name}</div><div style="font-size:.68rem;color:var(--muted)">Gegründet ${new Date(userClub.foundedAt).toLocaleDateString('de')}</div></div></div><div id="clubMemberList" style="margin:10px 0"></div><div style="font-size:.75rem;color:var(--muted);margin-bottom:4px;text-align:center">Club-Code (antippen zum Kopieren)</div><div class="club-code-box" id="clubCodeBox">${userClub.code}</div><div style="font-size:.65rem;color:var(--muted);text-align:center;margin-bottom:14px">Teile diesen Code mit anderen Spielern</div><button class="btn" id="leaveClubBtn" style="width:100%;border-color:var(--red);color:var(--red)"><i class="fas fa-sign-out-alt"></i> Club verlassen</button>`;
+      body.innerHTML=`<div class="club-card-info" style="align-items:center;gap:14px"><div style="flex-shrink:0">${wHtml}</div><div style="flex:1"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:1px">${esc(userClub.name)}</div><div style="font-size:.68rem;color:var(--muted)">Gegründet ${new Date(userClub.foundedAt).toLocaleDateString('de')}</div></div></div><div id="clubMemberList" style="margin:10px 0"></div><div style="font-size:.75rem;color:var(--muted);margin-bottom:4px;text-align:center">Club-Code (antippen zum Kopieren)</div><div class="club-code-box" id="clubCodeBox">${esc(userClub.code)}</div><div style="font-size:.65rem;color:var(--muted);text-align:center;margin-bottom:14px">Teile diesen Code mit anderen Spielern</div><button class="btn" id="leaveClubBtn" style="width:100%;border-color:var(--red);color:var(--red)"><i class="fas fa-sign-out-alt"></i> Club verlassen</button>`;
       $('clubCodeBox')?.addEventListener('click',()=>{navigator.clipboard?.writeText(userClub.code).then(()=>toast('📋 Code kopiert: '+userClub.code)).catch(()=>toast('Code: '+userClub.code));});
       $('leaveClubBtn')?.addEventListener('click',()=>{if(!confirm('Club wirklich verlassen?'))return;userClub=null;saveProfile();renderSettingsTab('club');toast('Club verlassen');});
       loadClubMembers(userClub.code,document.getElementById('clubMemberList'));
       // Club Activity Feed
-      if(sb){(async()=>{try{const{data}=await sb.from('profiles').select('player_name,points,updated_at,user_team').eq('club_code',userClub.code).order('updated_at',{ascending:false}).limit(8);const feedEl=document.getElementById('clubMemberList');if(!feedEl||!data?.length)return;const feedDiv=document.createElement('div');feedDiv.style.cssText='margin-top:12px;border-top:1px solid var(--border);padding-top:10px';feedDiv.innerHTML='<div style="font-size:.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700;margin-bottom:6px">⚡ Letzte Aktivitäten</div>'+data.map(p=>{const tm=TEAMS.find(t=>t.id===p.user_team);const diff=Math.round((Date.now()-new Date(p.updated_at).getTime())/60000);const t=diff<1?'gerade':diff<60?`vor ${diff} Min.`:diff<1440?`vor ${Math.floor(diff/60)} Std.`:`vor ${Math.floor(diff/1440)} T.`;return`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:.75rem"><span>${tm?tm.icon:'👤'}</span><span style="flex:1">${p.player_name||'?'}</span><span style="color:var(--muted);font-size:.65rem">${t}</span></div>`;}).join('');feedEl.appendChild(feedDiv);}catch(e){}})();}
+      if(sb){(async()=>{try{const{data}=await sb.from('profiles').select('player_name,points,updated_at,user_team').eq('club_code',userClub.code).order('updated_at',{ascending:false}).limit(8);const feedEl=document.getElementById('clubMemberList');if(!feedEl||!data?.length)return;const feedDiv=document.createElement('div');feedDiv.style.cssText='margin-top:12px;border-top:1px solid var(--border);padding-top:10px';feedDiv.innerHTML='<div style="font-size:.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700;margin-bottom:6px">⚡ Letzte Aktivitäten</div>'+data.map(p=>{const tm=TEAMS.find(t=>t.id===p.user_team);const diff=Math.round((Date.now()-new Date(p.updated_at).getTime())/60000);const t=diff<1?'gerade':diff<60?`vor ${diff} Min.`:diff<1440?`vor ${Math.floor(diff/60)} Std.`:`vor ${Math.floor(diff/1440)} T.`;return`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:.75rem"><span>${tm?tm.icon:'👤'}</span><span style="flex:1">${esc(p.player_name||'?')}</span><span style="color:var(--muted);font-size:.65rem">${t}</span></div>`;}).join('');feedEl.appendChild(feedDiv);}catch(e){}})();}
     } else {
       let wCfg=window._clubDraft?JSON.parse(JSON.stringify(window._clubDraft)):Object.assign(JSON.parse(JSON.stringify(CREST_DEFAULT)),{name:''});
       window._clubDraft=wCfg;
@@ -4286,7 +4287,7 @@ async function loadAdminUsers(){
     const{data,error}=await sb.from('profiles').select('*').order('points',{ascending:false}).limit(50);
     if(error||!data)throw error||new Error('empty');
     if(!data.length){body.innerHTML='<div style="padding:16px;color:var(--muted);font-size:.8rem;text-align:center">Noch keine Sportler in der Datenbank</div>';return;}
-    body.innerHTML=`<div style="font-size:.65rem;color:var(--muted);padding:0 0 8px;text-transform:uppercase;letter-spacing:1px">${data.length} Sportler gesamt</div>`+data.map(u=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)"><span style="font-size:1.2rem">${u.user_avatar||'🏃'}</span><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.player_name||'Unbekannt'}</div><div style="font-size:.63rem;color:var(--muted)">${(u.total_km||0).toFixed(1)} km · ${u.total_conquered||0} Gebiete · 🔥${u.streak_days||0}</div></div><span style="font-family:'Bebas Neue',sans-serif;color:var(--primary);font-size:1rem;flex-shrink:0">${u.points||0}</span></div>`).join('');
+    body.innerHTML=`<div style="font-size:.65rem;color:var(--muted);padding:0 0 8px;text-transform:uppercase;letter-spacing:1px">${data.length} Sportler gesamt</div>`+data.map(u=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)"><span style="font-size:1.2rem">${esc(u.user_avatar||'🏃')}</span><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(u.player_name||'Unbekannt')}</div><div style="font-size:.63rem;color:var(--muted)">${(u.total_km||0).toFixed(1)} km · ${u.total_conquered||0} Gebiete · 🔥${u.streak_days||0}</div></div><span style="font-family:'Bebas Neue',sans-serif;color:var(--primary);font-size:1rem;flex-shrink:0">${u.points||0}</span></div>`).join('');
   }catch(e){
     body.innerHTML='<div style="padding:16px;color:var(--red);font-size:.8rem;text-align:center">⚠️ Fehler: '+e.message+'</div>';
   }
@@ -4298,7 +4299,7 @@ async function loadAdminMessages(){
     const{data,error}=await sb.from('support_messages').select('*').order('created_at',{ascending:false}).limit(50);
     if(error||!data)throw error||new Error('empty');
     if(!data.length){body.innerHTML='<div style="padding:16px;color:var(--muted);font-size:.8rem;text-align:center">Keine Nachrichten</div>';return;}
-    body.innerHTML=`<div style="font-size:.65rem;color:var(--muted);padding:0 0 8px;text-transform:uppercase;letter-spacing:1px">${data.length} Nachricht${data.length===1?'':'en'}</div>`+data.map(m=>{const d=new Date(m.created_at);const ds=d.toLocaleDateString('de',{day:'numeric',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('de',{hour:'2-digit',minute:'2-digit'});return`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px"><span style="font-weight:600;font-size:.8rem">${m.player_name||'Unbekannt'}</span><span style="font-size:.6rem;color:var(--muted)">${ds}</span></div><div style="font-size:.75rem;font-weight:600;color:var(--primary);margin-bottom:3px">${m.subject||'Kein Betreff'}</div><div style="font-size:.78rem;color:var(--text);line-height:1.5">${m.message}</div></div>`;}).join('');
+    body.innerHTML=`<div style="font-size:.65rem;color:var(--muted);padding:0 0 8px;text-transform:uppercase;letter-spacing:1px">${data.length} Nachricht${data.length===1?'':'en'}</div>`+data.map(m=>{const d=new Date(m.created_at);const ds=d.toLocaleDateString('de',{day:'numeric',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('de',{hour:'2-digit',minute:'2-digit'});return`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px"><span style="font-weight:600;font-size:.8rem">${esc(m.player_name||'Unbekannt')}</span><span style="font-size:.6rem;color:var(--muted)">${ds}</span></div><div style="font-size:.75rem;font-weight:600;color:var(--primary);margin-bottom:3px">${esc(m.subject||'Kein Betreff')}</div><div style="font-size:.78rem;color:var(--text);line-height:1.5">${esc(m.message)}</div></div>`;}).join('');
   }catch(e){
     body.innerHTML='<div style="padding:16px;color:var(--red);font-size:.8rem;text-align:center">⚠️ Keine Berechtigung oder Fehler: '+e.message+'</div>';
   }
@@ -4369,18 +4370,18 @@ async function loadAdminSupportMsgs(container){
 <div class="inbox-card-hdr" data-toggle="${m.id}">
   <div style="flex:1;min-width:0">
     <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px">
-      <span style="font-weight:700;font-size:.82rem">${m.player_name||'Unbekannt'}</span>
+      <span style="font-weight:700;font-size:.82rem">${esc(m.player_name||'Unbekannt')}</span>
       ${replied?'<span style="font-size:.58rem;background:#10b98122;color:#10b981;border:1px solid #10b98144;border-radius:10px;padding:1px 6px;flex-shrink:0">✓ Beantwortet</span>':'<span class="sup-new-badge" style="font-size:.58rem;background:var(--primary)22;color:var(--primary);border:1px solid var(--primary)44;border-radius:10px;padding:1px 6px;flex-shrink:0;font-weight:700">Neu</span>'}
     </div>
-    <div style="font-size:.73rem;font-weight:600;color:var(--primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.subject||'Kein Betreff'}</div>
+    <div style="font-size:.73rem;font-weight:600;color:var(--primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.subject||'Kein Betreff')}</div>
   </div>
   <span style="font-size:.6rem;color:var(--muted);flex-shrink:0;margin-left:8px">${ds} <i class="fas fa-chevron-down" style="font-size:.6rem"></i></span>
 </div>
 <div class="inbox-card-body" id="ibody-${m.id}" style="display:none">
-  <div style="font-size:.8rem;color:var(--text);line-height:1.6;background:var(--bg2);padding:10px;border-radius:8px;margin-bottom:10px;white-space:pre-line">${m.message}</div>
-  ${replied?`<div style="font-size:.75rem;color:#10b981;background:#10b98111;border:1px solid #10b98133;border-radius:8px;padding:8px 10px;margin-bottom:8px"><b>Deine Antwort:</b><br><span style="white-space:pre-line">${m.admin_reply}</span></div>`:''}
+  <div style="font-size:.8rem;color:var(--text);line-height:1.6;background:var(--bg2);padding:10px;border-radius:8px;margin-bottom:10px;white-space:pre-line">${esc(m.message)}</div>
+  ${replied?`<div style="font-size:.75rem;color:#10b981;background:#10b98111;border:1px solid #10b98133;border-radius:8px;padding:8px 10px;margin-bottom:8px"><b>Deine Antwort:</b><br><span style="white-space:pre-line">${esc(m.admin_reply)}</span></div>`:''}
   <div style="display:flex;gap:6px;align-items:flex-end">
-    <textarea id="ireply-${m.id}" class="modal-input" style="flex:1;resize:none;height:70px;font-family:'Poppins',sans-serif;font-size:.8rem;padding:8px" placeholder="${replied?'Antwort aktualisieren…':'Antwort verfassen…'}">${replied?m.admin_reply:''}</textarea>
+    <textarea id="ireply-${m.id}" class="modal-input" style="flex:1;resize:none;height:70px;font-family:'Poppins',sans-serif;font-size:.8rem;padding:8px" placeholder="${replied?'Antwort aktualisieren…':'Antwort verfassen…'}">${replied?esc(m.admin_reply):''}</textarea>
     <button class="btn btn-p" style="flex-shrink:0;padding:8px 14px;font-size:.8rem;touch-action:manipulation" data-reply="${m.id}">${replied?'✏️':'📨'}</button>
   </div>
 </div></div>
@@ -4518,8 +4519,8 @@ async function loadDmConvList(container){
         <div class="dm-conv-row sw-content" data-dmuid="${c.uid}" data-dmname="${encodeURIComponent(c.name)}" style="margin-bottom:0">
           <div style="width:38px;height:38px;border-radius:50%;background:${hasUnread?'var(--primary)22':'rgba(255,255,255,.06)'};display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;color:${hasUnread?'var(--primary)':'var(--muted)'};flex-shrink:0">${(c.name||'?')[0].toUpperCase()}</div>
           <div style="flex:1;min-width:0">
-            <div style="font-size:.82rem;color:${hasUnread?'var(--text)':'var(--muted)'}">${c.name}</div>
-            <div style="font-size:.72rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.last.from_uid===userId?'Du: ':''}${c.last.content}</div>
+            <div style="font-size:.82rem;color:${hasUnread?'var(--text)':'var(--muted)'}">${esc(c.name)}</div>
+            <div style="font-size:.72rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.last.from_uid===userId?'Du: ':''}${esc(c.last.content)}</div>
           </div>
           ${hasUnread?`<span style="background:var(--primary);color:#000;border-radius:50%;min-width:18px;height:18px;font-size:.6rem;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;flex-shrink:0">${c.unread}</span>`:'<i class="fas fa-chevron-right" style="color:var(--muted);font-size:.7rem;flex-shrink:0"></i>'}
         </div>
@@ -4554,7 +4555,7 @@ async function openDmThread(uid,name,backFn=null){
   body.innerHTML=`
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-shrink:0">
       <button id="dmBackBtn" class="btn" style="width:auto;padding:6px 12px;font-size:.8rem">←</button>
-      <div style="font-weight:700;font-size:.9rem;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${name}</div>
+      <div style="font-weight:700;font-size:.9rem;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${esc(name)}</div>
     </div>
     <div id="dmMsgs" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:2px;min-height:120px;padding-bottom:4px">
       <div style="padding:16px;text-align:center;color:var(--muted);font-size:.8rem">⏳</div>
@@ -4588,8 +4589,8 @@ async function loadDmMessages(uid){
       const mine=m.from_uid===userId;
       const ts=new Date(m.created_at).toLocaleTimeString('de',{hour:'2-digit',minute:'2-digit'});
       return`<div style="display:flex;flex-direction:column;align-items:${mine?'flex-end':'flex-start'}">
-        ${!mine?`<span style="font-size:.62rem;color:var(--muted);padding:0 5px;margin-bottom:2px;font-weight:600">${m.from_name}</span>`:''}
-        <div class="dm-bubble ${mine?'dm-bubble-me':'dm-bubble-them'}">${m.content}</div>
+        ${!mine?`<span style="font-size:.62rem;color:var(--muted);padding:0 5px;margin-bottom:2px;font-weight:600">${esc(m.from_name)}</span>`:''}
+        <div class="dm-bubble ${mine?'dm-bubble-me':'dm-bubble-them'}">${esc(m.content)}</div>
         <span style="font-size:.58rem;color:var(--muted);padding:0 4px;margin-bottom:4px">${ts}</span>
       </div>`;
     }).join('');
@@ -4618,8 +4619,8 @@ function openDmPicker(container){
   }
   el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><button id="dmPickBack" class="btn" style="width:auto;padding:6px 12px;font-size:.8rem">←</button><div style="font-weight:700;font-size:.9rem">Spieler wählen</div></div>`
     +followedUsers.map(f=>`<div class="dm-conv-row" data-dmuid="${f.uid}" data-dmname="${encodeURIComponent(f.name)}">
-      <div style="width:38px;height:38px;border-radius:50%;background:var(--primary)22;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">${f.av||'🏃'}</div>
-      <div style="flex:1"><div style="font-weight:700;font-size:.85rem">${f.name}</div><div style="font-size:.7rem;color:var(--muted)">Tippe zum Schreiben</div></div>
+      <div style="width:38px;height:38px;border-radius:50%;background:var(--primary)22;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">${esc(f.av||'🏃')}</div>
+      <div style="flex:1"><div style="font-weight:700;font-size:.85rem">${esc(f.name)}</div><div style="font-size:.7rem;color:var(--muted)">Tippe zum Schreiben</div></div>
       <i class="fas fa-chevron-right" style="color:var(--muted);font-size:.7rem"></i>
     </div>`).join('');
   document.getElementById('dmPickBack')?.addEventListener('click',()=>loadInbox());
@@ -4635,8 +4636,8 @@ async function loadArchiveView(container){
     const displayName=a.name||(f?f.name:a.uid);
     const initials=(displayName||'?')[0].toUpperCase();
     return`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:6px;cursor:pointer;touch-action:manipulation" data-arch-uid="${a.uid}" data-arch-name="${encodeURIComponent(displayName)}">
-      <div style="width:38px;height:38px;border-radius:50%;background:var(--primary)22;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;color:var(--primary);flex-shrink:0">${initials}</div>
-      <div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600">${displayName}</div><div style="font-size:.68rem;color:var(--muted)">📦 Chat archiviert · Tippen zum Öffnen</div></div>
+      <div style="width:38px;height:38px;border-radius:50%;background:var(--primary)22;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;color:var(--primary);flex-shrink:0">${esc(initials)}</div>
+      <div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600">${esc(displayName)}</div><div style="font-size:.68rem;color:var(--muted)">📦 Chat archiviert · Tippen zum Öffnen</div></div>
       <button class="btn" style="font-size:.65rem;padding:4px 10px;width:auto;flex-shrink:0" data-unarch-uid="${a.uid}" data-unarch-type="dm">↩</button>
     </div>`;
   }).join('');
@@ -4652,15 +4653,15 @@ async function loadArchiveView(container){
         return`<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:6px;overflow:hidden">
           <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer" data-sup-arch-toggle="${m.id}">
             <div style="font-size:1.1rem;flex-shrink:0">📨</div>
-            <div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600">${m.player_name||'Unbekannt'}</div><div style="font-size:.7rem;font-weight:600;color:var(--primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.subject||'Kein Betreff'}</div><div style="font-size:.62rem;color:var(--muted)">${ds}</div></div>
+            <div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600">${esc(m.player_name||'Unbekannt')}</div><div style="font-size:.7rem;font-weight:600;color:var(--primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.subject||'Kein Betreff')}</div><div style="font-size:.62rem;color:var(--muted)">${ds}</div></div>
             <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
               <button class="btn" style="font-size:.65rem;padding:4px 10px;width:auto" data-unarch-uid="${m.id}" data-unarch-type="sup">↩</button>
               <i class="fas fa-chevron-down" style="font-size:.6rem;color:var(--muted)"></i>
             </div>
           </div>
           <div id="sup-arch-body-${m.id}" style="display:none;padding:0 12px 12px">
-            <div style="font-size:.8rem;color:var(--text);line-height:1.6;background:var(--bg2);padding:10px;border-radius:8px;margin-bottom:${m.admin_reply?'8px':'0'};white-space:pre-line">${m.message||''}</div>
-            ${m.admin_reply?`<div style="font-size:.75rem;color:#10b981;background:#10b98111;border:1px solid #10b98133;border-radius:8px;padding:8px 10px"><b>Antwort:</b><br><span style="white-space:pre-line">${m.admin_reply}</span></div>`:''}
+            <div style="font-size:.8rem;color:var(--text);line-height:1.6;background:var(--bg2);padding:10px;border-radius:8px;margin-bottom:${m.admin_reply?'8px':'0'};white-space:pre-line">${esc(m.message||'')}</div>
+            ${m.admin_reply?`<div style="font-size:.75rem;color:#10b981;background:#10b98111;border:1px solid #10b98133;border-radius:8px;padding:8px 10px"><b>Antwort:</b><br><span style="white-space:pre-line">${esc(m.admin_reply)}</span></div>`:''}
           </div>
         </div>`;
       }).join('');
@@ -4851,7 +4852,7 @@ function updateProfile(){
     const badgeDiv=document.createElement('div');badgeDiv.className='pv-extra-badges';badgeDiv.style.cssText='text-align:center;margin-top:6px;display:flex;flex-wrap:wrap;justify-content:center;gap:5px';
     badgeDiv.innerHTML=`<span class="ruler-badge">👑 ${title}</span>`;
     if(userTeam){const tm=TEAMS.find(t=>t.id===userTeam);if(tm)badgeDiv.innerHTML+=`<span class="team-badge" style="background:${tm.color}22;color:${tm.color};border:1px solid ${tm.color}44">${tm.icon} ${tm.name}</span>`;}
-    if(userClub)badgeDiv.innerHTML+=`<span class="club-badge">${userClub.icon} ${userClub.name}</span>`;
+    if(userClub)badgeDiv.innerHTML+=`<span class="club-badge">${esc(userClub.icon)} ${esc(userClub.name)}</span>`;
     sinceEl.insertAdjacentElement('afterend',badgeDiv);
   }
   // Entdeckungen-Stat + Challenge-Streak (einmalig anhängen)
@@ -4964,7 +4965,7 @@ function renderDrawer(){
   const tabs={
     history:()=>history.slice(-8).reverse().map(r=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)"><span style="font-size:1.2rem">${r.conquered?'⚔️':r.defended?'🛡️':'🏃'}</span><div style="flex:1"><div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary)">${fmtDist(r.distance)}</div><div style="font-size:.68rem;color:var(--muted)">${new Date(r.date).toLocaleDateString('de')} · ${fmtTime(r.duration)}</div></div><span style="font-family:'Bebas Neue',sans-serif;color:var(--primary)">+${r.pts}</span></div>`).join('')||'<div class="muted" style="padding:16px">Noch keine Läufe</div>',
     quests:()=>{genWeeklyChallenges();const now=new Date(),dow=(now.getDay()+6)%7,daysLeft=7-dow;const wkHdr=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><span style="font-size:.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--primary);font-weight:700">🗓️ Wochen-Challenges</span><span style="font-size:.62rem;color:var(--muted)">noch ${daysLeft} Tag${daysLeft!==1?'e':''}</span></div>`;const wkCards=weeklyChals.map(c=>{const p=Math.min(100,Math.round((c.progress||0)/c.target*100));const lbl=c.key==='km'?((c.progress||0).toFixed(1)+'/'+c.target+' km'):c.key==='runs'?Math.floor(c.progress||0)+'/'+c.target+' Läufe':(Math.floor(c.progress||0)+'/'+c.target);return`<div style="background:var(--card);border-radius:14px;padding:12px;margin-bottom:8px;border:1px solid ${c.done?'var(--primary)44':'var(--border)'}"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:1.2rem">${c.done?'✅':c.icon}</span><span style="flex:1;font-size:.82rem;font-weight:600;color:${c.done?'#10b981':'var(--text)'}">${c.desc}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;color:var(--primary)">+${c.reward}</span></div><div class="q-bar"><div class="q-fill" style="width:${p}%"></div></div><div style="font-size:.62rem;color:var(--muted);margin-top:4px">${lbl}</div></div>`;}).join('');const divider='<div style="height:1px;background:var(--border);margin:12px 0"></div><div style="font-size:.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700;margin-bottom:8px">⭐ Starter-Quests</div>';const sqCards=quests.map(q=>{const p=Math.min(100,Math.round(q.progress/q.target*100));return`<div style="background:var(--card);border-radius:14px;padding:12px;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:1.2rem">${q.icon}</span><span style="flex:1;font-size:.82rem;font-weight:600;color:${q.claimed?'#10b981':'var(--text)'}">${q.desc}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;color:var(--primary)">🎁 ${q.reward}</span></div><div class="q-bar"><div class="q-fill" style="width:${p}%"></div></div></div>`;}).join('');return wkHdr+wkCards+divider+sqCards;},
-    terr:()=>territories.filter(t=>t.owner===userId).map(t=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)"><div style="width:10px;height:10px;border-radius:50%;background:${userColor}"></div><span style="flex:1;cursor:pointer" onclick="window.flyTo('${t.id}')">${t.customName||'Unbenannt'}</span><span class="muted" style="font-size:.72rem">${Math.round(t.area)} m²</span><button onclick="window.openRename('${t.id}')" style="background:none;border:none;color:var(--muted);cursor:pointer">✏️</button></div>`).join('')||'<div class="muted" style="padding:16px">Noch keine Gebiete</div>',
+    terr:()=>territories.filter(t=>t.owner===userId).map(t=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)"><div style="width:10px;height:10px;border-radius:50%;background:${userColor}"></div><span style="flex:1;cursor:pointer" onclick="window.flyTo('${t.id}')">${esc(t.customName||'Unbenannt')}</span><span class="muted" style="font-size:.72rem">${Math.round(t.area)} m²</span><button onclick="window.openRename('${t.id}')" style="background:none;border:none;color:var(--muted);cursor:pointer">✏️</button></div>`).join('')||'<div class="muted" style="padding:16px">Noch keine Gebiete</div>',
     fitness:()=>{setTimeout(()=>{document.getElementById('btBtn2')?.addEventListener('click',connectBT)},100);return`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${[['Schritte',stepsToday],['Puls',heartRate+' bpm'],['Laufzeit',fmtTime(runSecs)],['Pace',fmtPace(dist,runSecs)],['Gesamt km',totalKm.toFixed(1)],['Streak',streakDays+'🔥'],['kcal',history.reduce((s,r)=>s+(r.kcal||0),0)],['Gebiete',territories.filter(t=>t.owner===userId).length]].map(([l,v])=>`<div class="stat-card"><div class="sv">${v}</div><div class="sl">${l}</div></div>`).join('')}</div><button class="btn" id="btBtn2" style="width:100%;margin-top:14px"><i class="fas fa-heartbeat"></i> Pulsmesser koppeln</button>`},
     ach:()=>{const cats={conq:'Straßen',km:'Laufen',atk:'Kämpfe',def:'Verteidigung',disc:'Entdecken',streak:'Serien'};const groups={};achievements.forEach(a=>{const c=a.cat||'conq';if(!groups[c])groups[c]=[];groups[c].push(a);});return Object.entries(cats).map(([cat,label])=>{const list=groups[cat]||[];if(!list.length)return'';const earned=list.filter(a=>a.earned).length;return`<div style="margin-bottom:20px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><span style="font-size:.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700">${label}</span><span style="font-size:.6rem;color:var(--muted);background:rgba(255,255,255,.06);border-radius:10px;padding:2px 8px">${earned}/${list.length}</span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">${list.map(a=>`<div style="display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 6px 8px;border-radius:16px;background:${a.earned?'rgba(var(--primary-rgb),.08)':'rgba(255,255,255,.02)'};border:1px solid ${a.earned?'rgba(var(--primary-rgb),.3)':'var(--border)'};text-align:center">${getAchSvg(a,52)}<div style="font-size:.58rem;color:${a.earned?'var(--primary)':'var(--muted)'};line-height:1.2;font-weight:${a.earned?600:400};margin-top:2px">${a.name}</div><div style="font-size:.55rem;color:var(--muted)">${a.earned?'✓ Erreicht':Math.round(a.progress)+'/'+a.target}</div></div>`).join('')}</div></div>`;}).join('');},
     calendar:()=>{setTimeout(drawCalendar,0);return'<div id="calDiv"></div>'}
