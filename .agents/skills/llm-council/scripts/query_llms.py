@@ -98,7 +98,7 @@ def query_openai(prompt: str, api_key: str, model: str = "gpt-5-nano") -> Option
                 "max_tokens": 2000,
                 "temperature": 0.7,
             },
-            timeout=30,
+            timeout=120,
         )
         response.raise_for_status()
         return response.json()["choices"][0]["message"]["content"]
@@ -117,9 +117,9 @@ def query_gemini(
             headers={"Content-Type": "application/json"},
             json={
                 "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {"temperature": 0.7, "maxOutputTokens": 2000},
+                "generationConfig": {"temperature": 0.7, "maxOutputTokens": 4096},
             },
-            timeout=30,
+            timeout=120,
         )
         response.raise_for_status()
         data = response.json()
