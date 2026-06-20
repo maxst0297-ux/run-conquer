@@ -1425,7 +1425,7 @@ let isRunning=false,watchId=null,bgWatchId=null,bgGeoWatcher=null;
 const isNative=typeof window.Capacitor!=='undefined'&&!!window.Capacitor.isNativePlatform?.();
 let wakeLockSentinel=null,silentCtx=null,silentSrc=null;
 let path=[],lastPos=null,lastPosTime=0,gpsJumpWarned=false,dist=0;
-let territories=[],points=0;
+let territories=[],points=0,localStateTs=0;
 let userId='user',playerName='',userColor=COLORS[0],userAvatar=AVATARS[0];
 let userAvatarImg=null;
 let energy=CFG.ENERGY_MAX,lastEnergyTs=Date.now(),energyWeek='';
@@ -1525,20 +1525,34 @@ async function syncProfile(){
 async function loadFromCloud(){
   if(!sb||!playerName||!sbUserId)return false;
   try{
-    const{data}=await sb.from('profile_private').select('game_data').eq('id',sbUserId).single();
-    if(data?.game_data){
-      const d=JSON.parse(data.game_data);
-      if(d.territories&&d.territories.length>territories.length){
-        territories=d.territories;points=d.points||points;energy=d.energy||energy;
-        totalKm=d.totalKm||totalKm;totalConquered=d.totalConquered||totalConquered;
-        totalDefended=d.totalDefended||totalDefended;streakDays=d.streakDays||streakDays;
-        totalDiscovered=d.totalDiscovered||totalDiscovered;
-        if(d.history)history=[...history,...d.history].slice(-50);
-        capturedLandmarks=d.capturedLandmarks||capturedLandmarks;
-        raids=d.raids||raids;
-        save();return true;
-      }
+    const{data}=await sb.from('profile_private').select('game_data,updated_at').eq('id',sbUserId).single();
+    if(!data?.game_data)return false;
+    const d=JSON.parse(data.game_data);
+    // Cloud gewinnt nur, wenn ihr updated_at neuer ist als der letzte lokale
+    // save() -- ersetzt die alte Heuristik "Cloud hat mehr Gebiete", die
+    // brach, sobald offline Gebiete verloren wurden oder die Anzahl gleich
+    // blieb, Punkte/Energie aber abwichen.
+    const cloudTs=data.updated_at?new Date(data.updated_at).getTime():0;
+    const cloudIsNewer=cloudTs>localStateTs;
+    // History wird unabhängig vom Sieger immer gemerged (nie ersetzt) --
+    // sonst gehen lokal gelaufene, noch nicht hochgesyncte Strecken verloren.
+    // Dedupe per id (neue Runs) bzw. date (alte Einträge ohne id) als Key.
+    if(d.history?.length){
+      const merged=new Map([...history,...d.history].map(r=>[r.id??r.date,r]));
+      history=[...merged.values()].sort((a,b)=>(a.date||0)-(b.date||0)).slice(-50);
     }
+    if(cloudIsNewer){
+      // ?? statt || -- 0 ist bei energy/totalConquered/etc. ein gültiger
+      // Wert und darf nicht fälschlich auf den alten lokalen Stand zurückfallen.
+      territories=d.territories??territories;points=d.points??points;energy=d.energy??energy;
+      totalKm=d.totalKm??totalKm;totalConquered=d.totalConquered??totalConquered;
+      totalDefended=d.totalDefended??totalDefended;streakDays=d.streakDays??streakDays;
+      totalDiscovered=d.totalDiscovered??totalDiscovered;
+      capturedLandmarks=d.capturedLandmarks??capturedLandmarks;
+      raids=d.raids??raids;
+    }
+    save();
+    return cloudIsNewer;
   }catch(e){console.warn('Cloud load:',e);}
   return false;
 }
@@ -1680,11 +1694,11 @@ function speedToPace(mps){if(!mps||mps<0.3)return'--:--';const p=1000/mps/60;ret
 function debounce(fn,w){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),w)}}
 
 /* PERSIST */
-function save(){localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,energyWeek,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered,registeredAt,starterQuestsDone,starterQuestFlags,heatPersonalOnly,dailyChallenges,dailyChalDate,chalStreak,lastChalDoneDate,dailyLoginDate,dailyLoginStreak,streakShields,recentQuoteIds,weeklyChals,weekChalKey,personalRecords,battlePassClaimed,totalRaids,totalBoosts,weeklyAchsDone,seasonXp}))}
+function save(){localStateTs=Date.now();localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,energyWeek,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered,registeredAt,starterQuestsDone,starterQuestFlags,heatPersonalOnly,dailyChallenges,dailyChalDate,chalStreak,lastChalDoneDate,dailyLoginDate,dailyLoginStreak,streakShields,recentQuoteIds,weeklyChals,weekChalKey,personalRecords,battlePassClaimed,totalRaids,totalBoosts,weeklyAchsDone,seasonXp,localStateTs}))}
 function load(){
   try{
     const d=JSON.parse(localStorage.getItem('rc_v4_'+userId));
-    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;registeredAt=d.registeredAt||Date.now();starterQuestsDone=d.starterQuestsDone||[];starterQuestFlags=d.starterQuestFlags||{profileOpened:false};heatPersonalOnly=d.heatPersonalOnly||false;dailyChallenges=d.dailyChallenges||[];dailyChalDate=d.dailyChalDate||'';chalStreak=d.chalStreak||0;lastChalDoneDate=d.lastChalDoneDate||'';dailyLoginDate=d.dailyLoginDate||'';dailyLoginStreak=d.dailyLoginStreak||0;streakShields=d.streakShields||0;recentQuoteIds=d.recentQuoteIds||[];weeklyChals=d.weeklyChals||[];weekChalKey=d.weekChalKey||'';personalRecords=d.personalRecords||{};battlePassClaimed=d.battlePassClaimed||[];totalRaids=d.totalRaids||0;totalBoosts=d.totalBoosts||0;weeklyAchsDone=d.weeklyAchsDone||0;seasonXp=d.seasonXp||0;
+    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;registeredAt=d.registeredAt||Date.now();starterQuestsDone=d.starterQuestsDone||[];starterQuestFlags=d.starterQuestFlags||{profileOpened:false};heatPersonalOnly=d.heatPersonalOnly||false;dailyChallenges=d.dailyChallenges||[];dailyChalDate=d.dailyChalDate||'';chalStreak=d.chalStreak||0;lastChalDoneDate=d.lastChalDoneDate||'';dailyLoginDate=d.dailyLoginDate||'';dailyLoginStreak=d.dailyLoginStreak||0;streakShields=d.streakShields||0;recentQuoteIds=d.recentQuoteIds||[];weeklyChals=d.weeklyChals||[];weekChalKey=d.weekChalKey||'';personalRecords=d.personalRecords||{};battlePassClaimed=d.battlePassClaimed||[];totalRaids=d.totalRaids||0;totalBoosts=d.totalBoosts||0;weeklyAchsDone=d.weeklyAchsDone||0;seasonXp=d.seasonXp||0;localStateTs=d.localStateTs||0;
       /* Alte Bot-Gebiete (Blob, <100k m²) entfernen → werden neu als Straßen-Polygon generiert */
       territories=territories.filter(t=>t.owner===userId||t.area>100000);
       /* Überlappende Bot-Gebiete entfernen */
