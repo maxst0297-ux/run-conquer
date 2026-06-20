@@ -3336,9 +3336,11 @@ function processConquest(np,area,d,boosted=false){
       if(t.owner===userId){
         // Eigenes Gebiet → Reparatur
         const rep=Math.min(CFG.MAX_DEF-t.defense,kmThrough*CFG.STR_REP_PER_KM*defBonus);
-        if(rep>0.1){t.defense=Math.min(CFG.MAX_DEF,t.defense+rep);}
-        t.lastDefended=now;t._lastDecayTs=now;pts+=CFG.XP_DEFEND;defended=true;
-        toast('🛡️ Gebiet verteidigt! Stärke: '+Math.round(t.defense)+'/100');
+        if(rep>0.1){
+          t.defense=Math.min(CFG.MAX_DEF,t.defense+rep);
+          t.lastDefended=now;t._lastDecayTs=now;pts+=CFG.XP_DEFEND;defended=true;
+          toast('🛡️ Gebiet verteidigt! Stärke: '+Math.round(t.defense)+'/100');
+        }
         // 7-Tage-Halte-Bonus
         const dayHeld=(now-t.createdAt)/86400000;
         const lastBonus=t._lastBonus||0;
@@ -3591,6 +3593,7 @@ function importActivity(distM,durSecs,dateMs,path,source,avgHR){
   const kcal=calcKcal(distM,durSecs);
   const kmXP=Math.round(xpForKm(distM/1000,getWeeklyKm()));
   const rec={
+    id:(crypto.randomUUID?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2))),synced:false,
     date:dateMs,distance:distM,area:0,pts:kmXP,
     path:path?path.filter((_,i)=>i%3===0):[],
     conquered:false,defended:false,
@@ -3602,6 +3605,7 @@ function importActivity(distM,durSecs,dateMs,path,source,avgHR){
   points+=kmXP;
   checkStarterQuests();
   save();
+  processSyncQueue(true);
   if(path&&path.length>=2&&mapL){
     if(importedLayer)mapL.removeLayer(importedLayer);
     importedLayer=L.polyline(path,{color:'#10b981',weight:3,dashArray:'6 4',opacity:.85}).addTo(mapL);
@@ -5188,7 +5192,7 @@ function applyDecay(){
   }).filter(t=>t.defense>0||t.owner===userId||(now-t.lastDefended)<CFG.MAX_AGE_H*3600000);
   renderTerr();
 }
-function getWeekKey(){const d=new Date(),day=d.getDay(),diff=d.getDate()-day+(day===0?-6:1),m=new Date(d);m.setDate(diff);return m.getFullYear()+'-'+String(m.getMonth()+1).padStart(2,'0')+'-'+String(m.getDate()).padStart(2,'0');}
+function getWeekKey(){const d=new Date(),day=d.getUTCDay(),diff=d.getUTCDate()-day+(day===0?-6:1),m=new Date(d);m.setUTCDate(diff);return m.getUTCFullYear()+'-'+String(m.getUTCMonth()+1).padStart(2,'0')+'-'+String(m.getUTCDate()).padStart(2,'0');}
 function checkEnergyWeekReset(){const wk=getWeekKey();if(energyWeek!==wk){const wasSet=energyWeek!=='';energy=CFG.ENERGY_MAX;energyWeek=wk;save();if(wasSet)toast('⚡ Neue Woche – 3 Energie-Boosts verfügbar!');}}
 function setupBg(){
   document.addEventListener('visibilitychange',()=>{

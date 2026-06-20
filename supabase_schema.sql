@@ -134,6 +134,13 @@ create policy "Nutzer fügen eigene Runs ein"
 create policy "Nutzer aktualisieren eigene Runs"
   on public.runs for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+-- DELETE-Policy: ohne sie scheitert deleteAccount()'s expliziter
+-- runs-delete()-Aufruf (DSGVO Art. 17) stillschweigend an RLS (0 Zeilen
+-- gelöscht, kein Error) -- nur über die anschließende profiles-Löschung
+-- per ON DELETE CASCADE würden die Runs zufällig trotzdem verschwinden.
+create policy "Nutzer löschen eigene Runs"
+  on public.runs for delete using (auth.uid() = user_id);
+
 -- Support Messages Tabelle
 create table if not exists public.support_messages (
   id           uuid primary key default gen_random_uuid(),
