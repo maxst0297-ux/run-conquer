@@ -14,6 +14,14 @@ create table if not exists public.profiles (
   updated_at   timestamptz default now()
 );
 
+-- Spalten, die im Client (syncProfile()) genutzt werden, aber ursprünglich
+-- nicht in dieser Datei dokumentiert waren. ADD COLUMN IF NOT EXISTS ist
+-- ein No-Op bei Fresh-Setups (Spalten existieren schon aus CREATE TABLE
+-- oben) und ergänzt sie sicher auf der bestehenden Live-DB.
+alter table public.profiles add column if not exists user_id text;
+alter table public.profiles add column if not exists user_team text;
+alter table public.profiles add column if not exists club_code text;
+
 alter table public.profiles enable row level security;
 
 create policy "Alle können Profile lesen"
@@ -21,6 +29,44 @@ create policy "Alle können Profile lesen"
 
 create policy "Nutzer verwalten eigenes Profil"
   on public.profiles for all using (auth.uid() = id);
+
+-- Private Spielstände (u.a. komprimierte GPS-Lauf-Historie der letzten 20
+-- Läufe) bewusst NICHT in profiles: RLS ist zeilen-, nicht spaltenbasiert.
+-- Die obige "Alle können Profile lesen"-Policy (using(true), nötig für die
+-- öffentliche Rangliste) hätte sonst per select('*') oder gezieltem
+-- select('game_data') auch die GPS-Routen jedes Nutzers für jeden lesbar
+-- gemacht (Rückschluss auf Wohn-/Arbeitsort). profile_private ist nur für
+-- den jeweiligen Besitzer lesbar.
+create table if not exists public.profile_private (
+  id         uuid primary key references public.profiles(id) on delete cascade,
+  game_data  text,
+  updated_at timestamptz default now()
+);
+
+-- Bereits vorhandene game_data-Werte aus profiles übernehmen, falls die
+-- Spalte dort aus der Zeit vor dieser Migration noch existiert.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema='public' and table_name='profiles' and column_name='game_data'
+  ) then
+    insert into public.profile_private (id, game_data)
+    select id, game_data::text from public.profiles where game_data is not null
+    on conflict (id) do update set game_data=excluded.game_data;
+    alter table public.profiles drop column game_data;
+  end if;
+end $$;
+
+alter table public.profile_private enable row level security;
+
+drop policy if exists "Nutzer lesen eigene private Daten" on public.profile_private;
+create policy "Nutzer lesen eigene private Daten"
+  on public.profile_private for select using (auth.uid() = id);
+
+drop policy if exists "Nutzer schreiben eigene private Daten" on public.profile_private;
+create policy "Nutzer schreiben eigene private Daten"
+  on public.profile_private for all using (auth.uid() = id) with check (auth.uid() = id);
 
 -- Schranke gegen Rangliste-Manipulation: points/total_km/total_conquered
 -- werden komplett client-seitig berechnet und ungeprüft hochgeschrieben.
