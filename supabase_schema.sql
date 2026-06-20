@@ -52,14 +52,36 @@ create table if not exists public.support_messages (
   player_name  text,
   subject      text default 'Kein Betreff',
   message      text not null,
+  admin_reply  text,
+  replied_at   timestamptz,
   created_at   timestamptz default now()
 );
 
 alter table public.support_messages enable row level security;
 
-create policy "Nutzer senden Support-Nachrichten"
-  on public.support_messages for insert with check (true);
+-- INSERT: user_id muss (NULL-sicher) der eigene auth.uid() sein, Admin-Felder
+-- duerfen beim Einfuegen nicht vorbelegt werden (verhindert Identitaets- und
+-- Antwort-Faelschung, z.B. bei DSGVO-Loeschantraegen)
+create policy "Nutzer senden eigene Support-Nachrichten"
+  on public.support_messages for insert
+  with check (
+    auth.uid() is not distinct from user_id
+    and admin_reply is null
+    and replied_at is null
+  );
 
-create policy "Admin liest alle Nachrichten"
+create policy "Nutzer lesen eigene Nachrichten, Admin liest alle"
   on public.support_messages for select
+  using (
+    (auth.jwt() ->> 'email') = 'maxst0297@gmail.com'
+    or auth.uid() = user_id
+  );
+
+create policy "Admin aktualisiert Nachrichten"
+  on public.support_messages for update
+  using ((auth.jwt() ->> 'email') = 'maxst0297@gmail.com')
+  with check ((auth.jwt() ->> 'email') = 'maxst0297@gmail.com');
+
+create policy "Admin löscht Nachrichten"
+  on public.support_messages for delete
   using ((auth.jwt() ->> 'email') = 'maxst0297@gmail.com');
