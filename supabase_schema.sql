@@ -168,3 +168,62 @@ create policy "Admin aktualisiert Nachrichten"
 create policy "Admin löscht Nachrichten"
   on public.support_messages for delete
   using ((auth.jwt() ->> 'email') = 'maxst0297@gmail.com');
+
+-- Direct Messages Tabelle
+-- (war bisher nur als showSqlHint('dm')-String im Client dokumentiert,
+-- nicht in dieser Datei -- bei einem Fresh-Setup allein aus diesem Schema
+-- hätte die Tabelle samt RLS gefehlt bzw. wäre der Nutzer auf die alte,
+-- unsichere Variante angewiesen gewesen)
+create table if not exists public.direct_messages (
+  id         uuid default gen_random_uuid() primary key,
+  from_uid   text not null,
+  from_name  text not null,
+  to_uid     text not null,
+  to_name    text not null,
+  content    text not null,
+  created_at timestamptz default now(),
+  read_at    timestamptz
+);
+
+alter table public.direct_messages enable row level security;
+
+drop policy if exists "dm_own" on public.direct_messages;
+drop policy if exists "dm_select" on public.direct_messages;
+drop policy if exists "dm_insert" on public.direct_messages;
+drop policy if exists "dm_update" on public.direct_messages;
+drop policy if exists "dm_delete" on public.direct_messages;
+
+-- SELECT: nur Sender + Empfänger dürfen lesen
+create policy "dm_select" on public.direct_messages
+  for select using (auth.uid()::text in (from_uid, to_uid));
+
+-- INSERT: from_uid MUSS die eigene Auth-ID sein (verhindert Absender-Fälschung)
+create policy "dm_insert" on public.direct_messages
+  for insert with check (from_uid = auth.uid()::text);
+
+-- UPDATE: Sender + Empfänger dürfen updaten (z.B. read_at setzen)
+create policy "dm_update" on public.direct_messages
+  for update using (auth.uid()::text in (from_uid, to_uid));
+
+-- DELETE: Sender + Empfänger dürfen löschen (Chat leeren)
+create policy "dm_delete" on public.direct_messages
+  for delete using (auth.uid()::text in (from_uid, to_uid));
+
+-- Trigger: from_uid/to_uid/content/created_at sind nach dem Insert unveränderlich
+create or replace function public.protect_dm_fields()
+returns trigger as $$
+begin
+  if (new.from_uid is distinct from old.from_uid or
+      new.to_uid is distinct from old.to_uid or
+      new.content is distinct from old.content or
+      new.created_at is distinct from old.created_at) then
+    raise exception 'from_uid/to_uid/content/created_at duerfen nicht geaendert werden';
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists trg_protect_dm_fields on public.direct_messages;
+create trigger trg_protect_dm_fields
+  before update on public.direct_messages
+  for each row execute function public.protect_dm_fields();
