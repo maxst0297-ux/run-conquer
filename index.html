@@ -6138,6 +6138,13 @@ function startBgVideo(){
 window._hideCityBg=function(){
   const vid=document.getElementById('bgVideo');
   if(vid){vid.style.transition='opacity .4s';vid.style.opacity='0';setTimeout(()=>{vid.pause();vid.style.display='none';},400);}
+  // #bgOverlay/#bgTapHint sind Geschwister von #onboarding (nicht Kinder) und
+  // bleiben sonst als fixer rgba(0,0,0,.25)-Layer über der ganzen App liegen,
+  // da #app kein eigenes z-index setzt und so unter dem Overlay landet.
+  const ov=document.getElementById('bgOverlay');
+  if(ov){ov.style.transition='opacity .4s';ov.style.opacity='0';setTimeout(()=>{ov.style.display='none';},400);}
+  const hint=document.getElementById('bgTapHint');
+  if(hint)hint.style.display='none';
 };
 
 /* BOOT */
