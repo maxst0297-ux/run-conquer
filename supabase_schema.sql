@@ -22,6 +22,43 @@ create policy "Alle können Profile lesen"
 create policy "Nutzer verwalten eigenes Profil"
   on public.profiles for all using (auth.uid() = id);
 
+-- Schranke gegen Rangliste-Manipulation: points/total_km/total_conquered
+-- werden komplett client-seitig berechnet und ungeprüft hochgeschrieben.
+-- Diese Funktion blockt Updates, deren Zuwachs seit dem letzten Sync
+-- (zeitfenster-basiert, nicht starr pro Aufruf) physikalisch nicht
+-- plausibel ist, z.B. ein Sprung auf 999999999 Punkte per Browser-Konsole.
+create or replace function public.protect_profile_stats()
+returns trigger as $$
+declare
+  hours_elapsed float8;
+  max_km_delta float8;
+  max_points_delta float8;
+  max_conquered_delta float8;
+begin
+  hours_elapsed := greatest(extract(epoch from (now() - coalesce(old.updated_at, now()))) / 3600.0, 0.01);
+  -- großzügige Obergrenzen: ~20 km/h Dauerschnitt + fester Puffer pro Sync
+  max_km_delta := hours_elapsed * 20 + 10;
+  max_points_delta := hours_elapsed * 500 + 500;
+  max_conquered_delta := hours_elapsed * 5 + 10;
+
+  if (coalesce(new.total_km,0) - coalesce(old.total_km,0)) > max_km_delta
+     or (coalesce(new.points,0) - coalesce(old.points,0)) > max_points_delta
+     or (coalesce(new.total_conquered,0) - coalesce(old.total_conquered,0)) > max_conquered_delta then
+    raise exception 'Unplausibler Fortschritts-Sprung abgelehnt (km:%, pts:%, terr:%)',
+      coalesce(new.total_km,0) - coalesce(old.total_km,0),
+      coalesce(new.points,0) - coalesce(old.points,0),
+      coalesce(new.total_conquered,0) - coalesce(old.total_conquered,0);
+  end if;
+
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists trg_protect_profile_stats on public.profiles;
+create trigger trg_protect_profile_stats
+  before update on public.profiles
+  for each row execute function public.protect_profile_stats();
+
 -- Runs Tabelle
 create table if not exists public.runs (
   id           uuid primary key default gen_random_uuid(),
