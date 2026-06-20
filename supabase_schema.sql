@@ -128,6 +128,12 @@ create policy "Alle können Runs lesen"
 create policy "Nutzer fügen eigene Runs ein"
   on public.runs for insert with check (auth.uid() = user_id);
 
+-- UPDATE-Policy: nötig für syncRun()'s upsert(...,{onConflict:'id'}) – ohne sie
+-- würde der ON-CONFLICT-DO-UPDATE-Pfad bei Retries an RLS scheitern, da
+-- upsert technisch ein INSERT mit Fallback auf UPDATE ist.
+create policy "Nutzer aktualisieren eigene Runs"
+  on public.runs for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
 -- Support Messages Tabelle
 create table if not exists public.support_messages (
   id           uuid primary key default gen_random_uuid(),

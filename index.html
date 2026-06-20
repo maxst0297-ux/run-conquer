@@ -1321,22 +1321,25 @@ async function initSupabase(){
   }catch(e){console.warn('Supabase auth:',e);return null;}
 }
 async function syncProfile(){
-  if(!sb||!sbUserId||!playerName)return;
+  if(!sb||!sbUserId||!playerName)return false;
   try{
     const gameSnap=JSON.stringify({territories,points,energy,totalKm,totalConquered,totalDefended,totalDiscovered,streakDays,history:history.slice(-20),capturedLandmarks,raids});
-    await sb.from('profiles').upsert({
+    const{error:e1}=await sb.from('profiles').upsert({
       id:sbUserId,user_id:userId,player_name:playerName,user_avatar:userAvatar,user_color:userColor,
       points,total_km:totalKm,total_conquered:totalConquered,streak_days:streakDays,
       updated_at:new Date().toISOString(),
       user_team:userTeam||null,club_code:userClub?.code||null
     },{onConflict:'id'});
+    if(e1)throw e1;
     // game_data (u.a. GPS-Lauf-Historie) bewusst NICHT auf profiles: die
     // SELECT-Policy dort ist öffentlich (für die Rangliste), profile_private
     // ist per RLS nur für den Besitzer lesbar.
-    await sb.from('profile_private').upsert({
+    const{error:e2}=await sb.from('profile_private').upsert({
       id:sbUserId,game_data:gameSnap,updated_at:new Date().toISOString()
     },{onConflict:'id'});
-  }catch(e){console.warn('Supabase profile sync:',e);}
+    if(e2)throw e2;
+    return true;
+  }catch(e){console.warn('Supabase profile sync:',e);return false;}
 }
 async function loadFromCloud(){
   if(!sb||!playerName||!sbUserId)return false;
@@ -1359,14 +1362,38 @@ async function loadFromCloud(){
   return false;
 }
 async function syncRun(rec){
-  if(!sb||!sbUserId)return;
+  if(!sb||!sbUserId)return false;
   try{
-    await sb.from('runs').insert({
-      user_id:sbUserId,player_name:playerName,distance:rec.distance,duration:rec.duration,
+    // upsert statt insert + client-seitige rec.id: macht Retries idempotent
+    // (kein doppelter Run, falls die Server-Antwort verloren ging, der
+    // INSERT aber schon durchkam)
+    const{error}=await sb.from('runs').upsert({
+      id:rec.id,user_id:sbUserId,player_name:playerName,distance:rec.distance,duration:rec.duration,
       points:rec.pts,kcal:rec.kcal||0,conquered:rec.conquered||false,defended:rec.defended||false,
       path:rec.path||null
-    });
-  }catch(e){console.warn('Supabase run sync:',e);}
+    },{onConflict:'id'});
+    if(error)throw error;
+    return true;
+  }catch(e){console.warn('Supabase run sync:',e);return false;}
+}
+/* Sync-Queue: läuft fehlgeschlagene/abgebrochene Syncs (Netzwerkausfall,
+   Tab geschlossen während syncRun/syncProfile) automatisch nach, statt sie
+   wie bisher (fire-and-forget, Fehler nur in console.warn) stillschweigend
+   zu verlieren. history-Einträge mit synced:false sind die Warteschlange. */
+async function processSyncQueue(notify){
+  if(!sb||!sbUserId||navigator.onLine===false)return;
+  if(window._syncingQueue)return;
+  window._syncingQueue=true;
+  try{
+    const pending=history.filter(r=>r.id&&!r.synced);
+    let allOk=true;
+    for(const rec of pending){
+      if(await syncRun(rec))rec.synced=true;else{allOk=false;break;}
+    }
+    if(pending.length)save();
+    const profOk=await syncProfile();
+    if(notify&&(!allOk||!profOk))toast('⚠️ Cloud-Sync ausstehend – Fortschritt bleibt lokal gespeichert, wird automatisch erneut versucht');
+  }finally{window._syncingQueue=false;}
 }
 async function sendSupportMessage(){
   const subject=(document.getElementById('suppSubject')?.value||'').trim()||'Kein Betreff';
@@ -3223,7 +3250,7 @@ function stopRun(){
   if(boosted){energy=Math.max(0,energy-1);toast(`⚡ Energie-Boost! ×${boostMul.toFixed(1)} · +${totalPts} Punkte · noch ${energy}/${CFG.ENERGY_MAX} Boosts`);}
   else if(streakDays>1)toast(`🔥 Streak ×${streakMul.toFixed(1)} · +${kmXP} km-XP`);
   const kcal=calcKcal(dist,elapsed);
-  const rec={date:Date.now(),distance:dist,area,pts:res.pts,path:path.filter((_,i)=>i%3===0),conquered:res.conquered,defended:res.defended,duration:elapsed,gap,kcal,avgHR:heartRate,splits:[...kmSplits]};
+  const rec={id:(crypto.randomUUID?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2))),synced:false,date:Date.now(),distance:dist,area,pts:res.pts,path:path.filter((_,i)=>i%3===0),conquered:res.conquered,defended:res.defended,duration:elapsed,gap,kcal,avgHR:heartRate,splits:[...kmSplits]};
   history.push(rec);if(history.length>30)history.shift();
   totalKm+=dist/1000;if(res.conquered)totalConquered++;if(res.defended)totalDefended++;
   updateQuests(rec);updateAch();updateDailyChallenges(rec);updateWeeklyChallenges(rec);trackPersonalRecords(rec,totalPts,area);
@@ -3231,7 +3258,7 @@ function stopRun(){
   if(!localStorage.getItem('rc_notif_asked_'+userId)){localStorage.setItem('rc_notif_asked_'+userId,'1');requestNotificationPermission();}
   if(pathLayer)mapL.removeLayer(pathLayer);path=[];dist=0;sessionConquests=0;
   statusTxt.textContent='Bereit';save();updateUI();showPostRun(rec);
-  syncRun(rec);syncProfile();
+  processSyncQueue(true);
   const lvAfter=getLevel(points);
   if(lvAfter>lvBefore)setTimeout(()=>showLevelUp(lvAfter,getLvlName(points)),1800);
 }
@@ -4746,7 +4773,7 @@ async function launchAppFromSession(user){
       if(window._openStravaOnInit){window._openStravaOnInit=false;setTimeout(()=>{openImportModal();$('impTabStrava')?.click();},400);}
       const restored=await loadFromCloud();
       if(!restored&&territories.filter(t=>t.owner!==userId).length===0){await genRivals();}
-      renderTerr();updateUI();syncProfile();updateDmBadge();updateSettingsBadge();
+      renderTerr();updateUI();processSyncQueue();updateDmBadge();updateSettingsBadge();
       if(isAdmin)setTimeout(showInboxIfAdmin,800);
     },150);
     setupBg();initSteps();
@@ -5085,6 +5112,11 @@ function setupBg(){
   setInterval(applyDecay,60000);
   setInterval(()=>{if(hrSource==='sim')simHR()},3000);
   setTimeout(()=>{simulateBotRun();setInterval(simulateBotRun,90*1000);},15000);
+  /* Sync-Queue erneut anstoßen, sobald wieder online bzw. periodisch im
+     Hintergrund — fängt Fälle ab, in denen processSyncQueue() bei Run-Ende
+     oder App-Start mangels Verbindung nichts ausrichten konnte. */
+  window.addEventListener('online',()=>processSyncQueue());
+  setInterval(()=>processSyncQueue(),5*60*1000);
 }
 
 /* ONBOARDING */
