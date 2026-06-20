@@ -925,6 +925,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         </svg>
         <div class="comm-banner-title"><i class="fas fa-globe-europe"></i> Community</div>
       </div>
+      <div class="comm-card" id="followReqCard" style="display:none"><h3><i class="fas fa-user-plus"></i> Follower-Anfragen</h3><div id="followReqList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-newspaper"></i> Aktuelle News</h3><div id="newsList"></div></div>
       <div class="comm-card" id="eventsCard"><h3><i class="fas fa-flag-checkered"></i> Events &amp; Turniere</h3><div id="eventsList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-trophy"></i> Deine Rekorde</h3><div id="recordsList"></div></div>
@@ -1304,7 +1305,7 @@ const SB_URL='https://mlkpryhacihbqnmtgkcg.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1sa3ByeWhhY2loYnFubXRna2NnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzMTcwMzMsImV4cCI6MjA5NTg5MzAzM30.YEVBlg686Ssj0p8ACz6eur3snBzay_exEedZ3gzqh7g';
 const sb=window.supabase?.createClient(SB_URL,SB_KEY);
 let sbUserId=null,isAdmin=false;
-let followedUsers=[],activeDmThread=null;
+let followedUsers=[],followIncoming=[],followOutgoing=[],activeDmThread=null;
 let archivedConvs=[],archivedSupportIds=new Set(),localReadConvs=new Set();
 let supportVisitTs=0;
 
@@ -1534,7 +1535,6 @@ function load(){
   if(achievements.length!==36||achievements[0]?.id!=='conq1'){initAch();if(typeof totalConquered!=='undefined')updateAch(true);}
   checkSeasonRollover();
   checkEnergyWeekReset();
-  followedUsers=JSON.parse(localStorage.getItem('rc_follows_'+userId)||'[]');
   archivedConvs=JSON.parse(localStorage.getItem('rc_arch_dm_'+userId)||'[]');
   archivedSupportIds=new Set(JSON.parse(localStorage.getItem('rc_arch_sup_'+userId)||'[]'));
   supportVisitTs=parseInt(localStorage.getItem('rc_sup_visit_'+userId)||'0');
@@ -2246,6 +2246,7 @@ function showPublicProfile(p){
   const ov=document.createElement('div');
   ov.id='pubProfileOverlay';
   ov.style.cssText='position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center';
+  const canMsg=!!p.user_id&&p.user_id!==userId&&followStatus(p.user_id)==='accepted';
   ov.innerHTML=`<div style="width:100%;max-width:480px;background:var(--card);border-radius:24px 24px 0 0;padding:0 0 max(env(safe-area-inset-bottom),16px) 0;animation:modalIn .28s var(--ease-out)">
     <div style="width:38px;height:4px;background:var(--border);border-radius:4px;margin:12px auto 18px"></div>
     <div style="padding:0 20px 24px">
@@ -2270,10 +2271,18 @@ function showPublicProfile(p){
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Punkte</div>
         </div>
       </div>
+      ${canMsg?`<button class="btn btn-p" id="pubProfMsgBtn" style="width:100%;margin-top:16px"><i class="fas fa-paper-plane"></i> Nachricht schreiben</button>`:''}
     </div>
   </div>`;
   ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
   document.body.appendChild(ov);
+  if(canMsg){
+    document.getElementById('pubProfMsgBtn')?.addEventListener('click',()=>{
+      ov.remove();
+      const im=$('inboxModal');if(im)im.style.display='flex';
+      openDmThread(p.user_id,p.player_name||'Läufer');
+    });
+  }
 }
 
 /* ── ERSTANMELDUNGS-ONBOARDING ── */
@@ -3749,7 +3758,7 @@ function updateCommunity(){
   $('recordsList').innerHTML=[['🏃','Längster Lauf',fmtDist(Math.max(0,...history.map(r=>r.distance)))],['⚔️','Gebiete erobert',totalConquered],['📐','Größtes Gebiet',Math.round(Math.max(0,...territories.filter(t=>t.owner===userId).map(t=>t.area||0)))+' m²'],['🔥','Streak',streakDays+' Tage']].map(([i,l,v])=>`<div class="list-row"><span class="row-icon">${i}</span><span class="row-txt">${l}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary)">${v}</span></div>`).join('');
   $('followerList').innerHTML=[{name:'Roter Wolf',av:'🐺',txt:'10 km in 45 Min',t:'vor 1 Tag'},{name:'Eiserne Hand',av:'✊',txt:'500 Punkte durch Eroberung',t:'vor 3 Std.'},{name:'Stahl-Garde',av:'⚔️',txt:'3 Gebiete verteidigt',t:'vor 6 Std.'}].map(f=>`<div class="list-row"><span class="row-icon">${f.av}</span><div class="row-txt"><b>${f.name}</b>: ${f.txt}</div><span class="row-meta">${f.t}</span></div>`).join('');
   renderEvents();
-  renderLeaderboard();
+  loadFollowState().then(()=>{renderLeaderboard();renderFollowRequests();});
   renderSocialFeed();
   renderPowerRankings();
   renderClubCommunity();
@@ -3900,22 +3909,36 @@ async function renderLeaderboard(){
     if(error||!data?.length)throw error||new Error('empty');
     lb.innerHTML=data.map((r,i)=>{
       const isMe=r.user_id===userId||r.player_name===playerName;
-      const following=!isMe&&isFollowing(r.user_id);
-      return`<div class="list-row" style="background:${isMe?'rgba(232,255,71,.06)':''}">
+      const st=isMe?null:followStatus(r.user_id);
+      const btnLabel=st==='accepted'?'✓ Verbunden':st==='pending_out'?'⏳ Angefragt':st==='pending_in'?'👤 Antworten':'+ Folgen';
+      const rowAttrs=!isMe?`data-rowuid="${r.user_id}" data-rowname="${esc(r.player_name)}" data-rowav="${esc(r.user_avatar||'🏃')}" data-rowcol="${esc(r.user_color||'#e8ff47')}" data-rowkm="${r.total_km||0}" data-rowterr="${r.total_conquered||0}" data-rowpts="${r.points||0}" data-rowstreak="${r.streak_days||0}" style="cursor:pointer"`:'';
+      return`<div class="list-row" ${rowAttrs} style="background:${isMe?'rgba(232,255,71,.06)':''}${!isMe?';cursor:pointer':''}">
         <span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:${i<3?'var(--primary)':'var(--muted)'};width:22px;flex-shrink:0">${i<3?medals[i]:i+1}</span>
         <span class="row-icon" style="font-size:1.2rem">${esc(r.user_avatar||'🏃')}</span>
         <div class="row-txt"><b style="color:${isMe?'var(--primary)':'var(--text)'}">${esc(r.player_name)}</b>
         <div style="font-size:.65rem;color:var(--muted)">${r.total_conquered||0} Gebiete · ${(r.total_km||0).toFixed(1)} km</div></div>
         <span style="font-family:'Bebas Neue',sans-serif;color:var(--primary);margin-left:auto">${r.points}</span>
-        ${!isMe?`<button class="follow-btn${following?' following':''}" data-uid="${r.user_id}" data-name="${esc(r.player_name)}" data-av="${esc(r.user_avatar||'🏃')}">${following?'✓ Folge':'+ Folgen'}</button>`:''}
+        ${!isMe?`<button class="follow-btn${st==='accepted'?' following':''}" data-uid="${r.user_id}" data-name="${esc(r.player_name)}" data-av="${esc(r.user_avatar||'🏃')}" data-st="${st}">${btnLabel}</button>`:''}
       </div>`;
     }).join('');
     lb.querySelectorAll('.follow-btn').forEach(btn=>{
-      btn.addEventListener('click',e=>{
+      btn.addEventListener('click',async e=>{
         e.stopPropagation();
-        const {uid,name,av}=btn.dataset;
-        if(isFollowing(uid)){unfollowUser(uid,name);btn.textContent='+ Folgen';btn.classList.remove('following');}
-        else{followUser(uid,name,av);btn.textContent='✓ Folge';btn.classList.add('following');}
+        const {uid,name,av,st}=btn.dataset;
+        if(st==='accepted'||st==='pending_out'){await cancelOrUnfollow(uid,name);renderLeaderboard();}
+        else if(st==='pending_in'){
+          const card=$('followReqCard');
+          if(card){card.scrollIntoView({behavior:'smooth',block:'center'});card.style.outline='2px solid var(--primary)';setTimeout(()=>{card.style.outline='';},1200);}
+        }
+        else{await sendFollowRequest(uid,name,av);renderLeaderboard();}
+      });
+    });
+    lb.querySelectorAll('[data-rowuid]').forEach(row=>{
+      row.addEventListener('click',e=>{
+        if(e.target.closest('.follow-btn'))return;
+        const uid=row.dataset.rowuid;
+        if(followStatus(uid)!=='accepted'){toast('🔒 Profil erst sichtbar, sobald die Follow-Anfrage angenommen wurde');return;}
+        showPublicProfile({user_id:uid,player_name:row.dataset.rowname,user_avatar:row.dataset.rowav,user_color:row.dataset.rowcol,total_km:parseFloat(row.dataset.rowkm),total_conquered:parseInt(row.dataset.rowterr),points:parseInt(row.dataset.rowpts),streak_days:parseInt(row.dataset.rowstreak)});
       });
     });
   }catch(e){
@@ -4377,6 +4400,9 @@ async function updateDmBadge(){
     /* Ungelesene DMs: Nachrichten an mich mit read_at = null */
     const{count:dmCount}=await sb.from('direct_messages').select('id',{count:'exact',head:true}).eq('to_uid',userId).is('read_at',null);
     total+=(dmCount||0);
+    /* Offene Follow-Anfragen an mich */
+    const{count:frCount}=await sb.from('follow_requests').select('id',{count:'exact',head:true}).eq('target_uid',userId).eq('status','pending');
+    total+=(frCount||0);
     /* Admin: neue Support-Nachrichten seit letztem Besuch */
     if(isAdmin){
       const since=new Date(supportVisitTs||0).toISOString();
@@ -4387,14 +4413,87 @@ async function updateDmBadge(){
     badge.style.display=total>0?'flex':'none';
   }catch(e){badge.style.display='none';}
 }
-function saveFollows(){localStorage.setItem('rc_follows_'+userId,JSON.stringify(followedUsers));}
 function saveArchived(){localStorage.setItem('rc_arch_dm_'+userId,JSON.stringify(archivedConvs));localStorage.setItem('rc_arch_sup_'+userId,JSON.stringify([...archivedSupportIds]));}
-function isFollowing(uid){return followedUsers.some(u=>u.uid===uid);}
-function followUser(uid,name,av){
-  if(!isFollowing(uid)){followedUsers.push({uid,name,av:av||'🏃'});saveFollows();toast('✅ Du folgst '+name);}
+
+/* ── FOLLOW-ANFRAGEN (Gating für Profilansicht + DMs) ── */
+async function loadFollowState(){
+  if(!sb||!userId)return;
+  try{
+    const{data,error}=await sb.from('follow_requests').select('*').or(`requester_uid.eq.${userId},target_uid.eq.${userId}`);
+    if(error){if(error.code==='42P01')return;throw error;}
+    const rows=data||[];
+    followedUsers=rows.filter(r=>r.status==='accepted').map(r=>{
+      const otherUid=r.requester_uid===userId?r.target_uid:r.requester_uid;
+      const otherName=r.requester_uid===userId?r.target_name:r.requester_name;
+      return{uid:otherUid,name:otherName,av:'🏃'};
+    });
+    followIncoming=rows.filter(r=>r.status==='pending'&&r.target_uid===userId);
+    followOutgoing=rows.filter(r=>r.status==='pending'&&r.requester_uid===userId);
+  }catch(e){console.warn('Follow state:',e);}
 }
-function unfollowUser(uid,name){
-  followedUsers=followedUsers.filter(u=>u.uid!==uid);saveFollows();toast('Entfolgt '+name);
+function followStatus(uid){
+  if(followedUsers.some(u=>u.uid===uid))return'accepted';
+  if(followOutgoing.some(r=>r.target_uid===uid))return'pending_out';
+  if(followIncoming.some(r=>r.requester_uid===uid))return'pending_in';
+  return'none';
+}
+async function sendFollowRequest(uid,name,av){
+  if(!sb||!userId||uid===userId)return;
+  try{
+    let{error}=await sb.from('follow_requests').insert({requester_uid:userId,requester_name:playerName||'Unbekannt',target_uid:uid,target_name:name});
+    if(error&&error.code==='23505'){
+      await sb.from('follow_requests').delete().eq('requester_uid',userId).eq('target_uid',uid);
+      ({error}=await sb.from('follow_requests').insert({requester_uid:userId,requester_name:playerName||'Unbekannt',target_uid:uid,target_name:name}));
+    }
+    if(error){
+      if(error.code==='42P01'){showSqlHint('dm');return;}
+      throw error;
+    }
+    toast('📨 Anfrage gesendet an '+name);
+    await loadFollowState();
+  }catch(e){toast('❌ '+e.message);}
+}
+async function cancelOrUnfollow(uid,name){
+  if(!sb||!userId)return;
+  try{
+    await sb.from('follow_requests').delete().eq('requester_uid',userId).eq('target_uid',uid);
+    await sb.from('follow_requests').delete().eq('requester_uid',uid).eq('target_uid',userId);
+    toast('Entfolgt '+name);
+    await loadFollowState();
+  }catch(e){toast('❌ '+e.message);}
+}
+async function acceptFollowRequest(reqId,uid,name){
+  if(!sb)return;
+  try{
+    const{error}=await sb.from('follow_requests').update({status:'accepted',responded_at:new Date().toISOString()}).eq('id',reqId);
+    if(error)throw error;
+    await sb.from('follow_requests').delete().eq('requester_uid',userId).eq('target_uid',uid).eq('status','pending');
+    toast('✅ '+name+' kann dir jetzt schreiben');
+    await loadFollowState();renderFollowRequests();renderLeaderboard();updateDmBadge();
+  }catch(e){toast('❌ '+e.message);}
+}
+async function declineFollowRequest(reqId,name){
+  if(!sb)return;
+  try{
+    const{error}=await sb.from('follow_requests').update({status:'declined',responded_at:new Date().toISOString()}).eq('id',reqId);
+    if(error)throw error;
+    toast('Anfrage von '+name+' abgelehnt');
+    await loadFollowState();renderFollowRequests();updateDmBadge();
+  }catch(e){toast('❌ '+e.message);}
+}
+function renderFollowRequests(){
+  const card=$('followReqCard'),list=$('followReqList');
+  if(!card||!list)return;
+  if(!followIncoming.length){card.style.display='none';return;}
+  card.style.display='';
+  list.innerHTML=followIncoming.map(r=>`<div class="list-row" style="gap:8px">
+    <span class="row-icon">👤</span>
+    <div class="row-txt"><b>${esc(r.requester_name||'Unbekannt')}</b> möchte dir folgen</div>
+    <button class="btn btn-p" style="width:auto;padding:5px 10px;font-size:.68rem;flex-shrink:0" data-acc="${r.id}" data-uid="${r.requester_uid}" data-name="${esc(r.requester_name||'')}">✓</button>
+    <button class="btn" style="width:auto;padding:5px 10px;font-size:.68rem;flex-shrink:0" data-dec="${r.id}" data-name="${esc(r.requester_name||'')}">✕</button>
+  </div>`).join('');
+  list.querySelectorAll('[data-acc]').forEach(b=>b.addEventListener('click',()=>acceptFollowRequest(b.dataset.acc,b.dataset.uid,b.dataset.name)));
+  list.querySelectorAll('[data-dec]').forEach(b=>b.addEventListener('click',()=>declineFollowRequest(b.dataset.dec,b.dataset.name)));
 }
 function _inboxClearHandler(body){if(body._ih)body.removeEventListener('click',body._ih);}
 function _inboxSetHandler(body,fn){_inboxClearHandler(body);body._ih=fn;body.addEventListener('click',fn);}
@@ -4565,7 +4664,7 @@ async function loadDmConvList(container){
     const convs=Object.values(convMap).sort((a,b)=>new Date(b.last.created_at)-new Date(a.last.created_at));
     const newBtn=`<button class="btn btn-p" style="width:100%;margin-bottom:10px" id="newDmBtn"><i class="fas fa-pen"></i> Neue Nachricht</button>`;
     if(!convs.length){
-      el.innerHTML=newBtn+`<div style="padding:20px;text-align:center;color:var(--muted);font-size:.82rem">💬 Noch keine Direktnachrichten.<br><br>Folge Spielern aus der <b>Rangliste</b>,<br>um ihnen zu schreiben.</div>`;
+      el.innerHTML=newBtn+`<div style="padding:20px;text-align:center;color:var(--muted);font-size:.82rem">💬 Noch keine Direktnachrichten.<br><br>Folge Spielern aus der <b>Rangliste</b> —<br>sobald sie deine Anfrage annehmen, könnt ihr euch schreiben.</div>`;
     }else{
       const activeConvs=convs.filter(c=>!archivedConvs.some(a=>a.uid===c.uid));
       const archCount=convs.length-activeConvs.length;
@@ -4662,7 +4761,7 @@ async function sendDm(toUid,toName,content){
     const{error}=await sb.from('direct_messages').insert({from_uid:userId,from_name:playerName||'Unbekannt',to_uid:toUid,to_name:toName,content});
     if(error){
       if(error.code==='42P01'||error.message?.includes('does not exist'))showSqlHint('dm');
-      else if(error.message?.includes('security policy')||error.message?.includes('permission denied')||error.code==='42501')showSqlHint('dm');
+      else if(error.message?.includes('security policy')||error.message?.includes('permission denied')||error.code==='42501')toast('🔒 Ihr müsst euch erst gegenseitig folgen, bevor ihr schreiben könnt');
       else throw error;
     }
   }catch(e){toast('❌ '+e.message);}
@@ -4671,7 +4770,7 @@ async function sendDm(toUid,toName,content){
 function openDmPicker(container){
   const el=container||$('inboxBody');if(!el)return;
   if(!followedUsers.length){
-    el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><button id="dmPickBackEmpty" class="btn" style="width:auto;padding:6px 12px;font-size:.8rem">←</button><div style="font-weight:700;font-size:.9rem">Neue Nachricht</div></div><div style="padding:20px;text-align:center;color:var(--muted);font-size:.82rem">Du folgst noch niemandem.<br><br>Gehe zur <b>Rangliste</b> in der Community und tippe auf <b>+ Folgen</b>, um Spielern zu folgen.</div>`;
+    el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><button id="dmPickBackEmpty" class="btn" style="width:auto;padding:6px 12px;font-size:.8rem">←</button><div style="font-weight:700;font-size:.9rem">Neue Nachricht</div></div><div style="padding:20px;text-align:center;color:var(--muted);font-size:.82rem">Du hast noch keine angenommenen Follow-Anfragen.<br><br>Gehe zur <b>Rangliste</b> in der Community und tippe auf <b>+ Folgen</b> — sobald die Anfrage angenommen wurde, könnt ihr euch schreiben.</div>`;
     document.getElementById('dmPickBackEmpty')?.addEventListener('click',()=>loadInbox());
     return;
   }
@@ -4787,7 +4886,7 @@ async function launchAppFromSession(user){
       if(window._openStravaOnInit){window._openStravaOnInit=false;setTimeout(()=>{openImportModal();$('impTabStrava')?.click();},400);}
       const restored=await loadFromCloud();
       if(!restored&&territories.filter(t=>t.owner!==userId).length===0){await genRivals();}
-      renderTerr();updateUI();processSyncQueue();updateDmBadge();updateSettingsBadge();
+      renderTerr();updateUI();processSyncQueue();loadFollowState();updateDmBadge();updateSettingsBadge();
       if(isAdmin)setTimeout(showInboxIfAdmin,800);
     },150);
     setupBg();initSteps();
@@ -4860,7 +4959,7 @@ function showImpressum(){
 function showSqlHint(type,container){
   const sql=type==='support'
     ?`ALTER TABLE support_messages\n  ADD COLUMN IF NOT EXISTS admin_reply TEXT,\n  ADD COLUMN IF NOT EXISTS replied_at TIMESTAMPTZ;\n-- RLS absichern: nur eigene Nachrichten einfügen/lesen, nur Admin antwortet/löscht\nDO $$\nDECLARE pol record;\nBEGIN\n  FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='support_messages' LOOP\n    EXECUTE format('DROP POLICY IF EXISTS %I ON public.support_messages', pol.policyname);\n  END LOOP;\nEND $$;\nCREATE POLICY "Nutzer senden eigene Support-Nachrichten" ON public.support_messages\n  FOR INSERT WITH CHECK (\n    auth.uid() IS NOT DISTINCT FROM user_id\n    AND admin_reply IS NULL\n    AND replied_at IS NULL\n  );\nCREATE POLICY "Nutzer lesen eigene, Admin liest alle" ON public.support_messages\n  FOR SELECT USING (\n    (auth.jwt() ->> 'email') = 'maxst0297@gmail.com'\n    OR auth.uid() = user_id\n  );\nCREATE POLICY "Admin aktualisiert Nachrichten" ON public.support_messages\n  FOR UPDATE USING ((auth.jwt() ->> 'email') = 'maxst0297@gmail.com')\n  WITH CHECK ((auth.jwt() ->> 'email') = 'maxst0297@gmail.com');\nCREATE POLICY "Admin löscht Nachrichten" ON public.support_messages\n  FOR DELETE USING ((auth.jwt() ->> 'email') = 'maxst0297@gmail.com');`
-    :`CREATE TABLE IF NOT EXISTS direct_messages (\n  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,\n  from_uid TEXT NOT NULL,\n  from_name TEXT NOT NULL,\n  to_uid TEXT NOT NULL,\n  to_name TEXT NOT NULL,\n  content TEXT NOT NULL,\n  created_at TIMESTAMPTZ DEFAULT NOW(),\n  read_at TIMESTAMPTZ\n);\n-- RLS aktivieren: Nachrichten nur für Sender + Empfänger sichtbar\nALTER TABLE direct_messages ENABLE ROW LEVEL SECURITY;\nDROP POLICY IF EXISTS "dm_own" ON direct_messages;\nDROP POLICY IF EXISTS "dm_select" ON direct_messages;\nDROP POLICY IF EXISTS "dm_insert" ON direct_messages;\nDROP POLICY IF EXISTS "dm_update" ON direct_messages;\nDROP POLICY IF EXISTS "dm_delete" ON direct_messages;\n-- SELECT: nur Sender + Empfänger duerfen lesen\nCREATE POLICY "dm_select" ON direct_messages\n  FOR SELECT USING (auth.uid()::text IN (from_uid, to_uid));\n-- INSERT: from_uid MUSS die eigene Auth-ID sein (verhindert Absender-Faelschung)\nCREATE POLICY "dm_insert" ON direct_messages\n  FOR INSERT WITH CHECK (from_uid = auth.uid()::text);\n-- UPDATE: Sender + Empfänger duerfen updaten (z.B. read_at setzen)\nCREATE POLICY "dm_update" ON direct_messages\n  FOR UPDATE USING (auth.uid()::text IN (from_uid, to_uid));\n-- DELETE: Sender + Empfänger duerfen löschen (Chat leeren)\nCREATE POLICY "dm_delete" ON direct_messages\n  FOR DELETE USING (auth.uid()::text IN (from_uid, to_uid));\n-- Trigger: from_uid/to_uid/content/created_at sind nach dem Insert unveraenderlich\nCREATE OR REPLACE FUNCTION protect_dm_fields()\nRETURNS TRIGGER AS $$\nBEGIN\n  IF (NEW.from_uid IS DISTINCT FROM OLD.from_uid OR\n      NEW.to_uid IS DISTINCT FROM OLD.to_uid OR\n      NEW.content IS DISTINCT FROM OLD.content OR\n      NEW.created_at IS DISTINCT FROM OLD.created_at) THEN\n    RAISE EXCEPTION 'from_uid/to_uid/content/created_at duerfen nicht geaendert werden';\n  END IF;\n  RETURN NEW;\nEND;\n$$ LANGUAGE plpgsql;\nDROP TRIGGER IF EXISTS trg_protect_dm_fields ON direct_messages;\nCREATE TRIGGER trg_protect_dm_fields\n  BEFORE UPDATE ON direct_messages\n  FOR EACH ROW EXECUTE FUNCTION protect_dm_fields();`;
+    :`CREATE TABLE IF NOT EXISTS direct_messages (\n  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,\n  from_uid TEXT NOT NULL,\n  from_name TEXT NOT NULL,\n  to_uid TEXT NOT NULL,\n  to_name TEXT NOT NULL,\n  content TEXT NOT NULL,\n  created_at TIMESTAMPTZ DEFAULT NOW(),\n  read_at TIMESTAMPTZ\n);\n-- Follow-Anfragen: DMs sind erst nach gegenseitiger Annahme erlaubt\nCREATE TABLE IF NOT EXISTS follow_requests (\n  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n  requester_uid UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,\n  requester_name TEXT,\n  target_uid UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,\n  target_name TEXT,\n  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','accepted','declined')),\n  created_at TIMESTAMPTZ DEFAULT NOW(),\n  responded_at TIMESTAMPTZ,\n  CONSTRAINT follow_requests_no_self CHECK (requester_uid <> target_uid)\n);\nCREATE UNIQUE INDEX IF NOT EXISTS idx_follow_requests_pair ON follow_requests(requester_uid, target_uid);\nCREATE INDEX IF NOT EXISTS idx_follow_requests_lookup ON follow_requests(requester_uid, target_uid, status);\nCREATE INDEX IF NOT EXISTS idx_follow_requests_lookup_rev ON follow_requests(target_uid, requester_uid, status);\nALTER TABLE follow_requests ENABLE ROW LEVEL SECURITY;\nDROP POLICY IF EXISTS "fr_select" ON follow_requests;\nCREATE POLICY "fr_select" ON follow_requests FOR SELECT USING (auth.uid() IN (requester_uid, target_uid));\nDROP POLICY IF EXISTS "fr_insert" ON follow_requests;\nCREATE POLICY "fr_insert" ON follow_requests FOR INSERT WITH CHECK (requester_uid = auth.uid() AND status = 'pending' AND responded_at IS NULL);\nDROP POLICY IF EXISTS "fr_update" ON follow_requests;\nCREATE POLICY "fr_update" ON follow_requests FOR UPDATE USING (auth.uid() = target_uid) WITH CHECK (auth.uid() = target_uid);\nDROP POLICY IF EXISTS "fr_delete" ON follow_requests;\nCREATE POLICY "fr_delete" ON follow_requests FOR DELETE USING (auth.uid() IN (requester_uid, target_uid));\nCREATE OR REPLACE FUNCTION protect_follow_request_fields()\nRETURNS TRIGGER AS $$\nBEGIN\n  IF (NEW.requester_uid IS DISTINCT FROM OLD.requester_uid OR\n      NEW.target_uid IS DISTINCT FROM OLD.target_uid OR\n      NEW.created_at IS DISTINCT FROM OLD.created_at) THEN\n    RAISE EXCEPTION 'requester_uid/target_uid/created_at duerfen nicht geaendert werden';\n  END IF;\n  RETURN NEW;\nEND;\n$$ LANGUAGE plpgsql;\nDROP TRIGGER IF EXISTS trg_protect_follow_request_fields ON follow_requests;\nCREATE TRIGGER trg_protect_follow_request_fields\n  BEFORE UPDATE ON follow_requests\n  FOR EACH ROW EXECUTE FUNCTION protect_follow_request_fields();\n-- RLS aktivieren: Nachrichten nur für Sender + Empfänger sichtbar\nALTER TABLE direct_messages ENABLE ROW LEVEL SECURITY;\nDROP POLICY IF EXISTS "dm_own" ON direct_messages;\nDROP POLICY IF EXISTS "dm_select" ON direct_messages;\nDROP POLICY IF EXISTS "dm_insert" ON direct_messages;\nDROP POLICY IF EXISTS "dm_update" ON direct_messages;\nDROP POLICY IF EXISTS "dm_delete" ON direct_messages;\n-- SELECT: nur Sender + Empfänger duerfen lesen\nCREATE POLICY "dm_select" ON direct_messages\n  FOR SELECT USING (auth.uid()::text IN (from_uid, to_uid));\n-- INSERT: from_uid MUSS die eigene Auth-ID sein UND eine angenommene Follow-Anfrage muss bestehen\nCREATE POLICY "dm_insert" ON direct_messages\n  FOR INSERT WITH CHECK (\n    from_uid = auth.uid()::text\n    AND EXISTS (\n      SELECT 1 FROM follow_requests fr\n      WHERE fr.status = 'accepted'\n        AND ((fr.requester_uid = auth.uid() AND fr.target_uid::text = to_uid)\n          OR (fr.target_uid = auth.uid() AND fr.requester_uid::text = to_uid))\n    )\n  );\n-- UPDATE: Sender + Empfänger duerfen updaten (z.B. read_at setzen)\nCREATE POLICY "dm_update" ON direct_messages\n  FOR UPDATE USING (auth.uid()::text IN (from_uid, to_uid));\n-- DELETE: Sender + Empfänger duerfen löschen (Chat leeren)\nCREATE POLICY "dm_delete" ON direct_messages\n  FOR DELETE USING (auth.uid()::text IN (from_uid, to_uid));\n-- Trigger: from_uid/to_uid/content/created_at sind nach dem Insert unveraenderlich\nCREATE OR REPLACE FUNCTION protect_dm_fields()\nRETURNS TRIGGER AS $$\nBEGIN\n  IF (NEW.from_uid IS DISTINCT FROM OLD.from_uid OR\n      NEW.to_uid IS DISTINCT FROM OLD.to_uid OR\n      NEW.content IS DISTINCT FROM OLD.content OR\n      NEW.created_at IS DISTINCT FROM OLD.created_at) THEN\n    RAISE EXCEPTION 'from_uid/to_uid/content/created_at duerfen nicht geaendert werden';\n  END IF;\n  RETURN NEW;\nEND;\n$$ LANGUAGE plpgsql;\nDROP TRIGGER IF EXISTS trg_protect_dm_fields ON direct_messages;\nCREATE TRIGGER trg_protect_dm_fields\n  BEFORE UPDATE ON direct_messages\n  FOR EACH ROW EXECUTE FUNCTION protect_dm_fields();`;
   const title=type==='support'?'Spalten fehlen':'Tabelle einrichten';
   const html=`<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px"><div style="font-weight:700;margin-bottom:8px">⚠️ ${title}</div><div style="font-size:.75rem;color:var(--muted);margin-bottom:10px">Führe diesen SQL-Befehl im <b>Supabase Dashboard → SQL Editor</b> aus und klicke auf „Run":</div><pre style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:.68rem;color:var(--primary);overflow-x:auto;white-space:pre-wrap;word-break:break-all">${sql}</pre></div>`;
   if(container){container.innerHTML=html;return;}
