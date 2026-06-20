@@ -1508,15 +1508,21 @@ async function syncProfile(){
     await sb.from('profiles').upsert({
       id:sbUserId,user_id:userId,player_name:playerName,user_avatar:userAvatar,user_color:userColor,
       points,total_km:totalKm,total_conquered:totalConquered,streak_days:streakDays,
-      updated_at:new Date().toISOString(),game_data:gameSnap,
+      updated_at:new Date().toISOString(),
       user_team:userTeam||null,club_code:userClub?.code||null
+    },{onConflict:'id'});
+    // game_data (u.a. GPS-Lauf-Historie) bewusst NICHT auf profiles: die
+    // SELECT-Policy dort ist öffentlich (für die Rangliste), profile_private
+    // ist per RLS nur für den Besitzer lesbar.
+    await sb.from('profile_private').upsert({
+      id:sbUserId,game_data:gameSnap,updated_at:new Date().toISOString()
     },{onConflict:'id'});
   }catch(e){console.warn('Supabase profile sync:',e);}
 }
 async function loadFromCloud(){
   if(!sb||!playerName||!sbUserId)return false;
   try{
-    const{data}=await sb.from('profiles').select('game_data').eq('id',sbUserId).single();
+    const{data}=await sb.from('profile_private').select('game_data').eq('id',sbUserId).single();
     if(data?.game_data){
       const d=JSON.parse(data.game_data);
       if(d.territories&&d.territories.length>territories.length){
@@ -5353,10 +5359,11 @@ async function downloadDataExport(){
   try{
     const runs=sb&&sbUserId?(await sb.from('runs').select('*').eq('user_id',sbUserId))?.data||[]:[];
     const profile=sb&&sbUserId?(await sb.from('profiles').select('*').eq('id',sbUserId).single())?.data||null:null;
+    const priv=sb&&sbUserId?(await sb.from('profile_private').select('game_data').eq('id',sbUserId).single())?.data||null:null;
     const localData=JSON.parse(localStorage.getItem('rc_v4_'+userId)||'{}');
     const export_={
       exportDate:new Date().toISOString(),
-      profile:{playerName,userId,...profile},
+      profile:{playerName,userId,...profile,game_data:priv?.game_data},
       runs,
       localGameData:localData
     };
