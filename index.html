@@ -725,15 +725,17 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <div class="ob-sub">Lauf · Erobere · Herrsche</div>
         <!-- Login form -->
         <div id="obLoginForm">
-          <div class="field"><label>Name</label><input type="text" id="loginName" placeholder="Dein Name" autocomplete="nickname"></div>
+          <div class="field"><label>E-Mail oder Name</label><input type="text" id="loginName" placeholder="E-Mail oder Name" autocomplete="username"></div>
           <div class="field"><label>Passwort</label><input type="password" id="loginPw" placeholder="Dein Passwort" autocomplete="current-password"></div>
           <div class="ob-err" id="loginErr"></div>
           <button class="btn-start" id="loginBtn">ANMELDEN →</button>
+          <button class="ob-link" id="obToForgot">Passwort vergessen?</button>
           <button class="ob-link" id="obToRegister">Neu hier? Konto erstellen</button>
         </div>
         <!-- Register form -->
         <div id="obRegForm" style="display:none">
           <div class="field"><label>Name</label><input type="text" id="regName" placeholder="z.B. SpeedRunner" maxlength="20" autocomplete="nickname"></div>
+          <div class="field"><label>E-Mail</label><input type="email" id="regEmail" placeholder="deine@email.de" autocomplete="email"></div>
           <div class="field"><label>Passwort</label><input type="password" id="regPw" placeholder="Mindestens 8 Zeichen" autocomplete="new-password"></div>
           <div class="field"><label>Passwort bestätigen</label><input type="password" id="regPw2" placeholder="Passwort wiederholen" autocomplete="new-password"></div>
           <div class="ob-check-row"><input type="checkbox" id="regAge"><label for="regAge">Ich bin mindestens 16 Jahre alt.</label></div>
@@ -741,6 +743,28 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
           <div class="ob-err" id="regErr"></div>
           <button class="btn-start" id="regBtn">Loslegen →</button>
           <button class="ob-link" id="obToLoginFromReg">Bereits registriert? Anmelden</button>
+        </div>
+        <!-- Passwort vergessen: E-Mail anfordern -->
+        <div id="obForgotForm" style="display:none">
+          <div style="font-size:.8rem;color:rgba(255,255,255,.6);text-align:center;margin-bottom:18px">Gib deine E-Mail-Adresse ein. Wir senden dir einen Link zum Zurücksetzen.</div>
+          <div class="field"><label>E-Mail</label><input type="email" id="forgotEmail" placeholder="deine@email.de" autocomplete="email"></div>
+          <div class="ob-err" id="forgotErr"></div>
+          <button class="btn-start" id="forgotBtn">LINK SENDEN →</button>
+          <button class="ob-link" id="obToLoginFromForgot">‹ Zurück zum Login</button>
+        </div>
+        <!-- Passwort vergessen: Link gesendet -->
+        <div id="obForgotSent" style="display:none">
+          <div style="font-size:2.4rem;text-align:center;margin-bottom:10px">📬</div>
+          <div style="font-size:.85rem;color:rgba(255,255,255,.75);text-align:center;margin-bottom:18px" id="obForgotSentMsg"></div>
+          <button class="ob-link" id="obToLoginFromForgotSent">‹ Zurück zum Login</button>
+        </div>
+        <!-- E-Mail-Bestätigung ausstehend (nach Registrierung) -->
+        <div id="obConfirmPending" style="display:none">
+          <div style="font-size:2.4rem;text-align:center;margin-bottom:10px">📬</div>
+          <div style="font-size:.85rem;color:rgba(255,255,255,.75);text-align:center;margin-bottom:18px" id="obConfirmPendingMsg"></div>
+          <div class="ob-err" id="confirmPendingErr"></div>
+          <button class="btn-start" id="resendConfirmBtn">E-MAIL ERNEUT SENDEN</button>
+          <button class="ob-link" id="obToLoginFromConfirm">‹ Zurück zum Login</button>
         </div>
         <button class="ob-link ob-admin-link" id="obToAdminLink">Admin</button>
       </div>
@@ -761,6 +785,19 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <a href="/privacy.html" target="_blank" style="color:rgba(255,255,255,.35);text-decoration:none">Datenschutz</a>
       &nbsp;·&nbsp;
       <span id="obImpressumLink" style="cursor:pointer;color:rgba(255,255,255,.35)">Impressum</span>
+    </div>
+  </div>
+</div>
+
+<!-- Passwort-Reset nach Klick auf E-Mail-Link -->
+<div id="pwRecoveryModal" class="modal" style="display:none;z-index:2600">
+  <div class="modal-card">
+    <div class="modal-title">🔑 Neues Passwort setzen</div>
+    <input type="password" id="recoveryPw" class="modal-input" placeholder="Neues Passwort (mind. 8 Zeichen)" autocomplete="new-password">
+    <input type="password" id="recoveryPw2" class="modal-input" placeholder="Passwort wiederholen" autocomplete="new-password">
+    <div class="ob-err" id="recoveryErr"></div>
+    <div class="modal-actions">
+      <button class="btn btn-p" id="recoverySaveBtn" style="flex:1">Passwort speichern</button>
     </div>
   </div>
 </div>
@@ -1441,6 +1478,16 @@ let sbUserId=null,isAdmin=false;
 let followedUsers=[],activeDmThread=null;
 let archivedConvs=[],archivedSupportIds=new Set(),localReadConvs=new Set();
 let supportVisitTs=0;
+/* Muss VOR initSupabase()/getSession() registriert werden: supabase-js wartet beim
+   ersten getSession()-Aufruf intern auf die URL-Auswertung (Recovery-Link-Tokens) und
+   benachrichtigt dabei bereits registrierte Subscriber – ein später (z.B. in initApp())
+   registrierter Listener würde das PASSWORD_RECOVERY-Event verpassen. */
+sb?.auth.onAuthStateChange((event)=>{
+  if(event==='PASSWORD_RECOVERY'){
+    const m=document.getElementById('pwRecoveryModal');
+    if(m)m.style.display='flex';
+  }
+});
 
 async function initSupabase(){
   if(!sb)return null;
@@ -5643,9 +5690,15 @@ function toggleTheme(){const i=(THEME_CLASSES.indexOf(getActiveTheme())+1)%THEME
 
 /* INIT */
 window.initApp=function(){
-  /* Login ↔ Registrieren (innerhalb Bereich 1, kein Slide) */
-  $('obToRegister')?.addEventListener('click',()=>{$('obLoginForm').style.display='none';$('obRegForm').style.display='';});
-  $('obToLoginFromReg')?.addEventListener('click',()=>{$('obRegForm').style.display='none';$('obLoginForm').style.display='';});
+  /* Login ↔ Registrieren ↔ Passwort-vergessen ↔ Bestätigung-ausstehend (innerhalb Bereich 1, kein Slide) */
+  const OB_STATES=['obLoginForm','obRegForm','obForgotForm','obForgotSent','obConfirmPending'];
+  const showObState=id=>OB_STATES.forEach(s=>{const el=$(s);if(el)el.style.display=s===id?'':'none';});
+  $('obToRegister')?.addEventListener('click',()=>showObState('obRegForm'));
+  $('obToLoginFromReg')?.addEventListener('click',()=>showObState('obLoginForm'));
+  $('obToForgot')?.addEventListener('click',()=>showObState('obForgotForm'));
+  $('obToLoginFromForgot')?.addEventListener('click',()=>showObState('obLoginForm'));
+  $('obToLoginFromForgotSent')?.addEventListener('click',()=>showObState('obLoginForm'));
+  $('obToLoginFromConfirm')?.addEventListener('click',()=>showObState('obLoginForm'));
   /* Bereich 1 (User) ↔ Bereich 2 (Admin) — simultaner Slide/Fade/Blur-Wechsel */
   const OB_ANIM_MS=700;
   const obShowAdmin=()=>{
@@ -5682,17 +5735,22 @@ window.initApp=function(){
   window.obShowAdmin=obShowAdmin;window.obShowUser=obShowUser;
   $('obToAdminLink')?.addEventListener('click',obShowAdmin);
   $('obToUserLink')?.addEventListener('click',obShowUser);
-  /* Name → interne E-Mail (Nutzer sieht diese nie) */
+  /* Alt-Konten (Login per Name) → interne Pseudo-E-Mail, die der Nutzer nie sieht.
+     Neue Konten nutzen eine echte E-Mail (Pflichtfeld bei Registrierung). */
   const nameToEmail=n=>n.toLowerCase().replace(/[^a-z0-9]/g,'')+'@rc.runconquer.app';
+  const isEmail=s=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+  let pendingConfirmEmail='',resendCooldownUntil=0;
   /* Registrieren */
   $('regBtn')?.addEventListener('click',async()=>{
     const name=($('regName')?.value||'').trim();
+    const email=($('regEmail')?.value||'').trim().toLowerCase();
     const pw=$('regPw')?.value||'';
     const pw2=$('regPw2')?.value||'';
     const errEl=$('regErr');
     const showErr=msg=>{errEl.className='ob-err err';errEl.textContent=msg;errEl.style.display='block';};
     errEl.style.display='none';
     if(!name){showErr('Bitte Namen eingeben');return;}
+    if(!isEmail(email)){showErr('Bitte gültige E-Mail-Adresse eingeben');return;}
     if(pw.length<8){showErr('Passwort muss mindestens 8 Zeichen haben');return;}
     if(pw!==pw2){showErr('Passwörter stimmen nicht überein');return;}
     if(!$('regAge')?.checked){showErr('Bitte Altersbestätigung setzen');return;}
@@ -5700,37 +5758,98 @@ window.initApp=function(){
     $('regBtn').disabled=true;$('regBtn').textContent='⏳ Konto wird erstellt…';
     try{
       if(!sb)throw new Error('Supabase nicht verfügbar');
-      const email=nameToEmail(name);
-      const{data,error}=await sb.auth.signUp({email,password:pw,options:{data:{playerName:name}}});
+      const{data,error}=await sb.auth.signUp({email,password:pw,options:{data:{playerName:name},emailRedirectTo:location.origin}});
       if(error){
-        if(error.message?.toLowerCase().includes('already'))showErr('❌ Dieser Name ist bereits vergeben. Wähle einen anderen.');
+        if(error.message?.toLowerCase().includes('already'))showErr('❌ Diese E-Mail ist bereits registriert. Bitte einloggen oder Passwort zurücksetzen.');
         else throw error;
         return;
       }
       if(data?.session){
         await launchAppFromSession(data.user);
       } else {
-        await launchAppFromSession(data.user);
+        pendingConfirmEmail=email;
+        $('obConfirmPendingMsg').textContent='Wir haben eine Bestätigungs-E-Mail an '+email+' gesendet. Bitte klicke auf den Link, um dein Konto zu aktivieren.';
+        showObState('obConfirmPending');
       }
     }catch(e){showErr('❌ '+(e.message||'Fehler beim Registrieren'));}
     finally{$('regBtn').disabled=false;$('regBtn').textContent='KONTO ERSTELLEN →';}
   });
-  /* Anmelden */
+  /* Bestätigungs-E-Mail erneut senden (mit 30s-Cooldown gegen Spam) */
+  $('resendConfirmBtn')?.addEventListener('click',async()=>{
+    if(!pendingConfirmEmail||!sb||Date.now()<resendCooldownUntil)return;
+    const btn=$('resendConfirmBtn'),errEl=$('confirmPendingErr');
+    errEl.style.display='none';
+    btn.disabled=true;
+    try{
+      const{error}=await sb.auth.resend({type:'signup',email:pendingConfirmEmail});
+      if(error)throw error;
+      toast('📨 E-Mail erneut gesendet');
+      resendCooldownUntil=Date.now()+30000;
+      const tick=()=>{
+        const left=Math.ceil((resendCooldownUntil-Date.now())/1000);
+        if(left<=0){btn.disabled=false;btn.textContent='E-MAIL ERNEUT SENDEN';return;}
+        btn.textContent='Erneut senden in '+left+'s';
+        setTimeout(tick,500);
+      };
+      tick();
+    }catch(e){
+      errEl.className='ob-err err';errEl.textContent='❌ '+(e.message||'Fehler beim Senden');errEl.style.display='block';
+      btn.disabled=false;
+    }
+  });
+  /* Passwort vergessen: Link anfordern (Antwort bewusst generisch, keine E-Mail-Enumeration) */
+  $('forgotBtn')?.addEventListener('click',async()=>{
+    const email=($('forgotEmail')?.value||'').trim().toLowerCase();
+    const errEl=$('forgotErr');
+    const showErr=msg=>{errEl.className='ob-err err';errEl.textContent=msg;errEl.style.display='block';};
+    errEl.style.display='none';
+    if(!isEmail(email)){showErr('Bitte gültige E-Mail-Adresse eingeben');return;}
+    const btn=$('forgotBtn');btn.disabled=true;btn.textContent='⏳ Wird gesendet…';
+    try{
+      if(sb)await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin});
+    }catch(e){/* bewusst ignoriert: keine Rückschlüsse auf Existenz des Kontos */}
+    finally{
+      btn.disabled=false;btn.textContent='LINK SENDEN →';
+      $('obForgotSentMsg').textContent='Falls ein Konto mit '+email+' existiert, haben wir einen Link zum Zurücksetzen gesendet.';
+      showObState('obForgotSent');
+    }
+  });
+  /* Anmelden – akzeptiert echte E-Mail (neue Konten) oder Name (Alt-Konten via Pseudo-E-Mail) */
   $('loginBtn')?.addEventListener('click',async()=>{
-    const name=($('loginName')?.value||'').trim();
+    const idRaw=($('loginName')?.value||'').trim();
     const pw=$('loginPw')?.value||'';
     const errEl=$('loginErr');
     const showErr=msg=>{errEl.className='ob-err err';errEl.textContent=msg;errEl.style.display='block';};
     errEl.style.display='none';
-    if(!name||!pw){showErr('Name und Passwort eingeben');return;}
+    if(!idRaw||!pw){showErr('E-Mail/Name und Passwort eingeben');return;}
     $('loginBtn').disabled=true;$('loginBtn').textContent='⏳ Wird eingeloggt…';
     try{
       if(!sb)throw new Error('Supabase nicht verfügbar');
-      const{data,error}=await sb.auth.signInWithPassword({email:nameToEmail(name),password:pw});
+      const email=isEmail(idRaw)?idRaw.toLowerCase():nameToEmail(idRaw);
+      const{data,error}=await sb.auth.signInWithPassword({email,password:pw});
       if(error)throw error;
       await launchAppFromSession(data.user);
-    }catch(e){showErr('❌ Name oder Passwort falsch');}
+    }catch(e){showErr('❌ E-Mail/Name oder Passwort falsch');}
     finally{$('loginBtn').disabled=false;$('loginBtn').textContent='ANMELDEN →';}
+  });
+  /* Neues Passwort setzen (nach Klick auf Reset-Link aus der E-Mail) */
+  $('recoverySaveBtn')?.addEventListener('click',async()=>{
+    const pw=$('recoveryPw')?.value||'';
+    const pw2=$('recoveryPw2')?.value||'';
+    const errEl=$('recoveryErr');
+    const showErr=msg=>{errEl.className='ob-err err';errEl.textContent=msg;errEl.style.display='block';};
+    errEl.style.display='none';
+    if(pw.length<8){showErr('❌ Passwort muss mindestens 8 Zeichen haben');return;}
+    if(pw!==pw2){showErr('❌ Passwörter stimmen nicht überein');return;}
+    const btn=$('recoverySaveBtn');btn.disabled=true;btn.textContent='⏳ Wird gespeichert…';
+    try{
+      if(!sb)throw new Error('Supabase nicht verfügbar');
+      const{error}=await sb.auth.updateUser({password:pw});
+      if(error)throw error;
+      $('pwRecoveryModal').style.display='none';
+      toast('✅ Passwort aktualisiert');
+    }catch(e){showErr('❌ '+(e.message||'Fehler beim Speichern'));}
+    finally{btn.disabled=false;btn.textContent='Passwort speichern';}
   });
   /* Impressum im Onboarding */
   $('obImpressumLink')?.addEventListener('click',showImpressum);
