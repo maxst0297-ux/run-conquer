@@ -708,6 +708,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 </div>
 
 <!-- Impressum-Modal -->
+<!-- TODO vor Beta-Launch: echten Namen/Firmenname + Adresse eintragen (§5 TMG, Pflichtangabe) -->
 <div id="impressumModal">
   <div class="impressum-card">
     <div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:1px;color:var(--primary);margin-bottom:12px">Impressum</div>
@@ -966,7 +967,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <div class="comm-card"><h3><i class="fas fa-newspaper"></i> Aktuelle News</h3><div id="newsList"></div></div>
       <div class="comm-card" id="eventsCard"><h3><i class="fas fa-flag-checkered"></i> Events &amp; Turniere</h3><div id="eventsList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-trophy"></i> Deine Rekorde</h3><div id="recordsList"></div></div>
-      <div class="comm-card"><h3><i class="fas fa-users"></i> Follower-Aktivität</h3><div id="followerList"></div></div>
+      <div class="comm-card"><h3><i class="fas fa-bolt"></i> Live-Aktivität</h3><div id="followerList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-medal"></i> Rangliste</h3><div id="leaderboardList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-crown"></i> Wöchentliche Power-Rankings</h3><div id="powerRankList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-user-friends"></i> Freunde</h3><div id="friendsList"></div></div>
@@ -1220,6 +1221,42 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 (function(){
 'use strict';
 
+/* Sentry Crash-Reporting (opt-in, no-op solange DSN leer ist).
+   Aktivieren: DSN aus dem eigenen Sentry-Projekt eintragen ("Settings → Client Keys").
+   Den exakten Loader-Script-Tag (Version) am besten von dort kopieren, falls
+   sich der CDN-Pfad inzwischen geändert hat. */
+const SENTRY_DSN='';
+if(SENTRY_DSN){
+  const sc=document.createElement('script');
+  sc.src='https://cdn.jsdelivr.net/npm/@sentry/browser@8/build/bundle.min.js';
+  sc.crossOrigin='anonymous';
+  sc.onload=()=>{
+    if(typeof Sentry==='undefined')return;
+    Sentry.init({
+      dsn:SENTRY_DSN,
+      environment:location.hostname==='localhost'?'dev':'prod',
+      tracesSampleRate:0,
+      beforeSend(event){
+        if(event.user){delete event.user.email;delete event.user.ip_address;delete event.user.username;}
+        if(event.request)delete event.request.cookies;
+        return event;
+      }
+    });
+  };
+  document.head.appendChild(sc);
+}
+
+/* Plausible Analytics (opt-in, no-op solange Domain leer ist) – cookiefrei,
+   DSGVO-freundlich, kein Consent-Banner nötig.
+   Aktivieren: Domain wie im eigenen Plausible-Projekt registriert eintragen. */
+const PLAUSIBLE_DOMAIN='';
+if(PLAUSIBLE_DOMAIN){
+  const pc=document.createElement('script');
+  pc.defer=true;pc.dataset.domain=PLAUSIBLE_DOMAIN;
+  pc.src='https://plausible.io/js/script.js';
+  document.head.appendChild(pc);
+}
+
 /* CFG */
 const CFG={
   MIN_DIST:150,TOL_PCT:.1,MIN_TOL:60,MAX_TOL:300,BUF_M:25,MAX_SPEED_MPS:10,
@@ -1292,6 +1329,7 @@ let isRunning=false,watchId=null,bgWatchId=null,bgGeoWatcher=null;
 const isNative=typeof window.Capacitor!=='undefined'&&!!window.Capacitor.isNativePlatform?.();
 let wakeLockSentinel=null,silentCtx=null,silentSrc=null;
 let path=[],lastPos=null,lastPosTime=0,gpsJumpWarned=false,dist=0;
+let _persistTick=0;
 let territories=[],points=0,localStateTs=0;
 let userId='user',playerName='',userColor=COLORS[0],userAvatar=AVATARS[0];
 let userAvatarImg=null;
@@ -1559,9 +1597,41 @@ function pad(n){return String(n).padStart(2,'0')}
 function fmtPace(m,s){if(m<10)return'--:--';const p=s/60/(m/1000);return Math.floor(p)+':'+pad(Math.round((p%1)*60))}
 function speedToPace(mps){if(!mps||mps<0.3)return'--:--';const p=1000/mps/60;return Math.floor(p)+':'+pad(Math.round((p%1)*60))}
 function debounce(fn,w){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),w)}}
+/* Rate-Limiting für Profil-Sync: saveProfile() wird von vielen einzelnen UI-
+   Handlern (Avatar, Theme, Team, Club...) ausgelöst und kann durch schnelles
+   Klicken mehrfach pro Sekunde feuern. Bündelt das auf einen Schreibvorgang. */
+const syncProfileDebounced=debounce(syncProfile,1000);
 
 /* PERSIST */
 function save(){localStateTs=Date.now();localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,energyWeek,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered,registeredAt,starterQuestsDone,starterQuestFlags,heatPersonalOnly,dailyChallenges,dailyChalDate,chalStreak,lastChalDoneDate,dailyLoginDate,dailyLoginStreak,streakShields,recentQuoteIds,weeklyChals,weekChalKey,personalRecords,battlePassClaimed,totalRaids,totalBoosts,weeklyAchsDone,seasonXp,localStateTs}))}
+/* Crash-resiliente Lauf-Persistenz: Pfad liegt sonst nur im RAM und ginge bei
+   App-Kill/Crash mitten im Lauf komplett verloren. Wird alle ~12s gespiegelt,
+   beim nächsten Boot per checkOrphanedRun() angeboten. */
+function persistActiveRun(){
+  if(!isRunning)return;
+  try{
+    localStorage.setItem('rc_active_run_'+userId,JSON.stringify({
+      savedAt:Date.now(),path,dist,
+      runSecs:runSecs+(isPaused?0:Math.floor((Date.now()-runStart)/1000)),
+      kmSplits,lastSplitKm,lastSplitSecs
+    }));
+  }catch(e){/* z.B. QuotaExceededError – Persistenz für diesen Tick einfach überspringen */}
+}
+function clearActiveRunSnapshot(){try{localStorage.removeItem('rc_active_run_'+userId);}catch(e){}}
+function checkOrphanedRun(){
+  if(isRunning)return;
+  let snap=null;
+  try{snap=JSON.parse(localStorage.getItem('rc_active_run_'+userId));}catch(e){}
+  if(!snap)return;
+  clearActiveRunSnapshot();
+  const ageMs=Date.now()-(snap.savedAt||0);
+  if(ageMs>3*3600000||!snap.path||snap.path.length<3||!(snap.dist>=CFG.MIN_DIST))return;
+  const mins=Math.max(1,Math.round(ageMs/60000));
+  if(confirm(`📡 Unterbrochener Lauf gefunden (vor ${mins} Min., ${(snap.dist/1000).toFixed(2)} km).\n\nAls abgeschlossenen Lauf speichern?`)){
+    path=snap.path;dist=snap.dist;kmSplits=snap.kmSplits||[];lastSplitKm=snap.lastSplitKm||0;lastSplitSecs=snap.lastSplitSecs||0;
+    finalizeRun(snap.runSecs||0);
+  }
+}
 function load(){
   try{
     const d=JSON.parse(localStorage.getItem('rc_v4_'+userId));
@@ -1606,7 +1676,7 @@ function saveProfile(){
   // Update theme-color meta for Android status bar
   const bgCol=getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
   const tcm=document.getElementById('themeColorMeta');if(tcm&&bgCol)tcm.content=bgCol;
-  syncProfile();
+  syncProfileDebounced();
 }
 function loadProfile(){
   try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';friends=p.friends||[];const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
@@ -2606,7 +2676,7 @@ async function runOneBot(bot){
       }
     }
   }
-  if(txt){botActivities.unshift({text:txt,time:now});if(botActivities.length>20)botActivities.pop();}
+  if(txt){botActivities.unshift({text:txt,time:now,bot:bot.id});if(botActivities.length>20)botActivities.pop();}
 }
 async function simulateBotRun(){
   if(!mapL||!territories.length)return;
@@ -3133,7 +3203,7 @@ function startRun(){
   if(isRunning)return;
   if(localStorage.getItem('rc_gps_consent')!=='1'){showGpsConsent(startRun);return;}
   isRunning=true;isPaused=false;beep(440);
-  runStart=Date.now();runSecs=0;path=[];lastPos=null;lastPosTime=0;gpsJumpWarned=false;dist=0;kmSplits=[];lastSplitKm=0;lastSplitSecs=0;
+  runStart=Date.now();runSecs=0;path=[];lastPos=null;lastPosTime=0;gpsJumpWarned=false;dist=0;kmSplits=[];lastSplitKm=0;lastSplitSecs=0;_persistTick=0;
   sessionNewTerrNames=[];sessionNewLandmarks=[];window._lastPrevAt=0;
   gpsSpeed=null;gpsAlt=null;cadence=0;
   statusTxt.textContent=energy>0?`⚡ Boost aktiv (${energy}/${CFG.ENERGY_MAX})`:'Läuft…';
@@ -3217,6 +3287,7 @@ function startLiveUpdate(){liveInterval=setInterval(()=>{
   $('liveSrc').textContent=hrSource==='bt'?'💙 BT':'📱 GPS';
   if(hrSource==='sim')simHR();
   const pStats=$('panelRunStats');if(pStats)pStats.textContent=(dist<10?'– km':(dist/1000).toFixed(2)+' km')+' · '+fmtTime(el);
+  if(++_persistTick%12===0)persistActiveRun();
 },1000)}
 function stopLiveUpdate(){clearInterval(liveInterval);liveInterval=null}
 
@@ -3303,6 +3374,13 @@ function stopRun(){
   const pStats=$('panelRunStats');if(pStats)pStats.textContent='– km · 00:00';
   const elapsed=runSecs;
   if(previewLayer){mapL.removeLayer(previewLayer);previewLayer=null;}window._lastPrevAt=0;clearTimeout(window._prevTimer);
+  clearActiveRunSnapshot();
+  finalizeRun(elapsed);
+}
+/* Bewertung/Speicherung eines gelaufenen Pfads – getrennt von stopRun(), damit
+   checkOrphanedRun() einen nach App-Crash wiederhergestellten Pfad genauso
+   abschließen kann, ohne dass isRunning vorher true gewesen sein muss. */
+function finalizeRun(elapsed){
   if(path.length<3||dist<CFG.MIN_DIST){toast('Zu kurz – mind. '+CFG.MIN_DIST+' m');if(pathLayer)mapL.removeLayer(pathLayer);path=[];dist=0;sessionConquests=0;return}
   if(elapsed>0&&(dist/elapsed)>CFG.MAX_SPEED_MPS){toast('⚠️ Unrealistisches Tempo erkannt – Lauf wird nicht gewertet');if(pathLayer)mapL.removeLayer(pathLayer);path=[];dist=0;sessionConquests=0;return}
   const pd=mkPoly();if(!pd)return;
@@ -3807,7 +3885,6 @@ function updateCommunity(){
   const liveNews=botActivities.slice(0,4).map(a=>{const diff=Math.round((Date.now()-a.time)/60000);const t=diff<1?'gerade':diff<60?`vor ${diff} Min.`:`vor ${Math.floor(diff/60)} Std.`;return{icon:'🏃',txt:a.text,t};});
   $('newsList').innerHTML=[...liveNews,...staticNews].slice(0,5).map(n=>`<div class="list-row"><span class="row-icon">${n.icon}</span><span class="row-txt">${n.txt}</span><span class="row-meta">${n.t}</span></div>`).join('');
   $('recordsList').innerHTML=[['🏃','Längster Lauf',fmtDist(Math.max(0,...history.map(r=>r.distance)))],['⚔️','Gebiete erobert',totalConquered],['📐','Größtes Gebiet',Math.round(Math.max(0,...territories.filter(t=>t.owner===userId).map(t=>t.area||0)))+' m²'],['🔥','Streak',streakDays+' Tage']].map(([i,l,v])=>`<div class="list-row"><span class="row-icon">${i}</span><span class="row-txt">${l}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary)">${v}</span></div>`).join('');
-  $('followerList').innerHTML=[{name:'Roter Wolf',av:'🐺',txt:'10 km in 45 Min',t:'vor 1 Tag'},{name:'Eiserne Hand',av:'✊',txt:'500 Punkte durch Eroberung',t:'vor 3 Std.'},{name:'Stahl-Garde',av:'⚔️',txt:'3 Gebiete verteidigt',t:'vor 6 Std.'}].map(f=>`<div class="list-row"><span class="row-icon">${f.av}</span><div class="row-txt"><b>${f.name}</b>: ${f.txt}</div><span class="row-meta">${f.t}</span></div>`).join('');
   renderEvents();
   loadFollowState().then(()=>{renderLeaderboard();renderFollowRequests();});
   renderSocialFeed();
@@ -4009,18 +4086,16 @@ async function renderLeaderboard(){
 /* ── RICH SOCIAL FEED ── */
 function renderSocialFeed(){
   const now=Date.now();
-  const feedItems=botActivities.length>=3
-    ? botActivities.slice(0,3).map(a=>{
-        const bot=BOTS.find(b=>b.id===a.bot)||BOTS[0];
-        const diff=Math.round((now-a.time)/60000);
-        const t=diff<1?'gerade':diff<60?`vor ${diff} Min.`:`vor ${Math.floor(diff/60)} Std.`;
-        return{name:bot.name,av:bot.avatar,txt:a.text.replace(bot.avatar+' '+bot.name+' ',''),t,route:null};
-      })
-    : [
-        {name:'Roter Wolf',av:'🐺',txt:'10 km in 45 Min gelaufen',t:'vor 1 Tag',route:[[48.14,11.57],[48.145,11.575],[48.15,11.58],[48.148,11.585]]},
-        {name:'Eiserne Hand',av:'✊',txt:'500 Punkte durch Eroberung',t:'vor 3 Std.',route:null},
-        {name:'Stahl-Garde',av:'⚔️',txt:'3 Gebiete verteidigt',t:'vor 6 Std.',route:[[48.13,11.56],[48.132,11.565],[48.135,11.57]]}
-      ];
+  if(!botActivities.length){
+    $('followerList').innerHTML=`<div class="list-row" style="justify-content:center;gap:8px;color:var(--muted);font-size:.8rem"><i class="fas fa-circle-notch fa-spin"></i> Lade Live-Aktivität…</div>`;
+    return;
+  }
+  const feedItems=botActivities.slice(0,3).map(a=>{
+    const bot=BOTS.find(b=>b.id===a.bot)||BOTS[0];
+    const diff=Math.round((now-a.time)/60000);
+    const t=diff<1?'gerade':diff<60?`vor ${diff} Min.`:`vor ${Math.floor(diff/60)} Std.`;
+    return{name:bot.name,av:bot.avatar,txt:a.text.replace(bot.avatar+' '+bot.name+' ',''),t,route:null};
+  });
   $('followerList').innerHTML=feedItems.map((f,idx)=>{
     const lk=parseInt(localStorage.getItem('rc_likes_act_'+idx)||'0');
     return`<div class="list-row" style="flex-direction:column;align-items:stretch;gap:8px"><div style="display:flex;align-items:center;gap:10px"><span class="row-icon">${f.av}</span><div class="row-txt"><b>${f.name}</b>: ${f.txt}</div><span class="row-meta">${f.t}</span></div>${f.route?`<div style="display:flex;gap:8px"><canvas id="feedRoute${idx}" width="120" height="70" style="border-radius:10px;border:1px solid var(--border);background:var(--bg2)"></canvas></div>`:''}<button id="apBtn_${idx}" onclick="window.applaudActivity(${idx})" style="align-self:flex-end;background:none;border:1px solid ${lk?'var(--primary)':'var(--border)'};border-radius:20px;padding:3px 12px;font-size:.7rem;color:${lk?'var(--primary)':'var(--muted)'};cursor:pointer;margin-top:2px">${lk?`<i class="fas fa-thumbs-up" style="color:var(--primary)"></i> ${lk}`:'👏 Applaudieren'}</button></div>`;
@@ -4938,6 +5013,7 @@ async function launchAppFromSession(user){
       const restored=await loadFromCloud();
       if(!restored&&territories.filter(t=>t.owner!==userId).length===0){await genRivals();}
       renderTerr();updateUI();processSyncQueue();loadFollowState();updateDmBadge();updateSettingsBadge();
+      setTimeout(checkOrphanedRun,1100);
       if(isAdmin)setTimeout(showInboxIfAdmin,800);
     },150);
     setupBg();initSteps();
