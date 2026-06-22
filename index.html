@@ -134,6 +134,15 @@ body.onboarding-active{background:#000}
 .ob-link{font-size:.72rem;color:rgba(255,255,255,.45);text-align:center;margin-top:10px;cursor:pointer;text-decoration:underline;background:none;border:none;width:100%;font-family:'Poppins',sans-serif;transition:color var(--motion-base)}
 .ob-link:hover{color:rgba(255,255,255,.85)}
 .ob-admin-link{margin-top:18px}
+.ob-oauth-divider{display:flex;align-items:center;gap:10px;margin:18px 0 14px;color:rgba(255,255,255,.35);font-size:.68rem;text-transform:uppercase;letter-spacing:1.5px}
+.ob-oauth-divider::before,.ob-oauth-divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.15)}
+.ob-oauth-row{display:flex;flex-direction:column;gap:10px}
+.ob-oauth-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px;border-radius:14px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#fff;font-family:'Poppins',sans-serif;font-size:.85rem;font-weight:500;cursor:pointer;transition:background var(--motion-base),transform var(--motion-fast)}
+.ob-oauth-btn:hover{background:rgba(255,255,255,.12)}
+.ob-oauth-btn:active{transform:scale(.97)}
+.ob-oauth-btn:disabled{opacity:.5;pointer-events:none}
+.ob-oauth-btn i{font-size:1rem}
+.ob-oauth-btn.facebook i{color:#1877F2}
 /* GPS consent modal */
 #gpsConsentModal{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:3500;display:flex;align-items:center;justify-content:center;padding:20px}
 .consent-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;max-width:340px;width:100%;text-align:center}
@@ -615,6 +624,11 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
           <div class="field"><label>Passwort</label><input type="password" id="loginPw" placeholder="Dein Passwort" autocomplete="current-password"></div>
           <div class="ob-err" id="loginErr"></div>
           <button class="btn-start" id="loginBtn">ANMELDEN →</button>
+          <div class="ob-oauth-divider">oder</div>
+          <div class="ob-oauth-row">
+            <button type="button" class="ob-oauth-btn google" data-provider="google"><i class="fab fa-google"></i> Mit Google anmelden</button>
+            <button type="button" class="ob-oauth-btn facebook" data-provider="facebook"><i class="fab fa-facebook-f"></i> Mit Facebook anmelden</button>
+          </div>
           <button class="ob-link" id="obToForgot">Passwort vergessen?</button>
           <button class="ob-link" id="obToRegister">Neu hier? Konto erstellen</button>
         </div>
@@ -628,6 +642,11 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
           <div class="ob-check-row"><input type="checkbox" id="regPrivacy"><label for="regPrivacy">Ich habe die <a href="/privacy.html" target="_blank">Datenschutzerklärung</a> gelesen und stimme der Verarbeitung meiner GPS- und Aktivitätsdaten zu.</label></div>
           <div class="ob-err" id="regErr"></div>
           <button class="btn-start" id="regBtn">Loslegen →</button>
+          <div class="ob-oauth-divider">oder</div>
+          <div class="ob-oauth-row">
+            <button type="button" class="ob-oauth-btn google" data-provider="google"><i class="fab fa-google"></i> Mit Google registrieren</button>
+            <button type="button" class="ob-oauth-btn facebook" data-provider="facebook"><i class="fab fa-facebook-f"></i> Mit Facebook registrieren</button>
+          </div>
           <button class="ob-link" id="obToLoginFromReg">Bereits registriert? Anmelden</button>
         </div>
         <!-- Passwort vergessen: E-Mail anfordern -->
@@ -651,6 +670,15 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
           <div class="ob-err" id="confirmPendingErr"></div>
           <button class="btn-start" id="resendConfirmBtn">E-MAIL ERNEUT SENDEN</button>
           <button class="ob-link" id="obToLoginFromConfirm">‹ Zurück zum Login</button>
+        </div>
+        <!-- Neues Google/Facebook-Konto: Profil vervollständigen (Name + Pflicht-Checkboxen) -->
+        <div id="obOAuthSetup" style="display:none">
+          <div style="font-size:.85rem;color:rgba(255,255,255,.75);text-align:center;margin-bottom:18px">Fast geschafft! Wähle deinen Anzeigenamen.</div>
+          <div class="field"><label>Name</label><input type="text" id="oauthName" placeholder="z.B. SpeedRunner" maxlength="20" autocomplete="nickname"></div>
+          <div class="ob-check-row"><input type="checkbox" id="oauthAge"><label for="oauthAge">Ich bin mindestens 16 Jahre alt.</label></div>
+          <div class="ob-check-row"><input type="checkbox" id="oauthPrivacy"><label for="oauthPrivacy">Ich habe die <a href="/privacy.html" target="_blank">Datenschutzerklärung</a> gelesen und stimme der Verarbeitung meiner GPS- und Aktivitätsdaten zu.</label></div>
+          <div class="ob-err" id="oauthSetupErr"></div>
+          <button class="btn-start" id="oauthSetupBtn">Loslegen →</button>
         </div>
         <button class="ob-link ob-admin-link" id="obToAdminLink">Admin</button>
       </div>
@@ -5020,6 +5048,16 @@ async function launchAppFromSession(user){
   }
 }
 
+/* Neuer Google/Facebook-Nutzer ohne playerName in user_metadata → Profil vervollständigen
+   (Name + Altersbestätigung + Datenschutz), bevor die App vollständig startet. */
+function showOAuthProfileSetup(user){
+  const meta=user.user_metadata||{};
+  const nameField=$('oauthName');
+  if(nameField)nameField.value=meta.full_name||meta.name||'';
+  $('onboarding').style.display='flex';document.body.classList.add('onboarding-active');
+  window.showObState('obOAuthSetup');
+}
+
 function showGpsConsent(onAccept){
   const modal=$('gpsConsentModal');
   if(!modal)return;
@@ -5397,8 +5435,9 @@ function toggleTheme(){const i=(THEME_CLASSES.indexOf(getActiveTheme())+1)%THEME
 /* INIT */
 window.initApp=function(){
   /* Login ↔ Registrieren ↔ Passwort-vergessen ↔ Bestätigung-ausstehend (innerhalb Bereich 1, kein Slide) */
-  const OB_STATES=['obLoginForm','obRegForm','obForgotForm','obForgotSent','obConfirmPending'];
+  const OB_STATES=['obLoginForm','obRegForm','obForgotForm','obForgotSent','obConfirmPending','obOAuthSetup'];
   const showObState=id=>OB_STATES.forEach(s=>{const el=$(s);if(el)el.style.display=s===id?'':'none';});
+  window.showObState=showObState;
   $('obToRegister')?.addEventListener('click',()=>showObState('obRegForm'));
   $('obToLoginFromReg')?.addEventListener('click',()=>showObState('obLoginForm'));
   $('obToForgot')?.addEventListener('click',()=>showObState('obForgotForm'));
@@ -5537,6 +5576,35 @@ window.initApp=function(){
       await launchAppFromSession(data.user);
     }catch(e){showErr('❌ E-Mail/Name oder Passwort falsch');}
     finally{$('loginBtn').disabled=false;$('loginBtn').textContent='ANMELDEN →';}
+  });
+  /* Google/Facebook-Login – voller Seiten-Redirect zum Provider, kein Popup.
+     Die Rückkehr (inkl. Session-Erkennung) übernimmt die Boot-Sequenz via getSession(). */
+  document.querySelectorAll('.ob-oauth-btn').forEach(btn=>{
+    btn.addEventListener('click',async()=>{
+      if(!sb)return;
+      btn.disabled=true;
+      try{
+        const{error}=await sb.auth.signInWithOAuth({provider:btn.dataset.provider,options:{redirectTo:location.origin}});
+        if(error){toast('❌ '+(error.message||'OAuth-Login fehlgeschlagen'));btn.disabled=false;}
+      }catch(e){toast('❌ OAuth-Login fehlgeschlagen');btn.disabled=false;}
+    });
+  });
+  /* Neues Google/Facebook-Konto: Name wählen + Pflicht-Checkboxen bestätigen */
+  $('oauthSetupBtn')?.addEventListener('click',async()=>{
+    const name=($('oauthName')?.value||'').trim();
+    const errEl=$('oauthSetupErr');
+    const showErr=msg=>{errEl.className='ob-err err';errEl.textContent=msg;errEl.style.display='block';};
+    errEl.style.display='none';
+    if(!name){showErr('Bitte Namen eingeben');return;}
+    if(!$('oauthAge')?.checked){showErr('Bitte Altersbestätigung setzen');return;}
+    if(!$('oauthPrivacy')?.checked){showErr('Bitte Datenschutzbestimmungen zustimmen');return;}
+    const btn=$('oauthSetupBtn');btn.disabled=true;btn.textContent='⏳ Wird gespeichert…';
+    try{
+      if(!sb)throw new Error('Supabase nicht verfügbar');
+      const{data,error}=await sb.auth.updateUser({data:{playerName:name}});
+      if(error)throw error;
+      await launchAppFromSession(data.user);
+    }catch(e){showErr('❌ '+(e.message||'Fehler beim Speichern'));btn.disabled=false;btn.textContent='Loslegen →';}
   });
   /* Neues Passwort setzen (nach Klick auf Reset-Link aus der E-Mail) */
   $('recoverySaveBtn')?.addEventListener('click',async()=>{
@@ -5805,8 +5873,13 @@ setTimeout(()=>{
       const session=await initSupabase();
       if(typeof window.initApp==='function')window.initApp();
       if(session){
-        /* Bestehende Session → App direkt starten */
-        await launchAppFromSession(session.user);
+        if(!session.user.user_metadata?.playerName){
+          /* Neues Google/Facebook-Konto: Provider liefert keinen playerName */
+          showOAuthProfileSetup(session.user);
+        } else {
+          /* Bestehende Session → App direkt starten */
+          await launchAppFromSession(session.user);
+        }
       } else {
         /* Kein Login → Auth-Screen */
         $('onboarding').style.display='flex';document.body.classList.add('onboarding-active');
