@@ -1134,7 +1134,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <div class="comm-card"><h3><i class="fas fa-medal"></i> Rangliste</h3><div id="leaderboardList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-crown"></i> Wöchentliche Power-Rankings</h3><div id="powerRankList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-user-friends"></i> Freunde</h3><div id="friendsList"></div></div>
-      <div class="comm-card"><h3><i class="fas fa-shield-alt"></i> Fraktion-Rangliste</h3><div id="teamRankList"></div></div>
+      <div class="comm-card"><h3><i class="fas fa-shield-alt"></i> Fraktions-Krieg <span style="font-size:.62rem;color:var(--muted);font-weight:400">— alle Spieler</span></h3><div id="teamRankList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-swords"></i> Club Wars <span style="font-size:.62rem;color:var(--muted);font-weight:400">— diese Woche</span></h3><div id="clubWarsList"></div></div>
       <div class="comm-card" id="clubCommunityCard"><h3><i class="fas fa-users-cog"></i> Clubs</h3><div id="clubCommunityList"></div></div>
       <div class="comm-card" id="playerDiscoveryCard"><h3><i class="fas fa-compass"></i> Spieler entdecken</h3><div id="playerDiscoveryList"></div></div>
@@ -4459,17 +4459,7 @@ function updateCommunity(){
   renderPlayerDiscovery();
   renderClubDiscovery();
   // Fraktion-Rangliste
-  const teamEl=$('teamRankList');
-  if(teamEl){
-    const teamStats=TEAMS.map(tm=>{
-      const botIds=Object.entries(BOT_TEAMS).filter(([,tid])=>tid===tm.id).map(([bid])=>bid);
-      const playerPts=(userTeam===tm.id)?points:0;
-      const botPts=botIds.reduce((s,bid)=>{const bot=BOTS.find(b=>b.id===bid);return s+(bot?bot.pts:0);},0);
-      const terrCount=territories.filter(t=>t.owner===userId?userTeam===tm.id:botIds.includes(t.owner)).length;
-      return{...tm,total:playerPts+botPts,terrCount};
-    }).sort((a,b)=>b.total-a.total);
-    teamEl.innerHTML=teamStats.map((tm,i)=>`<div class="list-row"><span style="font-size:1.1rem;width:24px">${['🥇','🥈','🥉','4.'][i]||''}</span><span style="font-size:1.1rem">${tm.icon}</span><span class="row-txt" style="color:${tm.color};font-weight:700">${tm.name}</span><span style="font-size:.72rem;color:var(--muted)">${tm.terrCount} Gebiete</span><span style="font-family:'Bebas Neue',sans-serif;color:${tm.color}">${tm.total} Pts</span></div>`).join('');
-  }
+  renderFactionWar();
   $('bigTerrList').innerHTML=[...territories].sort((a,b)=>(b.area||0)-(a.area||0)).slice(0,5).map(t=>`<div class="list-row"><div class="terr-dot" style="background:${t.owner===userId?userColor:t.color}"></div><span class="row-txt">${esc(t.customName||'Unbenannt')}</span><span class="muted" style="font-size:.72rem">${Math.round(t.area||0)} m²</span><span class="terr-owner" style="color:${t.owner===userId?'var(--primary)':'var(--red)'}">${t.owner===userId?'Deins':'Feind'}</span></div>`).join('')||'<div class="muted" style="padding:8px">Keine Gebiete</div>';
   if(userMarker){
     const pos=userMarker.getLatLng();
@@ -4584,6 +4574,72 @@ function renderEvents(){
   ];
   function fmtCD(ms){if(ms<=0)return'BEENDET';const d=Math.floor(ms/86400000),h=Math.floor((ms%86400000)/3600000),m=Math.floor((ms%3600000)/60000);return d>0?`${d}T ${h}Std`:h>0?`${h}Std ${m}Min`:`${m}Min`}
   $('eventsList').innerHTML=EVENTS.map(ev=>{const rem=ev.endsAt-now;return`<div class="event-item ${ev.color}"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="flex:1"><div style="font-weight:600;font-size:.88rem">${ev.icon} ${ev.title}</div><div style="font-size:.72rem;color:var(--muted);margin:2px 0">${ev.desc}</div><div style="display:flex;align-items:center;gap:8px;margin-top:4px"><span class="event-countdown">⏱ ${fmtCD(rem)}</span><span style="font-size:.65rem;color:var(--muted)">🎁 +${ev.reward} Pts</span></div></div></div><div class="event-badges">${ev.participants.map(p=>`<span class="event-badge">${p}</span>`).join('')}<span class="event-badge">+${3+ev.id.charCodeAt(2)%8} weitere</span></div></div>`}).join('');
+}
+
+/* ── FRAKTIONS-KRIEG (echte, geteilte Welt) ──
+   Aggregiert reale Spieler aus der öffentlichen profiles-Tabelle (user_team,
+   points, total_conquered) statt – wie früher – nur lokale Bot-Punktwerte zu
+   zeigen. Dadurch wird der Fraktionskampf zu einer echten Meta-Ebene zwischen
+   allen Spielern. Bei fehlendem Supabase/Offline greift eine lokale
+   Schätzung, damit die Karte nie leer/kaputt ist. */
+async function renderFactionWar(){
+  const el=$('teamRankList');
+  if(!el)return;
+  let stats,isLive=false;
+  try{
+    if(!sb)throw 0;
+    const{data,error}=await sb.from('profiles')
+      .select('user_team,points,total_conquered')
+      .not('user_team','is',null)
+      .order('points',{ascending:false})
+      .limit(1000);
+    if(error||!data)throw error||0;
+    const agg={};
+    data.forEach(p=>{
+      if(!TEAMS.some(t=>t.id===p.user_team))return;
+      const a=agg[p.user_team]||(agg[p.user_team]={total:0,terr:0,members:0});
+      a.total+=p.points||0;a.terr+=p.total_conquered||0;a.members++;
+    });
+    stats=TEAMS.map(tm=>({...tm,total:agg[tm.id]?.total||0,terr:agg[tm.id]?.terr||0,members:agg[tm.id]?.members||0}));
+    isLive=true;
+  }catch(e){
+    // Fallback: nur lokal bekannte Daten
+    stats=TEAMS.map(tm=>({...tm,
+      total:userTeam===tm.id?points:0,
+      terr:userTeam===tm.id?territories.filter(t=>t.owner===userId).length:0,
+      members:userTeam===tm.id?1:0}));
+  }
+  // Eigene (evtl. noch nicht gesyncte) Punkte als Untergrenze der eigenen Fraktion
+  const mine=stats.find(t=>t.id===userTeam);
+  if(mine&&points>mine.total){mine.total=points;if(!mine.members)mine.members=1;}
+  stats.sort((a,b)=>b.total-a.total);
+  const grand=stats.reduce((s,t)=>s+t.total,0)||1;
+  const leader=stats[0];
+  el.innerHTML=(isLive?'':'<div style="font-size:.62rem;color:var(--muted);margin-bottom:6px">📡 Offline – lokale Schätzung</div>')
+    +stats.map((tm,i)=>{
+      const share=Math.round((tm.total/grand)*100);
+      const isMine=tm.id===userTeam;
+      const isLeader=i===0&&tm.total>0;
+      return`<div class="list-row" style="flex-direction:column;align-items:stretch;gap:5px${isMine?';background:rgba(var(--primary-rgb),.06);border:1px solid rgba(var(--primary-rgb),.25)':''}">
+        <div style="display:flex;align-items:center;gap:8px;width:100%">
+          <span style="font-size:1rem;width:20px;flex-shrink:0">${['🥇','🥈','🥉','4.'][i]||''}</span>
+          <span style="font-size:1.1rem">${tm.icon}</span>
+          <span class="row-txt" style="color:${tm.color};font-weight:700">${tm.name}${isMine?' <span style="font-size:.56rem;color:var(--primary)">· DEINE</span>':''}${isLeader?' 👑':''}</span>
+          <span style="font-size:.64rem;color:var(--muted)">${tm.members} L.</span>
+          <span style="font-family:'Bebas Neue',sans-serif;color:${tm.color};margin-left:auto">${tm.total}</span>
+        </div>
+        <div style="height:6px;border-radius:4px;background:rgba(255,255,255,.07);overflow:hidden"><div style="height:100%;width:${share}%;background:${tm.color};border-radius:4px;transition:width .6s var(--ease-out)"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:.58rem;color:var(--muted)"><span>${share}% Kontrolle</span><span>${tm.terr} Gebiete</span></div>
+      </div>`;
+    }).join('');
+  // Persönlicher Beitrag + Kriegslage
+  if(mine){
+    const contribPct=mine.total>0?Math.min(100,Math.round((points/mine.total)*100)):0;
+    const lead=leader.id===userTeam
+      ?'ihr führt den Krieg an! 👑'
+      :`${esc(leader.name)} führt mit ${Math.max(0,leader.total-mine.total)} Pts Vorsprung`;
+    el.innerHTML+=`<div style="margin-top:8px;padding:8px 10px;border-radius:10px;background:rgba(var(--primary-rgb),.05);font-size:.66rem;color:var(--muted);line-height:1.5">⚔️ Dein Beitrag für <b style="color:${mine.color}">${esc(mine.name)}</b>: <b style="color:var(--primary)">${points} Pts</b> (${contribPct}%) — ${lead}</div>`;
+  }
 }
 
 /* ── LEADERBOARD ── */
