@@ -565,6 +565,9 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .xp-bar{height:100%;background:var(--primary);border-radius:6px;transition:width .8s ease}
 /* ── Territory strength bar in popup ── */
 .leaflet-popup-content{font-family:'Poppins',sans-serif;font-size:.82rem;color:#f0f0f8;min-width:160px}
+.leaflet-popup-content-wrapper{background:var(--card,#1C2336);box-shadow:0 4px 24px rgba(0,0,0,.35)}
+.leaflet-popup-tip{background:var(--card,#1C2336)}
+.leaflet-popup-close-button{color:#f0f0f8!important}
 
 /* ═══ LOCATE BUTTON ═══ */
 #locateBtn{position:fixed;bottom:calc(var(--nav-total) + 82px);right:14px;background:var(--card);border:1px solid var(--border);color:var(--primary);width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;cursor:pointer;z-index:600;box-shadow:0 2px 12px rgba(0,0,0,.3);-webkit-user-select:none;user-select:none;transition:transform .15s}
@@ -3244,7 +3247,7 @@ function initMap(){
 function isLightTheme(){const t=getActiveTheme();return t==='theme-stone'||t==='theme-petrol';}
 function setTiles(){
   mapL?.eachLayer(l=>{if(l instanceof L.TileLayer)mapL.removeLayer(l)});
-  L.tileLayer(isLightTheme()?'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png':'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap'}).addTo(mapL);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap © CARTO'}).addTo(mapL);
 }
 function mkUserIcon(){return L.divIcon({html:`<div style="background:${userColor};width:16px;height:16px;border-radius:50%;border:2px solid white;box-shadow:0 0 12px ${userColor}"></div>`,iconSize:[16,16],className:''})}
 
