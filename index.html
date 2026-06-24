@@ -600,7 +600,10 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 #panelStartBtn{background:var(--primary);color:var(--bg);border:none;border-radius:12px;padding:12px 8px;font-family:'Bebas Neue',sans-serif;font-size:1.15rem;letter-spacing:2px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;width:100%;-webkit-user-select:none;user-select:none;transition:transform .12s}
 #panelStartBtn:active{transform:scale(.96)}
 #panelRunBox{display:none;flex-direction:column;gap:5px}
-#panelRunStats{font-family:'Bebas Neue',sans-serif;font-size:.85rem;color:var(--primary);text-align:center;letter-spacing:1px;background:var(--card);border-radius:8px;padding:5px 4px}
+.panel-run-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.prg-item{background:var(--card);border-radius:8px;padding:6px 2px;text-align:center}
+.prg-val{font-family:'Bebas Neue',sans-serif;font-size:1.05rem;color:var(--primary);line-height:1.15;white-space:nowrap}
+.prg-lbl{font-size:.56rem;text-transform:uppercase;color:var(--muted);letter-spacing:.04em;margin-top:1px}
 .panel-run-row{display:flex;gap:5px}
 .panel-run-row button{flex:1;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:9px;padding:8px 4px;font-family:'Bebas Neue',sans-serif;font-size:.88rem;cursor:pointer;-webkit-user-select:none;user-select:none;transition:transform .12s}
 .panel-run-row button:active{transform:scale(.95)}
@@ -963,16 +966,22 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <canvas id="likeCanvas"></canvas>
       <button id="mapPanelArrow" aria-label="Kartenoptionen"><i class="fas fa-chevron-left" id="mapPanelIcon"></i></button>
       <div id="mapPanel">
-        <div style="display:none">
+        <div>
           <button id="panelStartBtn"><i class="fas fa-play"></i> START</button>
           <div id="panelRunBox">
-            <div id="panelRunStats">– km · 00:00</div>
+            <div class="panel-run-grid">
+              <div class="prg-item"><div class="prg-val" id="panelKm">0.00</div><div class="prg-lbl">km</div></div>
+              <div class="prg-item"><div class="prg-val" id="panelTimeVal">00:00</div><div class="prg-lbl">Zeit</div></div>
+              <div class="prg-item"><div class="prg-val" id="panelPace">–</div><div class="prg-lbl">Pace</div></div>
+              <div class="prg-item"><div class="prg-val" id="panelHR">–</div><div class="prg-lbl">Puls</div></div>
+            </div>
             <div class="panel-run-row">
               <button id="panelPauseBtn2"><i class="fas fa-pause"></i> Pause</button>
               <button id="panelStopBtn2"><i class="fas fa-stop"></i> Stop</button>
             </div>
           </div>
         </div>
+        <div class="map-panel-sep"></div>
         <button class="map-panel-btn active" id="panelTerrBtn"><i class="fas fa-map"></i> Gebiete</button>
         <button class="map-panel-btn active" id="panelHeatBtn"><i class="fas fa-fire"></i> Heatmap</button>
         <button class="map-panel-btn active" id="panelLmBtn"><i class="fas fa-star"></i> Wahrzeichen</button>
@@ -2909,6 +2918,14 @@ function toggleMapPanel(){
   if(arrow){arrow.style.right=isOpen?'175px':'0';}
   setTimeout(()=>mapL&&mapL.invalidateSize(),360);
 }
+function openMapPanel(){
+  const panel=$('mapPanel'),arrow=$('mapPanelArrow'),icon=$('mapPanelIcon');
+  if(!panel||panel.classList.contains('open'))return;
+  panel.classList.add('open');
+  if(icon)icon.className='fas fa-chevron-right';
+  if(arrow)arrow.style.right='175px';
+  setTimeout(()=>mapL&&mapL.invalidateSize(),360);
+}
 
 /* INIT DATA */
 async function genRivals(lat,lng){
@@ -3580,6 +3597,7 @@ function startRun(){
   const pSB=$('panelStartBtn'),pRB=$('panelRunBox');
   if(pSB)pSB.style.display='none';
   if(pRB){pRB.style.display='flex';}
+  openMapPanel();
   const pPB=$('panelPauseBtn2');if(pPB)pPB.innerHTML='<i class="fas fa-pause"></i> Pause';
   if(pathLayer)mapL.removeLayer(pathLayer);
   pathLayer=L.polyline([],{color:userColor,weight:4}).addTo(mapL);
@@ -3653,7 +3671,10 @@ function startLiveUpdate(){liveInterval=setInterval(()=>{
   if(gpsAlt!=null)$('liveAlt').textContent='⛰ '+gpsAlt+' m';
   $('liveSrc').textContent=hrSource==='bt'?'💙 BT':'📱 GPS';
   if(hrSource==='sim')simHR();
-  const pStats=$('panelRunStats');if(pStats)pStats.textContent=(dist<10?'– km':(dist/1000).toFixed(2)+' km')+' · '+fmtTime(el);
+  const pKm=$('panelKm');if(pKm)pKm.textContent=(dist/1000).toFixed(2);
+  const pTime=$('panelTimeVal');if(pTime)pTime.textContent=fmtTime(el);
+  const pPace=$('panelPace');if(pPace)pPace.textContent=pVal==='--:--'?'–':pVal;
+  const pHR=$('panelHR');if(pHR)pHR.textContent=heartRate&&heartRate>0?heartRate:'–';
   if(++_persistTick%12===0)persistActiveRun();
 },1000)}
 function stopLiveUpdate(){clearInterval(liveInterval);liveInterval=null}
@@ -3736,7 +3757,10 @@ function stopRun(){
   const pSB2=$('panelStartBtn'),pRB2=$('panelRunBox');
   if(pSB2)pSB2.style.display='';
   if(pRB2)pRB2.style.display='none';
-  const pStats=$('panelRunStats');if(pStats)pStats.textContent='– km · 00:00';
+  const pKm2=$('panelKm');if(pKm2)pKm2.textContent='0.00';
+  const pTime2=$('panelTimeVal');if(pTime2)pTime2.textContent='00:00';
+  const pPace2=$('panelPace');if(pPace2)pPace2.textContent='–';
+  const pHR2=$('panelHR');if(pHR2)pHR2.textContent='–';
   const elapsed=runSecs;
   if(previewLayer){mapL.removeLayer(previewLayer);previewLayer=null;}window._lastPrevAt=0;clearTimeout(window._prevTimer);
   clearActiveRunSnapshot();
