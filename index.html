@@ -20,6 +20,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="/territory.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Bebas+Neue&display=swap" rel="stylesheet">
 
 <style>
@@ -80,15 +81,28 @@ body{
 
 
 /* ═══ SPLASH ═══ */
-#splash{position:fixed;top:0;left:0;right:0;bottom:0;background:#042D22;display:flex;align-items:center;justify-content:center;z-index:10000;transition:opacity .7s;overflow:hidden}
+#splash{position:fixed;top:0;left:0;right:0;bottom:0;background:#000;display:flex;align-items:center;justify-content:center;z-index:10000;transition:opacity .7s;overflow:hidden}
 .splash-logo{text-align:center}
-.splash-word{display:flex;justify-content:center;gap:2px;overflow:hidden}
-.splash-word span{font-family:'Bebas Neue',sans-serif;font-size:min(18vw,72px);color:#E6FF55;opacity:0;transform:translateY(40px);animation:letterDrop .5s cubic-bezier(.16,1,.3,1) forwards}
-#splWord1 span:nth-child(1){animation-delay:.08s}#splWord1 span:nth-child(2){animation-delay:.16s}#splWord1 span:nth-child(3){animation-delay:.24s}#splWord1 span:nth-child(4){animation-delay:.32s}#splWord1 span:nth-child(5){animation-delay:.40s}#splWord1 span:nth-child(6){animation-delay:.48s}#splWord1 span:nth-child(7){animation-delay:.56s}
-#splWord2 span:nth-child(1){animation-delay:.78s}#splWord2 span:nth-child(2){animation-delay:.86s}#splWord2 span:nth-child(3){animation-delay:.94s}#splWord2 span:nth-child(4){animation-delay:1.02s}#splWord2 span:nth-child(5){animation-delay:1.10s}#splWord2 span:nth-child(6){animation-delay:1.18s}#splWord2 span:nth-child(7){animation-delay:1.26s}
-.splash-sub{font-size:min(3.5vw,12px);color:rgba(230,255,85,.6);letter-spacing:4px;text-transform:uppercase;opacity:0;animation:subFadeIn .6s ease forwards 1.7s;margin-top:6px}
-@keyframes letterDrop{0%{opacity:0;transform:translateY(40px)}60%{opacity:1;transform:translateY(-6px)}80%{transform:translateY(3px)}100%{opacity:1;transform:translateY(0)}}
-@keyframes subFadeIn{from{opacity:0;letter-spacing:8px}to{opacity:1;letter-spacing:4px}}
+/* animated logo lockup: crown + RC monogram + wordmark */
+.spl-lockup{position:relative;display:flex;flex-direction:column;align-items:center;width:min(46vmin,300px);transform:translateY(-2%)}
+.spl-mark{position:relative;width:100%;aspect-ratio:487/493;animation:splBreathe 6s ease-in-out infinite}
+.spl-mark img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.spl-rc{filter:drop-shadow(0 10px 30px rgba(0,0,0,.45));opacity:0;animation:splMarkIn .7s cubic-bezier(.16,1,.3,1) forwards .1s}
+.spl-crown{transform-origin:50% 100%;opacity:0;animation:splCrownIn .6s cubic-bezier(.34,1.15,.64,1) forwards .45s,splCrownGlow 4.5s ease-in-out infinite 1.1s}
+.spl-wordmark{margin-top:5%;display:flex;flex-direction:column;align-items:center;gap:.5em}
+.spl-word{display:flex}
+.spl-word span{display:inline-block;font-family:'Bebas Neue',sans-serif;line-height:1}
+.spl-runners span{font-weight:300;color:#EEF7F2;font-size:clamp(20px,6vmin,42px);letter-spacing:.12em;padding:0 .14em;opacity:0;animation:splLetterUp .55s cubic-bezier(.34,1.15,.64,1) both;animation-delay:calc(.6s + var(--i)*.06s)}
+.spl-conquer-row{display:flex;align-items:center;gap:.7em}
+.spl-conquer-row .spl-dash{width:clamp(14px,3.4vmin,26px);height:2px;background:#FFD700;transform-origin:center;animation:splDashIn .5s ease 1.2s both}
+.spl-conquer span{font-weight:400;color:#FFD700;font-size:clamp(13px,3.6vmin,25px);letter-spacing:.16em;padding:0 .08em;opacity:0;animation:splLetterUp .55s cubic-bezier(.34,1.15,.64,1) both;animation-delay:calc(1.3s + var(--i)*.05s)}
+@keyframes splBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.012)}}
+@keyframes splMarkIn{0%{opacity:0;transform:scale(.92)}100%{opacity:1;transform:scale(1)}}
+@keyframes splCrownIn{0%{opacity:0;transform:translateY(-30%) scale(.8)}100%{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes splCrownGlow{0%,100%{filter:drop-shadow(0 0 12px rgba(255,215,0,.35))}50%{filter:drop-shadow(0 0 22px rgba(255,215,0,.6))}}
+@keyframes splLetterUp{0%{opacity:0;transform:translateY(60%);filter:blur(4px)}100%{opacity:1;transform:translateY(0);filter:blur(0)}}
+@keyframes splDashIn{0%{transform:scaleX(0);opacity:0}100%{transform:scaleX(1);opacity:1}}
+@media (prefers-reduced-motion:reduce){.spl-mark,.spl-rc,.spl-crown,.spl-runners span,.spl-conquer span,.spl-conquer-row .spl-dash{animation:none!important;opacity:1!important;filter:none!important;transform:none!important}}
 
 /* ═══ ONBOARDING ═══ */
 #bgVideo{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;object-fit:cover;pointer-events:none}
@@ -153,7 +167,7 @@ body.onboarding-active{background:#000}
 .impressum-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;max-width:360px;width:100%;font-size:.8rem;color:var(--muted);line-height:1.8}
 
 /* ═══ SHELL ═══ */
-#app{display:none;flex-direction:column;height:100%;position:relative;background:var(--bg)}
+#app{display:none;flex-direction:column;height:100%;position:relative;z-index:2;background:var(--bg)}
 .hdr{
   flex:0 0 auto;
   height:var(--hdr-total);
@@ -369,6 +383,93 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .ach-badge-prog{font-size:.65rem;font-weight:700;margin-top:2px;color:var(--muted)}
 .ach-badge.earned .ach-badge-prog{color:var(--primary)}
 
+/* ─── Achievement Redesign v2 ─── */
+.ach-nxt-row{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)}
+.ach-nxt-row:last-of-type{border-bottom:none}
+.ach-nxt-ic{width:46px;height:46px;flex-shrink:0;display:grid;place-items:center}
+.ach-nxt-ic img{width:100%;height:100%;object-fit:contain;filter:grayscale(1) brightness(.5)}
+.ach-nxt-mid{flex:1;min-width:0}
+.ach-nxt-nm{font-family:'Bebas Neue',sans-serif;letter-spacing:.8px;font-size:.95rem;line-height:1;color:var(--text)}
+.ach-nxt-bar{height:4px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden;margin-top:6px}
+.ach-nxt-fill{height:100%;background:var(--primary);border-radius:4px}
+.ach-nxt-ctr{font-family:'Bebas Neue',sans-serif;letter-spacing:.5px;font-size:.82rem;color:var(--primary);text-align:right;flex-shrink:0;line-height:1}
+.ach-nxt-ctr small{display:block;color:var(--muted);font-size:.56rem;letter-spacing:1px;text-transform:uppercase;margin-top:2px}
+.ach-more-btn{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:14px;width:100%;background:var(--primary);color:var(--bg);border:none;border-radius:13px;padding:12px;font-family:'Bebas Neue',sans-serif;letter-spacing:1.5px;font-size:.95rem;cursor:pointer;transition:transform .12s;touch-action:manipulation}
+.ach-more-btn:active{transform:scale(.97)}
+.ach-sheet-grp{display:flex;align-items:center;gap:10px;margin:16px 0 10px}
+.ach-sheet-grp .ach-g{font-family:'Bebas Neue',sans-serif;letter-spacing:1.5px;font-size:.9rem;color:var(--muted)}
+.ach-sheet-grp .ach-gc{font-family:'Bebas Neue',sans-serif;font-size:.85rem;color:var(--primary)}
+.ach-sheet-grp .ach-line{flex:1;height:1px;background:var(--border)}
+.ach-sheet-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px 6px;margin-bottom:8px}
+.ach-sg{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px}
+.ach-sg .ach-ic{width:62px;height:62px;display:grid;place-items:center}
+.ach-sg .ach-ic img{width:62px;height:62px;object-fit:contain;filter:drop-shadow(0 4px 8px rgba(0,0,0,.4))}
+.ach-sg.locked .ach-ic img{filter:grayscale(1) brightness(.42)}
+.ach-sg .ach-n{font-family:'Bebas Neue',sans-serif;letter-spacing:.4px;font-size:.68rem;line-height:1.1;max-width:92px;color:var(--text)}
+.ach-sg.locked .ach-n{color:var(--muted)}
+.ach-sg .ach-c{font-family:'Bebas Neue',sans-serif;letter-spacing:.4px;font-size:.68rem}
+.ach-sg.done .ach-c{color:var(--green)}
+.ach-sg.next .ach-c{color:var(--primary)}
+.ach-sg.locked:not(.next) .ach-c{color:var(--muted)}
+
+/* ─── Achievement Card Header (Profile) ─── */
+.ach-card-hd{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.ach-card-hd .t{font-family:'Bebas Neue',sans-serif;letter-spacing:1.5px;font-size:1.05rem}
+.ach-card-hd .t i{color:var(--primary);margin-right:7px}
+.ach-card-hd .cnt{margin-left:auto;font-family:'Bebas Neue',sans-serif;letter-spacing:1px;font-size:1.05rem;color:var(--primary)}
+.ach-card-hd .cnt small{color:var(--muted);font-size:.78rem}
+.nxt-sub{font-size:.7rem;color:var(--muted);margin-bottom:12px}
+
+/* ─── Achievement Board Tiles (Drawer) ─── */
+.tier-row{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.tier{display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;padding:5px 2px 4px;border-radius:12px;border:1px solid transparent;transition:border-color .2s,transform .1s;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.tier:active{transform:scale(.91)}
+.tier.next{border-color:rgba(var(--primary-rgb),.35);background:rgba(var(--primary-rgb),.05)}
+.tier .ic{width:46px;height:46px;display:grid;place-items:center;position:relative}
+.tier .ic img{max-width:100%;max-height:100%;object-fit:contain;filter:drop-shadow(0 3px 6px rgba(0,0,0,.5))}
+.tier.locked .ic img{filter:grayscale(1) brightness(.38) contrast(.9)}
+.tier .lock{position:absolute;right:-3px;bottom:-3px;width:18px;height:18px;border-radius:50%;background:var(--card);border:1px solid var(--border);color:var(--muted);display:none;align-items:center;justify-content:center;font-size:.5rem}
+.tier.locked .lock{display:flex}
+
+/* ─── Share Card Editor ─── */
+#shareCardOverlay{position:fixed;inset:0;z-index:9500;background:#0b0f0d;display:none;flex-direction:column}
+#shareCardStage{flex:1;display:grid;place-items:center;overflow:hidden;min-height:0}
+#shareCardScaler{transform-origin:center center}
+.sc-backdrop{position:relative;overflow:hidden;border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.7)}
+.sc-backdrop.checker{background-color:#15151a;background-image:linear-gradient(45deg,#20222b 25%,transparent 25%),linear-gradient(-45deg,#20222b 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#20222b 75%),linear-gradient(-45deg,transparent 75%,#20222b 75%);background-size:40px 40px;background-position:0 0,0 20px,20px -20px,-20px 0}
+#scBdImg{position:absolute;inset:0;background-size:cover;background-position:center;pointer-events:none}
+.rc-share-card{position:relative;width:100%;height:100%;display:flex;flex-direction:column;padding:74px 64px 60px;color:#fff}
+.rc-scrim{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.45) 0%,rgba(0,0,0,0) 26%),linear-gradient(0deg,rgba(0,0,0,.5) 0%,rgba(0,0,0,0) 24%)}
+.rc-tagline{text-align:center;font-family:'Poppins',sans-serif;font-weight:600;font-size:22px;letter-spacing:8px;text-transform:uppercase;color:rgba(255,255,255,.82);text-shadow:0 2px 10px rgba(0,0,0,.5);margin:0}
+.rc-stats{display:grid;grid-template-columns:1fr 1px 1fr 1px 1fr;align-items:center;margin-top:54px}
+.rc-stat{text-align:center;padding:0 8px}
+.rc-stat i{font-size:34px;color:rgba(255,255,255,.92);filter:drop-shadow(0 2px 8px rgba(0,0,0,.45))}
+.rc-stat .v{font-family:'Bebas Neue',sans-serif;letter-spacing:1px;font-size:84px;line-height:.92;margin-top:18px;color:#fff;text-shadow:0 3px 16px rgba(0,0,0,.55)}
+.rc-stat .l{font-family:'Poppins',sans-serif;font-weight:600;font-size:19px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,.62);margin-top:12px;text-shadow:0 2px 8px rgba(0,0,0,.5)}
+.rc-div{width:1px;height:92px;background:linear-gradient(180deg,transparent,rgba(255,255,255,.22),transparent)}
+.rc-hero{flex:1;min-height:0;position:relative;margin:4px 0}
+.rc-hero svg{display:block;width:100%;height:100%}
+.rc-logo{text-align:center;flex-shrink:0}
+.rc-logo .mark{font-family:'Bebas Neue',sans-serif;font-size:96px;line-height:1;letter-spacing:4px;background:linear-gradient(180deg,#ffffff 0%,#ffffff 38%,#b9bcc4 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;filter:drop-shadow(0 4px 14px rgba(0,0,0,.5))}
+.rc-logo .underline{width:92px;height:5px;border-radius:3px;margin:12px auto 0}
+#scControls{padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:#0b0f0d;border-top:1px solid rgba(255,255,255,.08);flex-shrink:0}
+.sc-ctrl-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+#scBgBar{display:flex;align-items:center;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+#scBgBar::-webkit-scrollbar{display:none}
+.sc-bg-btn{width:30px;height:30px;border-radius:50%;border:2px solid rgba(255,255,255,.15);cursor:pointer;flex-shrink:0;display:grid;place-items:center;font-size:.65rem;color:rgba(255,255,255,.5);background:transparent;transition:transform .12s}
+.sc-bg-btn.on{border-color:#fff}
+.sc-bg-btn:active{transform:scale(.85)}
+.sc-swatch{width:26px;height:26px;border-radius:50%;border:2px solid transparent;cursor:pointer;flex-shrink:0;transition:transform .12s}
+.sc-swatch.on{border-color:#fff;transform:scale(1.15)}
+.sc-swatch:active{transform:scale(.85)}
+.sc-fmt{padding:4px 10px;border-radius:16px;border:1px solid rgba(255,255,255,.2);background:transparent;color:rgba(255,255,255,.5);font-size:.7rem;font-family:'Poppins',sans-serif;cursor:pointer;transition:all .15s}
+.sc-fmt.on{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.35);color:#fff}
+.sc-tog{display:flex;align-items:center;gap:5px;font-size:.7rem;color:rgba(255,255,255,.5);cursor:pointer;user-select:none}
+.sc-knob{width:30px;height:16px;border-radius:8px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);position:relative;flex-shrink:0;transition:background .2s}
+.sc-knob::after{content:'';position:absolute;left:2px;top:2px;width:10px;height:10px;border-radius:50%;background:#fff;transition:transform .2s}
+.sc-tog.on .sc-knob{background:var(--primary)}
+.sc-tog.on .sc-knob::after{transform:translateX(14px)}
+
 /* ═══ BOTTOM NAV ═══ */
 .bottom-nav{position:relative;flex:0 0 auto;height:var(--nav-total);background:var(--bg);border-top:1px solid rgba(255,255,255,.08);display:flex;align-items:flex-start;justify-content:space-around;padding:4px calc(8px + var(--sal)) var(--sab) calc(8px + var(--sar));z-index:710;-webkit-backdrop-filter:blur(20px) saturate(150%);backdrop-filter:blur(20px) saturate(150%)}
 .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--muted);font-size:.62rem;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;transition:color var(--motion-base);padding:8px 0;position:relative;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
@@ -431,6 +532,11 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 /* ═══ CONTESTED ZONE ═══ */
 .contested-pulse{animation:conPulse 2.5s infinite}
 @keyframes conPulse{0%,100%{opacity:.9;r:18}50%{opacity:.4;r:24}}
+/* ═══ INVASION ("The Breach") ═══ */
+.inv-marker{display:flex;flex-direction:column;align-items:center;gap:2px;pointer-events:none}
+.inv-badge{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;background:rgba(255,40,60,.22);border:2px solid #ff283c;box-shadow:0 0 14px #ff283c88;animation:invPulse 1.2s ease-in-out infinite}
+.inv-lbl{background:rgba(0,0,0,.78);color:#ff5a6e;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;white-space:nowrap;letter-spacing:.3px}
+@keyframes invPulse{0%,100%{transform:scale(1);box-shadow:0 0 10px #ff283c66}50%{transform:scale(1.18);box-shadow:0 0 20px #ff283ccc}}
 /* ═══ POWER RANKING ═══ */
 .prank-section{margin-bottom:10px}
 .prank-title{font-size:.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:6px;font-weight:700}
@@ -463,6 +569,9 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .xp-bar{height:100%;background:var(--primary);border-radius:6px;transition:width .8s ease}
 /* ── Territory strength bar in popup ── */
 .leaflet-popup-content{font-family:'Poppins',sans-serif;font-size:.82rem;color:#f0f0f8;min-width:160px}
+.leaflet-popup-content-wrapper{background:var(--card,#1C2336);box-shadow:0 4px 24px rgba(0,0,0,.35)}
+.leaflet-popup-tip{background:var(--card,#1C2336)}
+.leaflet-popup-close-button{color:#f0f0f8!important}
 
 /* ═══ LOCATE BUTTON ═══ */
 #locateBtn{position:fixed;bottom:calc(var(--nav-total) + 82px);right:14px;background:var(--card);border:1px solid var(--border);color:var(--primary);width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;cursor:pointer;z-index:600;box-shadow:0 2px 12px rgba(0,0,0,.3);-webkit-user-select:none;user-select:none;transition:transform .15s}
@@ -587,10 +696,23 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 
 <!-- SPLASH -->
 <div id="splash">
-  <div class="splash-logo">
-    <div class="splash-word" id="splWord1"><span>R</span><span>U</span><span>N</span><span>N</span><span>E</span><span>R</span><span>S</span></div>
-    <div class="splash-word" id="splWord2"><span>C</span><span>O</span><span>N</span><span>Q</span><span>U</span><span>E</span><span>R</span></div>
-    <div class="splash-sub">LAUF · EROBERE · HERRSCHE</div>
+  <div class="spl-lockup">
+    <div class="spl-mark">
+      <img class="spl-rc" src="/assets/logo/lyr_rc.png" alt="Runners Conquer Monogramm">
+      <img class="spl-crown" src="/assets/logo/lyr_crown.png" alt="Krone">
+    </div>
+    <div class="spl-wordmark">
+      <div class="spl-word spl-runners" aria-label="RUNNERS">
+        <span style="--i:0">R</span><span style="--i:1">U</span><span style="--i:2">N</span><span style="--i:3">N</span><span style="--i:4">E</span><span style="--i:5">R</span><span style="--i:6">S</span>
+      </div>
+      <div class="spl-conquer-row">
+        <span class="spl-dash"></span>
+        <div class="spl-word spl-conquer" aria-label="CONQUER">
+          <span style="--i:0">C</span><span style="--i:1">O</span><span style="--i:2">N</span><span style="--i:3">Q</span><span style="--i:4">U</span><span style="--i:5">E</span><span style="--i:6">R</span>
+        </div>
+        <span class="spl-dash"></span>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -836,7 +958,10 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       </div>
       <div id="dockToggle"><i class="fas fa-running"></i></div>
 
-
+      <div id="runCtrlPill">
+        <button id="rcpPause" class="rcp-btn rcp-hidden"><i class="fas fa-pause"></i> Pause</button>
+        <button id="rcpStop" class="rcp-btn rcp-hidden"><i class="fas fa-stop"></i> Stop</button>
+      </div>
       <button id="locateBtn" aria-label="Mein Standort"><i class="fas fa-location-arrow"></i></button>
       <canvas id="likeCanvas"></canvas>
       <button id="mapPanelArrow" aria-label="Kartenoptionen"><i class="fas fa-chevron-left" id="mapPanelIcon"></i></button>
@@ -913,6 +1038,21 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <div style="display:none">
         <span id="todayKcal">0</span>
         <span id="todaySteps">0</span>
+      </div>
+
+      <!-- Garmin Health summary (shown only when data available) -->
+      <div id="garminHealthSection" style="display:none">
+        <div class="sec-hd"><i class="fas fa-heart-pulse"></i> Gesundheit<span id="garminHealthDate" style="margin-left:auto;font-size:.65rem;color:var(--muted)"></span></div>
+        <div class="today-3" style="margin-bottom:8px">
+          <div class="stat-card"><div class="sv" id="ghSteps">—</div><div class="sl">Schritte</div></div>
+          <div class="stat-card"><div class="sv" id="ghHR">—</div><div class="sl">Ruhepuls</div></div>
+          <div class="stat-card"><div class="sv" id="ghSleep">—</div><div class="sl">Schlaf</div></div>
+        </div>
+        <div class="today-3" style="margin-bottom:16px">
+          <div class="stat-card"><div class="sv" id="ghCal">—</div><div class="sl">akt. kcal</div></div>
+          <div class="stat-card"><div class="sv" id="ghStress">—</div><div class="sl">Stress</div></div>
+          <div class="stat-card"><div class="sv" id="ghMaxHR">—</div><div class="sl">Max HR</div></div>
+        </div>
       </div>
 
       <!-- Daily challenges -->
@@ -1005,9 +1145,11 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <div class="comm-card"><h3><i class="fas fa-medal"></i> Rangliste</h3><div id="leaderboardList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-crown"></i> Wöchentliche Power-Rankings</h3><div id="powerRankList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-user-friends"></i> Freunde</h3><div id="friendsList"></div></div>
-      <div class="comm-card"><h3><i class="fas fa-shield-alt"></i> Fraktion-Rangliste</h3><div id="teamRankList"></div></div>
+      <div class="comm-card"><h3><i class="fas fa-shield-alt"></i> Fraktions-Krieg <span style="font-size:.62rem;color:var(--muted);font-weight:400">— alle Spieler</span></h3><div id="teamRankList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-swords"></i> Club Wars <span style="font-size:.62rem;color:var(--muted);font-weight:400">— diese Woche</span></h3><div id="clubWarsList"></div></div>
       <div class="comm-card" id="clubCommunityCard"><h3><i class="fas fa-users-cog"></i> Clubs</h3><div id="clubCommunityList"></div></div>
+      <div class="comm-card" id="playerDiscoveryCard"><h3><i class="fas fa-compass"></i> Spieler entdecken</h3><div id="playerDiscoveryList"></div></div>
+      <div class="comm-card" id="clubDiscoveryCard"><h3><i class="fas fa-search"></i> Clubs entdecken</h3><div id="clubDiscoveryList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-map-marked-alt"></i> Größte Gebiete</h3><div id="bigTerrList"></div></div>
       <div class="comm-card">
         <h3><i class="fas fa-location-arrow"></i> Nächste Gebiete</h3>
@@ -1062,7 +1204,6 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <div id="pvPRs"></div>
       </div>
       <div class="section-card">
-        <div class="section-title"><i class="fas fa-star"></i> Erfolge</div>
         <div class="ach-grid" id="pvAchs"></div>
       </div>
       <div class="section-card">
@@ -1091,10 +1232,9 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 
   </div><!-- /screens -->
 
-  <nav class="bottom-nav with-fab">
+  <nav class="bottom-nav">
     <div class="nav-item active" data-view="map"><div class="nav-indicator"></div><i class="fas fa-map"></i><span>Karte</span></div>
     <div class="nav-item" data-view="start"><div class="nav-indicator"></div><i class="fas fa-house"></i><span>Start</span></div>
-    <button id="navFab" class="nav-fab" aria-label="Lauf starten"><i class="fas fa-play"></i></button>
     <div class="nav-item" data-view="community"><div class="nav-indicator"></div><i class="fas fa-globe"></i><span>Community</span></div>
     <div class="nav-item" data-view="profile"><div class="nav-indicator"></div><i class="fas fa-user"></i><span>Profil</span></div>
   </nav>
@@ -1158,6 +1298,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <button class="imp-tab active" id="impTabManual">✏️ Manuell</button>
       <button class="imp-tab" id="impTabGpx">📂 Datei</button>
       <button class="imp-tab" id="impTabStrava">🔴 Strava</button>
+      <button class="imp-tab" id="impTabGarmin">⌚ Garmin</button>
     </div>
     <div id="impPanManual">
       <div class="field"><label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:4px">Datum</label><input type="date" id="impDate" class="modal-input" style="margin-bottom:10px"></div>
@@ -1187,6 +1328,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <textarea id="gpxText" class="modal-input" rows="4" placeholder="Oder GPX/TCX/KML-Inhalt hier einfügen…" style="resize:none;font-size:.68rem;font-family:monospace;margin-bottom:6px"></textarea>
     </div>
     <div id="impPanStrava" style="display:none"></div>
+    <div id="impPanGarmin" style="display:none"></div>
     <div id="impPreview" style="display:none;margin:8px 0 10px">
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center;margin-bottom:8px" id="impPreviewStats"></div>
       <canvas id="impMapCanvas" width="300" height="110" style="width:100%;border-radius:8px;border:1px solid var(--border);display:block"></canvas>
@@ -1325,7 +1467,19 @@ const CFG={
   RAID_DAMAGE:40,
   COMBO_MULTI_3:1.5,
   COMBO_MULTI_5:2.0,
-  CONTESTED_BONUS_MUL:2.0
+  CONTESTED_BONUS_MUL:2.0,
+  // "The Breach" — aktive Invasionen auf vernachlässigte eigene Gebiete
+  INV_THREAT_DEF:55,        // Verteidigung unter diesem Wert macht ein Gebiet angreifbar
+  INV_MIN_NEGLECT_H:2,      // erst nach so vielen Stunden ohne Besuch
+  INV_MAX_ACTIVE:4,         // max. gleichzeitige Invasionen
+  INV_SPAWN_CHANCE:.14,     // Wahrscheinlichkeit je angreifbarem Gebiet pro Minute
+  INV_GROWTH_PER_MIN:2.5,   // Fortschritt %/Min → Überrennung erst nach ~40 Min
+  INV_DEF_DRAIN_PER_MIN:.6, // zusätzlicher Verteidigungsverlust %/Min während Invasion
+  INV_OVERRUN_DEF_LOSS:30,  // Verteidigungsverlust wenn Invasion 100% erreicht
+  INV_MAX_TICK_MIN:10,      // Deckel je Tick: Invasion ist v.a. eine Live-Bedrohung, keine Offline-Strafe
+  INV_REPEL_RADIUS:45,      // Meter: so nah heranlaufen, um abzuwehren
+  INV_REPEL_REPAIR:35,      // Verteidigung wiederhergestellt beim Abwehren
+  INV_REPEL_XP:120          // XP fürs Abwehren
 };
 const COLORS=['#e8ff47','#ff4d6d','#00d4ff','#9b5de5','#ff9f1c'];
 const AVATARS=['🏃','🚴','🏋️','🤸','⚡'];
@@ -1383,6 +1537,7 @@ let selectedTerrId=null,editAvatar=AVATARS[0];
 let notifications=[];
 let kmSplits=[],lastSplitKm=0,lastSplitSecs=0;
 let previewLayer=null,sessionNewTerrNames=[],sessionNewLandmarks=[];
+let invasions=[],invasionLayer=null;
 let liveInterval=null;
 let botActivities=[];
 /* ConqRun new state */
@@ -1637,7 +1792,7 @@ function debounce(fn,w){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn
 const syncProfileDebounced=debounce(syncProfile,1000);
 
 /* PERSIST */
-function save(){localStateTs=Date.now();localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,energyWeek,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered,registeredAt,starterQuestsDone,starterQuestFlags,heatPersonalOnly,dailyChallenges,dailyChalDate,chalStreak,lastChalDoneDate,dailyLoginDate,dailyLoginStreak,streakShields,recentQuoteIds,weeklyChals,weekChalKey,personalRecords,battlePassClaimed,totalRaids,totalBoosts,weeklyAchsDone,seasonXp,localStateTs}))}
+function save(){localStateTs=Date.now();localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,energyWeek,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered,registeredAt,starterQuestsDone,starterQuestFlags,heatPersonalOnly,dailyChallenges,dailyChalDate,chalStreak,lastChalDoneDate,dailyLoginDate,dailyLoginStreak,streakShields,recentQuoteIds,weeklyChals,weekChalKey,personalRecords,battlePassClaimed,totalRaids,totalBoosts,weeklyAchsDone,seasonXp,localStateTs,invasions:invasions.map(i=>({id:i.id,terrId:i.terrId,lat:i.lat,lng:i.lng,progress:i.progress,spawnedAt:i.spawnedAt,lastTick:i.lastTick}))}))}
 /* Crash-resiliente Lauf-Persistenz: Pfad liegt sonst nur im RAM und ginge bei
    App-Kill/Crash mitten im Lauf komplett verloren. Wird alle ~12s gespiegelt,
    beim nächsten Boot per checkOrphanedRun() angeboten. */
@@ -1669,7 +1824,7 @@ function checkOrphanedRun(){
 function load(){
   try{
     const d=JSON.parse(localStorage.getItem('rc_v4_'+userId));
-    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;registeredAt=d.registeredAt||Date.now();starterQuestsDone=d.starterQuestsDone||[];starterQuestFlags=d.starterQuestFlags||{profileOpened:false};heatPersonalOnly=d.heatPersonalOnly||false;dailyChallenges=d.dailyChallenges||[];dailyChalDate=d.dailyChalDate||'';chalStreak=d.chalStreak||0;lastChalDoneDate=d.lastChalDoneDate||'';dailyLoginDate=d.dailyLoginDate||'';dailyLoginStreak=d.dailyLoginStreak||0;streakShields=d.streakShields||0;recentQuoteIds=d.recentQuoteIds||[];weeklyChals=d.weeklyChals||[];weekChalKey=d.weekChalKey||'';personalRecords=d.personalRecords||{};battlePassClaimed=d.battlePassClaimed||[];totalRaids=d.totalRaids||0;totalBoosts=d.totalBoosts||0;weeklyAchsDone=d.weeklyAchsDone||0;seasonXp=d.seasonXp||0;localStateTs=d.localStateTs||0;
+    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;registeredAt=d.registeredAt||Date.now();starterQuestsDone=d.starterQuestsDone||[];starterQuestFlags=d.starterQuestFlags||{profileOpened:false};heatPersonalOnly=d.heatPersonalOnly||false;dailyChallenges=d.dailyChallenges||[];dailyChalDate=d.dailyChalDate||'';chalStreak=d.chalStreak||0;lastChalDoneDate=d.lastChalDoneDate||'';dailyLoginDate=d.dailyLoginDate||'';dailyLoginStreak=d.dailyLoginStreak||0;streakShields=d.streakShields||0;recentQuoteIds=d.recentQuoteIds||[];weeklyChals=d.weeklyChals||[];weekChalKey=d.weekChalKey||'';personalRecords=d.personalRecords||{};battlePassClaimed=d.battlePassClaimed||[];totalRaids=d.totalRaids||0;totalBoosts=d.totalBoosts||0;weeklyAchsDone=d.weeklyAchsDone||0;seasonXp=d.seasonXp||0;localStateTs=d.localStateTs||0;invasions=Array.isArray(d.invasions)?d.invasions:[];
       /* Alte Bot-Gebiete (Blob, <100k m²) entfernen → werden neu als Straßen-Polygon generiert */
       territories=territories.filter(t=>t.owner===userId||t.area>100000);
       /* Überlappende Bot-Gebiete entfernen */
@@ -2602,6 +2757,159 @@ function downloadCanvas(canvas){
   const a=document.createElement('a');a.href=canvas.toDataURL('image/png');a.download='conqrun_lauf.png';a.click();toast('📥 Bild gespeichert');
 }
 
+/* ── Share Card Editor ── */
+let _scRec=null,_scAccent='#9B5DE5',_scFormat='Quadrat',_scGlow=1,_scShowMap=true,_scShowFlag=true,_scScrim=false,_scBg='checker',_scBgPhoto=null;
+const SC_FMTS={Quadrat:{w:1080,h:1080},Hochkant:{w:1080,h:1350},Story:{w:1080,h:1920}};
+const SC_SWATCHES=['#9B5DE5','#E6FF55','#FF4D6D','#00D4FF','#FFD700','#FF9F1C','#10B981'];
+const SC_BGS={dark:'#0b0f0d',purple:'radial-gradient(120% 90% at 30% 10%,#3a2a5a,#160f24 60%,#0a0710)',sunset:'linear-gradient(160deg,#ff8a3c 0%,#c2305a 48%,#2a1633 100%)'};
+
+function scPathToXY(path){
+  if(!path||path.length<3)return null;
+  const lat0=path.reduce((s,p)=>s+p[0],0)/path.length;
+  const lng0=path.reduce((s,p)=>s+p[1],0)/path.length;
+  const lat0r=lat0*Math.PI/180,R=6371000;
+  return path.map(p=>[(p[1]-lng0)*Math.PI/180*R*Math.cos(lat0r),-(p[0]-lat0)*Math.PI/180*R]);
+}
+
+function scUpdateHero(){
+  const el=document.getElementById('scHero');if(!el||typeof RC==='undefined')return;
+  const fmt=SC_FMTS[_scFormat]||SC_FMTS.Quadrat;
+  const localPts=scPathToXY(_scRec?.path);
+  el.innerHTML=RC.renderTerritory({
+    points:localPts||undefined,
+    seed:localPts?undefined:(typeof (_scRec?.date)==='number'?_scRec.date%997:42),
+    accent:_scAccent,width:fmt.w,height:Math.round(fmt.h*0.52),
+    glow:_scGlow,showMap:_scShowMap,showFlag:_scShowFlag
+  });
+}
+
+function scUpdateCard(){
+  const card=document.getElementById('rcShareCard');if(!card)return;
+  card.style.setProperty('--accent',_scAccent);
+  let scrim=card.querySelector('.rc-scrim');
+  if(_scScrim&&!scrim){scrim=document.createElement('div');scrim.className='rc-scrim';card.insertBefore(scrim,card.firstChild);}
+  else if(!_scScrim&&scrim)scrim.remove();
+  const ul=document.getElementById('scUnderline');
+  if(ul){ul.style.background=_scAccent;ul.style.boxShadow='0 0 18px '+_scAccent;}
+}
+
+function scUpdateBg(){
+  const bd=document.getElementById('scBackdrop');
+  const img=document.getElementById('scBdImg');
+  if(!bd)return;
+  if(_scBg==='checker'){bd.className='sc-backdrop checker';bd.style.background='';if(img)img.style.backgroundImage='';}
+  else if(_scBg==='photo'&&_scBgPhoto){bd.className='sc-backdrop';bd.style.background='';if(img)img.style.backgroundImage='url('+_scBgPhoto+')';}
+  else{bd.className='sc-backdrop';bd.style.background=SC_BGS[_scBg]||'#0b0f0d';if(img)img.style.backgroundImage='';}
+}
+
+function scScale(){
+  const scaler=document.getElementById('shareCardScaler');
+  const bd=document.getElementById('scBackdrop');
+  const stage=document.getElementById('shareCardStage');
+  if(!scaler||!bd||!stage)return;
+  const fmt=SC_FMTS[_scFormat]||SC_FMTS.Quadrat;
+  bd.style.width=fmt.w+'px';bd.style.height=fmt.h+'px';
+  const s=Math.min((stage.clientWidth-24)/fmt.w,(stage.clientHeight-12)/fmt.h,.82);
+  scaler.style.transform='scale('+s+')';
+}
+
+function scRender(){scUpdateCard();scUpdateBg();scUpdateHero();scScale();}
+
+function scSetAccent(c){
+  _scAccent=c;
+  document.querySelectorAll('.sc-swatch').forEach(s=>s.classList.toggle('on',s.dataset.c===c));
+  const pk=document.getElementById('scColorPicker');if(pk)pk.value=(/^#[0-9a-f]{6}$/i.test(c))?c:'#9b5de5';
+  scRender();
+}
+
+function scSetBg(bg){
+  _scBg=bg;
+  document.querySelectorAll('.sc-bg-btn').forEach(b=>b.classList.toggle('on',b.dataset.bg===bg));
+  scRender();
+}
+
+function scToggle(k){
+  if(k==='map'){_scShowMap=!_scShowMap;document.getElementById('scTogMap').classList.toggle('on',_scShowMap);}
+  else if(k==='flag'){_scShowFlag=!_scShowFlag;document.getElementById('scTogFlag').classList.toggle('on',_scShowFlag);}
+  else if(k==='scrim'){_scScrim=!_scScrim;document.getElementById('scTogScrim').classList.toggle('on',_scScrim);}
+  scRender();
+}
+
+function showShareCardEditor(rec){
+  _scRec=rec;
+  _scAccent=userColor||'#9B5DE5';
+  _scFormat='Quadrat';_scGlow=1;_scShowMap=true;_scShowFlag=true;_scScrim=false;_scBg='checker';
+  if(_scBgPhoto){URL.revokeObjectURL(_scBgPhoto);_scBgPhoto=null;}
+  // stats
+  document.getElementById('scTime').textContent=fmtTime(rec.duration);
+  document.getElementById('scPace').textContent=fmtPace(rec.distance,rec.duration);
+  document.getElementById('scDist').textContent=(rec.distance/1000).toFixed(2).replace('.',',');
+  // swatches
+  const sw=document.getElementById('scSwatches');
+  if(sw)sw.innerHTML=SC_SWATCHES.map(c=>`<div class="sc-swatch${c===_scAccent?' on':''}" style="background:${c}" data-c="${c}" onclick="scSetAccent('${c}')"></div>`).join('');
+  // color picker
+  const pk=document.getElementById('scColorPicker');
+  if(pk){pk.value=(/^#[0-9a-f]{6}$/i.test(_scAccent))?_scAccent:'#9b5de5';pk.oninput=e=>scSetAccent(e.target.value);}
+  // format buttons
+  document.querySelectorAll('.sc-fmt').forEach(b=>{
+    b.classList.toggle('on',b.dataset.fmt===_scFormat);
+    b.onclick=()=>{_scFormat=b.dataset.fmt;document.querySelectorAll('.sc-fmt').forEach(x=>x.classList.toggle('on',x===b));scRender();};
+  });
+  // bg buttons
+  document.querySelectorAll('.sc-bg-btn').forEach(b=>{
+    b.classList.toggle('on',b.dataset.bg===_scBg);
+    b.onclick=()=>{
+      if(b.dataset.bg==='photo'){document.getElementById('scPhotoInput').click();return;}
+      scSetBg(b.dataset.bg);
+    };
+  });
+  // photo upload
+  const pi=document.getElementById('scPhotoInput');
+  if(pi)pi.onchange=e=>{const f=e.target.files[0];if(!f)return;if(_scBgPhoto)URL.revokeObjectURL(_scBgPhoto);_scBgPhoto=URL.createObjectURL(f);scSetBg('photo');};
+  // toggle states
+  document.getElementById('scTogMap').classList.toggle('on',_scShowMap);
+  document.getElementById('scTogFlag').classList.toggle('on',_scShowFlag);
+  document.getElementById('scTogScrim').classList.toggle('on',_scScrim);
+  // open overlay
+  document.getElementById('shareCardOverlay').style.display='flex';
+  requestAnimationFrame(()=>requestAnimationFrame(scRender));
+  window.addEventListener('resize',scScale);
+}
+
+function closeShareCard(){
+  document.getElementById('shareCardOverlay').style.display='none';
+  window.removeEventListener('resize',scScale);
+}
+
+async function exportShareCard(){
+  const bd=document.getElementById('scBackdrop');
+  const scaler=document.getElementById('shareCardScaler');
+  const stage=document.getElementById('shareCardStage');
+  if(!bd)return;
+  const fmt=SC_FMTS[_scFormat]||SC_FMTS.Quadrat;
+  toast('📸 Erstelle Bild…');
+  const prevT=scaler.style.transform;
+  const prevOvf=stage.style.overflow;
+  scaler.style.transform='none';
+  stage.style.overflow='visible';
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+  try{
+    const cv=await html2canvas(bd,{scale:1,useCORS:true,backgroundColor:_scBg==='checker'?'#15151a':null,logging:false,width:fmt.w,height:fmt.h});
+    scaler.style.transform=prevT;stage.style.overflow=prevOvf;
+    cv.toBlob(async blob=>{
+      if(!blob){toast('Export fehlgeschlagen');return;}
+      const file=new File([blob],'rq-lauf.png',{type:'image/png'});
+      if(navigator.share&&navigator.canShare?.({files:[file]})){
+        try{await navigator.share({files:[file],title:'Mein Lauf — RunConquer'});}
+        catch(e){if(e.name!=='AbortError')downloadCanvas(cv);}
+      }else{downloadCanvas(cv);}
+    },'image/png');
+  }catch(err){
+    scaler.style.transform=prevT;stage.style.overflow=prevOvf;
+    console.warn('Share card export:',err);toast('Export fehlgeschlagen');
+  }
+}
+
 /* ── MAP PANEL ── */
 function toggleMapPanel(){
   const panel=$('mapPanel'),arrow=$('mapPanelArrow'),icon=$('mapPanelIcon');
@@ -2858,7 +3166,7 @@ function rcBuildIconSvg(key,t,locked,opts={}){const showPips=opts.showPips!==fal
 const RC_ACH_KEY={conq:'territory',km:'distance',atk:'raid',def:'rank',disc:'landmark',streak:'streak'};
 function getAchSvg(a,sz=44){
   const peers=achievements.filter(x=>x.cat===a.cat);
-  const tier=Math.max(1,Math.min(6,peers.indexOf(a)+1));
+  const tier=Math.max(1,Math.min(6,peers.findIndex(x=>x.id===a.id)+1));
   const key=RC_ACH_KEY[a.cat]||'distance';
   const svg=rcBuildIconSvg(key,tier,!a.earned,{showPips:sz>=48});
   return `<div style="width:${sz}px;height:${sz}px;display:block;margin:0 auto;flex-shrink:0">${svg}</div>`;
@@ -2901,6 +3209,37 @@ function initAch(){achievements=[
   {id:'streak365',name:'Unermüdlich',      target:365,  progress:0,earned:false,cat:'streak'},
   {id:'streak730',name:'Ewige Legende',    target:730,  progress:0,earned:false,cat:'streak'},
 ];}
+const CAT_UNITS={conq:'Straßen',km:'km',atk:'Siege',def:'Vert.',disc:'Orte',streak:'Tage'};
+window.showAchDetail=function(achId){
+  const a=achievements.find(x=>x.id===achId);if(!a)return;
+  const done=a.earned;
+  const pct=Math.min(100,(a.progress/a.target)*100);
+  const rem=Math.max(0,a.target-a.progress).toLocaleString('de-DE');
+  const ctr=done?'<i class="fas fa-check"></i>&nbsp;Geschafft':'Noch '+rem;
+  const u=CAT_UNITS[a.cat]||'';
+  document.body.insertAdjacentHTML('beforeend',`<div style="position:fixed;inset:0;z-index:6000;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:24px" id="achDetailPop" onclick="if(event.target===this)this.remove()">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px 20px;max-width:260px;width:100%;text-align:center">
+      <div style="width:88px;height:88px;margin:0 auto 14px;position:relative;display:grid;place-items:center">
+        ${getAchSvg(a,80)}
+      </div>
+      <div style="font-family:\'Bebas Neue\',sans-serif;font-size:1.25rem;letter-spacing:1px;margin-bottom:3px">${a.name}</div>
+      <div style="font-size:.7rem;color:var(--muted);margin-bottom:14px">${a.target.toLocaleString('de-DE')} ${u}</div>
+      <div style="height:5px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden;margin-bottom:8px"><div style="height:100%;width:${pct.toFixed(1)}%;background:${done?'var(--green)':'var(--primary)'};border-radius:4px"></div></div>
+      <div style="font-family:\'Bebas Neue\',sans-serif;font-size:.9rem;color:${done?'var(--green)':'var(--primary)'}">${ctr}</div>
+      <button onclick="document.getElementById('achDetailPop').remove()" style="margin-top:16px;background:none;border:1px solid var(--border);border-radius:10px;color:var(--muted);padding:6px 20px;font-size:.75rem;cursor:pointer;font-family:'Poppins',sans-serif">Schließen</button>
+    </div>
+  </div>`);
+};
+function getAchTiers(cat){
+  const list=achievements.filter(a=>a.cat===cat).sort((a,b)=>a.target-b.target);
+  let first=true;
+  return list.map(a=>{
+    const done=a.earned;
+    let state;
+    if(done){state='done';}else if(first){state='next';first=false;}else{state='locked';}
+    return{...a,done,state,remaining:Math.max(0,a.target-a.progress),pct:Math.min(100,(a.progress/a.target)*100)};
+  });
+}
 
 /* MAP */
 function initMap(){
@@ -2911,6 +3250,8 @@ function initMap(){
   terrLayer=L.layerGroup().addTo(mapL);
   heatLayer=L.heatLayer([],{radius:20,blur:15,maxZoom:17}).addTo(mapL);
   landmarkLayer=L.layerGroup().addTo(mapL);
+  invasionLayer=L.layerGroup().addTo(mapL);
+  renderInvasions();
   setTimeout(loadLandmarks,800);
   mapL.locate({setView:true,maxZoom:16,enableHighAccuracy:true});
   mapL.on('locationfound',e=>{
@@ -2940,7 +3281,7 @@ function initMap(){
 function isLightTheme(){const t=getActiveTheme();return t==='theme-stone'||t==='theme-petrol';}
 function setTiles(){
   mapL?.eachLayer(l=>{if(l instanceof L.TileLayer)mapL.removeLayer(l)});
-  L.tileLayer(isLightTheme()?'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png':'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap'}).addTo(mapL);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap © CARTO'}).addTo(mapL);
 }
 function mkUserIcon(){return L.divIcon({html:`<div style="background:${userColor};width:16px;height:16px;border-radius:50%;border:2px solid white;box-shadow:0 0 12px ${userColor}"></div>`,iconSize:[16,16],className:''})}
 
@@ -3317,6 +3658,7 @@ function onGPS(pos){
       addNotif('⭐','Wahrzeichen entdeckt: '+lm.name);
     }
   });
+  checkInvasionRepel(lat,lng);
 }
 function startLiveUpdate(){liveInterval=setInterval(()=>{
   if(!isRunning||isPaused)return;
@@ -3359,18 +3701,16 @@ function resumeRun(){
 }
 function updateRunPill(){
   const pill=$('runCtrlPill');if(!pill)return;
-  const start=$('rcpStart'),pause=$('rcpPause'),stop=$('rcpStop');
-  if(!start||!pause||!stop)return;
-  const onMap=currentView==='map';
+  const pause=$('rcpPause'),stop=$('rcpStop');
+  if(!pause||!stop)return;
   if(!isRunning){
-    start.classList.remove('rcp-hidden');pause.classList.add('rcp-hidden');stop.classList.add('rcp-hidden');
-    pill.classList.toggle('visible',onMap);
+    pill.classList.remove('visible');
   } else if(isPaused){
-    start.classList.add('rcp-hidden');pause.classList.remove('rcp-hidden');stop.classList.remove('rcp-hidden');
+    pause.classList.remove('rcp-hidden');stop.classList.remove('rcp-hidden');
     pause.innerHTML='<i class="fas fa-play"></i> Weiter';
     pill.classList.add('visible');
   } else {
-    start.classList.add('rcp-hidden');pause.classList.remove('rcp-hidden');stop.classList.remove('rcp-hidden');
+    pause.classList.remove('rcp-hidden');stop.classList.remove('rcp-hidden');
     pause.innerHTML='<i class="fas fa-pause"></i> Pause';
     pill.classList.add('visible');
   }
@@ -3589,7 +3929,7 @@ function showPostRun(rec){
   const inflHTML=(sessionNewTerrNames.length||sessionNewLandmarks.length)?`<div style="background:rgba(var(--primary-rgb),.06);border:1px solid rgba(var(--primary-rgb),.2);border-radius:14px;padding:14px;margin-bottom:10px"><div style="font-size:.6rem;font-weight:700;letter-spacing:1.5px;color:var(--primary);margin-bottom:8px">🗺️ DEIN EINFLUSS</div>${sessionNewTerrNames.map(n=>`<div style="display:flex;align-items:center;gap:6px;font-size:.8rem;margin-bottom:4px"><span style="width:8px;height:8px;border-radius:50%;background:${userColor};flex-shrink:0;display:inline-block"></span>${esc(n)}</div>`).join('')}${sessionNewLandmarks.map(n=>`<div style="display:flex;align-items:center;gap:6px;font-size:.8rem;margin-bottom:4px"><span style="color:#ffd700">⭐</span>${esc(n)}</div>`).join('')}</div>`:'';
   $('postInfluence').innerHTML=inflHTML;
   $('postRunModal').style.display='flex';
-  document.getElementById('cardRunBtn')?.addEventListener('click',()=>{shareRunCard(rec,rec.path||[]);},{ once:true });
+  document.getElementById('cardRunBtn')?.addEventListener('click',()=>{showShareCardEditor(rec);},{ once:true });
 }
 function fallbackSong(){const s=[{title:'Eye of the Tiger',artist:'Survivor',bpm:109,reason:'Dein Lauf hatte diese unnachgiebige Energie.'},{title:'Titanium',artist:'David Guetta ft. Sia',bpm:126,reason:'Nichts konnte dich aufhalten.'},{title:'Blinding Lights',artist:'The Weeknd',bpm:171,reason:'Freier Flow durch deine Straßen.'},{title:'Run the World',artist:'Beyoncé',bpm:130,reason:'Heute gehören die Straßen dir.'},{title:'Harder Better Faster',artist:'Daft Punk',bpm:123,reason:'Deine Pace war wie ein perfekter Rhythmus.'}];return s[Math.floor(Math.random()*s.length)]}
 
@@ -3600,13 +3940,40 @@ function updateDash(){
   const td=tr.reduce((s,r)=>s+r.distance,0),tt=tr.reduce((s,r)=>s+r.duration,0);
   $('todayKm').textContent=(td/1000).toFixed(1);$('todayTime').textContent=fmtTime(tt);$('todayPace').textContent=td>10?fmtPace(td,tt):'--';
   $('todayKcal').textContent=tr.reduce((s,r)=>s+(r.kcal||0),0);$('todaySteps').textContent=stepsToday;
-  /* Start Hub hero updates */
   const gl=$('heroGreetLine');if(gl)gl.textContent='Bereit, '+(playerName||'Läufer')+'?';
   const ev=$('heroEnergyVal');if(ev)ev.textContent='⚡'+energy;
   const tc=$('statTerrCount');if(tc)tc.textContent=territories.filter(t=>t.owner===userId).length;
   const sh=$('statStreakHero');if(sh)sh.textContent=(streakDays||0)+'🔥';
   updateNavFab();
   renderGoal();renderDailyChallenges();renderQuestsDiv();renderActivityCards();renderWeekChart();
+  loadGarminHealth();
+}
+async function loadGarminHealth(){
+  try{
+    const tok=await sbAccessToken();if(!tok)return;
+    const cache=window._ghCache;
+    const now=Date.now();
+    if(cache&&now-cache.ts<300000){renderGarminHealth(cache.data);return;}
+    const r=await fetch('/api/garmin/health?token='+tok+'&days=1');
+    if(!r.ok)return;
+    const{data}=await r.json();
+    window._ghCache={data,ts:now};
+    renderGarminHealth(data);
+  }catch(e){}
+}
+function renderGarminHealth(data){
+  const sec=$('garminHealthSection');if(!sec)return;
+  if(!data||!data.length){sec.style.display='none';return;}
+  const d=data[0];
+  sec.style.display='';
+  $('garminHealthDate').textContent=d.summary_date||'';
+  $('ghSteps').textContent=d.steps!=null?Number(d.steps).toLocaleString('de-DE'):'—';
+  $('ghHR').textContent=d.resting_hr!=null?d.resting_hr+' bpm':'—';
+  if(d.sleep_seconds!=null){const h=Math.floor(d.sleep_seconds/3600),m=Math.round((d.sleep_seconds%3600)/60);$('ghSleep').textContent=h+'h '+m+'m';}
+  else $('ghSleep').textContent='—';
+  $('ghCal').textContent=d.active_calories!=null?d.active_calories+' kcal':'—';
+  $('ghStress').textContent=d.avg_stress!=null?d.avg_stress+'/100':'—';
+  $('ghMaxHR').textContent=d.max_hr!=null?d.max_hr+' bpm':'—';
 }
 function getWeeklyKm(){const now=new Date(),dow=(now.getDay()+6)%7,ws=new Date(now);ws.setDate(now.getDate()-dow);ws.setHours(0,0,0,0);return history.filter(r=>r.date>=ws.getTime()).reduce((s,r)=>s+r.distance/1000,0)}
 function xpForKm(km,totalKmThisWeek){const baseXP=km*10;if(totalKmThisWeek<20)return Math.round(baseXP*1.0);if(totalKmThisWeek<50)return Math.round(baseXP*0.7);else return Math.round(baseXP*0.4);}
@@ -3757,10 +4124,10 @@ function openImportModal(){
   $('impPreview').style.display='none';
   $('impError').style.display='none';
   impCurrentPath=null; /* reset parsed file result */
-  ['impTabGpx','impTabStrava'].forEach(id=>$(id)?.classList.remove('active'));
+  ['impTabGpx','impTabStrava','impTabGarmin'].forEach(id=>$(id)?.classList.remove('active'));
   $('impTabManual').classList.add('active');
   $('impPanManual').style.display='';
-  ['impPanGpx','impPanStrava'].forEach(id=>{const el=$(id);if(el)el.style.display='none';});
+  ['impPanGpx','impPanStrava','impPanGarmin'].forEach(id=>{const el=$(id);if(el)el.style.display='none';});
   $('importModal').style.display='flex';
 }
 function importActivity(distM,durSecs,dateMs,path,source,avgHR){
@@ -3800,6 +4167,16 @@ function checkStravaCallback(){
     localStorage.setItem('rc_strava_token',token);
     history.replaceState(null,'',location.pathname+location.search);
     window._openStravaOnInit=true;
+  }catch(e){}
+}
+function checkGarminCallback(){
+  try{
+    const p=new URLSearchParams(location.search);
+    const s=p.get('garmin');
+    if(!s)return;
+    history.replaceState(null,'',location.pathname);
+    if(s==='connected'){window._openGarminOnInit=true;}
+    else if(s==='error'||s==='expired'){toast('❌ Garmin-Verbindung fehlgeschlagen');}
   }catch(e){}
 }
 function connectStrava(){
@@ -3889,6 +4266,105 @@ async function importStravaActivity(id,distM,durSecs,dateMs,avgHR){
   importActivity(distM,durSecs,dateMs,path,'strava',avgHR);
 }
 
+/* ── GARMIN INTEGRATION ──
+   Einmal verbinden (OAuth via Serverless-Functions), danach holt
+   die App nach jedem Login automatisch neue Aktivitäten ab. */
+let garminConnected=false;
+async function sbAccessToken(){
+  if(!sb)return null;
+  try{const{data:{session}}=await sb.auth.getSession();return session?.access_token||null;}catch(e){return null;}
+}
+async function connectGarmin(){
+  const tok=await sbAccessToken();
+  if(!tok){toast('Bitte zuerst einloggen');return;}
+  location.href='/api/garmin/oauth-start?token='+encodeURIComponent(tok);
+}
+async function disconnectGarmin(){
+  const tok=await sbAccessToken();if(!tok)return;
+  try{
+    await fetch('/api/garmin/disconnect?token='+encodeURIComponent(tok),{method:'POST'});
+    garminConnected=false;
+    localStorage.removeItem('rc_garmin_lastsync');
+    toast('Garmin getrennt');
+    renderGarminPanel();
+  }catch(e){toast('Trennen fehlgeschlagen');}
+}
+/* Holt neue Garmin-Aktivitäten und importiert noch unbekannte. */
+async function syncGarminActivities(opts={}){
+  const tok=await sbAccessToken();if(!tok)return{connected:false,configured:false,imported:0};
+  const since=localStorage.getItem('rc_garmin_lastsync');
+  let q='/api/garmin/activities?token='+encodeURIComponent(tok);
+  if(since&&!opts.full)q+='&since='+encodeURIComponent(since);
+  let data;
+  try{const r=await fetch(q);if(!r.ok)return{connected:false,configured:true,imported:0};data=await r.json();}
+  catch(e){return{connected:false,configured:false,imported:0};}
+  garminConnected=!!data.connected;
+  if(!data.connected)return{connected:false,configured:data.configured,imported:0};
+  // dedupe gegen bereits importierte Garmin-Läufe (per external_id)
+  const known=new Set(history.filter(h=>h.importSource==='garmin').map(h=>h.extId));
+  let imported=0,newest=since?new Date(since).getTime():0;
+  (data.activities||[]).slice().reverse().forEach(a=>{
+    const ts=a.start_time?new Date(a.start_time).getTime():Date.now();
+    if(ts>newest)newest=ts;
+    if(a.external_id&&known.has(a.external_id))return;
+    if(!a.distance_meters||!a.duration_seconds)return;
+    const path=(a.track||[]).filter(p=>p.lat!=null&&p.lng!=null).map(p=>[p.lat,p.lng]);
+    importGarminActivity(a.distance_meters,a.duration_seconds,ts,path,a.external_id);
+    imported++;
+  });
+  if(newest)localStorage.setItem('rc_garmin_lastsync',new Date(newest+1000).toISOString());
+  return{connected:true,configured:true,imported};
+}
+/* Wie importActivity, aber merkt sich die external_id für Dedup. */
+function importGarminActivity(distM,durSecs,dateMs,path,extId){
+  const kcal=calcKcal(distM,durSecs);
+  const kmXP=Math.round(xpForKm(distM/1000,getWeeklyKm()));
+  const rec={date:dateMs,distance:distM,area:0,pts:kmXP,
+    path:path?path.filter((_,i)=>i%3===0):[],conquered:false,defended:false,
+    duration:durSecs,gap:0,kcal,avgHR:0,splits:[],
+    imported:true,importSource:'garmin',extId:extId||null};
+  history.push(rec);if(history.length>30)history.shift();
+  totalKm+=distM/1000;points+=kmXP;
+  checkStarterQuests();save();
+  if(path&&path.length>=2&&mapL){
+    if(importedLayer)mapL.removeLayer(importedLayer);
+    importedLayer=L.polyline(path,{color:'#00D4FF',weight:3,dashArray:'6 4',opacity:.85}).addTo(mapL);
+    try{mapL.fitBounds(importedLayer.getBounds(),{padding:[40,40]});}catch(e){}
+  }
+}
+function renderGarminPanel(){
+  const pan=$('impPanGarmin');if(!pan)return;
+  pan.innerHTML='<div style="padding:14px;text-align:center;color:var(--muted);font-size:.8rem">⏳ Prüfe Verbindung…</div>';
+  syncGarminActivities().then(res=>{
+    if(!res.configured){
+      pan.innerHTML=`<div style="background:var(--card);border-radius:12px;padding:16px;font-size:.78rem;color:var(--muted);line-height:1.6">
+        <div style="font-size:1.4rem;margin-bottom:6px">⌚</div>
+        <b style="color:var(--text)">Garmin ist noch nicht freigeschaltet.</b><br>
+        Die Garmin-Health-API benötigt einen Partner-Zugang. Sobald die API-Keys im Server hinterlegt sind, erscheint hier der Verbinden-Button.</div>`;
+      return;
+    }
+    if(res.connected){
+      pan.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:.85rem">
+        <span style="color:#10b981">✅ Mit Garmin verbunden</span>
+        <button id="garminDiscBtn" class="btn" style="margin-left:auto;font-size:.7rem;padding:3px 9px">Trennen</button></div>
+        <div style="font-size:.76rem;color:var(--muted);line-height:1.6">Neue Läufe werden nach jedem Sync deiner Garmin-Uhr <b style="color:var(--text)">automatisch</b> übernommen und auf deiner Karte angezeigt.${res.imported?` <span style="color:var(--primary)">${res.imported} neue importiert.</span>`:''}</div>
+        <button id="garminSyncBtn" class="btn btn-p" style="width:100%;margin-top:12px"><i class="fas fa-rotate"></i> Jetzt synchronisieren</button>`;
+      $('garminDiscBtn')?.addEventListener('click',disconnectGarmin);
+      $('garminSyncBtn')?.addEventListener('click',async()=>{
+        const btn=$('garminSyncBtn');if(btn){btn.disabled=true;btn.innerHTML='⏳ Synchronisiere…';}
+        const r=await syncGarminActivities({full:true});
+        toast(r.imported?`✅ ${r.imported} Läufe importiert`:'Keine neuen Läufe');
+        renderGarminPanel();if(r.imported)updateUI();
+      });
+    }else{
+      pan.innerHTML=`<div style="background:var(--card);border-radius:12px;padding:14px;font-size:.78rem;color:var(--muted);line-height:1.6;margin-bottom:12px">
+        Verbinde dein Garmin-Konto <b style="color:var(--text)">einmalig</b> — danach landen alle Läufe deiner Garmin-Uhr automatisch hier, ganz ohne offene App.</div>
+        <button id="garminConBtn" class="btn btn-p" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px"><i class="fas fa-link"></i> Mit Garmin verbinden</button>`;
+      $('garminConBtn')?.addEventListener('click',connectGarmin);
+    }
+  });
+}
+
 /* FREUNDE */
 async function renderFriends(){
   const el=$('friendsList');if(!el)return;
@@ -3928,6 +4404,84 @@ async function renderClubWars(){
     el.innerHTML=sorted.length?sorted.map((c,i)=>`<div class="list-row" style="gap:8px"><span style="font-family:'Bebas Neue',sans-serif;color:var(--muted);width:20px">${i+1}</span><span style="flex:1;font-size:.82rem;font-weight:${c.code===userClub?.code?700:400}">${esc(c.name)}${c.code===userClub?.code?' 👈':''}</span><span style="font-size:.68rem;color:var(--muted)">${c.members} Mitgl.</span><span style="font-family:'Bebas Neue',sans-serif;color:var(--primary)">${c.totalPts.toLocaleString()} Pts</span></div>`).join(''):'<div style="color:var(--muted);font-size:.75rem">Keine Daten verfügbar</div>';
   }catch(e){el.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:6px">Club Wars nicht verfügbar</div>';}
 }
+/* PLAYER DISCOVERY */
+async function renderPlayerDiscovery(){
+  const el=$('playerDiscoveryList');if(!el)return;
+  el.innerHTML=`<div style="display:flex;gap:8px;margin-bottom:10px"><input type="text" id="discSearchInput" class="modal-input" placeholder="Spieler suchen…" style="flex:1;font-size:.8rem"><button class="btn btn-p" id="discSearchBtn" style="padding:6px 14px;flex-shrink:0"><i class="fas fa-search"></i></button></div><div id="discList"><div style="padding:10px;text-align:center;color:var(--muted);font-size:.78rem">⏳ Lade…</div></div>`;
+  document.getElementById('discSearchBtn')?.addEventListener('click',async()=>{
+    const name=(document.getElementById('discSearchInput')?.value||'').trim();if(name.length<2)return;
+    const dl=document.getElementById('discList');if(dl)dl.innerHTML='<div style="padding:8px;text-align:center;color:var(--muted);font-size:.75rem">⏳ Suche…</div>';
+    try{const{data}=await sb.from('profiles').select('user_id,player_name,user_avatar,user_color,points,total_km,user_team').ilike('player_name','%'+name+'%').limit(10);renderDiscoveryList(data||[]);}
+    catch(e){const dl=document.getElementById('discList');if(dl)dl.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:8px">Suche fehlgeschlagen</div>';}
+  });
+  try{const{data}=await sb.from('profiles').select('user_id,player_name,user_avatar,user_color,points,total_km,user_team').order('points',{ascending:false}).limit(20);renderDiscoveryList((data||[]).filter(r=>r.user_id!==userId));}
+  catch(e){const dl=document.getElementById('discList');if(dl)dl.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:8px">Keine Spieler verfügbar</div>';}
+}
+function renderDiscoveryList(players){
+  const dl=document.getElementById('discList');if(!dl)return;
+  const list=players.filter(r=>r.user_id!==userId).slice(0,15);
+  if(!list.length){dl.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:8px">Keine Spieler gefunden</div>';return;}
+  dl.innerHTML=list.map(r=>{
+    const following=isFollowing(r.user_id);
+    const tm=TEAMS.find(t=>t.id===r.user_team);
+    const col=esc(r.user_color||'#e8ff47');
+    return`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="width:36px;height:36px;border-radius:50%;background:${col}22;border:2px solid ${col}55;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0">${esc(r.user_avatar||'🏃')}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.82rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.player_name||'Läufer')}</div>
+        <div style="font-size:.63rem;color:var(--muted)">${tm?tm.icon+' '+tm.name+' · ':''}${(r.total_km||0).toFixed(1)} km</div>
+      </div>
+      <span style="font-family:'Bebas Neue',sans-serif;color:var(--primary);font-size:.9rem;flex-shrink:0">${r.points||0}</span>
+      <button class="follow-btn${following?' following':''}" data-uid="${r.user_id}" data-name="${esc(r.player_name||'')}" data-av="${esc(r.user_avatar||'🏃')}" style="font-size:.68rem;padding:4px 10px;flex-shrink:0">${following?'✓':'+ Folgen'}</button>
+    </div>`;
+  }).join('');
+  dl.querySelectorAll('.follow-btn').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const{uid,name,av}=btn.dataset;
+      if(isFollowing(uid)){unfollowUser(uid,name);btn.textContent='+ Folgen';btn.classList.remove('following');}
+      else{followUser(uid,name,av);btn.textContent='✓';btn.classList.add('following');}
+    });
+  });
+}
+/* CLUB DISCOVERY */
+async function renderClubDiscovery(){
+  const el=$('clubDiscoveryList');if(!el)return;
+  el.innerHTML='<div style="padding:10px;text-align:center;color:var(--muted);font-size:.78rem">⏳ Lade Clubs…</div>';
+  try{
+    if(!sb)throw new Error('no sb');
+    const{data}=await sb.from('profiles').select('player_name,points,club_code').not('club_code','is',null).order('points',{ascending:false}).limit(100);
+    const clubs={};
+    (data||[]).forEach(p=>{if(!p.club_code)return;if(!clubs[p.club_code])clubs[p.club_code]={code:p.club_code,members:0,totalPts:0};clubs[p.club_code].members++;clubs[p.club_code].totalPts+=p.points||0;});
+    const localClubs=JSON.parse(localStorage.getItem('rc_clubs_db')||'{}');
+    Object.values(localClubs).forEach(lc=>{if(!clubs[lc.code])clubs[lc.code]={code:lc.code,members:0,totalPts:0};clubs[lc.code].name=lc.name;clubs[lc.code].wappen=lc.wappen;});
+    const sorted=Object.values(clubs).sort((a,b)=>b.members-a.members||b.totalPts-a.totalPts).slice(0,12);
+    if(!sorted.length){el.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:8px">Noch keine Clubs bekannt</div>';return;}
+    el.innerHTML=sorted.map(c=>{
+      const isMyClub=userClub?.code===c.code;
+      const wHtml=(c.wappen&&Object.keys(c.wappen).length)?`<div style="width:36px;height:36px;flex-shrink:0">${crestSVG(c.wappen,36)}</div>`:`<div style="width:36px;height:36px;border-radius:50%;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">🛡️</div>`;
+      const safeName=(c.name||c.code).replace(/'/g,"\\'");
+      return`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+        ${wHtml}
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.82rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.name||c.code}${isMyClub?' ✦':''}</div>
+          <div style="font-size:.63rem;color:var(--muted)">${c.members} Mitgl. · ${c.totalPts.toLocaleString()} Pts</div>
+        </div>
+        <span style="font-family:'Bebas Neue',sans-serif;font-size:.72rem;background:rgba(var(--primary-rgb),.1);color:var(--primary);border:1px solid rgba(var(--primary-rgb),.2);border-radius:6px;padding:2px 7px;cursor:pointer;flex-shrink:0" onclick="navigator.clipboard?.writeText('${c.code}').then(()=>toast('📋 Code: ${c.code}')).catch(()=>toast('Code: ${c.code}'))">${c.code}</span>
+        ${!isMyClub?`<button class="btn" style="font-size:.65rem;padding:4px 10px;flex-shrink:0" onclick="window.joinClubFromDisc('${c.code}','${safeName}')">Beitreten</button>`:'<span style="font-size:.68rem;color:var(--primary);flex-shrink:0">Mein Club</span>'}
+      </div>`;
+    }).join('');
+  }catch(e){el.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:8px">Clubs nicht verfügbar</div>';}
+}
+window.joinClubFromDisc=function(code,name){
+  if(userClub){toast('Verlasse zunächst deinen aktuellen Club');return;}
+  if(!confirm('Club "'+name+'" beitreten?\nCode: '+code))return;
+  const allClubs=JSON.parse(localStorage.getItem('rc_clubs_db')||'{}');
+  if(!allClubs[code])allClubs[code]={code,name};
+  userClub={code,name:allClubs[code].name||name,wappen:allClubs[code].wappen||{},foundedAt:allClubs[code].foundedAt||Date.now()};
+  localStorage.setItem('rc_clubs_db',JSON.stringify(allClubs));
+  saveProfile();toast('🏰 Beigetreten: '+name);renderClubDiscovery();
+};
 /* COMMUNITY */
 function updateCommunity(){
   const staticNews=[{icon:'📰',txt:'Neuer Wochenrekord gebrochen!',t:'vor 2 Std.'},{icon:'🏆',txt:'Kampf um den Stadtpark!',t:'vor 1 Std.'}];
@@ -3943,18 +4497,11 @@ function updateCommunity(){
   renderFriends();
   // Club Wars
   renderClubWars();
+  // Spieler & Club Discovery
+  renderPlayerDiscovery();
+  renderClubDiscovery();
   // Fraktion-Rangliste
-  const teamEl=$('teamRankList');
-  if(teamEl){
-    const teamStats=TEAMS.map(tm=>{
-      const botIds=Object.entries(BOT_TEAMS).filter(([,tid])=>tid===tm.id).map(([bid])=>bid);
-      const playerPts=(userTeam===tm.id)?points:0;
-      const botPts=botIds.reduce((s,bid)=>{const bot=BOTS.find(b=>b.id===bid);return s+(bot?bot.pts:0);},0);
-      const terrCount=territories.filter(t=>t.owner===userId?userTeam===tm.id:botIds.includes(t.owner)).length;
-      return{...tm,total:playerPts+botPts,terrCount};
-    }).sort((a,b)=>b.total-a.total);
-    teamEl.innerHTML=teamStats.map((tm,i)=>`<div class="list-row"><span style="font-size:1.1rem;width:24px">${['🥇','🥈','🥉','4.'][i]||''}</span><span style="font-size:1.1rem">${tm.icon}</span><span class="row-txt" style="color:${tm.color};font-weight:700">${tm.name}</span><span style="font-size:.72rem;color:var(--muted)">${tm.terrCount} Gebiete</span><span style="font-family:'Bebas Neue',sans-serif;color:${tm.color}">${tm.total} Pts</span></div>`).join('');
-  }
+  renderFactionWar();
   $('bigTerrList').innerHTML=[...territories].sort((a,b)=>(b.area||0)-(a.area||0)).slice(0,5).map(t=>`<div class="list-row"><div class="terr-dot" style="background:${t.owner===userId?userColor:t.color}"></div><span class="row-txt">${esc(t.customName||'Unbenannt')}</span><span class="muted" style="font-size:.72rem">${Math.round(t.area||0)} m²</span><span class="terr-owner" style="color:${t.owner===userId?'var(--primary)':'var(--red)'}">${t.owner===userId?'Deins':'Feind'}</span></div>`).join('')||'<div class="muted" style="padding:8px">Keine Gebiete</div>';
   if(userMarker){
     const pos=userMarker.getLatLng();
@@ -4069,6 +4616,72 @@ function renderEvents(){
   ];
   function fmtCD(ms){if(ms<=0)return'BEENDET';const d=Math.floor(ms/86400000),h=Math.floor((ms%86400000)/3600000),m=Math.floor((ms%3600000)/60000);return d>0?`${d}T ${h}Std`:h>0?`${h}Std ${m}Min`:`${m}Min`}
   $('eventsList').innerHTML=EVENTS.map(ev=>{const rem=ev.endsAt-now;return`<div class="event-item ${ev.color}"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="flex:1"><div style="font-weight:600;font-size:.88rem">${ev.icon} ${ev.title}</div><div style="font-size:.72rem;color:var(--muted);margin:2px 0">${ev.desc}</div><div style="display:flex;align-items:center;gap:8px;margin-top:4px"><span class="event-countdown">⏱ ${fmtCD(rem)}</span><span style="font-size:.65rem;color:var(--muted)">🎁 +${ev.reward} Pts</span></div></div></div><div class="event-badges">${ev.participants.map(p=>`<span class="event-badge">${p}</span>`).join('')}<span class="event-badge">+${3+ev.id.charCodeAt(2)%8} weitere</span></div></div>`}).join('');
+}
+
+/* ── FRAKTIONS-KRIEG (echte, geteilte Welt) ──
+   Aggregiert reale Spieler aus der öffentlichen profiles-Tabelle (user_team,
+   points, total_conquered) statt – wie früher – nur lokale Bot-Punktwerte zu
+   zeigen. Dadurch wird der Fraktionskampf zu einer echten Meta-Ebene zwischen
+   allen Spielern. Bei fehlendem Supabase/Offline greift eine lokale
+   Schätzung, damit die Karte nie leer/kaputt ist. */
+async function renderFactionWar(){
+  const el=$('teamRankList');
+  if(!el)return;
+  let stats,isLive=false;
+  try{
+    if(!sb)throw 0;
+    const{data,error}=await sb.from('profiles')
+      .select('user_team,points,total_conquered')
+      .not('user_team','is',null)
+      .order('points',{ascending:false})
+      .limit(1000);
+    if(error||!data)throw error||0;
+    const agg={};
+    data.forEach(p=>{
+      if(!TEAMS.some(t=>t.id===p.user_team))return;
+      const a=agg[p.user_team]||(agg[p.user_team]={total:0,terr:0,members:0});
+      a.total+=p.points||0;a.terr+=p.total_conquered||0;a.members++;
+    });
+    stats=TEAMS.map(tm=>({...tm,total:agg[tm.id]?.total||0,terr:agg[tm.id]?.terr||0,members:agg[tm.id]?.members||0}));
+    isLive=true;
+  }catch(e){
+    // Fallback: nur lokal bekannte Daten
+    stats=TEAMS.map(tm=>({...tm,
+      total:userTeam===tm.id?points:0,
+      terr:userTeam===tm.id?territories.filter(t=>t.owner===userId).length:0,
+      members:userTeam===tm.id?1:0}));
+  }
+  // Eigene (evtl. noch nicht gesyncte) Punkte als Untergrenze der eigenen Fraktion
+  const mine=stats.find(t=>t.id===userTeam);
+  if(mine&&points>mine.total){mine.total=points;if(!mine.members)mine.members=1;}
+  stats.sort((a,b)=>b.total-a.total);
+  const grand=stats.reduce((s,t)=>s+t.total,0)||1;
+  const leader=stats[0];
+  el.innerHTML=(isLive?'':'<div style="font-size:.62rem;color:var(--muted);margin-bottom:6px">📡 Offline – lokale Schätzung</div>')
+    +stats.map((tm,i)=>{
+      const share=Math.round((tm.total/grand)*100);
+      const isMine=tm.id===userTeam;
+      const isLeader=i===0&&tm.total>0;
+      return`<div class="list-row" style="flex-direction:column;align-items:stretch;gap:5px${isMine?';background:rgba(var(--primary-rgb),.06);border:1px solid rgba(var(--primary-rgb),.25)':''}">
+        <div style="display:flex;align-items:center;gap:8px;width:100%">
+          <span style="font-size:1rem;width:20px;flex-shrink:0">${['🥇','🥈','🥉','4.'][i]||''}</span>
+          <span style="font-size:1.1rem">${tm.icon}</span>
+          <span class="row-txt" style="color:${tm.color};font-weight:700">${tm.name}${isMine?' <span style="font-size:.56rem;color:var(--primary)">· DEINE</span>':''}${isLeader?' 👑':''}</span>
+          <span style="font-size:.64rem;color:var(--muted)">${tm.members} L.</span>
+          <span style="font-family:'Bebas Neue',sans-serif;color:${tm.color};margin-left:auto">${tm.total}</span>
+        </div>
+        <div style="height:6px;border-radius:4px;background:rgba(255,255,255,.07);overflow:hidden"><div style="height:100%;width:${share}%;background:${tm.color};border-radius:4px;transition:width .6s var(--ease-out)"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:.58rem;color:var(--muted)"><span>${share}% Kontrolle</span><span>${tm.terr} Gebiete</span></div>
+      </div>`;
+    }).join('');
+  // Persönlicher Beitrag + Kriegslage
+  if(mine){
+    const contribPct=mine.total>0?Math.min(100,Math.round((points/mine.total)*100)):0;
+    const lead=leader.id===userTeam
+      ?'ihr führt den Krieg an! 👑'
+      :`${esc(leader.name)} führt mit ${Math.max(0,leader.total-mine.total)} Pts Vorsprung`;
+    el.innerHTML+=`<div style="margin-top:8px;padding:8px 10px;border-radius:10px;background:rgba(var(--primary-rgb),.05);font-size:.66rem;color:var(--muted);line-height:1.5">⚔️ Dein Beitrag für <b style="color:${mine.color}">${esc(mine.name)}</b>: <b style="color:var(--primary)">${points} Pts</b> (${contribPct}%) — ${lead}</div>`;
+  }
 }
 
 /* ── LEADERBOARD ── */
@@ -5059,6 +5672,8 @@ async function launchAppFromSession(user){
     setTimeout(async()=>{
       load();updateUI();mapL?.invalidateSize();showInboxBtn();setTimeout(checkDailyReward,600);setTimeout(checkFirstLoginOnboarding,1800);
       if(window._openStravaOnInit){window._openStravaOnInit=false;setTimeout(()=>{openImportModal();$('impTabStrava')?.click();},400);}
+      if(window._openGarminOnInit){window._openGarminOnInit=false;setTimeout(()=>{openImportModal();switchImpTab('impTabGarmin');},400);}
+      syncGarminActivities().then(r=>{if(r&&r.imported>0){toast('⌚ '+r.imported+' Garmin-Lauf'+(r.imported>1?'läufe':'')+' synchronisiert');updateUI();}}).catch(()=>{});
       const restored=await loadFromCloud();
       if(!restored&&territories.filter(t=>t.owner!==userId).length===0){await genRivals();}
       renderTerr();updateUI();processSyncQueue();loadFollowState();updateDmBadge();updateSettingsBadge();
@@ -5187,7 +5802,7 @@ function updateProfile(){
   $('pvLvBar').style.width=lvD.pct+'%';
   $('pvLvXpTxt').textContent=points+' XP · noch '+lvD.xpLeft+' bis Lv.'+(lvD.lv<CFG.LVL_NAMES.length?lvD.lv+1:'MAX');
   const mine=territories.filter(t=>t.owner===userId);
-  $('ps-km').textContent=totalKm.toFixed(1);$('ps-runs').textContent=history.length;$('ps-streak').textContent=streakDays===0?'Starte heute deinen ersten Streak!':streakDays+'🔥';$('ps-terr').textContent=mine.length;$('ps-pts').textContent=points;
+  $('ps-km').textContent=totalKm.toFixed(1);$('ps-runs').textContent=history.length;$('ps-streak').textContent=streakDays+'🔥';$('ps-terr').textContent=mine.length;$('ps-pts').textContent=points;
   // Herrschertitel + Fraktion + Club-Badges
   const title=getTerritoryTitle();
   const sinceEl=$('pvSince');
@@ -5198,14 +5813,6 @@ function updateProfile(){
     if(userTeam){const tm=TEAMS.find(t=>t.id===userTeam);if(tm)badgeDiv.innerHTML+=`<span class="team-badge" style="background:${tm.color}22;color:${tm.color};border:1px solid ${tm.color}44">${tm.icon} ${tm.name}</span>`;}
     if(userClub)badgeDiv.innerHTML+=`<span class="club-badge">${esc(userClub.icon)} ${esc(userClub.name)}</span>`;
     sinceEl.insertAdjacentElement('afterend',badgeDiv);
-  }
-  // Entdeckungen-Stat + Challenge-Streak (einmalig anhängen)
-  const statsRow=document.querySelector('.pv-stats');
-  if(statsRow){
-    if(!document.querySelector('.disc-stat')){const discEl=document.createElement('div');discEl.className='pv-stat disc-stat';discEl.innerHTML=`<div class="pv-sv">${totalDiscovered}</div><div class="pv-sl">⭐ Entdeckt</div>`;statsRow.appendChild(discEl);}
-    const csStat=statsRow.querySelector('.chal-streak-stat');
-    if(!csStat){const csEl=document.createElement('div');csEl.className='pv-stat chal-streak-stat';csEl.innerHTML=`<div class="pv-sv">${chalStreak}</div><div class="pv-sl">🎯 Streak</div>`;statsRow.appendChild(csEl);}
-    else{csStat.querySelector('.pv-sv').textContent=chalStreak;}
   }
   // Daily streak card
   const dsEl=document.getElementById('pvDailyStreak');
@@ -5249,10 +5856,17 @@ function updateProfile(){
   // Battle Pass
   const bpEl=document.getElementById('pvBattlePass');
   if(bpEl){const bpLv=Math.min(20,Math.floor(seasonXp/500));const bpPct=Math.min(100,(seasonXp%500)/5);const nextSp=(bpLv<20)?(bpLv+1)*500-seasonXp:0;bpEl.innerHTML=`<div class="section-title"><i class="fas fa-ticket-alt"></i> Saison-Pass <span style="font-size:.65rem;color:var(--muted);font-weight:400;margin-left:6px">Level ${bpLv}/20</span></div><div style="height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;margin-bottom:8px"><div style="height:100%;width:${bpPct}%;background:var(--primary);border-radius:3px;transition:width .4s"></div></div><div style="font-size:.68rem;color:var(--muted);margin-bottom:10px">${bpLv<20?nextSp+' XP bis Level '+(bpLv+1):'🏆 Max Level erreicht!'}</div><div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px">${BATTLE_PASS_REWARDS.map(r=>{const unlocked=bpLv>=r.lv;const claimed=battlePassClaimed.includes(r.lv);return`<div data-bplv="${r.lv}" style="flex-shrink:0;width:68px;padding:8px 4px;border-radius:12px;background:${unlocked?claimed?'rgba(16,185,129,.15)':'rgba(232,255,71,.1)':'var(--card)'};border:1px solid ${unlocked?claimed?'rgba(16,185,129,.4)':'rgba(232,255,71,.4)':'var(--border)'};text-align:center;cursor:${unlocked&&!claimed?'pointer':'default'}"><div style="font-size:1.2rem">${r.icon}</div><div style="font-size:.58rem;color:${unlocked?'var(--primary)':'var(--muted)'};line-height:1.2;margin:3px 0">${r.name}</div><div style="font-size:.55rem;color:var(--muted)">Lv.${r.lv}</div>${unlocked&&!claimed?`<div style="font-size:.55rem;background:var(--primary);color:#000;border-radius:4px;padding:1px 4px;margin-top:2px;font-weight:700">Abholen</div>`:claimed?'<div style="font-size:.65rem;color:#10b981">✓</div>':''}</div>`;}).join('')}</div>`;bpEl.querySelectorAll('[data-bplv]').forEach(el=>{const lv=Number(el.dataset.bplv);if(bpLv>=lv&&!battlePassClaimed.includes(lv)){el.addEventListener('click',()=>{battlePassClaimed.push(lv);const rw=BATTLE_PASS_REWARDS.find(r=>r.lv===lv);if(rw){if(rw.type==='xp'){points+=rw.val;toast('🎁 Battle Pass: +'+rw.val+' XP');}else if(rw.type==='shield'){streakShields=Math.min(3,streakShields+rw.val);toast('🛡️ Streak-Schutz hinzugefügt!');}else if(rw.type==='energy'){energy=Math.min(CFG.ENERGY_MAX,energy+rw.val);toast('⚡ Energie aufgeladen!');}else if(rw.type==='title'){toast('👑 Titel freigeschaltet: '+rw.val);}else{toast('🎁 '+rw.name+' freigeschaltet!');}}save();updateProfile();},{ once:true });}});}
-  const earnedAchs=achievements.filter(a=>a.earned).sort((a,b)=>b.target-a.target);
-  const top5=earnedAchs.slice(0,5);
-  const moreC=achievements.length-5;
-  $('pvAchs').innerHTML=(top5.length?top5.map(a=>`<div class="ach-badge earned" title="${a.name}"><div class="ach-badge-icon">${getAchSvg(a,44)}</div></div>`).join(''):`<div style="color:var(--muted);font-size:.78rem;padding:8px 0">Noch keine Erfolge.</div>`)+(moreC>0?`<button onclick="openDrawer('ach')" style="display:block;width:100%;margin-top:8px;background:none;border:1px solid var(--border);color:var(--primary);border-radius:10px;padding:8px;font-size:.75rem;cursor:pointer;font-family:'Poppins',sans-serif">Alle ${achievements.length} Erfolge ansehen →</button>`:'');
+  {
+    const CAT_META={conq:{name:'Straßen',unit:'Straßen'},km:{name:'Kilometer',unit:'km'},atk:{name:'Angriffe',unit:'Siege'},def:{name:'Vert.',unit:'Vert.'},disc:{name:'Orte',unit:'Orte'},streak:{name:'Streak',unit:'Tage'}};
+    const totalEarned=achievements.filter(a=>a.earned).length;
+    const nxtRows=Object.keys(CAT_META).map(cat=>{
+      const tiers=getAchTiers(cat);const next=tiers.find(t=>t.state==='next');if(!next)return'';
+      const meta=CAT_META[cat];const rem=next.remaining.toLocaleString('de-DE');
+      return `<div class="ach-nxt-row"><div class="ach-nxt-ic">${getAchSvg(next,46)}</div><div class="ach-nxt-mid"><div class="ach-nxt-nm">${next.name}</div><div class="ach-nxt-bar"><div class="ach-nxt-fill" style="width:${next.pct.toFixed(1)}%"></div></div></div><div class="ach-nxt-ctr">${rem}<small>${meta.unit} fehlen</small></div></div>`;
+    }).join('');
+    const allDone=!nxtRows;
+    $('pvAchs').innerHTML=`<div class="ach-card-hd"><span class="t"><i class="fas fa-trophy"></i>ERFOLGE</span><span class="cnt">${totalEarned}<small>/${achievements.length}</small></span></div><div class="nxt-sub">${allDone?'Alle Ziele erreicht — Legende! 🏆':'Deine nächsten Ziele — und was noch fehlt'}</div>${nxtRows}<button class="ach-more-btn" onclick="openDrawer('ach')">ALLE ${achievements.length} ERFOLGE <i class="fas fa-chevron-right" style="font-size:.8rem"></i></button>`;
+  }
   // Saisonhistorie
   const seasEl=document.getElementById('pvSeasons');
   if(seasEl){try{const seasons=JSON.parse(localStorage.getItem('rc_seasons_'+userId)||'[]');const MONTHS=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];seasEl.innerHTML=seasons.length?seasons.slice(0,6).map(s=>`<div class="season-row"><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${MONTHS[s.month]} ${s.year}</span><span style="color:var(--muted);font-size:.72rem">${s.title}</span><span style="font-family:'Bebas Neue',sans-serif;color:var(--primary)">${s.points} Pts</span></div>`).join(''):'<div style="padding:10px;color:var(--muted);font-size:.78rem;text-align:center">Noch keine abgeschlossenen Saisons</div>';}catch(e){seasEl.innerHTML=''}}
@@ -5281,24 +5895,12 @@ function _achSvg(cat,earned){
 }
 window._achSvg=_achSvg;
 function renderAchHexGrid(){
-  const CC={conq:'🛣️ Straßen erobert',km:'🏃 Kilometer gelaufen',atk:'⚔️ Angriffe gewonnen',def:'🛡️ Verteidigungen',disc:'🧭 Orte besucht',streak:'🔥 Tage in Folge'};
-  const groups={};achievements.forEach(a=>{(groups[a.cat]=groups[a.cat]||[]).push(a);});
+  const CAT_NAMES={conq:'Straßen',km:'Kilometer',atk:'Angriffe',def:'Verteidigung',disc:'Orte',streak:'Streak'};
   const totalEarned=achievements.filter(a=>a.earned).length;
-  const badge=a=>{
-    const e=a.earned;
-    const pct=Math.min(100,Math.round((a.progress/a.target)*100));
-    const ms=a.target>=1000?Math.round(a.target/1000)+'K':a.target;
-    return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px">`+
-      getAchSvg(a,84)+
-      `<div style="font-size:.6rem;font-weight:${e?700:400};color:${e?'#fff':'rgba(255,255,255,.32)'};text-align:center;line-height:1.2;max-width:92px">${a.name}</div>`+
-      (e?`<div style="font-size:.55rem;color:var(--primary);font-weight:700">✓ ${ms}</div>`:`<div style="width:62px;height:3px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden"><div style="width:${pct}%;height:100%;background:var(--muted);border-radius:2px"></div></div><div style="font-size:.5rem;color:var(--muted)">${Math.round(a.progress)}/${a.target}</div>`)+
-    `</div>`;
-  };
   return `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary);letter-spacing:2px">ERFOLGE</span><span style="font-size:.72rem;color:var(--muted);background:var(--card);padding:3px 10px;border-radius:20px;border:1px solid var(--border)">${totalEarned}/${achievements.length}</span></div>`+
-    Object.keys(CC).map(cat=>{
-      const list=groups[cat]||[];if(!list.length)return'';
-      const earned=list.filter(a=>a.earned).length;
-      return `<div style="margin-bottom:24px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span style="font-size:.72rem;font-weight:700;color:var(--text);letter-spacing:.3px">${CC[cat]}</span><span style="font-size:.58rem;color:var(--muted);background:rgba(255,255,255,.05);padding:2px 8px;border-radius:8px">${earned}/${list.length}</span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px 8px">${list.map(badge).join('')}</div></div>`;
+    Object.keys(CAT_NAMES).map(cat=>{
+      const tiers=getAchTiers(cat);const doneN=tiers.filter(t=>t.done).length;
+      return `<div style="margin-bottom:24px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span style="font-size:.72rem;font-weight:700;color:var(--text)">${CAT_NAMES[cat]}</span><span style="font-size:.58rem;color:var(--muted)">${doneN}/6</span></div><div class="ach-sheet-grid">${tiers.map(t=>`<div class="ach-sg ${t.done?'done':t.state==='next'?'next locked':'locked'}"><div class="ach-ic">${getAchSvg(t,62)}</div><div class="ach-n">${t.name}</div><div class="ach-c">${t.done?'✓':t.remaining}</div></div>`).join('')}</div></div>`;
     }).join('');
 }
 function openDrawer(tab){$('drawerOverlay').classList.add('open');drawer.style.display='flex';setTimeout(()=>drawer.classList.add('open'),10);if(tab)currentTab=tab;renderDrawer();}
@@ -5311,7 +5913,23 @@ function renderDrawer(){
     quests:()=>{genWeeklyChallenges();const now=new Date(),dow=(now.getDay()+6)%7,daysLeft=7-dow;const wkHdr=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><span style="font-size:.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--primary);font-weight:700">🗓️ Wochen-Challenges</span><span style="font-size:.62rem;color:var(--muted)">noch ${daysLeft} Tag${daysLeft!==1?'e':''}</span></div>`;const wkCards=weeklyChals.map(c=>{const p=Math.min(100,Math.round((c.progress||0)/c.target*100));const lbl=c.key==='km'?((c.progress||0).toFixed(1)+'/'+c.target+' km'):c.key==='runs'?Math.floor(c.progress||0)+'/'+c.target+' Läufe':(Math.floor(c.progress||0)+'/'+c.target);return`<div style="background:var(--card);border-radius:14px;padding:12px;margin-bottom:8px;border:1px solid ${c.done?'var(--primary)44':'var(--border)'}"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:1.2rem">${c.done?'✅':c.icon}</span><span style="flex:1;font-size:.82rem;font-weight:600;color:${c.done?'#10b981':'var(--text)'}">${c.desc}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;color:var(--primary)">+${c.reward}</span></div><div class="q-bar"><div class="q-fill" style="width:${p}%"></div></div><div style="font-size:.62rem;color:var(--muted);margin-top:4px">${lbl}</div></div>`;}).join('');const divider='<div style="height:1px;background:var(--border);margin:12px 0"></div><div style="font-size:.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700;margin-bottom:8px">⭐ Starter-Quests</div>';const sqCards=quests.map(q=>{const p=Math.min(100,Math.round(q.progress/q.target*100));return`<div style="background:var(--card);border-radius:14px;padding:12px;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:1.2rem">${q.icon}</span><span style="flex:1;font-size:.82rem;font-weight:600;color:${q.claimed?'#10b981':'var(--text)'}">${q.desc}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;color:var(--primary)">🎁 ${q.reward}</span></div><div class="q-bar"><div class="q-fill" style="width:${p}%"></div></div></div>`;}).join('');return wkHdr+wkCards+divider+sqCards;},
     terr:()=>territories.filter(t=>t.owner===userId).map(t=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)"><div style="width:10px;height:10px;border-radius:50%;background:${userColor}"></div><span style="flex:1;cursor:pointer" onclick="window.flyTo('${t.id}')">${esc(t.customName||'Unbenannt')}</span><span class="muted" style="font-size:.72rem">${Math.round(t.area)} m²</span><button onclick="window.openRename('${t.id}')" style="background:none;border:none;color:var(--muted);cursor:pointer">✏️</button></div>`).join('')||'<div class="muted" style="padding:16px">Noch keine Gebiete</div>',
     fitness:()=>{setTimeout(()=>{document.getElementById('btBtn2')?.addEventListener('click',connectBT)},100);return`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${[['Schritte',stepsToday],['Puls',heartRate+' bpm'],['Laufzeit',fmtTime(runSecs)],['Pace',fmtPace(dist,runSecs)],['Gesamt km',totalKm.toFixed(1)],['Streak',streakDays+'🔥'],['kcal',history.reduce((s,r)=>s+(r.kcal||0),0)],['Gebiete',territories.filter(t=>t.owner===userId).length]].map(([l,v])=>`<div class="stat-card"><div class="sv">${v}</div><div class="sl">${l}</div></div>`).join('')}</div><button class="btn" id="btBtn2" style="width:100%;margin-top:14px"><i class="fas fa-heartbeat"></i> Pulsmesser koppeln</button>`},
-    ach:()=>{const cats={conq:'Straßen',km:'Laufen',atk:'Kämpfe',def:'Verteidigung',disc:'Entdecken',streak:'Serien'};const groups={};achievements.forEach(a=>{const c=a.cat||'conq';if(!groups[c])groups[c]=[];groups[c].push(a);});return Object.entries(cats).map(([cat,label])=>{const list=groups[cat]||[];if(!list.length)return'';const earned=list.filter(a=>a.earned).length;return`<div style="margin-bottom:20px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><span style="font-size:.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700">${label}</span><span style="font-size:.6rem;color:var(--muted);background:rgba(255,255,255,.06);border-radius:10px;padding:2px 8px">${earned}/${list.length}</span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">${list.map(a=>`<div style="display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 6px 8px;border-radius:16px;background:${a.earned?'rgba(var(--primary-rgb),.08)':'rgba(255,255,255,.02)'};border:1px solid ${a.earned?'rgba(var(--primary-rgb),.3)':'var(--border)'};text-align:center">${getAchSvg(a,52)}<div style="font-size:.58rem;color:${a.earned?'var(--primary)':'var(--muted)'};line-height:1.2;font-weight:${a.earned?600:400};margin-top:2px">${a.name}</div><div style="font-size:.55rem;color:var(--muted)">${a.earned?'✓ Erreicht':Math.round(a.progress)+'/'+a.target}</div></div>`).join('')}</div></div>`;}).join('');},
+    ach:()=>{
+      const CAT_NAMES={conq:'Straßen erobert',km:'Kilometer gelaufen',atk:'Angriffe gewonnen',def:'Verteidigungen',disc:'Orte besucht',streak:'Tage in Folge'};
+      const CAT_UNITS={conq:'Straßen',km:'km',atk:'Siege',def:'Vert.',disc:'Orte',streak:'Tage'};
+      const totalEarned=achievements.filter(a=>a.earned).length;
+      const pct=Math.round(totalEarned/achievements.length*100);
+      const summary=`<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:16px;display:flex;align-items:center;gap:14px"><div style="font-family:'Bebas Neue',sans-serif;font-size:2.2rem;line-height:.85;color:var(--primary)">${totalEarned}<span style="color:var(--muted);font-size:1.1rem">/${achievements.length}</span></div><div style="flex:1"><div style="font-family:'Bebas Neue',sans-serif;letter-spacing:2px;font-size:.9rem">ERFOLGE FREIGESCHALTET</div><div style="font-size:.68rem;color:var(--muted);margin-top:3px">${pct} % geschafft · ${achievements.length-totalEarned} noch offen</div><div style="height:6px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden;margin-top:8px"><div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--primary),#b6e02e);border-radius:4px"></div></div></div></div>`;
+      const groups=Object.keys(CAT_NAMES).map(cat=>{
+        const tiers=getAchTiers(cat);const doneN=tiers.filter(t=>t.done).length;
+        const u=CAT_UNITS[cat]||'';
+        const tiles=tiers.map(t=>{
+          const cls='tier'+(t.done?' done':t.state==='next'?' next locked':' locked');
+          return `<div class="${cls}" onclick="showAchDetail('${t.id}')"><div class="ic">${getAchSvg(t,46)}</div></div>`;
+        }).join('');
+        return `<div style="margin-top:28px"><div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border)"><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px">${CAT_NAMES[cat]}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary)">${doneN}/6</span></div><div class="tier-row">${tiles}</div></div>`;
+      }).join('');
+      return summary+groups;
+    },
     calendar:()=>{setTimeout(drawCalendar,0);return'<div id="calDiv"></div>'}
   };
   document.querySelectorAll('#drawerTabs .tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===currentTab));
@@ -5374,6 +5992,100 @@ function applyDecay(){
   }).filter(t=>t.defense>0||t.owner===userId||(now-t.lastDefended)<CFG.MAX_AGE_H*3600000);
   renderTerr();
 }
+
+/* ═══ "THE BREACH" — aktive Invasionen ═══
+   Macht das Decay-System sichtbar und bedrohlich: vernachlässigte eigene
+   Gebiete werden von Invasions-Markern angegriffen, die auf das Gebiet
+   zudriften. Läuft der Spieler physisch nah heran, wird die Invasion
+   abgewehrt und das Gebiet repariert. Erzeugt Dringlichkeit, ohne Backend. */
+function _terrCenter(t){try{const c=turf.centroid(turf.feature(t.polygon)).geometry.coordinates;return{lat:c[1],lng:c[0]};}catch(e){return null;}}
+function renderInvasions(){
+  if(!invasionLayer)return;
+  invasionLayer.clearLayers();
+  invasions.forEach(inv=>{
+    const pct=Math.min(100,Math.round(inv.progress));
+    const icon=L.divIcon({className:'',iconSize:[30,42],iconAnchor:[15,21],
+      html:`<div class="inv-marker"><div class="inv-badge">⚔️</div><div class="inv-lbl">${pct}%</div></div>`});
+    L.marker([inv.lat,inv.lng],{icon,interactive:false}).addTo(invasionLayer);
+    // gestrichelter Pfad Invasion → Gebiet
+    const tc=_terrCenter(territories.find(t=>t.id===inv.terrId)||{});
+    if(tc)L.polyline([[inv.lat,inv.lng],[tc.lat,tc.lng]],{color:'#ff283c',weight:1.5,opacity:.4,dashArray:'5 5',interactive:false}).addTo(invasionLayer);
+  });
+}
+function invasionTick(){
+  if(!mapL||!invasionLayer)return;
+  const now=Date.now();
+  let changed=false;
+  // 1) bestehende Invasionen vorantreiben
+  invasions=invasions.filter(inv=>{
+    const t=territories.find(x=>x.id===inv.terrId&&x.owner===userId);
+    if(!t)return false; // Gebiet existiert nicht mehr → Invasion endet
+    const mins=Math.min(CFG.INV_MAX_TICK_MIN,Math.max(0,(now-(inv.lastTick||now))/60000));
+    inv.lastTick=now;
+    inv.progress=(inv.progress||0)+mins*CFG.INV_GROWTH_PER_MIN;
+    // Gebiet driftet das Gebiet bedrängt: Verteidigung sinkt schneller
+    if(mins>0)t.defense=Math.max(0,t.defense-mins*CFG.INV_DEF_DRAIN_PER_MIN);
+    // Marker driftet langsam Richtung Gebiet
+    const tc=_terrCenter(t);
+    if(tc){inv.lat+=(tc.lat-inv.lat)*Math.min(.5,mins*.08);inv.lng+=(tc.lng-inv.lng)*Math.min(.5,mins*.08);}
+    if(inv.progress>=100){
+      // Überrennung: Verteidigung einbrechen
+      t.defense=Math.max(0,t.defense-CFG.INV_OVERRUN_DEF_LOSS);t._lastDecayTs=now;
+      addNotif('🔥','Gebiet überrannt: '+(t.customName||'Gebiet')+' – Verteidigung eingebrochen!');
+      toast('🔥 Invasion durchgebrochen! '+(t.customName||'Gebiet')+' geschwächt');
+      pushSystemNotif('⚔️ Gebiet überrannt!',(t.customName||'Ein Gebiet')+' wurde durchbrochen.');
+      changed=true;return false;
+    }
+    return true;
+  });
+  // 2) neue Invasionen auf vernachlässigte Gebiete spawnen
+  if(invasions.length<CFG.INV_MAX_ACTIVE){
+    const eligible=territories.filter(t=>t.owner===userId
+      && t.defense<CFG.INV_THREAT_DEF
+      && (now-(t.lastDefended||now))>CFG.INV_MIN_NEGLECT_H*3600000
+      && !invasions.some(inv=>inv.terrId===t.id));
+    eligible.forEach(t=>{
+      if(invasions.length>=CFG.INV_MAX_ACTIVE)return;
+      if(Math.random()>=CFG.INV_SPAWN_CHANCE)return;
+      const tc=_terrCenter(t);if(!tc)return;
+      const ang=Math.random()*Math.PI*2,off=.0016+Math.random()*.0014; // ~180–340m entfernt
+      const inv={id:'inv_'+now+'_'+Math.floor(Math.random()*1e4),terrId:t.id,
+        lat:tc.lat+Math.sin(ang)*off,lng:tc.lng+Math.cos(ang)*off/Math.cos(tc.lat*Math.PI/180),
+        progress:0,spawnedAt:now,lastTick:now};
+      invasions.push(inv);changed=true;
+      addNotif('⚠️','Dein Gebiet wird angegriffen: '+(t.customName||'Gebiet')+'!');
+      toast('⚠️ Invasion! '+(t.customName||'Ein Gebiet')+' wird bedroht');
+      pushSystemNotif('⚠️ Gebiet unter Angriff!','Lauf hin und verteidige '+(t.customName||'dein Gebiet')+'.');
+    });
+  }
+  if(invasions.length||changed)renderInvasions();
+  if(changed){save();renderTerr();}
+}
+/* Abwehr-Check: während eines Laufs nah genug an einem Invasions-Marker */
+function checkInvasionRepel(lat,lng){
+  if(!invasions.length)return;
+  let hit=false;
+  invasions=invasions.filter(inv=>{
+    const d=turf.distance(turf.point([lng,lat]),turf.point([inv.lng,inv.lat]),{units:'meters'});
+    if(d>CFG.INV_REPEL_RADIUS)return true;
+    const t=territories.find(x=>x.id===inv.terrId);
+    if(t){t.defense=Math.min(CFG.MAX_DEF,t.defense+CFG.INV_REPEL_REPAIR);t.lastDefended=Date.now();t._lastDecayTs=Date.now();}
+    points+=CFG.INV_REPEL_XP;hit=true;
+    toast('🛡️ Invasion abgewehrt! +'+CFG.INV_REPEL_XP+' XP');beep(880,.12);vib([80,40,80]);
+    addNotif('🛡️','Invasion abgewehrt – '+(t?.customName||'Gebiet')+' gesichert!');
+    return false;
+  });
+  if(hit){save();renderInvasions();renderTerr();updateStatsUI();}
+}
+/* System-Push nur, wenn der Nutzer die Erlaubnis bereits erteilt hat
+   (wir fragen sie nicht ungefragt ab) und die App im Hintergrund ist. */
+function pushSystemNotif(title,body){
+  try{
+    if(typeof Notification==='undefined'||Notification.permission!=='granted')return;
+    if(document.visibilityState==='visible')return;
+    new Notification(title,{body,icon:'/icons/icon-192.png',tag:'rc-invasion'});
+  }catch(e){}
+}
 function getWeekKey(){const d=new Date(),day=d.getUTCDay(),diff=d.getUTCDate()-day+(day===0?-6:1),m=new Date(d);m.setUTCDate(diff);return m.getUTCFullYear()+'-'+String(m.getUTCMonth()+1).padStart(2,'0')+'-'+String(m.getUTCDate()).padStart(2,'0');}
 function checkEnergyWeekReset(){const wk=getWeekKey();if(energyWeek!==wk){const wasSet=energyWeek!=='';energy=CFG.ENERGY_MAX;energyWeek=wk;save();if(wasSet)toast('⚡ Neue Woche – 3 Energie-Boosts verfügbar!');}}
 function setupBg(){
@@ -5409,6 +6121,8 @@ function setupBg(){
     }
   });
   setInterval(applyDecay,60000);
+  setInterval(invasionTick,60000);
+  setTimeout(invasionTick,20000);
   setInterval(()=>{if(hrSource==='sim')simHR()},3000);
   setTimeout(()=>{simulateBotRun();setInterval(simulateBotRun,90*1000);},15000);
   /* Sync-Queue erneut anstoßen, sobald wieder online bzw. periodisch im
@@ -5694,23 +6408,17 @@ window.initApp=function(){
   /* Import modal */
   $('importActivityBtn')?.addEventListener('click',openImportModal);
   $('impCancelBtn')?.addEventListener('click',()=>$('importModal').style.display='none');
-  $('impTabManual')?.addEventListener('click',()=>{
-    $('impTabManual').classList.add('active');$('impTabGpx').classList.remove('active');
-    $('impPanManual').style.display='';$('impPanGpx').style.display='none';
-  });
-  $('impTabGpx')?.addEventListener('click',()=>{
-    ['impTabManual','impTabStrava'].forEach(id=>$(id)?.classList.remove('active'));
-    $('impTabGpx').classList.add('active');
-    $('impPanGpx').style.display='';
-    ['impPanManual','impPanStrava'].forEach(id=>{const el=$(id);if(el)el.style.display='none';});
-  });
-  $('impTabStrava')?.addEventListener('click',()=>{
-    ['impTabManual','impTabGpx'].forEach(id=>$(id)?.classList.remove('active'));
-    $('impTabStrava').classList.add('active');
-    $('impPanStrava').style.display='';
-    ['impPanManual','impPanGpx'].forEach(id=>{const el=$(id);if(el)el.style.display='none';});
-    renderStravaPanel();
-  });
+  const IMP_TABS=[['impTabManual','impPanManual'],['impTabGpx','impPanGpx'],['impTabStrava','impPanStrava'],['impTabGarmin','impPanGarmin']];
+  function switchImpTab(tabId){
+    IMP_TABS.forEach(([t,p])=>{
+      const on=t===tabId;
+      $(t)?.classList.toggle('active',on);
+      const pan=$(p);if(pan)pan.style.display=on?'':'none';
+    });
+    if(tabId==='impTabStrava')renderStravaPanel();
+    if(tabId==='impTabGarmin')renderGarminPanel();
+  }
+  IMP_TABS.forEach(([t])=>$(t)?.addEventListener('click',()=>switchImpTab(t)));
   ['impKm','impMin'].forEach(id=>$(id)?.addEventListener('input',()=>{
     const km=parseFloat($('impKm').value),min=parseFloat($('impMin').value);
     if(km>0&&min>0)showImpPreview(km*1000,null,min*60,0);
@@ -5885,6 +6593,7 @@ window._hideCityBg=function(){
 
 /* BOOT */
 checkStravaCallback(); /* Strava OAuth-Rückkehr prüfen (liest URL-Hash) */
+checkGarminCallback(); /* Garmin OAuth-Rückkehr prüfen (liest URL-Query) */
 setTimeout(()=>{
   const sp=$('splash');
   if(sp){sp.style.opacity='0';setTimeout(()=>{sp.style.display='none';},600);}
@@ -5919,5 +6628,63 @@ if('serviceWorker' in navigator){
 
 })();
 </script>
+
+<!-- ── Share Card Editor ── -->
+<div id="shareCardOverlay">
+  <div id="shareCardStage">
+    <div id="shareCardScaler">
+      <div class="sc-backdrop checker" id="scBackdrop">
+        <div id="scBdImg"></div>
+        <div class="rc-share-card" id="rcShareCard">
+          <p class="rc-tagline">RUN CONQUER. OWN THE WORLD.</p>
+          <div class="rc-stats">
+            <div class="rc-stat"><i class="fa-regular fa-clock"></i><div class="v" id="scTime">-</div><div class="l">Zeit</div></div>
+            <div class="rc-div"></div>
+            <div class="rc-stat"><i class="fa-solid fa-gauge-high"></i><div class="v" id="scPace">-</div><div class="l">Pace / km</div></div>
+            <div class="rc-div"></div>
+            <div class="rc-stat"><i class="fa-solid fa-route"></i><div class="v" id="scDist">-</div><div class="l">km</div></div>
+          </div>
+          <div class="rc-hero" id="scHero"></div>
+          <div class="rc-logo"><div class="mark">RQ</div><div class="underline" id="scUnderline"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="scControls">
+    <div class="sc-ctrl-row" style="margin-bottom:8px">
+      <span style="font-size:.6rem;color:rgba(255,255,255,.35);letter-spacing:.5px;flex-shrink:0">BG</span>
+      <div id="scBgBar">
+        <button class="sc-bg-btn on" data-bg="checker" title="Transparent"><i class="fa-solid fa-border-none"></i></button>
+        <button class="sc-bg-btn" data-bg="dark" style="background:#0b0f0d" title="Dunkel"></button>
+        <button class="sc-bg-btn" data-bg="purple" style="background:linear-gradient(135deg,#3a2a5a,#160f24)" title="Lila"></button>
+        <button class="sc-bg-btn" data-bg="sunset" style="background:linear-gradient(135deg,#ff8a3c,#c2305a)" title="Sunset"></button>
+        <div style="width:1px;height:20px;background:rgba(255,255,255,.1);flex-shrink:0"></div>
+        <button class="sc-bg-btn" data-bg="photo" title="Eigenes Foto"><i class="fa-solid fa-image"></i></button>
+        <input type="file" id="scPhotoInput" accept="image/*" style="display:none">
+      </div>
+    </div>
+    <div class="sc-ctrl-row">
+      <span style="font-size:.6rem;color:rgba(255,255,255,.35);letter-spacing:.5px;flex-shrink:0">COL</span>
+      <div id="scSwatches" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      <label style="position:relative;width:26px;height:26px;border-radius:50%;border:1.5px dashed rgba(255,255,255,.3);cursor:pointer;flex-shrink:0;overflow:hidden;display:grid;place-items:center;font-size:.7rem;color:rgba(255,255,255,.4)">
+        +<input type="color" id="scColorPicker" style="position:absolute;inset:-4px;opacity:0;width:140%;height:140%;cursor:pointer">
+      </label>
+    </div>
+    <div class="sc-ctrl-row" style="gap:6px;margin-bottom:8px">
+      <span style="font-size:.6rem;color:rgba(255,255,255,.35);letter-spacing:.5px;flex-shrink:0">FMT</span>
+      <button class="sc-fmt on" data-fmt="Quadrat">Quadrat</button>
+      <button class="sc-fmt" data-fmt="Hochkant">Hochkant</button>
+      <button class="sc-fmt" data-fmt="Story">Story</button>
+      <div style="width:1px;height:20px;background:rgba(255,255,255,.1);flex-shrink:0"></div>
+      <div class="sc-tog on" id="scTogMap" onclick="scToggle('map')"><div class="sc-knob"></div><span>Straßen</span></div>
+      <div class="sc-tog on" id="scTogFlag" onclick="scToggle('flag')"><div class="sc-knob"></div><span>Flagge</span></div>
+      <div class="sc-tog" id="scTogScrim" onclick="scToggle('scrim')"><div class="sc-knob"></div><span>Schatten</span></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn" onclick="closeShareCard()" style="flex:.35;padding:12px 8px"><i class="fas fa-times"></i></button>
+      <button class="btn btn-p" onclick="exportShareCard()" style="flex:1">TEILEN <i class="fas fa-share-alt"></i></button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

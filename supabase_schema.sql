@@ -198,6 +198,28 @@ create table if not exists public.direct_messages (
   read_at    timestamptz
 );
 
+-- Falls main's eigenes supabase_fix.sql diese Tabelle bereits mit
+-- UUID-Spalten angelegt hat: auf TEXT umstellen, sonst scheitern die
+-- Policies unten (Vergleich mit auth.uid()::text) an "operator does
+-- not exist: uuid = text".
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema='public' and table_name='direct_messages'
+      and column_name='from_uid' and data_type='uuid'
+  ) then
+    alter table public.direct_messages alter column from_uid type text using from_uid::text;
+  end if;
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema='public' and table_name='direct_messages'
+      and column_name='to_uid' and data_type='uuid'
+  ) then
+    alter table public.direct_messages alter column to_uid type text using to_uid::text;
+  end if;
+end $$;
+
 alter table public.direct_messages enable row level security;
 
 drop policy if exists "dm_own" on public.direct_messages;
