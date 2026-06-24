@@ -1834,7 +1834,14 @@ function load(){
         const overlaps=hits.some(ex=>{try{return turf.booleanIntersects(turf.feature(ex.polygon),turf.feature(t.polygon));}catch(e){return false;}});
         if(!overlaps)deduped.push(t);
       });
-      territories=[...player,...deduped];}
+      territories=[...player,...deduped];
+      /* Eigene überlappende Duplikat-Gebiete entfernen (Altlast durch früheren Conquest-Overlap-Bug) */
+      const keptOwn=[];
+      territories.filter(t=>t.owner===userId).sort((a,b)=>(b.defense||0)-(a.defense||0)).forEach(t=>{
+        const dup=keptOwn.some(k=>{try{return turf.booleanIntersects(turf.feature(k.polygon),turf.feature(t.polygon));}catch(e){return false;}});
+        if(!dup)keptOwn.push(t);
+      });
+      territories=[...keptOwn,...territories.filter(t=>t.owner!==userId)];}
   }catch(e){}
   // Rival territories werden nach erstem GPS-Fix generiert (locationfound)
   if(!quests.length)genQuests();
@@ -3799,16 +3806,17 @@ function finalizeRun(elapsed){
   const lvAfter=getLevel(points);
   if(lvAfter>lvBefore)setTimeout(()=>showLevelUp(lvAfter,getLvlName(points)),1800);
 }
-function mkPoly(){
-  if(path.length<2)return null;
-  const st=path[0],en=path[path.length-1];
+function mkPolyFrom(pth,d){
+  if(pth.length<2)return null;
+  const st=pth[0],en=pth[pth.length-1];
   const gap=turf.distance(turf.point([st[1],st[0]]),turf.point([en[1],en[0]]),{units:'meters'});
-  const tol=Math.min(CFG.MAX_TOL,Math.max(CFG.MIN_TOL,dist*CFG.TOL_PCT));
+  const tol=Math.min(CFG.MAX_TOL,Math.max(CFG.MIN_TOL,d*CFG.TOL_PCT));
   let coords;
-  if(gap<=tol){coords=[...path];if(gap>.1)coords.push(st);}
-  else{const line=turf.lineString(path.map(p=>[p[1],p[0]]));const buf=turf.buffer(line,CFG.BUF_M,{units:'meters'});coords=buf.geometry.coordinates[0].map(c=>[c[1],c[0]]);}
+  if(gap<=tol){coords=[...pth];if(gap>.1)coords.push(st);}
+  else{const line=turf.lineString(pth.map(p=>[p[1],p[0]]));const buf=turf.buffer(line,CFG.BUF_M,{units:'meters'});coords=buf.geometry.coordinates[0].map(c=>[c[1],c[0]]);}
   return{polyGeom:turf.polygon([coords.map(p=>[p[1],p[0]])]),gap};
 }
+function mkPoly(){return mkPolyFrom(path,dist);}
 
 /* CONQUEST */
 function processConquest(np,area,d,boosted=false){
@@ -3817,7 +3825,7 @@ function processConquest(np,area,d,boosted=false){
   const atkBonus=(1+(lv-1)*CFG.ATK_BONUS_LVL)*(boosted?1+CFG.ENERGY_BOOST_ATK:1);
   const defBonus=1+(lv-1)*CFG.DEF_REGEN_LVL;
 
-  const ovl=territories.filter(t=>{try{return turf.booleanIntersects(turf.feature(t.polygon),turf.feature(np));}catch(e){return false}});
+  const ovl=territories.filter(t=>{try{return turf.booleanIntersects(turf.feature(t.polygon),np);}catch(e){return false}});
   if(!ovl.length){
     // Neutral → sofortige Einnahme
     sessionConquests++;
@@ -3843,7 +3851,7 @@ function processConquest(np,area,d,boosted=false){
     addNotif('🗺️','Neues Gebiet erobert! '+RARITY_LABELS[rarity]);
   }else{
     ovl.forEach(t=>{
-      let ov=0;try{const inter=turf.intersect(turf.featureCollection([turf.feature(t.polygon),turf.feature(np)]));if(inter)ov=turf.area(inter);}catch(e){}
+      let ov=0;try{const inter=turf.intersect(turf.feature(t.polygon),np);if(inter)ov=turf.area(inter);}catch(e){}
       const overlapFrac=Math.min(1,ov/Math.max(area,1));
       const kmThrough=(d/1000)*overlapFrac;
 
@@ -4060,8 +4068,11 @@ function parseTcx(str){
     let durSecs=0;
     doc.querySelectorAll('TotalTimeSeconds').forEach(el=>{const v=parseFloat(el.textContent);if(!isNaN(v))durSecs+=v;});
     let distM=0;
-    const firstDist=doc.querySelector('DistanceMeters');
-    if(firstDist){const v=parseFloat(firstDist.textContent);if(!isNaN(v)&&v>0)distM=v;}
+    doc.querySelectorAll('Lap').forEach(lap=>{
+      for(const c of lap.children){
+        if(c.localName==='DistanceMeters'){const v=parseFloat(c.textContent);if(!isNaN(v)&&v>0)distM+=v;break;}
+      }
+    });
     if(!distM)distM=calcPathDist(path);
     if(!durSecs)durSecs=Math.round(path.length*3);
     const avgHR=hrCount>0?Math.round(totalHR/hrCount):0;
@@ -4133,28 +4144,66 @@ function openImportModal(){
 function importActivity(distM,durSecs,dateMs,path,source,avgHR){
   const kcal=calcKcal(distM,durSecs);
   const kmXP=Math.round(xpForKm(distM/1000,getWeeklyKm()));
+  const fullPath=path&&path.length>=2?path:null;
+  let area=0,conquered=false,defended=false,gap=0,terrPts=0;
+  if(fullPath){
+    const sameDay=h=>new Date(h.date).toDateString()===new Date(dateMs).toDateString();
+    const isDup=history.some(h=>h.imported&&sameDay(h)&&Math.abs(h.distance-distM)<5&&Math.abs(h.duration-durSecs)<5);
+    const speedOk=durSecs>0&&(distM/durSecs)<=CFG.MAX_SPEED_MPS;
+    if(isDup)toast('⚠️ Identische Aktivität bereits importiert – keine erneute Gebietswertung');
+    else if(!speedOk)toast('⚠️ Unplausibles Tempo erkannt – nur als Statistik gespeichert');
+    else if(fullPath.length>=3&&distM>=CFG.MIN_DIST){
+      try{
+        const pd=mkPolyFrom(fullPath,distM);
+        if(pd){
+          area=turf.area(pd.polyGeom);gap=pd.gap;
+          sessionConquests=0;sessionNewTerrNames=[];sessionNewLandmarks=[];
+          const res=processConquest(pd.polyGeom,area,distM,false);
+          terrPts=res.pts;conquered=res.conquered;defended=res.defended;
+          const step=Math.max(1,Math.floor(fullPath.length/500));
+          for(let i=0;i<fullPath.length;i+=step){
+            const[lat,lng]=fullPath[i];
+            landmarks.forEach(lm=>{
+              if(capturedLandmarks.includes(lm.id))return;
+              const d2=turf.distance(turf.point([lng,lat]),turf.point([lm.lng,lm.lat]),{units:'meters'});
+              if(d2<=50){capturedLandmarks.push(lm.id);sessionNewLandmarks.push(lm.name);terrPts+=CFG.LANDMARK_PTS;toast('⭐ Wahrzeichen entdeckt: '+lm.name+' +'+CFG.LANDMARK_PTS+' Pts!');}
+            });
+          }
+          renderLandmarks();
+        }
+      }catch(e){}
+    }
+  }
+  const totalPts=kmXP+terrPts;
   const rec={
     id:(crypto.randomUUID?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2))),synced:false,
-    date:dateMs,distance:distM,area:0,pts:kmXP,
+    date:dateMs,distance:distM,area,pts:totalPts,
     path:path?path.filter((_,i)=>i%3===0):[],
-    conquered:false,defended:false,
-    duration:durSecs,gap:0,kcal,avgHR:avgHR||0,splits:[],
+    conquered,defended,
+    duration:durSecs,gap,kcal,avgHR:avgHR||0,splits:[],
     imported:true,importSource:source||'manuell'
   };
   history.push(rec);if(history.length>30)history.shift();
-  totalKm+=distM/1000;
-  points+=kmXP;
-  checkStarterQuests();
+  totalKm+=distM/1000;if(conquered)totalConquered++;if(defended)totalDefended++;
+  const lvBefore=getLevel(points);
+  points+=totalPts;seasonXp+=totalPts;
+  updateQuests(rec);updateAch();updateDailyChallenges(rec);updateWeeklyChallenges(rec);trackPersonalRecords(rec,totalPts,area);
   save();
   processSyncQueue(true);
-  if(path&&path.length>=2&&mapL){
+  if(fullPath&&mapL){
     if(importedLayer)mapL.removeLayer(importedLayer);
-    importedLayer=L.polyline(path,{color:'#10b981',weight:3,dashArray:'6 4',opacity:.85}).addTo(mapL);
+    importedLayer=L.polyline(fullPath,{color:'#10b981',weight:3,dashArray:'6 4',opacity:.85}).addTo(mapL);
     try{mapL.fitBounds(importedLayer.getBounds(),{padding:[40,40]});}catch(e){}
     setView('map');
   }
-  toast('✅ Importiert · '+fmtDist(distM)+' · +'+kmXP+' Pts');
   updateUI();
+  if(fullPath){
+    showPostRun(rec);
+    const lvAfter=getLevel(points);
+    if(lvAfter>lvBefore)setTimeout(()=>showLevelUp(lvAfter,getLvlName(points)),1800);
+  }else{
+    toast('✅ Importiert · '+fmtDist(distM)+' · +'+totalPts+' Pts');
+  }
 }
 
 /* ── STRAVA INTEGRATION ── */
