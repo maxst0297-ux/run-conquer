@@ -4403,7 +4403,8 @@ function renderDiscoveryList(players){
   const list=players.filter(r=>r.user_id!==userId).slice(0,15);
   if(!list.length){dl.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:8px">Keine Spieler gefunden</div>';return;}
   dl.innerHTML=list.map(r=>{
-    const following=isFollowing(r.user_id);
+    const st=followStatus(r.user_id);
+    const btnLabel=st==='accepted'?'✓ Verbunden':st==='pending_out'?'⏳ Angefragt':st==='pending_in'?'👤 Antworten':'+ Folgen';
     const tm=TEAMS.find(t=>t.id===r.user_team);
     const col=esc(r.user_color||'#e8ff47');
     return`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
@@ -4413,15 +4414,19 @@ function renderDiscoveryList(players){
         <div style="font-size:.63rem;color:var(--muted)">${tm?tm.icon+' '+tm.name+' · ':''}${(r.total_km||0).toFixed(1)} km</div>
       </div>
       <span style="font-family:'Bebas Neue',sans-serif;color:var(--primary);font-size:.9rem;flex-shrink:0">${r.points||0}</span>
-      <button class="follow-btn${following?' following':''}" data-uid="${r.user_id}" data-name="${esc(r.player_name||'')}" data-av="${esc(r.user_avatar||'🏃')}" style="font-size:.68rem;padding:4px 10px;flex-shrink:0">${following?'✓':'+ Folgen'}</button>
+      <button class="follow-btn${st==='accepted'?' following':''}" data-uid="${r.user_id}" data-name="${esc(r.player_name||'')}" data-av="${esc(r.user_avatar||'🏃')}" data-st="${st}" style="font-size:.68rem;padding:4px 10px;flex-shrink:0">${btnLabel}</button>
     </div>`;
   }).join('');
   dl.querySelectorAll('.follow-btn').forEach(btn=>{
-    btn.addEventListener('click',e=>{
+    btn.addEventListener('click',async e=>{
       e.stopPropagation();
-      const{uid,name,av}=btn.dataset;
-      if(isFollowing(uid)){unfollowUser(uid,name);btn.textContent='+ Folgen';btn.classList.remove('following');}
-      else{followUser(uid,name,av);btn.textContent='✓';btn.classList.add('following');}
+      const{uid,name,av,st}=btn.dataset;
+      if(st==='accepted'||st==='pending_out'){await cancelOrUnfollow(uid,name);renderDiscoveryList(players);}
+      else if(st==='pending_in'){
+        const card=$('followReqCard');
+        if(card){card.scrollIntoView({behavior:'smooth',block:'center'});card.style.outline='2px solid var(--primary)';setTimeout(()=>{card.style.outline='';},1200);}
+      }
+      else{await sendFollowRequest(uid,name,av);renderDiscoveryList(players);}
     });
   });
 }
@@ -4470,7 +4475,7 @@ function updateCommunity(){
   $('newsList').innerHTML=[...liveNews,...staticNews].slice(0,5).map(n=>`<div class="list-row"><span class="row-icon">${n.icon}</span><span class="row-txt">${n.txt}</span><span class="row-meta">${n.t}</span></div>`).join('');
   $('recordsList').innerHTML=[['🏃','Längster Lauf',fmtDist(Math.max(0,...history.map(r=>r.distance)))],['⚔️','Gebiete erobert',totalConquered],['📐','Größtes Gebiet',Math.round(Math.max(0,...territories.filter(t=>t.owner===userId).map(t=>t.area||0)))+' m²'],['🔥','Streak',streakDays+' Tage']].map(([i,l,v])=>`<div class="list-row"><span class="row-icon">${i}</span><span class="row-txt">${l}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary)">${v}</span></div>`).join('');
   renderEvents();
-  loadFollowState().then(()=>{renderLeaderboard();renderFollowRequests();});
+  loadFollowState().then(()=>{renderLeaderboard();renderFollowRequests();renderSocialFeed();renderPlayerDiscovery();});
   renderSocialFeed();
   renderPowerRankings();
   renderClubCommunity();
@@ -4729,21 +4734,26 @@ async function renderLeaderboard(){
 /* ── RICH SOCIAL FEED ── */
 function renderSocialFeed(){
   const now=Date.now();
-  if(!botActivities.length){
-    $('followerList').innerHTML=`<div class="list-row" style="justify-content:center;gap:8px;color:var(--muted);font-size:.8rem"><i class="fas fa-circle-notch fa-spin"></i> Lade Live-Aktivität…</div>`;
+  if(!followedUsers.length){
+    $('followerList').innerHTML=`<div class="list-row" style="justify-content:center;color:var(--muted);font-size:.8rem">Folge Spielern in der Rangliste, um ihre Eroberungen hier zu sehen</div>`;
     return;
   }
-  const feedItems=botActivities.slice(0,3).map(a=>{
-    const bot=BOTS.find(b=>b.id===a.bot)||BOTS[0];
-    const diff=Math.round((now-a.time)/60000);
-    const t=diff<1?'gerade':diff<60?`vor ${diff} Min.`:`vor ${Math.floor(diff/60)} Std.`;
-    return{name:bot.name,av:bot.avatar,txt:a.text.replace(bot.avatar+' '+bot.name+' ',''),t,route:null};
+  const followedIds=new Set(followedUsers.map(f=>f.uid));
+  const items=territories.filter(t=>followedIds.has(t.owner)).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).slice(0,5);
+  if(!items.length){
+    $('followerList').innerHTML=`<div class="list-row" style="justify-content:center;color:var(--muted);font-size:.8rem">Noch keine Aktivität von deinen Followern</div>`;
+    return;
+  }
+  const feedItems=items.map(t=>{
+    const f=followedUsers.find(u=>u.uid===t.owner);
+    const diff=Math.round((now-(t.createdAt||now))/60000);
+    const tAgo=diff<1?'gerade':diff<60?`vor ${diff} Min.`:diff<1440?`vor ${Math.floor(diff/60)} Std.`:`vor ${Math.floor(diff/1440)} Tg.`;
+    return{id:t.id,name:f?.name||t.ownerName||'Unbekannt',av:f?.av||'🏃',txt:`hat „${esc(t.customName||'ein Gebiet')}“ erobert (${Math.round(t.area||0)} m²)`,t:tAgo};
   });
-  $('followerList').innerHTML=feedItems.map((f,idx)=>{
-    const lk=parseInt(localStorage.getItem('rc_likes_act_'+idx)||'0');
-    return`<div class="list-row" style="flex-direction:column;align-items:stretch;gap:8px"><div style="display:flex;align-items:center;gap:10px"><span class="row-icon">${f.av}</span><div class="row-txt"><b>${f.name}</b>: ${f.txt}</div><span class="row-meta">${f.t}</span></div>${f.route?`<div style="display:flex;gap:8px"><canvas id="feedRoute${idx}" width="120" height="70" style="border-radius:10px;border:1px solid var(--border);background:var(--bg2)"></canvas></div>`:''}<button id="apBtn_${idx}" onclick="window.applaudActivity(${idx})" style="align-self:flex-end;background:none;border:1px solid ${lk?'var(--primary)':'var(--border)'};border-radius:20px;padding:3px 12px;font-size:.7rem;color:${lk?'var(--primary)':'var(--muted)'};cursor:pointer;margin-top:2px">${lk?`<i class="fas fa-thumbs-up" style="color:var(--primary)"></i> ${lk}`:'👏 Applaudieren'}</button></div>`;
+  $('followerList').innerHTML=feedItems.map(f=>{
+    const lk=parseInt(localStorage.getItem('rc_likes_act_'+f.id)||'0');
+    return`<div class="list-row" style="flex-direction:column;align-items:stretch;gap:8px"><div style="display:flex;align-items:center;gap:10px"><span class="row-icon">${f.av}</span><div class="row-txt"><b>${esc(f.name)}</b> ${f.txt}</div><span class="row-meta">${f.t}</span></div><button id="apBtn_${f.id}" onclick="window.applaudActivity('${f.id}')" style="align-self:flex-end;background:none;border:1px solid ${lk?'var(--primary)':'var(--border)'};border-radius:20px;padding:3px 12px;font-size:.7rem;color:${lk?'var(--primary)':'var(--muted)'};cursor:pointer;margin-top:2px">${lk?`<i class="fas fa-thumbs-up" style="color:var(--primary)"></i> ${lk}`:'👏 Applaudieren'}</button></div>`;
   }).join('');
-  feedItems.forEach((f,idx)=>{if(f.route){const cv=document.getElementById('feedRoute'+idx);if(cv)drawMiniMap(cv,f.route);}});
 }
 
 /* ── SETTINGS MODAL ── */
@@ -5499,10 +5509,14 @@ async function openDmThread(uid,name,backFn=null){
   $('dmBackBtn').addEventListener('click',()=>{activeDmThread=null;if(backFn)backFn();else loadInbox();});
   $('dmSendBtn').addEventListener('click',send);
   $('dmInput')?.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
-  /* Empfangene Nachrichten als gelesen markieren */
+  /* Empfangene Nachrichten als gelesen markieren -- awaited statt fire-and-
+     forget, damit ein RLS-/Netzwerkfehler nicht stillschweigend verschluckt
+     wird (sonst zeigt die Konversation nach einem Reload wieder "ungelesen",
+     obwohl der Nutzer den Chat bereits geöffnet hat). */
   localReadConvs.add(uid);
-  if(sb)sb.from('direct_messages').update({read_at:new Date().toISOString()}).eq('to_uid',userId).eq('from_uid',uid).is('read_at',null).then(()=>updateDmBadge());
-  await loadDmMessages(uid);
+  const markRead=sb?sb.from('direct_messages').update({read_at:new Date().toISOString()}).eq('to_uid',userId).eq('from_uid',uid).is('read_at',null)
+    .then(({error})=>{if(error)console.warn('DM als gelesen markieren fehlgeschlagen:',error);updateDmBadge();}):Promise.resolve();
+  await Promise.all([markRead,loadDmMessages(uid)]);
 }
 
 async function loadDmMessages(uid){
@@ -6503,7 +6517,7 @@ window.initApp=function(){
     if(showOwn){
       const myTerrs=territories.filter(t=>t.owner===userId);
       if(myTerrs.length&&mapL){
-        const pts=myTerrs.flatMap(t=>{try{const g=t.polygon?.features?.[0]||t.polygon;return g?.geometry?.coordinates?.[0]?.map(c=>[c[1],c[0]])||[];}catch{return [];}});
+        const pts=myTerrs.flatMap(t=>{try{const g=t.polygon?.features?.[0]?.geometry||t.polygon?.geometry||t.polygon;return turf.coordAll(turf.feature(g)).map(c=>[c[1],c[0]]);}catch{return [];}});
         if(pts.length)mapL.fitBounds(pts,{padding:[30,30]});
       }
       toast('📍 '+territories.filter(t=>t.owner===userId).length+' eigene Gebiete');

@@ -50,7 +50,7 @@ create table if not exists public.territories (
   owner_name           text,
   owner_color          text,
   owner_registered_at  timestamptz,
-  geom                 geometry(Polygon,4326) not null,
+  geom                 geometry(MultiPolygon,4326) not null,
   area_m2              float8 not null check (area_m2 > 0),
   defense              float8 not null default 20 check (defense >= 0 and defense <= 100),
   max_defense          float8 not null default 100,
@@ -68,6 +68,20 @@ create table if not exists public.territories (
 
 create index if not exists territories_geom_gix on public.territories using gist(geom);
 create index if not exists territories_owner_idx on public.territories(owner);
+
+-- Bestandsspalten von Polygon auf MultiPolygon hochstufen (idempotent), damit
+-- ST_MakeValid() bei selbstüberschneidenden GPS-Tracks ALLE Polygon-Fragmente
+-- behalten kann statt nur das erste (siehe rc_claim()/rc_seed_bot_territory()).
+do $$
+begin
+  if exists (
+    select 1 from geometry_columns
+    where f_table_schema = 'public' and f_table_name = 'territories'
+      and f_geometry_column = 'geom' and type = 'POLYGON'
+  ) then
+    alter table public.territories alter column geom type geometry(MultiPolygon,4326) using ST_Multi(geom);
+  end if;
+end $$;
 
 alter table public.territories enable row level security;
 
@@ -300,7 +314,10 @@ begin
   v_points := coalesce(v_points, 0);
 
   -- Geometrie bauen + validieren (ST_MakeValid kann bei selbstüberschneidenden
-  -- Pfaden eine GeometryCollection liefern -- nur den Polygon-Anteil behalten).
+  -- Pfaden -- typisch für echte GPS-Tracks mit Jitter/Schleifen -- eine
+  -- GeometryCollection oder ein MultiPolygon mit mehreren Fragmenten liefern.
+  -- Alle Fragmente behalten (ST_Dump+ST_Union), nur Mikro-Splitter durch
+  -- Floating-Point-Rauschen verwerfen (< 1 m²) statt nur das erste zu nehmen.
   v_geom := ST_SetSRID(ST_GeomFromGeoJSON(p_polygon_geojson::text), 4326);
   v_geom := ST_MakeValid(v_geom);
   if GeometryType(v_geom) = 'GEOMETRYCOLLECTION' then
@@ -309,8 +326,11 @@ begin
   if v_geom is null or ST_IsEmpty(v_geom) then
     raise exception 'rc_claim: invalid polygon';
   end if;
-  if GeometryType(v_geom) = 'MULTIPOLYGON' then
-    v_geom := ST_GeometryN(v_geom, 1);
+  select ST_Multi(ST_Union(dmp.geom)) into v_geom
+    from ST_Dump(v_geom) as dmp
+    where ST_Area(dmp.geom::geography) > 1;
+  if v_geom is null or ST_IsEmpty(v_geom) then
+    raise exception 'rc_claim: invalid polygon';
   end if;
 
   v_area := ST_Area(v_geom::geography);
@@ -582,7 +602,10 @@ begin
   v_geom := ST_MakeValid(ST_SetSRID(ST_GeomFromGeoJSON(p_polygon_geojson::text), 4326));
   if GeometryType(v_geom) = 'GEOMETRYCOLLECTION' then v_geom := ST_CollectionExtract(v_geom, 3); end if;
   if v_geom is null or ST_IsEmpty(v_geom) then return null; end if;
-  if GeometryType(v_geom) = 'MULTIPOLYGON' then v_geom := ST_GeometryN(v_geom, 1); end if;
+  select ST_Multi(ST_Union(dmp.geom)) into v_geom
+    from ST_Dump(v_geom) as dmp
+    where ST_Area(dmp.geom::geography) > 1;
+  if v_geom is null or ST_IsEmpty(v_geom) then return null; end if;
 
   -- Wie im alten genRivals(): bei Überschneidung mit einem bestehenden
   -- Gebiet wird dieser Kandidat übersprungen statt erzwungen.
