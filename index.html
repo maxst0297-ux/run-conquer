@@ -1491,6 +1491,7 @@ const BOTS=[
   {id:'bot_city',name:'Nachtwache',avatar:'🌙',color:'#ff9f1c',pts:3210,totalKm:58.1,streak:3,conquered:12},
   {id:'bot_ultra',name:'Sturmbrecher',avatar:'⚡',color:'#10b981',pts:2100,totalKm:41.5,streak:5,conquered:8},
 ];
+const BOT_UUIDS={bot_speed:'00000000-0000-0000-0000-0000000000b1',bot_mtn:'00000000-0000-0000-0000-0000000000b2',bot_night:'00000000-0000-0000-0000-0000000000b3',bot_city:'00000000-0000-0000-0000-0000000000b4',bot_ultra:'00000000-0000-0000-0000-0000000000b5'};
 const WEEKLY_GOAL=10;
 /* ↓ Strava Developer App Client ID — einmalig auf developers.strava.com registrieren (kostenlos) */
 const STRAVA_CLIENT_ID='';
@@ -1598,7 +1599,10 @@ async function initSupabase(){
 async function syncProfile(){
   if(!sb||!sbUserId||!playerName)return false;
   try{
-    const gameSnap=JSON.stringify({territories,points,energy,totalKm,totalConquered,totalDefended,totalDiscovered,streakDays,history:history.slice(-20),capturedLandmarks,raids});
+    // territories NICHT mehr hier -- das ist jetzt globaler Server-Zustand
+    // (siehe rc_claim()/rc_list_territories() in supabase_territories.sql),
+    // kein privater Spielstand mehr.
+    const gameSnap=JSON.stringify({points,energy,totalKm,totalConquered,totalDefended,totalDiscovered,streakDays,history:history.slice(-20),capturedLandmarks,raids});
     const{error:e1}=await sb.from('profiles').upsert({
       id:sbUserId,user_id:userId,player_name:playerName,user_avatar:userAvatar,user_color:userColor,
       points,total_km:totalKm,total_conquered:totalConquered,streak_days:streakDays,
@@ -1638,7 +1642,7 @@ async function loadFromCloud(){
     if(cloudIsNewer){
       // ?? statt || -- 0 ist bei energy/totalConquered/etc. ein gültiger
       // Wert und darf nicht fälschlich auf den alten lokalen Stand zurückfallen.
-      territories=d.territories??territories;points=d.points??points;energy=d.energy??energy;
+      points=d.points??points;energy=d.energy??energy;
       totalKm=d.totalKm??totalKm;totalConquered=d.totalConquered??totalConquered;
       totalDefended=d.totalDefended??totalDefended;streakDays=d.streakDays??streakDays;
       totalDiscovered=d.totalDiscovered??totalDiscovered;
@@ -1649,6 +1653,37 @@ async function loadFromCloud(){
     return cloudIsNewer;
   }catch(e){console.warn('Cloud load:',e);}
   return false;
+}
+/* Gebiete sind globaler, für alle Nutzer gleicher Server-Zustand (siehe
+   supabase_territories.sql) -- kein lokales Merge/Dedupe mehr nötig, die
+   Tabelle ist bereits überlappungsfrei und autoritativ. */
+async function loadGlobalTerritories(){
+  if(!sb)return false;
+  try{
+    const{data,error}=await sb.rpc('rc_list_territories');
+    if(error)throw error;
+    territories=(data||[]).map(nt=>{
+      if(Array.isArray(nt.landmarkIds))nt.landmarkIds=nt.landmarkIds.map(x=>/^\d+$/.test(x)?Number(x):x);
+      return nt;
+    });
+    return true;
+  }catch(e){console.warn('Gebiete laden:',e);return false;}
+}
+let territoriesChannel=null;
+/* Realtime-Sync: das rohe postgres_changes-Payload liefert PostGIS-Geometrie
+   als WKB statt GeoJSON -- statt das clientseitig zu parsen, wird bei jeder
+   Änderung einfach der autoritative Stand per RPC neu geladen (debounced
+   gegen Bursts bei Multi-Row-Updates innerhalb eines einzigen rc_claim()). */
+function subscribeTerritories(){
+  if(!sb||territoriesChannel)return;
+  territoriesChannel=sb.channel('territories-sync')
+    .on('postgres_changes',{event:'*',schema:'public',table:'territories'},()=>{
+      clearTimeout(window._terrSyncTimer);
+      window._terrSyncTimer=setTimeout(async()=>{
+        if(await loadGlobalTerritories()){renderTerr();updateUI();}
+      },400);
+    })
+    .subscribe();
 }
 async function syncRun(rec){
   if(!sb||!sbUserId)return false;
@@ -1824,24 +1859,7 @@ function checkOrphanedRun(){
 function load(){
   try{
     const d=JSON.parse(localStorage.getItem('rc_v4_'+userId));
-    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;registeredAt=d.registeredAt||Date.now();starterQuestsDone=d.starterQuestsDone||[];starterQuestFlags=d.starterQuestFlags||{profileOpened:false};heatPersonalOnly=d.heatPersonalOnly||false;dailyChallenges=d.dailyChallenges||[];dailyChalDate=d.dailyChalDate||'';chalStreak=d.chalStreak||0;lastChalDoneDate=d.lastChalDoneDate||'';dailyLoginDate=d.dailyLoginDate||'';dailyLoginStreak=d.dailyLoginStreak||0;streakShields=d.streakShields||0;recentQuoteIds=d.recentQuoteIds||[];weeklyChals=d.weeklyChals||[];weekChalKey=d.weekChalKey||'';personalRecords=d.personalRecords||{};battlePassClaimed=d.battlePassClaimed||[];totalRaids=d.totalRaids||0;totalBoosts=d.totalBoosts||0;weeklyAchsDone=d.weeklyAchsDone||0;seasonXp=d.seasonXp||0;localStateTs=d.localStateTs||0;invasions=Array.isArray(d.invasions)?d.invasions:[];
-      /* Alte Bot-Gebiete (Blob, <100k m²) entfernen → werden neu als Straßen-Polygon generiert */
-      territories=territories.filter(t=>t.owner===userId||t.area>100000);
-      /* Überlappende Bot-Gebiete entfernen */
-      const deduped=[],player=territories.filter(t=>t.owner===userId);
-      territories.filter(t=>t.owner!==userId).forEach(t=>{
-        const hits=deduped.concat(player);
-        const overlaps=hits.some(ex=>{try{return turf.booleanIntersects(turf.feature(ex.polygon),turf.feature(t.polygon));}catch(e){return false;}});
-        if(!overlaps)deduped.push(t);
-      });
-      territories=[...player,...deduped];
-      /* Eigene überlappende Duplikat-Gebiete entfernen (Altlast durch früheren Conquest-Overlap-Bug) */
-      const keptOwn=[];
-      territories.filter(t=>t.owner===userId).sort((a,b)=>(b.defense||0)-(a.defense||0)).forEach(t=>{
-        const dup=keptOwn.some(k=>{try{return turf.booleanIntersects(turf.feature(k.polygon),turf.feature(t.polygon));}catch(e){return false;}});
-        if(!dup)keptOwn.push(t);
-      });
-      territories=[...keptOwn,...territories.filter(t=>t.owner!==userId)];}
+    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;registeredAt=d.registeredAt||Date.now();starterQuestsDone=d.starterQuestsDone||[];starterQuestFlags=d.starterQuestFlags||{profileOpened:false};heatPersonalOnly=d.heatPersonalOnly||false;dailyChallenges=d.dailyChallenges||[];dailyChalDate=d.dailyChalDate||'';chalStreak=d.chalStreak||0;lastChalDoneDate=d.lastChalDoneDate||'';dailyLoginDate=d.dailyLoginDate||'';dailyLoginStreak=d.dailyLoginStreak||0;streakShields=d.streakShields||0;recentQuoteIds=d.recentQuoteIds||[];weeklyChals=d.weeklyChals||[];weekChalKey=d.weekChalKey||'';personalRecords=d.personalRecords||{};battlePassClaimed=d.battlePassClaimed||[];totalRaids=d.totalRaids||0;totalBoosts=d.totalBoosts||0;weeklyAchsDone=d.weeklyAchsDone||0;seasonXp=d.seasonXp||0;localStateTs=d.localStateTs||0;invasions=Array.isArray(d.invasions)?d.invasions:[];}
   }catch(e){}
   // Rival territories werden nach erstem GPS-Fix generiert (locationfound)
   if(!quests.length)genQuests();
@@ -2935,13 +2953,19 @@ function openMapPanel(){
 }
 
 /* INIT DATA */
+/* Bot-Reviere werden über die SECURITY DEFINER RPC rc_seed_bot_territory()
+   angelegt (server prüft is_bot=true + Überschneidung) statt direkt lokal
+   ins territories[]-Array geschrieben zu werden -- das Gebiet ist jetzt
+   globaler, für alle Nutzer gleicher Server-Zustand. Kämpfe/Eroberungen
+   durch Bots (vormals runOneBot/simulateBotRun) gibt es serverseitig nicht
+   mehr: rc_claim() schreibt Eroberungen immer dem authentifizierten Aufrufer
+   zu, ein Browser kann also nicht "als Bot" angreifen. */
 async function genRivals(lat,lng){
-  if(!mapL)return;
+  if(!mapL||!sb)return;
   const c=lat?{lat,lng}:mapL.getCenter();
-  const now=Date.now();
-  /* Straßen-Graph einmal für alle Bots laden */
   const g=await fetchRoadGraph(c.lat,c.lng);
-  BOTS.forEach((bot,bi)=>{
+  for(let bi=0;bi<BOTS.length;bi++){
+    const bot=BOTS[bi];
     const baseAngle=(bi/BOTS.length)*Math.PI*2;
     for(let t=0;t<3;t++){
       const angle=baseAngle+(t-1)*0.55;
@@ -2952,99 +2976,16 @@ async function genRivals(lat,lng){
       /* Umfang 5–15km, realistisch wie ein Stadtviertel */
       const perimKm=5+Math.random()*10;
       const poly=mkRoadPoly(g,tlat,tlng,perimKm);
-      /* Überschneidung mit bereits platzierten Gebieten verhindern */
-      const overlaps=territories.some(ex=>{try{return turf.booleanIntersects(turf.feature(ex.polygon),turf.feature(poly));}catch(e){return false;}});
-      if(overlaps)continue;
-      const area=turf.area(poly);
-      const age=3600000*(4+bi*3+t*2);
-      const str=20+Math.floor(Math.random()*61); // NPC Defense: 20-80
-      territories.push({id:'rival_'+now+bi+'_'+t,owner:bot.id,color:bot.color,polygon:poly,
-        defense:str,maxDefense:CFG.MAX_DEF,createdAt:now-age,lastDefended:now-age/2,
-        area,customName:bot.name+'s Revier',attackHistory:{},_lastDecayTs:now,rarity:pickRarity(false)});
+      try{
+        const{data,error}=await sb.rpc('rc_seed_bot_territory',{
+          p_owner:BOT_UUIDS[bot.id],p_polygon_geojson:poly,p_custom_name:bot.name+"'s Revier"
+        });
+        if(error)throw error;
+        if(data)territories.push(data); // null = Server hat Überschneidung erkannt und übersprungen
+      }catch(e){console.warn('Bot-Gebiet seeden:',e);}
     }
-  });
+  }
   save();
-}
-async function runOneBot(bot){
-  if(!mapL||!territories.length)return;
-  const userPos=userMarker?userMarker.getLatLng():mapL.getCenter();
-  const botTerrs=territories.filter(t=>t.owner===bot.id);
-  let baseLat,baseLng;
-  if(botTerrs.length&&Math.random()<0.6){
-    const src=botTerrs[Math.floor(Math.random()*botTerrs.length)];
-    try{const ctr=turf.centroid(turf.feature(src.polygon));baseLat=ctr.geometry.coordinates[1];baseLng=ctr.geometry.coordinates[0];}
-    catch(e){baseLat=userPos.lat;baseLng=userPos.lng;}
-  } else {
-    baseLat=userPos.lat;baseLng=userPos.lng;
-  }
-  const spread=.004+Math.random()*.01;
-  const angle=Math.random()*Math.PI*2;
-  const lat=baseLat+Math.sin(angle)*spread;
-  const lng=baseLng+Math.cos(angle)*spread/Math.cos(baseLat*Math.PI/180);
-  /* Umfang 5–24km: wie ein echter Läufer ein Viertel absteckt */
-  const perimKm=5+Math.random()*19;
-  const g=await fetchRoadGraph(lat,lng);
-  const poly=mkRoadPoly(g,lat,lng,perimKm);
-  const area=turf.area(poly);
-  const dist=800+Math.random()*2200;
-  const km=dist/1000;
-  bot.totalKm=+(bot.totalKm+km).toFixed(1);
-  const ovl=territories.filter(t=>{try{return turf.booleanIntersects(turf.feature(t.polygon),turf.feature(poly));}catch(e){return false}});
-  let txt='';
-  const now=Date.now();
-  if(!ovl.length){
-    territories.push({id:'b_'+now,owner:bot.id,color:bot.color,polygon:poly,
-      defense:25+Math.floor(Math.random()*35),maxDefense:100,createdAt:now,
-      lastDefended:now,area,customName:bot.name+'s Gebiet',attackHistory:{},_lastDecayTs:now,
-      rarity:pickRarity(false)});
-    bot.pts+=80+Math.floor(area/200);bot.conquered++;
-    txt=`${bot.avatar} ${bot.name} hat neues Gebiet eingenommen`;
-  } else {
-    const playerTerr=ovl.find(t=>t.owner===userId);
-    const ownBotTerr=ovl.find(t=>t.owner===bot.id);
-    if(playerTerr){
-      const dmg=km*CFG.STR_DMG_PER_KM*.7;
-      playerTerr.defense=Math.max(0,playerTerr.defense-dmg);
-      if(playerTerr.defense<=0){
-        playerTerr.owner=bot.id;playerTerr.color=bot.color;
-        playerTerr.defense=20;playerTerr._lastDecayTs=now;
-        bot.pts+=150;bot.conquered++;
-        txt=`${bot.avatar} ${bot.name} hat dein Gebiet erobert! ⚔️`;
-        toast(`⚠️ ${bot.name} hat ein Gebiet übernommen!`);vib([100,50,100]);
-        addNotif('⚔️',bot.name+' hat dein Gebiet erobert!');
-      } else {
-        bot.pts+=30;
-        txt=`${bot.avatar} ${bot.name} greift ein Gebiet an (${(km).toFixed(1)} km)`;
-        addNotif('⚔️',bot.name+' greift dein Gebiet an!');
-      }
-    } else if(ownBotTerr){
-      ownBotTerr.defense=Math.min(100,ownBotTerr.defense+km*6);
-      ownBotTerr._lastDecayTs=now;
-      txt=`${bot.avatar} ${bot.name} verteidigt Gebiet`;
-    } else {
-      const rivalTerr=ovl[0];
-      rivalTerr.defense=Math.max(0,rivalTerr.defense-km*5);
-      if(rivalTerr.defense<=0){
-        rivalTerr.owner=bot.id;rivalTerr.color=bot.color;rivalTerr.defense=20;rivalTerr._lastDecayTs=now;
-        bot.pts+=100;bot.conquered++;
-        txt=`${bot.avatar} ${bot.name} hat Rivalen-Gebiet übernommen`;
-      } else {
-        txt=`${bot.avatar} ${bot.name} läuft ${(km).toFixed(1)} km`;
-      }
-    }
-  }
-  if(txt){botActivities.unshift({text:txt,time:now,bot:bot.id});if(botActivities.length>20)botActivities.pop();}
-}
-async function simulateBotRun(){
-  if(!mapL||!territories.length)return;
-  const count=3+Math.floor(Math.random()*3);
-  const shuffled=[...BOTS].sort(()=>Math.random()-.5).slice(0,count);
-  for(const bot of shuffled)await runOneBot(bot);
-  const now=Date.now();
-  territories=territories.filter(t=>t.defense>0||t.owner===userId||(now-t.lastDefended)<CFG.MAX_AGE_H*3600000);
-  resolveRaids();
-  save();renderTerr();
-  if(currentView==='community')updateCommunity();
 }
 function mkCircle(lat,lng,r){return turf.circle([lng,lat],r,{steps:20,units:'meters'}).geometry}
 
@@ -3358,7 +3299,7 @@ function renderTerr(){
     /* Faction map mode: colour by owning team */
     let fillColor,borderCol;
     if(window._fraktMapMode){
-      const botOwner=BOTS.find(b=>b.id===t.owner);
+      const botOwner=BOTS.find(b=>BOT_UUIDS[b.id]===t.owner);
       const ownerTeam=own?userTeam:(botOwner?botOwner.team||'':t.ownerTeam||'');
       const teamInfo=TEAMS.find(tm=>tm.id===ownerTeam);
       const teamColor=teamInfo?teamInfo.color:'#888888';
@@ -3385,7 +3326,7 @@ function renderTerr(){
       .bindPopup(()=>{
         const barW=Math.round(strPct*100);
         const barCol=strPct>.6?'#10b981':strPct>.3?'#ff9f1c':'#ff4d6d';
-        const botOwner=BOTS.find(b=>b.id===t.owner);
+        const botOwner=BOTS.find(b=>BOT_UUIDS[b.id]===t.owner);
         const rarCol=RARITY_COLORS[rar]||'';
         const ownerTeam=own?userTeam:(botOwner?botOwner.team||'':t.ownerTeam||'');
         const teamInfo=TEAMS.find(tm=>tm.id===ownerTeam);
@@ -3776,7 +3717,7 @@ function stopRun(){
 /* Bewertung/Speicherung eines gelaufenen Pfads – getrennt von stopRun(), damit
    checkOrphanedRun() einen nach App-Crash wiederhergestellten Pfad genauso
    abschließen kann, ohne dass isRunning vorher true gewesen sein muss. */
-function finalizeRun(elapsed){
+async function finalizeRun(elapsed){
   if(path.length<3||dist<CFG.MIN_DIST){toast('Zu kurz – mind. '+CFG.MIN_DIST+' m');if(pathLayer)mapL.removeLayer(pathLayer);path=[];dist=0;sessionConquests=0;return}
   if(elapsed>0&&(dist/elapsed)>CFG.MAX_SPEED_MPS){toast('⚠️ Unrealistisches Tempo erkannt – Lauf wird nicht gewertet');if(pathLayer)mapL.removeLayer(pathLayer);path=[];dist=0;sessionConquests=0;return}
   const pd=mkPoly();if(!pd)return;
@@ -3784,7 +3725,7 @@ function finalizeRun(elapsed){
   const boosted=energy>0;
   sessionConquests=0;
   const prevPts=points;
-  const res=processConquest(polyGeom,area,dist,boosted);
+  const res=await processConquest(polyGeom,area,dist,boosted);
   const streakMul=streakDays>0?Math.min(2,1+(streakDays-1)*0.1):1;
   const kmXP=Math.round(xpForKm(dist/1000,getWeeklyKm())*streakMul);
   const boostMul=boosted?1+CFG.ENERGY_BOOST_PTS:1;
@@ -3819,94 +3760,81 @@ function mkPolyFrom(pth,d){
 function mkPoly(){return mkPolyFrom(path,dist);}
 
 /* CONQUEST */
-function processConquest(np,area,d,boosted=false){
-  const now=Date.now();let pts=0,conquered=false,defended=false;
-  const lv=getLevel(points);
-  const atkBonus=(1+(lv-1)*CFG.ATK_BONUS_LVL)*(boosted?1+CFG.ENERGY_BOOST_ATK:1);
-  const defBonus=1+(lv-1)*CFG.DEF_REGEN_LVL;
-
-  const ovl=territories.filter(t=>{try{return turf.booleanIntersects(turf.feature(t.polygon),np);}catch(e){return false}});
-  if(!ovl.length){
-    // Neutral → sofortige Einnahme
-    sessionConquests++;
-    const comboMulN=sessionConquests>=5?CFG.COMBO_MULTI_5:sessionConquests>=3?CFG.COMBO_MULTI_3:1;
-    const lms=lmsInPoly(np.geometry);
-    const initStr=Math.min(CFG.MAX_DEF,30+Math.floor(d/200));
-    const rarity=pickRarity(lms.length>0);
-    const t={id:'u_'+Date.now(),owner:userId,color:userColor,polygon:np.geometry,
-      defense:initStr,maxDefense:CFG.MAX_DEF,createdAt:now,lastDefended:now,
-      area,landmarkIds:lms,attackHistory:{},_lastDecayTs:now,_lastBonus:0,
-      rarity,firstRunner:userId,firstRunnerName:playerName,_ownerRegisteredAt:registeredAt};
-    if(lms.length){t.defense=Math.min(CFG.MAX_DEF,Math.floor(t.defense*CFG.LM_DEF_BONUS));pts+=CFG.LM_PTS;toast('🏛️ Wahrzeichen! +'+CFG.LM_PTS);}
-    territories.push(t);
-    (window._newTerrIds||(window._newTerrIds=new Set())).add(t.id);
-    sessionNewTerrNames.push(t.customName||('Gebiet #'+(t.id||'').slice(-4)));
-    totalDiscovered++;
-    const gainXP=Math.round((CFG.XP_NEUTRAL+Math.min(CFG.XP_CONQUER_MAX-CFG.XP_NEUTRAL,Math.floor(area/500)))*comboMulN);
-    pts+=gainXP;
-    const rarLbl=rarity!=='common'?(' · '+RARITY_LABELS[rarity]):'';
-    const comboLblN=comboMulN>1?` · KOMBO ×${comboMulN}`:'';
-    toast('🗺️ Neues Gebiet'+rarLbl+comboLblN+'! +'+gainXP+' XP');
-    if(comboMulN>1)setTimeout(()=>showComboFlash(comboMulN),400);
-    addNotif('🗺️','Neues Gebiet erobert! '+RARITY_LABELS[rarity]);
-  }else{
-    ovl.forEach(t=>{
-      let ov=0;try{const inter=turf.intersect(turf.feature(t.polygon),np);if(inter)ov=turf.area(inter);}catch(e){}
-      const overlapFrac=Math.min(1,ov/Math.max(area,1));
-      const kmThrough=(d/1000)*overlapFrac;
-
-      if(t.owner===userId){
-        // Eigenes Gebiet → Reparatur
-        const rep=Math.min(CFG.MAX_DEF-t.defense,kmThrough*CFG.STR_REP_PER_KM*defBonus);
-        if(rep>0.1){
-          t.defense=Math.min(CFG.MAX_DEF,t.defense+rep);
-          t.lastDefended=now;t._lastDecayTs=now;pts+=CFG.XP_DEFEND;defended=true;
-          toast('🛡️ Gebiet verteidigt! Stärke: '+Math.round(t.defense)+'/100');
-        }
-        // 7-Tage-Halte-Bonus
-        const dayHeld=(now-t.createdAt)/86400000;
-        const lastBonus=t._lastBonus||0;
-        if(dayHeld>=7&&(now-lastBonus)>=7*86400000){pts+=CFG.XP_7DAY;t._lastBonus=now;beep(880,.1);toast('🏆 7-Tage-Halte-Bonus! +'+CFG.XP_7DAY+' XP');}
-      }else{
-        // Newcomer-Schutz
-        if(t._ownerRegisteredAt&&(Date.now()-t._ownerRegisteredAt<14*24*3600000)){toast('🛡️ Dieses Gebiet ist noch unter Newcomer-Schutz');return;}
-        // Feindgebiet → Angriff
-        let dmg=kmThrough*CFG.STR_DMG_PER_KM*atkBonus;
-        // Kritischer Treffer
-        if(Math.random()<CFG.CRIT_CHANCE){dmg*=CFG.CRIT_MUL;toast('✨ Kritischer Treffer! ×'+CFG.CRIT_MUL);beep(880,.15);vib(200);}
-        dmg=Math.min(t.defense,dmg);
-        t.defense=Math.max(0,t.defense-dmg);
-        // Combo-Bonus
-        const last=t.attackHistory?.[userId]||0;
-        if(now-last<CFG.COMBO_H*3600000&&last>0){pts+=25;toast('🔥 Combo! +25 XP');}
-        t.attackHistory=t.attackHistory||{};t.attackHistory[userId]=now;
-        pts+=Math.floor(dmg*2)+15;
-
-        if(t.defense<=0){
-          // Gebiet erobert!
-          sessionConquests++;
-          const comboMul=sessionConquests>=5?CFG.COMBO_MULTI_5:sessionConquests>=3?CFG.COMBO_MULTI_3:1;
-          const conquestXP=Math.round(Math.min(CFG.XP_CONQUER_MAX,CFG.XP_CONQUER_MIN+Math.floor((t.area||0)/500))*comboMul);
-          pts+=conquestXP;conquered=true;
-          t.owner=userId;t.color=userColor;t.defense=20;t.maxDefense=CFG.MAX_DEF;
-          t.lastDefended=now;t._lastDecayTs=now;t.createdAt=now;t._lastBonus=0;t._ownerRegisteredAt=registeredAt;
-          (window._newTerrIds||(window._newTerrIds=new Set())).add(t.id);
-          sessionNewTerrNames.push(t.customName||('Gebiet #'+(t.id||'').slice(-4)));
-          if(!t.rarity)t.rarity=pickRarity((t.landmarkIds||[]).length>0);
-          [660,880,1100].forEach((f,i)=>setTimeout(()=>beep(f,.1),i*80));
-          const rarLbl=t.rarity&&t.rarity!=='common'?(' · '+RARITY_LABELS[t.rarity]):'';
-          const comboLbl=comboMul>1?` · KOMBO ×${comboMul}`:'';
-          toast('🔥 GEBIET EROBERT'+rarLbl+comboLbl+'! +'+conquestXP+' XP');vib([100,50,100]);
-          if(comboMul>1)setTimeout(()=>showComboFlash(comboMul),400);
-          addNotif('🗺️','Neues Gebiet erobert! '+RARITY_LABELS[t.rarity||'common']);
-        }else{
-          t.lastDefended=now;
-          toast('⚔️ Angriff! Stärke: '+Math.round(t.defense)+'/100 (-'+Math.round(dmg)+')');
-        }
-      }
+/* Eroberungslogik läuft serverseitig in der SECURITY DEFINER RPC rc_claim()
+   (siehe supabase_territories.sql) -- der Client schickt nur das Polygon +
+   Distanz und wendet das autoritative Ergebnis (geänderte Gebiete + Event-
+   Meldungen) lokal an. p_claim_id macht Netzwerk-Retries idempotent. */
+async function processConquest(np,area,d,boosted=false,isImport=false,durationS=null){
+  const claimId=crypto.randomUUID?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2));
+  let data,error;
+  try{
+    const r=await sb.rpc('rc_claim',{
+      p_claim_id:claimId,p_polygon_geojson:np.geometry,p_distance_m:d,
+      p_player_name:playerName,p_user_color:userColor,
+      p_landmark_ids:lmsInPoly(np.geometry).map(String),
+      p_is_import:isImport,p_duration_s:durationS,p_boosted:boosted
     });
+    data=r.data;error=r.error;
+  }catch(e){error=e;}
+
+  if(error){
+    const msg=error?.message||'';
+    if(msg.includes('import_area_cap_exceeded'))return{pts:0,conquered:false,defended:false,error:'import_area_cap_exceeded'};
+    if(msg.includes('import_pace_implausible'))return{pts:0,conquered:false,defended:false,error:'import_pace_implausible'};
+    if(msg.includes('import_daily_limit_reached'))return{pts:0,conquered:false,defended:false,error:'import_daily_limit_reached'};
+    console.warn('rc_claim failed:',error);
+    toast('⚠️ Eroberung konnte nicht synchronisiert werden');
+    return{pts:0,conquered:false,defended:false,error:'other'};
   }
-  territories=territories.filter(t=>t.defense>0||t.owner===userId||(now-t.lastDefended)<CFG.MAX_AGE_H*3600000);
+
+  let pts=data.pts||0,conquered=!!data.conquered,defended=!!data.defended;
+
+  (data.territories||[]).forEach(nt=>{
+    // landmark_ids ist serverseitig text[] -- Wahrzeichen-IDs (OSM) sind
+    // numerisch, lokal wird weiterhin per === gegen landmarks[].id verglichen.
+    if(Array.isArray(nt.landmarkIds))nt.landmarkIds=nt.landmarkIds.map(x=>/^\d+$/.test(x)?Number(x):x);
+    const idx=territories.findIndex(t=>t.id===nt.id);
+    if(idx>=0)territories[idx]={...territories[idx],...nt};else territories.push(nt);
+  });
+
+  (data.messages||[]).forEach(m=>{
+    if(m.type==='repaired'){
+      toast('🛡️ Gebiet verteidigt! Stärke: '+Math.round(m.defense)+'/100');
+    }else if(m.type==='bonus_7day'){
+      beep(880,.1);toast('🏆 7-Tage-Halte-Bonus! +'+m.xp+' XP');
+    }else if(m.type==='newcomer_protected'){
+      toast('🛡️ Dieses Gebiet ist noch unter Newcomer-Schutz');
+    }else if(m.type==='critical_hit'){
+      toast('✨ Kritischer Treffer! ×'+CFG.CRIT_MUL);beep(880,.15);vib(200);
+    }else if(m.type==='combo_bonus'){
+      toast('🔥 Combo! +'+m.xp+' XP');
+    }else if(m.type==='attacked'){
+      toast('⚔️ Angriff! Stärke: '+Math.round(m.defense)+'/100 (-'+Math.round(m.dmg)+')');
+    }else if(m.type==='landmark_bonus'){
+      toast('🏛️ Wahrzeichen! +'+m.pts);
+    }else if(m.type==='conquered'){
+      const t=territories.find(x=>x.id===m.territoryId);
+      (window._newTerrIds||(window._newTerrIds=new Set())).add(m.territoryId);
+      sessionNewTerrNames.push(t?.customName||('Gebiet #'+(m.territoryId||'').slice(-4)));
+      [660,880,1100].forEach((f,i)=>setTimeout(()=>beep(f,.1),i*80));
+      const rarLbl=m.rarity&&m.rarity!=='common'?(' · '+RARITY_LABELS[m.rarity]):'';
+      const comboLbl=m.comboMul>1?` · KOMBO ×${m.comboMul}`:'';
+      toast('🔥 GEBIET EROBERT'+rarLbl+comboLbl+'! +'+m.xp+' XP');vib([100,50,100]);
+      if(m.comboMul>1)setTimeout(()=>showComboFlash(m.comboMul),400);
+      addNotif('🗺️','Neues Gebiet erobert! '+RARITY_LABELS[m.rarity||'common']);
+    }else if(m.type==='neutral_claim'){
+      const t=territories.find(x=>x.id===m.territoryId);
+      (window._newTerrIds||(window._newTerrIds=new Set())).add(m.territoryId);
+      sessionNewTerrNames.push(t?.customName||('Gebiet #'+(m.territoryId||'').slice(-4)));
+      totalDiscovered++;
+      const rarLbl=m.rarity!=='common'?(' · '+RARITY_LABELS[m.rarity]):'';
+      const comboLbl=m.comboMul>1?` · KOMBO ×${m.comboMul}`:'';
+      toast('🗺️ Neues Gebiet'+rarLbl+comboLbl+'! +'+m.xp+' XP');
+      if(m.comboMul>1)setTimeout(()=>showComboFlash(m.comboMul),400);
+      addNotif('🗺️','Neues Gebiet erobert! '+RARITY_LABELS[m.rarity]);
+    }
+  });
+
   return{pts,conquered,defended};
 }
 
@@ -4141,7 +4069,7 @@ function openImportModal(){
   ['impPanGpx','impPanStrava','impPanGarmin'].forEach(id=>{const el=$(id);if(el)el.style.display='none';});
   $('importModal').style.display='flex';
 }
-function importActivity(distM,durSecs,dateMs,path,source,avgHR){
+async function importActivity(distM,durSecs,dateMs,path,source,avgHR){
   const kcal=calcKcal(distM,durSecs);
   const kmXP=Math.round(xpForKm(distM/1000,getWeeklyKm()));
   const fullPath=path&&path.length>=2?path:null;
@@ -4158,8 +4086,12 @@ function importActivity(distM,durSecs,dateMs,path,source,avgHR){
         if(pd){
           area=turf.area(pd.polyGeom);gap=pd.gap;
           sessionConquests=0;sessionNewTerrNames=[];sessionNewLandmarks=[];
-          const res=processConquest(pd.polyGeom,area,distM,false);
+          const res=await processConquest(pd.polyGeom,area,distM,false,true,durSecs);
+          if(res.error==='import_area_cap_exceeded')toast('❌ Import zu groß für Gebietswertung – max. 2 km² pro Aktivität');
+          else if(res.error==='import_pace_implausible')toast('⚠️ Unplausibles Tempo erkannt – nur als Statistik gespeichert');
+          else if(res.error==='import_daily_limit_reached')toast('⚠️ Tageslimit für Gebiets-Importe erreicht (max. 8/Tag) – nur als Statistik gespeichert');
           terrPts=res.pts;conquered=res.conquered;defended=res.defended;
+          if(res.error)area=0;
           const step=Math.max(1,Math.floor(fullPath.length/500));
           for(let i=0;i<fullPath.length;i+=step){
             const[lat,lng]=fullPath[i];
@@ -4784,7 +4716,7 @@ async function renderLeaderboard(){
     // Fallback: lokale Mockdaten
     const myTerr=territories.filter(t=>t.owner===userId).length;
     const board=[
-      ...BOTS.map(b=>({name:b.name,av:b.avatar,pts:b.pts,terr:territories.filter(t=>t.owner===b.id).length,km:b.totalKm.toFixed(1)})),
+      ...BOTS.map(b=>({name:b.name,av:b.avatar,pts:b.pts,terr:territories.filter(t=>t.owner===BOT_UUIDS[b.id]).length,km:b.totalKm.toFixed(1)})),
       {name:playerName||'Du',av:userAvatar,pts:points,terr:myTerr,km:totalKm.toFixed(1)}
     ].sort((a,b)=>b.pts-a.pts);
     lb.innerHTML=board.map((r,i)=>{
@@ -5723,8 +5655,10 @@ async function launchAppFromSession(user){
       if(window._openStravaOnInit){window._openStravaOnInit=false;setTimeout(()=>{openImportModal();$('impTabStrava')?.click();},400);}
       if(window._openGarminOnInit){window._openGarminOnInit=false;setTimeout(()=>{openImportModal();switchImpTab('impTabGarmin');},400);}
       syncGarminActivities().then(r=>{if(r&&r.imported>0){toast('⌚ '+r.imported+' Garmin-Lauf'+(r.imported>1?'läufe':'')+' synchronisiert');updateUI();}}).catch(()=>{});
-      const restored=await loadFromCloud();
-      if(!restored&&territories.filter(t=>t.owner!==userId).length===0){await genRivals();}
+      await loadFromCloud();
+      await loadGlobalTerritories();
+      subscribeTerritories();
+      if(territories.filter(t=>t.owner!==userId).length===0){await genRivals();}
       renderTerr();updateUI();processSyncQueue();loadFollowState();updateDmBadge();updateSettingsBadge();
       setTimeout(checkOrphanedRun,1100);
       if(isAdmin)setTimeout(showInboxIfAdmin,800);
@@ -6025,21 +5959,13 @@ function hideEmptySections(){document.querySelectorAll('section,[data-section]')
 function updateUI(){updateStatsUI();renderTerr();if(currentView==='dash'||currentView==='start')updateDash();if(currentView==='community')updateCommunity();if(currentView==='profile')updateProfile();if(drawer.classList.contains('open'))renderDrawer();}
 
 /* BACKGROUND */
-function dailyDecay(territory,daysSinceVisit){return Math.max(0,territory.defense-(2*daysSinceVisit));}
-function applyDecay(){
-  const now=Date.now();
-  territories=territories.map(t=>{
-    if(t.owner===userId)return t;
-    const dts=t._lastDecayTs||t.lastDefended;
-    const hoursElapsed=(now-dts)/3600000;
-    const daysSinceVisit=hoursElapsed/24;
-    // Wende dailyDecay an für tagesbasierte Reduktion
-    if(daysSinceVisit>=1){t.defense=dailyDecay(t,Math.floor(daysSinceVisit));}
-    else{const decayAmt=hoursElapsed*(CFG.DECAY_PER_DAY/24);if(decayAmt>.01)t.defense=Math.max(0,t.defense-decayAmt);}
-    t._lastDecayTs=now;
-    return t;
-  }).filter(t=>t.defense>0||t.owner===userId||(now-t.lastDefended)<CFG.MAX_AGE_H*3600000);
-  renderTerr();
+/* Verfall wird serverseitig berechnet (rc_list_territories(), lazy decay in
+   rc_claim()) -- statt lokal auf veraltetem Stand zu extrapolieren UND
+   Zeilen rein heuristisch aus dem lokalen Array zu löschen (das konnte je
+   Browser zu unterschiedlichen Karten führen), holt applyDecay() einfach
+   den aktuellen, für alle Nutzer identischen Stand vom Server. */
+async function applyDecay(){
+  if(await loadGlobalTerritories())renderTerr();
 }
 
 /* ═══ "THE BREACH" — aktive Invasionen ═══
@@ -6173,7 +6099,7 @@ function setupBg(){
   setInterval(invasionTick,60000);
   setTimeout(invasionTick,20000);
   setInterval(()=>{if(hrSource==='sim')simHR()},3000);
-  setTimeout(()=>{simulateBotRun();setInterval(simulateBotRun,90*1000);},15000);
+  setTimeout(()=>{resolveRaids();setInterval(resolveRaids,90*1000);},15000);
   /* Sync-Queue erneut anstoßen, sobald wieder online bzw. periodisch im
      Hintergrund — fängt Fälle ab, in denen processSyncQueue() bei Run-Ende
      oder App-Start mangels Verbindung nichts ausrichten konnte. */
