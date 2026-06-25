@@ -2,6 +2,7 @@
   "version": 2,
   "routes": [
     { "src": "/bg.mp4", "dest": "/bg.mp4" },
+    { "src": "/bg-poster.jpg", "dest": "/bg-poster.jpg" },
     { "src": "/sw.js", "dest": "/sw.js" },
     { "src": "/manifest.json", "dest": "/manifest.json" },
     { "src": "/privacy.html", "dest": "/privacy.html" },
@@ -18,7 +19,14 @@
       "headers": [
         { "key": "Content-Type", "value": "video/mp4" },
         { "key": "Accept-Ranges", "value": "bytes" },
-        { "key": "Cache-Control", "value": "public, max-age=86400" }
+        { "key": "Cache-Control", "value": "public, max-age=604800" }
+      ]
+    },
+    {
+      "source": "/bg-poster.jpg",
+      "headers": [
+        { "key": "Content-Type", "value": "image/jpeg" },
+        { "key": "Cache-Control", "value": "public, max-age=604800" }
       ]
     },
     {

@@ -717,9 +717,9 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 </div>
 
 <!-- ONBOARDING -->
-<video id="bgVideo" autoplay muted loop playsinline webkit-playsinline preload="auto" tabindex="-1">
-  <source src="bg.mp4" type="video/mp4">
-</video>
+<!-- Poster (40 KB) erscheint sofort; das Video (bg.mp4) wird erst lazy nachgeladen,
+     und auf Datensparmodus / langsamen Verbindungen gar nicht (Poster bleibt stehen). -->
+<video id="bgVideo" autoplay muted loop playsinline webkit-playsinline preload="none" poster="bg-poster.jpg" tabindex="-1"></video>
 <div id="bgOverlay"></div>
 <div id="bgTapHint" style="display:none">▶ Tippen zum Starten</div>
 <script>
@@ -727,12 +727,27 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
   var v=document.getElementById('bgVideo');
   if(!v)return;
   v.muted=true;
-  var p=v.play();
-  if(p&&p.catch)p.catch(function(){
-    /* Autoplay geblockt (z.B. Energiesparmodus) – Hinweis einblenden */
-    var h=document.getElementById('bgTapHint');
-    if(h)h.style.display='block';
-  });
+  // Verbindung prüfen: bei Save-Data oder 2g/3g das Video überspringen, Poster reicht.
+  var c=navigator.connection||navigator.mozConnection||navigator.webkitConnection;
+  var slow=c&&(c.saveData===true||/(^|-)(slow-)?2g$/.test(c.effectiveType||''));
+  if(slow)return; // nur Poster, kein 4-MB-Download auf schmaler Leitung
+  // Quelle erst jetzt setzen -> kein Preload-Block beim ersten Paint.
+  var start=function(){
+    if(v.dataset.loaded)return; v.dataset.loaded='1';
+    var s=document.createElement('source');
+    s.src='bg.mp4'; s.type='video/mp4';
+    v.appendChild(s);
+    v.load();
+    var p=v.play();
+    if(p&&p.catch)p.catch(function(){
+      /* Autoplay geblockt (z.B. Energiesparmodus) – Hinweis einblenden */
+      var h=document.getElementById('bgTapHint');
+      if(h)h.style.display='block';
+    });
+  };
+  // Nach dem ersten Frame/Idle nachladen, damit UI zuerst interaktiv ist.
+  if('requestIdleCallback' in window){requestIdleCallback(start,{timeout:1500});}
+  else{setTimeout(start,300);}
 })();
 </script>
 <div id="onboarding" style="display:none">
@@ -6555,6 +6570,14 @@ function startBgVideo(){
   const vid=document.getElementById('bgVideo');
   if(!vid)return;
   vid.muted=true;
+  // Quelle ggf. nachladen (z.B. wenn sie wegen Save-Data/2g zunächst übersprungen wurde) –
+  // ein bewusster Tap/Aufruf rechtfertigt den Download.
+  if(!vid.dataset.loaded&&!vid.querySelector('source')){
+    vid.dataset.loaded='1';
+    const s=document.createElement('source');
+    s.src='bg.mp4';s.type='video/mp4';
+    vid.appendChild(s);vid.load();
+  }
   function doPlay(){
     vid.muted=true;
     vid.play().then(()=>{
