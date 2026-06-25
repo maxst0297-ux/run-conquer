@@ -1887,7 +1887,7 @@ function debounce(fn,w){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn
 const syncProfileDebounced=debounce(syncProfile,1000);
 
 /* PERSIST */
-function save(){localStateTs=Date.now();localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,energyWeek,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered,registeredAt,starterQuestsDone,starterQuestFlags,heatPersonalOnly,dailyChallenges,dailyChalDate,chalStreak,lastChalDoneDate,dailyLoginDate,dailyLoginStreak,streakShields,recentQuoteIds,weeklyChals,weekChalKey,personalRecords,battlePassClaimed,totalRaids,totalBoosts,weeklyAchsDone,seasonXp,localStateTs,invasions:invasions.map(i=>({id:i.id,terrId:i.terrId,lat:i.lat,lng:i.lng,progress:i.progress,spawnedAt:i.spawnedAt,lastTick:i.lastTick}))}))}
+function save(){localStateTs=Date.now();localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,energyWeek,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered,registeredAt,starterQuestsDone,starterQuestFlags,heatPersonalOnly,dailyChallenges,dailyChalDate,chalStreak,lastChalDoneDate,dailyLoginDate,dailyLoginStreak,streakShields,recentQuoteIds,weeklyChals,weekChalKey,personalRecords,battlePassClaimed,totalRaids,totalBoosts,weeklyAchsDone,seasonXp,localStateTs}))}
 /* Crash-resiliente Lauf-Persistenz: Pfad liegt sonst nur im RAM und ginge bei
    App-Kill/Crash mitten im Lauf komplett verloren. Wird alle ~12s gespiegelt,
    beim nächsten Boot per checkOrphanedRun() angeboten. */
@@ -1919,7 +1919,7 @@ function checkOrphanedRun(){
 function load(){
   try{
     const d=JSON.parse(localStorage.getItem('rc_v4_'+userId));
-    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;registeredAt=d.registeredAt||Date.now();starterQuestsDone=d.starterQuestsDone||[];starterQuestFlags=d.starterQuestFlags||{profileOpened:false};heatPersonalOnly=d.heatPersonalOnly||false;dailyChallenges=d.dailyChallenges||[];dailyChalDate=d.dailyChalDate||'';chalStreak=d.chalStreak||0;lastChalDoneDate=d.lastChalDoneDate||'';dailyLoginDate=d.dailyLoginDate||'';dailyLoginStreak=d.dailyLoginStreak||0;streakShields=d.streakShields||0;recentQuoteIds=d.recentQuoteIds||[];weeklyChals=d.weeklyChals||[];weekChalKey=d.weekChalKey||'';personalRecords=d.personalRecords||{};battlePassClaimed=d.battlePassClaimed||[];totalRaids=d.totalRaids||0;totalBoosts=d.totalBoosts||0;weeklyAchsDone=d.weeklyAchsDone||0;seasonXp=d.seasonXp||0;localStateTs=d.localStateTs||0;invasions=Array.isArray(d.invasions)?d.invasions:[];}
+    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;registeredAt=d.registeredAt||Date.now();starterQuestsDone=d.starterQuestsDone||[];starterQuestFlags=d.starterQuestFlags||{profileOpened:false};heatPersonalOnly=d.heatPersonalOnly||false;dailyChallenges=d.dailyChallenges||[];dailyChalDate=d.dailyChalDate||'';chalStreak=d.chalStreak||0;lastChalDoneDate=d.lastChalDoneDate||'';dailyLoginDate=d.dailyLoginDate||'';dailyLoginStreak=d.dailyLoginStreak||0;streakShields=d.streakShields||0;recentQuoteIds=d.recentQuoteIds||[];weeklyChals=d.weeklyChals||[];weekChalKey=d.weekChalKey||'';personalRecords=d.personalRecords||{};battlePassClaimed=d.battlePassClaimed||[];totalRaids=d.totalRaids||0;totalBoosts=d.totalBoosts||0;weeklyAchsDone=d.weeklyAchsDone||0;seasonXp=d.seasonXp||0;localStateTs=d.localStateTs||0;/* invasions: serverseitig (rc_sync_breaches), nicht mehr aus localStorage */}
   }catch(e){}
   // Rival territories werden nach erstem GPS-Fix generiert (locationfound)
   if(!quests.length)genQuests();
@@ -6076,70 +6076,70 @@ function renderInvasions(){
     if(tc)L.polyline([[inv.lat,inv.lng],[tc.lat,tc.lng]],{color:'#ff283c',weight:1.5,opacity:.4,dashArray:'5 5',interactive:false}).addTo(invasionLayer);
   });
 }
-function invasionTick(){
-  if(!mapL||!invasionLayer)return;
-  const now=Date.now();
-  let changed=false;
-  // 1) bestehende Invasionen vorantreiben
-  invasions=invasions.filter(inv=>{
-    const t=territories.find(x=>x.id===inv.terrId&&x.owner===userId);
-    if(!t)return false; // Gebiet existiert nicht mehr → Invasion endet
-    const mins=Math.min(CFG.INV_MAX_TICK_MIN,Math.max(0,(now-(inv.lastTick||now))/60000));
-    inv.lastTick=now;
-    inv.progress=(inv.progress||0)+mins*CFG.INV_GROWTH_PER_MIN;
-    // Gebiet driftet das Gebiet bedrängt: Verteidigung sinkt schneller
-    if(mins>0)t.defense=Math.max(0,t.defense-mins*CFG.INV_DEF_DRAIN_PER_MIN);
-    // Marker driftet langsam Richtung Gebiet
-    const tc=_terrCenter(t);
-    if(tc){inv.lat+=(tc.lat-inv.lat)*Math.min(.5,mins*.08);inv.lng+=(tc.lng-inv.lng)*Math.min(.5,mins*.08);}
-    if(inv.progress>=100){
-      // Überrennung: Verteidigung einbrechen
-      t.defense=Math.max(0,t.defense-CFG.INV_OVERRUN_DEF_LOSS);t._lastDecayTs=now;
-      addNotif('🔥','Gebiet überrannt: '+(t.customName||'Gebiet')+' – Verteidigung eingebrochen!');
-      toast('🔥 Invasion durchgebrochen! '+(t.customName||'Gebiet')+' geschwächt');
-      pushSystemNotif('⚔️ Gebiet überrannt!',(t.customName||'Ein Gebiet')+' wurde durchbrochen.');
-      changed=true;return false;
-    }
-    return true;
-  });
-  // 2) neue Invasionen auf vernachlässigte Gebiete spawnen
-  if(invasions.length<CFG.INV_MAX_ACTIVE){
-    const eligible=territories.filter(t=>t.owner===userId
-      && t.defense<CFG.INV_THREAT_DEF
-      && (now-(t.lastDefended||now))>CFG.INV_MIN_NEGLECT_H*3600000
-      && !invasions.some(inv=>inv.terrId===t.id));
-    eligible.forEach(t=>{
-      if(invasions.length>=CFG.INV_MAX_ACTIVE)return;
-      if(Math.random()>=CFG.INV_SPAWN_CHANCE)return;
-      const tc=_terrCenter(t);if(!tc)return;
-      const ang=Math.random()*Math.PI*2,off=.0016+Math.random()*.0014; // ~180–340m entfernt
-      const inv={id:'inv_'+now+'_'+Math.floor(Math.random()*1e4),terrId:t.id,
-        lat:tc.lat+Math.sin(ang)*off,lng:tc.lng+Math.cos(ang)*off/Math.cos(tc.lat*Math.PI/180),
-        progress:0,spawnedAt:now,lastTick:now};
-      invasions.push(inv);changed=true;
-      addNotif('⚠️','Dein Gebiet wird angegriffen: '+(t.customName||'Gebiet')+'!');
-      toast('⚠️ Invasion! '+(t.customName||'Ein Gebiet')+' wird bedroht');
-      pushSystemNotif('⚠️ Gebiet unter Angriff!','Lauf hin und verteidige '+(t.customName||'dein Gebiet')+'.');
+/* Server-autoritativer Tick: rc_sync_breaches() treibt aktive Invasionen voran,
+   spawnt neue und löst Überrennungen auf (Server-Uhr, geräteübergreifend
+   konsistent, übersteht Cloud-Sync/Gerätewechsel). Der Client rendert nur noch
+   die zurückgegebene Liste und zeigt die Events als Benachrichtigungen. */
+let _breachSyncing=false;
+async function invasionTick(){
+  if(!mapL||!invasionLayer||!sb||!sbUserId||_breachSyncing)return;
+  _breachSyncing=true;
+  try{
+    const{data,error}=await sb.rpc('rc_sync_breaches');
+    if(error){logError('breach_sync',error);return;}
+    if(!data)return;
+    invasions=(Array.isArray(data.breaches)?data.breaches:[]).map(b=>({
+      id:b.id,terrId:b.terrId,lat:b.lat,lng:b.lng,progress:b.progress,
+      spawnedAt:b.spawnedAt,lastTick:Date.now()}));
+    renderInvasions();
+    (data.events||[]).forEach(ev=>{
+      const nm=ev.name||'Gebiet';
+      if(ev.type==='spawn'){
+        addNotif('⚠️','Dein Gebiet wird angegriffen: '+nm+'!');
+        toast('⚠️ Invasion! '+nm+' wird bedroht');
+        pushSystemNotif('⚠️ Gebiet unter Angriff!','Lauf hin und verteidige '+nm+'.');
+      }else if(ev.type==='overrun'){
+        addNotif('🔥','Gebiet überrannt: '+nm+' – Verteidigung eingebrochen!');
+        toast('🔥 Invasion durchgebrochen! '+nm+' geschwächt');
+        pushSystemNotif('⚔️ Gebiet überrannt!',nm+' wurde durchbrochen.');
+      }
     });
-  }
-  if(invasions.length||changed)renderInvasions();
-  if(changed){save();renderTerr();}
+    // Bei serverseitigen Verteidigungs-Änderungen aktuellen Gebietsstand holen.
+    if(data.territoriesChanged && await loadGlobalTerritories())renderTerr();
+  }catch(e){logError('breach_sync',e);}
+  finally{_breachSyncing=false;}
 }
-/* Abwehr-Check: während eines Laufs nah genug an einem Invasions-Marker */
-function checkInvasionRepel(lat,lng){
-  if(!invasions.length)return;
-  let hit=false;
-  invasions=invasions.filter(inv=>{
+/* Abwehr-Check während eines Laufs: lokale Nähe-Prüfung gegen die vom Server
+   gelieferten Marker; bei Treffer entscheidet rc_repel_breach() autoritativ
+   (validiert die Distanz erneut serverseitig) über Reparatur + XP. */
+const _repelInFlight=new Set();
+async function checkInvasionRepel(lat,lng){
+  if(!invasions.length||!sb)return;
+  for(const inv of invasions.slice()){
+    if(_repelInFlight.has(inv.id))continue;
     const d=turf.distance(turf.point([lng,lat]),turf.point([inv.lng,inv.lat]),{units:'meters'});
-    if(d>CFG.INV_REPEL_RADIUS)return true;
-    const t=territories.find(x=>x.id===inv.terrId);
-    if(t){t.defense=Math.min(CFG.MAX_DEF,t.defense+CFG.INV_REPEL_REPAIR);t.lastDefended=Date.now();t._lastDecayTs=Date.now();}
-    points+=CFG.INV_REPEL_XP;hit=true;
-    toast('🛡️ Invasion abgewehrt! +'+CFG.INV_REPEL_XP+' XP');beep(880,.12);vib([80,40,80]);
-    addNotif('🛡️','Invasion abgewehrt – '+(t?.customName||'Gebiet')+' gesichert!');
-    return false;
-  });
-  if(hit){save();renderInvasions();renderTerr();updateStatsUI();}
+    if(d>CFG.INV_REPEL_RADIUS)continue;
+    _repelInFlight.add(inv.id);
+    try{
+      const{data,error}=await sb.rpc('rc_repel_breach',{p_breach_id:inv.id,p_lat:lat,p_lng:lng});
+      if(error){logError('breach_repel',error);continue;}
+      if(data&&data.ok){
+        invasions=invasions.filter(x=>x.id!==inv.id);
+        const xp=Math.round(data.xp||CFG.INV_REPEL_XP);
+        points+=xp;
+        toast('🛡️ Invasion abgewehrt! +'+xp+' XP');beep(880,.12);vib([80,40,80]);
+        addNotif('🛡️','Invasion abgewehrt – '+(data.name||'Gebiet')+' gesichert!');
+        renderInvasions();updateStatsUI();save();
+        if(await loadGlobalTerritories())renderTerr();
+      }else if(data&&data.reason==='not_found'){
+        // Serverseitig schon aufgelöst -> lokal entfernen (kein erneuter Versuch).
+        invasions=invasions.filter(x=>x.id!==inv.id);renderInvasions();
+      }else{
+        // too_far o.ä. -> erneuter Versuch beim nächsten GPS-Punkt erlauben.
+        _repelInFlight.delete(inv.id);
+      }
+    }catch(e){logError('breach_repel',e);_repelInFlight.delete(inv.id);}
+  }
 }
 /* System-Push nur, wenn der Nutzer die Erlaubnis bereits erteilt hat
    (wir fragen sie nicht ungefragt ab) und die App im Hintergrund ist. */
