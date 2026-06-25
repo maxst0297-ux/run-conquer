@@ -3297,6 +3297,21 @@ async function loadLandmarks(){
   if(!mapL)return;
   const b=mapL.getBounds();
   const bb=`${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
+  // 1) Bevorzugt über den Server-Cache (/api/landmarks) — entlastet Overpass
+  //    und ist robust gegen dessen Rate-Limits/Ausfälle.
+  try{
+    const r=await fetch(`/api/landmarks?bbox=${encodeURIComponent(bb)}`);
+    if(r.ok){
+      const d=await r.json();
+      if(Array.isArray(d.landmarks)){
+        landmarks=d.landmarks;
+        renderLandmarks();
+        return;
+      }
+    }
+  }catch(_){/* Proxy nicht erreichbar -> Fallback unten */}
+  // 2) Fallback: direkt gegen Overpass (alte Variante), falls der Proxy
+  //    fehlt (z.B. lokal ohne Serverless) oder gerade nicht antwortet.
   const q=`[out:json][timeout:25];(`
     +`node["tourism"~"attraction|museum|viewpoint|artwork|theme_park|zoo|aquarium|gallery"]["name"](${bb});`
     +`node["historic"~"monument|memorial|castle|ruins|archaeological_site|church|fort"]["name"](${bb});`
@@ -3316,7 +3331,7 @@ async function loadLandmarks(){
       return{id:el.id,lat,lng,name:el.tags?.name||'Wahrzeichen',type:el.tags?.tourism||el.tags?.historic||el.tags?.leisure||el.tags?.amenity||el.tags?.natural||''};
     }).filter(Boolean);
     renderLandmarks();
-  }catch(e){console.warn('Landmarks:',e);}
+  }catch(e){logError('landmarks',e);}
 }
 function renderLandmarks(){
   if(!landmarkLayer)return;
