@@ -1599,6 +1599,51 @@ sb?.auth.onAuthStateChange((event)=>{
   }
 });
 
+/* ═══ FEHLER-LOGGING (serverseitig) ═══
+   Best-effort: kritische Fehler landen nicht nur in der Browser-Konsole des
+   Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
+   der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
+   crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
+const APP_VERSION='v61';
+let _logBudget=25;                 // max. neue Log-Zeilen pro Session
+const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
+function logError(context,err,detail){
+  try{
+    const message=(err&&(err.message||(err.toString&&err.toString())))||String(err||'unbekannt');
+    console.warn('['+context+']',err,detail!==undefined?detail:'');
+    if(!sb||_logBudget<=0)return;
+    const key=context+'|'+message;
+    if(_loggedKeys.has(key))return;
+    _loggedKeys.add(key);_logBudget--;
+    let det=null;
+    try{
+      det={};
+      if(err&&err.stack)det.stack=String(err.stack).slice(0,1500);
+      if(detail!==undefined&&detail!==null)det.extra=detail;
+      if(!Object.keys(det).length)det=null;
+      // sicherstellen, dass es serialisierbar ist (sonst lieber weglassen)
+      if(det)JSON.stringify(det);
+    }catch(_){det=null;}
+    sb.from('app_logs').insert({
+      user_id:sbUserId||null,
+      level:'error',
+      context:String(context||'').slice(0,200),
+      message:String(message).slice(0,2000),
+      detail:det,
+      url:location.href,
+      ua:navigator.userAgent,
+      app_version:APP_VERSION
+    }).then(({error})=>{if(error)console.warn('logError insert fehlgeschlagen:',error.message);},()=>{});
+  }catch(_){/* Logging darf nie selbst crashen */}
+}
+// Nicht abgefangene Fehler global einsammeln (mit Dedupe/Budget oben entschärft).
+window.addEventListener('error',e=>{
+  logError('window.onerror',e.error||e.message,{file:e.filename,line:e.lineno,col:e.colno});
+});
+window.addEventListener('unhandledrejection',e=>{
+  logError('unhandledrejection',e.reason);
+});
+
 async function initSupabase(){
   if(!sb)return null;
   try{
@@ -1633,7 +1678,7 @@ async function syncProfile(){
     },{onConflict:'id'});
     if(e2)throw e2;
     return true;
-  }catch(e){console.warn('Supabase profile sync:',e);return false;}
+  }catch(e){logError('profile_sync',e);return false;}
 }
 async function loadFromCloud(){
   if(!sb||!playerName||!sbUserId)return false;
@@ -1666,7 +1711,7 @@ async function loadFromCloud(){
     }
     save();
     return cloudIsNewer;
-  }catch(e){console.warn('Cloud load:',e);}
+  }catch(e){logError('cloud_load',e);}
   return false;
 }
 /* Gebiete sind globaler, für alle Nutzer gleicher Server-Zustand (siehe
@@ -1713,7 +1758,7 @@ async function syncRun(rec){
     },{onConflict:'id'});
     if(error)throw error;
     return true;
-  }catch(e){console.warn('Supabase run sync:',e);return false;}
+  }catch(e){logError('run_sync',e);return false;}
 }
 /* Sync-Queue: läuft fehlgeschlagene/abgebrochene Syncs (Netzwerkausfall,
    Tab geschlossen während syncRun/syncProfile) automatisch nach, statt sie
@@ -3797,7 +3842,7 @@ async function processConquest(np,area,d,boosted=false,isImport=false,durationS=
     if(msg.includes('import_area_cap_exceeded'))return{pts:0,conquered:false,defended:false,error:'import_area_cap_exceeded'};
     if(msg.includes('import_pace_implausible'))return{pts:0,conquered:false,defended:false,error:'import_pace_implausible'};
     if(msg.includes('import_daily_limit_reached'))return{pts:0,conquered:false,defended:false,error:'import_daily_limit_reached'};
-    console.warn('rc_claim failed:',error);
+    logError('rc_claim',error,{msg});
     toast('⚠️ Eroberung konnte nicht synchronisiert werden');
     return{pts:0,conquered:false,defended:false,error:'other'};
   }
