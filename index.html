@@ -339,7 +339,6 @@ body.onboarding-active{background:#000}
 .comm-banner{position:relative;border-radius:var(--radius);overflow:hidden;margin-bottom:16px;height:80px}
 .comm-banner svg{width:100%;height:100%;position:absolute;top:0;left:0;right:0;bottom:0}
 .comm-banner-title{position:relative;z-index:1;font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:3px;color:var(--primary);text-shadow:0 0 20px rgba(var(--primary-rgb),.5);display:flex;align-items:center;gap:8px;padding:0 16px;height:100%}
-.arena-banner{height:64px;background:linear-gradient(120deg,var(--card),var(--bg2));border:1px solid var(--border)}
 .comm-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px}
 .comm-card h3{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:2px;color:var(--primary);margin-bottom:14px;display:flex;align-items:center;gap:8px}
 .list-row{padding:10px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;animation:fadeRow .3s ease}
@@ -479,22 +478,6 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .nav-item.active i{transform:translateY(-2px)}
 .nav-indicator{position:absolute;top:0;left:10%;right:10%;height:2px;background:var(--primary);border-radius:2px;transform:scaleX(0);transition:transform var(--motion-base) var(--ease-out)}
 .nav-item.active .nav-indicator{transform:scaleX(1)}
-/* Zentrale START-FAB in der Bottom-Nav */
-.nav-fab{flex:0 0 64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;align-self:flex-start;margin-top:-22px;width:64px;height:64px;border-radius:50%;background:var(--primary);color:var(--bg);border:4px solid var(--bg);box-shadow:0 8px 22px rgba(var(--primary-rgb),.5);cursor:pointer;font-family:'Bebas Neue',sans-serif;letter-spacing:1px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:transform var(--motion-fast) var(--ease-out),background var(--motion-base)}
-.nav-fab i{font-size:1.25rem;line-height:1}
-.nav-fab span{font-size:.52rem;font-weight:800;letter-spacing:1px}
-.nav-fab:active{transform:scale(.93)}
-.nav-fab.running{background:var(--red);color:#fff;box-shadow:0 8px 22px rgba(255,77,109,.5)}
-/* HEUTE — Pull-up-Sheet auf der Karte (vormals "Start"-Tab) */
-.today-sheet{position:fixed;left:0;right:0;bottom:var(--nav-total);z-index:690;height:82vh;max-height:82vh;background:var(--bg2);border-top:1px solid var(--border);border-radius:22px 22px 0 0;box-shadow:0 -10px 34px rgba(0,0,0,.45);display:flex;flex-direction:column;overflow:hidden;transform:translateY(calc(100% - 60px));transition:transform var(--motion-slow) var(--ease-out);-webkit-backdrop-filter:blur(20px) saturate(150%);backdrop-filter:blur(20px) saturate(150%)}
-.today-sheet.open{transform:translateY(0)}
-.today-sheet.sheet-hidden{display:none}
-#todaySheetHandle{flex:0 0 auto;display:flex;align-items:center;gap:10px;width:100%;height:60px;background:none;border:none;color:var(--text);padding:14px 18px 8px;cursor:pointer;position:relative;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-.tsh-grip{position:absolute;top:7px;left:50%;transform:translateX(-50%);width:38px;height:4px;border-radius:3px;background:var(--muted);opacity:.7}
-.tsh-title{font-family:'Bebas Neue',sans-serif;font-size:1.05rem;letter-spacing:2px;color:var(--primary);display:flex;align-items:center;gap:7px}
-#todaySheetChevron{margin-left:auto;color:var(--muted);transition:transform var(--motion-base)}
-.today-sheet.open #todaySheetChevron{transform:rotate(180deg)}
-.today-sheet-body{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:2px 16px 20px}
 
 /* ═══ DRAWER ═══ */
 #drawer{position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid rgba(255,255,255,.1);border-radius:22px 22px 0 0;z-index:700;max-height:78vh;overflow:hidden;display:none;flex-direction:column;transform:translateY(100%);transition:transform var(--motion-slow) var(--ease-out);-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);box-shadow:0 -8px 40px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08)}
@@ -1022,14 +1005,8 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       </div>
     </div>
 
-    <!-- HEUTE — Pull-up-Sheet auf der Karte (vormals eigener "Start"-Tab) -->
-    <div id="dashView" class="today-sheet">
-      <button id="todaySheetHandle" type="button" aria-label="Heute ein- oder ausklappen">
-        <span class="tsh-grip"></span>
-        <span class="tsh-title"><i class="fas fa-bolt"></i> HEUTE — DEIN TAG</span>
-        <i class="fas fa-chevron-up" id="todaySheetChevron"></i>
-      </button>
-      <div class="today-sheet-body">
+    <!-- START HUB (redesign) -->
+    <div id="dashView" class="view">
 
       <!-- Hero -->
       <div class="start-hero">
@@ -1111,7 +1088,6 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <div class="sec-hd" style="margin-top:8px"><i class="fas fa-chart-bar"></i> Wochenübersicht</div>
       <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px"><canvas id="weekChart" height="110"></canvas></div>
 
-      </div><!-- /today-sheet-body -->
     </div>
 
     <!-- COMMUNITY -->
@@ -1176,26 +1152,18 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         </svg>
         <div class="comm-banner-title"><i class="fas fa-globe-europe"></i> Community</div>
       </div>
-      <!-- COMMUNITY = Soziales ("mit wem laufe ich") -->
       <div class="comm-card" id="followReqCard" style="display:none"><h3><i class="fas fa-user-plus"></i> Follower-Anfragen</h3><div id="followReqList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-newspaper"></i> Aktuelle News</h3><div id="newsList"></div></div>
       <div class="comm-card" id="eventsCard"><h3><i class="fas fa-flag-checkered"></i> Events &amp; Turniere</h3><div id="eventsList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-trophy"></i> Deine Rekorde</h3><div id="recordsList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-bolt"></i> Live-Aktivität</h3><div id="followerList"></div></div>
-      <div class="comm-card"><h3><i class="fas fa-user-friends"></i> Freunde</h3><div id="friendsList"></div></div>
-      <div class="comm-card" id="playerDiscoveryCard"><h3><i class="fas fa-compass"></i> Spieler entdecken</h3><div id="playerDiscoveryList"></div></div>
-    </div>
-
-    <!-- ARENA = Wettkampf ("wogegen kämpfe ich") -->
-    <div id="arenaView" class="view">
-      <div class="comm-banner arena-banner">
-        <div class="comm-banner-title"><i class="fas fa-trophy"></i> Arena</div>
-      </div>
-      <div class="comm-card"><h3><i class="fas fa-shield-alt"></i> Fraktions-Krieg <span style="font-size:.62rem;color:var(--muted);font-weight:400">— alle Spieler</span></h3><div id="teamRankList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-medal"></i> Rangliste</h3><div id="leaderboardList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-crown"></i> Wöchentliche Power-Rankings</h3><div id="powerRankList"></div></div>
+      <div class="comm-card"><h3><i class="fas fa-user-friends"></i> Freunde</h3><div id="friendsList"></div></div>
+      <div class="comm-card"><h3><i class="fas fa-shield-alt"></i> Fraktions-Krieg <span style="font-size:.62rem;color:var(--muted);font-weight:400">— alle Spieler</span></h3><div id="teamRankList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-swords"></i> Club Wars <span style="font-size:.62rem;color:var(--muted);font-weight:400">— diese Woche</span></h3><div id="clubWarsList"></div></div>
       <div class="comm-card" id="clubCommunityCard"><h3><i class="fas fa-users-cog"></i> Clubs</h3><div id="clubCommunityList"></div></div>
+      <div class="comm-card" id="playerDiscoveryCard"><h3><i class="fas fa-compass"></i> Spieler entdecken</h3><div id="playerDiscoveryList"></div></div>
       <div class="comm-card" id="clubDiscoveryCard"><h3><i class="fas fa-search"></i> Clubs entdecken</h3><div id="clubDiscoveryList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-map-marked-alt"></i> Größte Gebiete</h3><div id="bigTerrList"></div></div>
       <div class="comm-card">
@@ -1281,9 +1249,8 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 
   <nav class="bottom-nav">
     <div class="nav-item active" data-view="map"><div class="nav-indicator"></div><i class="fas fa-map"></i><span>Karte</span></div>
-    <div class="nav-item" data-view="community"><div class="nav-indicator"></div><i class="fas fa-users"></i><span>Community</span></div>
-    <button id="navFab" class="nav-fab" type="button" aria-label="Lauf starten"><i class="fas fa-play" id="navFabIcon"></i><span id="navFabLabel">START</span></button>
-    <div class="nav-item" data-view="arena"><div class="nav-indicator"></div><i class="fas fa-trophy"></i><span>Arena</span></div>
+    <div class="nav-item" data-view="start"><div class="nav-indicator"></div><i class="fas fa-house"></i><span>Start</span></div>
+    <div class="nav-item" data-view="community"><div class="nav-indicator"></div><i class="fas fa-globe"></i><span>Community</span></div>
     <div class="nav-item" data-view="profile"><div class="nav-indicator"></div><i class="fas fa-user"></i><span>Profil</span></div>
   </nav>
 
@@ -1637,7 +1604,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v62';
+const APP_VERSION='v61';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3756,13 +3723,6 @@ function resumeRun(){
   updateRunPill();beep(440,.08);
 }
 function updateRunPill(){
-  /* Zentrale Nav-FAB spiegelt den Lauf-Zustand: START ⇄ STOP. */
-  const fabIcon=$('navFabIcon'),fabLabel=$('navFabLabel'),fab=$('navFab');
-  if(fab){
-    fab.classList.toggle('running',!!isRunning);
-    if(fabIcon)fabIcon.className=isRunning?'fas fa-stop':'fas fa-play';
-    if(fabLabel)fabLabel.textContent=isRunning?'STOP':'START';
-  }
   const pill=$('runCtrlPill');if(!pill)return;
   const pause=$('rcpPause'),stop=$('rcpStop');
   if(!pause||!stop)return;
@@ -3797,7 +3757,7 @@ function updateNavFab(){
 function updateAppHeader(view){
   const greeting=$('hdrGreeting'),titleWrap=$('hdrTitleWrap'),titleEl=$('hdrTabTitle');
   if(!greeting||!titleWrap)return;
-  const titles={map:'Karte',community:'Community',arena:'Arena',profile:'Profil'};
+  const titles={map:'Karte',community:'Community',profile:'Profil'};
   if(view==='start'||view==='dash'){
     greeting.style.display='flex';titleWrap.style.display='none';
     const hi=$('hdrHi');if(hi)hi.textContent='Hallo, '+(playerName||'Läufer');
@@ -6063,7 +6023,7 @@ function drawCalendar(){
 function setView(view){
   closeAllModals();
   if(drawer&&drawer.classList.contains('open'))closeDrawer();
-  const map2={map:'mapView',start:'dashView',dash:'dashView',community:'communityView',arena:'arenaView',profile:'profileView'};
+  const map2={map:'mapView',start:'dashView',dash:'dashView',community:'communityView',profile:'profileView'};
   const leaving=document.querySelector('.view.active');
   if(leaving&&leaving.id!==map2[view]){
     leaving.classList.add('leaving');
@@ -6077,21 +6037,15 @@ function setView(view){
   const onMap=view==='map';
   if(dockToggle)dockToggle.style.display=onMap?'':'none';
   if(runDock){if(!onMap)runDock.classList.remove('up');runDock.style.display=onMap?'':'none';}
-  /* "Heute"-Sheet nur auf der Karte sichtbar; beim Verlassen einklappen. */
-  const _sheet=document.getElementById('dashView');
-  if(_sheet){
-    if(onMap){_sheet.classList.remove('sheet-hidden');setTimeout(updateDash,60);}
-    else{_sheet.classList.add('sheet-hidden');_sheet.classList.remove('open');}
-  }
   updateRunPill();
-  const _upd=(view==='dash'||view==='start')?updateDash:(view==='community'||view==='arena')?updateCommunity:view==='profile'?updateProfile:null;
+  const _upd=(view==='dash'||view==='start')?updateDash:view==='community'?updateCommunity:view==='profile'?updateProfile:null;
   updateAppHeader(view);
   /* Defer heavy content updates so they don't block the CSS animation */
   if(_upd)setTimeout(_upd,50);
   if(onMap&&mapL)setTimeout(()=>mapL.invalidateSize(),120);
 }
 function hideEmptySections(){document.querySelectorAll('section,[data-section]').forEach(s=>{const c=s.querySelector('[data-content]')||s;if(c.children.length===0&&c.textContent.trim()==='')s.classList.add('empty-section');else s.classList.remove('empty-section');})}
-function updateUI(){updateStatsUI();renderTerr();if(currentView==='dash'||currentView==='start')updateDash();if(currentView==='community'||currentView==='arena')updateCommunity();if(currentView==='profile')updateProfile();if(drawer.classList.contains('open'))renderDrawer();}
+function updateUI(){updateStatsUI();renderTerr();if(currentView==='dash'||currentView==='start')updateDash();if(currentView==='community')updateCommunity();if(currentView==='profile')updateProfile();if(drawer.classList.contains('open'))renderDrawer();}
 
 /* BACKGROUND */
 /* Verfall wird serverseitig berechnet (rc_list_territories(), lazy decay in
@@ -6203,7 +6157,7 @@ function setupBg(){
     if(document.visibilityState==='hidden'){
       if(isRunning)bgLockTs=Date.now();
     } else {
-      applyDecay();checkEnergyWeekReset();if(currentView==='community'||currentView==='arena')updateCommunity();
+      applyDecay();checkEnergyWeekReset();if(currentView==='community')updateCommunity();
       if(isRunning){
         if(bgLockTs>0){
           const gapSecs=Math.round((Date.now()-bgLockTs)/1000);
@@ -6507,16 +6461,6 @@ window.initApp=function(){
     navFab.addEventListener('click',()=>{
       if(_fabTapped){_fabTapped=false;return;}
       if(isRunning){stopRun();}else{startRun();setView('map');}
-    });
-  }
-  /* HEUTE-Sheet: Tippen auf den Griff klappt es auf/zu. */
-  const _tsHandle=$('todaySheetHandle');
-  if(_tsHandle){
-    _tsHandle.addEventListener('click',()=>{
-      const sh=$('dashView');if(!sh)return;
-      const opening=!sh.classList.contains('open');
-      sh.classList.toggle('open');
-      if(opening){updateDash();sh.querySelector('.today-sheet-body').scrollTop=0;}
     });
   }
   document.querySelectorAll('#drawerTabs .tab-btn').forEach(b=>b.addEventListener('click',function(){const t=this.dataset.tab;if(t===currentTab)return;currentTab=t;renderDrawer();}));
