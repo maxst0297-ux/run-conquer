@@ -1530,6 +1530,7 @@ function getLvlProg(pts){const lv=getLevel(pts),cur=CFG.LVL_XP[lv-1]||0,nx=CFG.L
 /* STATE */
 let mapL,userMarker,pathLayer,terrLayer,heatLayer,landmarkLayer,heatPts=[];
 let isRunning=false,watchId=null,bgWatchId=null,bgGeoWatcher=null;
+let bgFixSeen=false,bgFallbackTimer=null;
 const isNative=typeof window.Capacitor!=='undefined'&&!!window.Capacitor.isNativePlatform?.();
 let wakeLockSentinel=null,silentCtx=null,silentSrc=null;
 let path=[],lastPos=null,lastPosTime=0,gpsJumpWarned=false,dist=0;
@@ -1604,7 +1605,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v61';
+const APP_VERSION='v62';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -1863,10 +1864,28 @@ function stopKeepAlive(){
 function restartBgWatch(){
   if(isNative){
     if(bgGeoWatcher!==null){BackgroundGeolocation.removeWatcher({id:bgGeoWatcher});bgGeoWatcher=null;}
+    bgFixSeen=false;
     BackgroundGeolocation.addWatcher({backgroundMessage:'RunConquer – Lauf aktiv',backgroundTitle:'GPS läuft',requestPermissions:true,stale:false,distanceFilter:3},(loc,err)=>{
       if(err){console.warn('BG-GPS:',err);return;}
+      bgFixSeen=true;
+      /* Natives Plugin liefert -> WebView-Fallback wieder abschalten, damit
+         nicht zwei Quellen gleichzeitig in onGPS() schreiben. */
+      if(bgWatchId!==null){try{navigator.geolocation.clearWatch(bgWatchId);}catch(e){}bgWatchId=null;}
       onGPS({coords:{latitude:loc.latitude,longitude:loc.longitude,accuracy:loc.accuracy,speed:loc.speed,altitude:loc.altitude}});
     }).then(id=>{bgGeoWatcher=id;}).catch(e=>console.warn('BG-GPS init:',e));
+    /* Fallback: Liefert das native Plugin keine Fixes (z.B. iOS-Simulator mit
+       simulierter Route – dort funktioniert nur das WebView-GPS), nach kurzer
+       Schonfrist auf navigator.geolocation umschalten, damit der Lauf trotzdem
+       aufgezeichnet wird. Auf echten Geräten kommt der erste BG-Fix in
+       Sekunden -> der Timer läuft dann ins Leere. */
+    clearTimeout(bgFallbackTimer);
+    bgFallbackTimer=setTimeout(()=>{
+      if(bgFixSeen||!isRunning||bgWatchId!==null||!navigator.geolocation)return;
+      console.warn('BG-GPS: keine Fixes nach 6s – WebView-GPS-Fallback aktiv');
+      bgWatchId=navigator.geolocation.watchPosition(onGPS,e=>{
+        console.warn('GPS-Fallback:',e.code,e.message);
+      },{enableHighAccuracy:true,maximumAge:0,timeout:30000});
+    },6000);
   }else{
     if(bgWatchId!==null){navigator.geolocation.clearWatch(bgWatchId);bgWatchId=null;}
     bgWatchId=navigator.geolocation.watchPosition(onGPS,e=>{
@@ -3627,7 +3646,9 @@ function startRun(){
   startLiveUpdate();
   startKeepAlive();   /* WakeLock + stiller Audio → verhindert Hintergrund-Suspendierung */
   restartBgWatch();   /* frischer Watch beim Laufstart */
-  if(!bgTipShown){
+  /* Tipp nur im Browser/PWA: dort stoppt GPS beim Sperren. Die native App
+     zeichnet per Hintergrund-Plugin auch bei gesperrtem Bildschirm auf. */
+  if(!bgTipShown&&!isNative){
     bgTipShown=true;
     setTimeout(()=>{
       if(/iPhone|iPad/.test(navigator.userAgent))
@@ -5180,8 +5201,9 @@ function renderSettingsTab(tab){
     document.getElementById('showImpressumBtn2')?.addEventListener('click',showImpressum);
     document.getElementById('revokeGpsBtn')?.addEventListener('click',()=>{
       localStorage.removeItem('rc_gps_consent');
-      if(isNative){if(bgGeoWatcher!==null){BackgroundGeolocation.removeWatcher({id:bgGeoWatcher});bgGeoWatcher=null;}}
-      else if(bgWatchId!==null){navigator.geolocation.clearWatch(bgWatchId);bgWatchId=null;}
+      if(isNative&&bgGeoWatcher!==null){BackgroundGeolocation.removeWatcher({id:bgGeoWatcher});bgGeoWatcher=null;}
+      clearTimeout(bgFallbackTimer);
+      if(bgWatchId!==null){navigator.geolocation.clearWatch(bgWatchId);bgWatchId=null;}
       toast('GPS-Einwilligung widerrufen. Lauf-Funktion deaktiviert.');
       renderSettingsTab('datenschutz');
     });
