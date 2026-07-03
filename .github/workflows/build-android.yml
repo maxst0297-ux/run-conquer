@@ -28,12 +28,7 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Prepare web assets for Capacitor
-        run: |
-          mkdir -p www
-          cp index.html manifest.json sw.js privacy.html promo.html altstore-source.json www/
-          [ -d icons ] && cp -r icons www/
-          [ -d screenshots ] && cp -r screenshots www/
-          [ -f bg.mp4 ] && cp bg.mp4 www/
+        run: bash scripts/prepare-web.sh
 
       - name: Sync Capacitor
         run: npx cap sync android
