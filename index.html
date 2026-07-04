@@ -1161,7 +1161,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <div class="comm-card"><h3><i class="fas fa-crown"></i> Wöchentliche Power-Rankings</h3><div id="powerRankList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-user-friends"></i> Freunde</h3><div id="friendsList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-shield-alt"></i> Fraktions-Krieg <span style="font-size:.62rem;color:var(--muted);font-weight:400">— alle Spieler</span></h3><div id="teamRankList"></div></div>
-      <div class="comm-card"><h3><i class="fas fa-swords"></i> Club Wars <span style="font-size:.62rem;color:var(--muted);font-weight:400">— diese Woche</span></h3><div id="clubWarsList"></div></div>
+      <div class="comm-card"><h3><i class="fas fa-khanda"></i> Club Wars <span style="font-size:.62rem;color:var(--muted);font-weight:400">— diese Woche</span></h3><div id="clubWarsList"></div></div>
       <div class="comm-card" id="clubCommunityCard"><h3><i class="fas fa-users-cog"></i> Clubs</h3><div id="clubCommunityList"></div></div>
       <div class="comm-card" id="playerDiscoveryCard"><h3><i class="fas fa-compass"></i> Spieler entdecken</h3><div id="playerDiscoveryList"></div></div>
       <div class="comm-card" id="clubDiscoveryCard"><h3><i class="fas fa-search"></i> Clubs entdecken</h3><div id="clubDiscoveryList"></div></div>
@@ -1532,6 +1532,16 @@ let mapL,userMarker,pathLayer,terrLayer,heatLayer,landmarkLayer,heatPts=[];
 let isRunning=false,watchId=null,bgWatchId=null,bgGeoWatcher=null;
 let bgFixSeen=false,bgFallbackTimer=null;
 const isNative=typeof window.Capacitor!=='undefined'&&!!window.Capacitor.isNativePlatform?.();
+/* Serverless-API & Web-Seiten laufen auf Vercel. Im nativen Bundle
+   (capacitor://localhost) existieren die /api/-Routen NICHT — relative
+   Aufrufe verpuffen dort. Deshalb nativ absolut gegen das Deployment. */
+const API_BASE=isNative?'https://run-conquer.vercel.app':'';
+/* Nativ: relative _blank-Links (Datenschutz) auf die echte Web-URL umbiegen,
+   damit sie im System-Browser landen statt im App-WebView zu stranden. */
+if(isNative)document.addEventListener('click',e=>{
+  const a=e.target.closest('a[href="/privacy.html"]');
+  if(a){e.preventDefault();window.open(API_BASE+'/privacy.html','_blank');}
+});
 let wakeLockSentinel=null,silentCtx=null,silentSrc=null;
 let path=[],lastPos=null,lastPosTime=0,gpsJumpWarned=false,dist=0;
 let _persistTick=0;
@@ -1605,7 +1615,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v62';
+const APP_VERSION='v63';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2858,6 +2868,17 @@ async function shareRun(){
   }catch(e){console.warn(e);toast('Teilen nicht verfügbar');}
 }
 function downloadCanvas(canvas){
+  if(isNative){
+    /* WKWebView hat keinen Download-Manager – a.download tut dort nichts.
+       Stattdessen über das System-Share-Sheet anbieten (→ "Bild sichern"). */
+    canvas.toBlob(async blob=>{
+      const file=new File([blob],'conqrun_lauf.png',{type:'image/png'});
+      if(navigator.canShare?.({files:[file]})){
+        try{await navigator.share({files:[file],title:'ConqRun'});}catch(e){}
+      }else toast('Speichern in der App nicht verfügbar – Screenshot nutzen');
+    },'image/png');
+    return;
+  }
   const a=document.createElement('a');a.href=canvas.toDataURL('image/png');a.download='conqrun_lauf.png';a.click();toast('📥 Bild gespeichert');
 }
 
@@ -3319,7 +3340,7 @@ async function loadLandmarks(){
   // 1) Bevorzugt über den Server-Cache (/api/landmarks) — entlastet Overpass
   //    und ist robust gegen dessen Rate-Limits/Ausfälle.
   try{
-    const r=await fetch(`/api/landmarks?bbox=${encodeURIComponent(bb)}`);
+    const r=await fetch(`${API_BASE}/api/landmarks?bbox=${encodeURIComponent(bb)}`);
     if(r.ok){
       const d=await r.json();
       if(Array.isArray(d.landmarks)){
@@ -3986,7 +4007,7 @@ async function loadGarminHealth(){
     const cache=window._ghCache;
     const now=Date.now();
     if(cache&&now-cache.ts<300000){renderGarminHealth(cache.data);return;}
-    const r=await fetch('/api/garmin/health?token='+tok+'&days=1');
+    const r=await fetch(API_BASE+'/api/garmin/health?token='+tok+'&days=1');
     if(!r.ok)return;
     const{data}=await r.json();
     window._ghCache={data,ts:now};
@@ -4354,12 +4375,21 @@ async function sbAccessToken(){
 async function connectGarmin(){
   const tok=await sbAccessToken();
   if(!tok){toast('Bitte zuerst einloggen');return;}
-  location.href='/api/garmin/oauth-start?token='+encodeURIComponent(tok);
+  const url=API_BASE+'/api/garmin/oauth-start?token='+encodeURIComponent(tok);
+  if(isNative){
+    /* Nativ: OAuth im System-Browser abwickeln (im App-WebView gibt es die
+       /api/-Route nicht und es gäbe keinen Zurück-Weg). Die Verbindung wird
+       serverseitig gespeichert und beim nächsten Sync hier sichtbar. */
+    window.open(url,'_blank');
+    toast('Garmin-Anmeldung im Browser geöffnet – danach hierher zurückkehren');
+  }else{
+    location.href=url;
+  }
 }
 async function disconnectGarmin(){
   const tok=await sbAccessToken();if(!tok)return;
   try{
-    await fetch('/api/garmin/disconnect?token='+encodeURIComponent(tok),{method:'POST'});
+    await fetch(API_BASE+'/api/garmin/disconnect?token='+encodeURIComponent(tok),{method:'POST'});
     garminConnected=false;
     localStorage.removeItem('rc_garmin_lastsync');
     toast('Garmin getrennt');
@@ -4370,7 +4400,7 @@ async function disconnectGarmin(){
 async function syncGarminActivities(opts={}){
   const tok=await sbAccessToken();if(!tok)return{connected:false,configured:false,imported:0};
   const since=localStorage.getItem('rc_garmin_lastsync');
-  let q='/api/garmin/activities?token='+encodeURIComponent(tok);
+  let q=API_BASE+'/api/garmin/activities?token='+encodeURIComponent(tok);
   if(since&&!opts.full)q+='&since='+encodeURIComponent(since);
   let data;
   try{const r=await fetch(q);if(!r.ok)return{connected:false,configured:true,imported:0};data=await r.json();}
@@ -5197,7 +5227,7 @@ function renderSettingsTab(tab){
 </div>`;
     document.getElementById('dataExportBtn')?.addEventListener('click',downloadDataExport);
     document.getElementById('deleteAccBtn')?.addEventListener('click',deleteAccount);
-    document.getElementById('showPrivacyBtn')?.addEventListener('click',()=>window.open('/privacy.html','_blank'));
+    document.getElementById('showPrivacyBtn')?.addEventListener('click',()=>window.open(API_BASE+'/privacy.html','_blank'));
     document.getElementById('showImpressumBtn2')?.addEventListener('click',showImpressum);
     document.getElementById('revokeGpsBtn')?.addEventListener('click',()=>{
       localStorage.removeItem('rc_gps_consent');
@@ -5821,6 +5851,15 @@ async function downloadDataExport(){
       localGameData:localData
     };
     const blob=new Blob([JSON.stringify(export_,null,2)],{type:'application/json'});
+    if(isNative){
+      /* WKWebView kann Blob-Downloads nicht speichern – Share-Sheet nutzen
+         ("In Dateien sichern"), sonst auf die Web-Version verweisen. */
+      const file=new File([blob],'meine-runconquer-daten.json',{type:'application/json'});
+      if(navigator.canShare?.({files:[file]})){
+        try{await navigator.share({files:[file],title:'RunConquer Datenexport'});}catch(e){}
+      }else toast('Export hier nicht verfügbar – bitte in der Web-Version (run-conquer.vercel.app) herunterladen');
+      return;
+    }
     const a=document.createElement('a');
     a.href=URL.createObjectURL(blob);
     a.download='meine-runconquer-daten.json';
