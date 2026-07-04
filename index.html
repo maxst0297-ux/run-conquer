@@ -3725,7 +3725,7 @@ function onGPS(pos){
   });
   checkInvasionRepel(lat,lng);
 }
-function startLiveUpdate(){liveInterval=setInterval(()=>{
+function startLiveUpdate(){clearInterval(liveInterval);liveInterval=setInterval(()=>{
   if(!isRunning||isPaused)return;
   const el=runSecs+Math.floor((Date.now()-runStart)/1000);
   $('liveKm').textContent=(dist/1000).toFixed(2);
