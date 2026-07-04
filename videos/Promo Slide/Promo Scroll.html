@@ -8,6 +8,29 @@
 <link rel="stylesheet" href="styles/colors_and_type.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 <link rel="stylesheet" href="styles/promo.css" />
+<style>
+/* CSS-gebaute Phone-Szenen für Panels ohne App-Screenshot (Breach, Wahrzeichen) */
+.scene{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+  background:radial-gradient(120% 80% at 50% 0%,#123528,#0a1f16),#0a1f16;overflow:hidden}
+.scene::before{content:"";position:absolute;inset:0;opacity:.5;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.045) 0 1px,transparent 1px 34px),
+             repeating-linear-gradient(90deg,rgba(255,255,255,.045) 0 1px,transparent 1px 34px)}
+.scene>*{position:relative}
+.scene-terr{width:62%;max-width:190px;filter:drop-shadow(0 0 14px rgba(230,255,85,.25))}
+.scene-badge{width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;
+  background:rgba(255,40,60,.16);border:2px solid #ff283c;box-shadow:0 0 0 0 rgba(255,40,60,.5);animation:scenePulse 1.6s ease-out infinite}
+@keyframes scenePulse{0%{box-shadow:0 0 0 0 rgba(255,40,60,.5)}100%{box-shadow:0 0 0 22px rgba(255,40,60,0)}}
+.scene-star{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:30px;
+  background:rgba(255,215,0,.14);border:2px solid #FFD700;box-shadow:0 0 26px rgba(255,215,0,.45)}
+.scene-chip{font:600 12px/1 'Poppins',system-ui,sans-serif;letter-spacing:.4px;color:#FFD700;
+  background:rgba(0,0,0,.65);border:1px solid rgba(255,215,0,.4);border-radius:8px;padding:6px 12px}
+.scene-chip--red{color:#ff8095;border-color:rgba(255,40,60,.45)}
+.scene-bar{width:64%;max-width:190px}
+.scene-bar b{display:block;font:700 10px/1 'Poppins',sans-serif;letter-spacing:1.4px;color:#9db8a8;margin-bottom:6px;text-transform:uppercase;text-align:left}
+.scene-bar span{display:block;height:8px;border-radius:5px;background:rgba(255,255,255,.12);overflow:hidden}
+.scene-bar span i{display:block;height:100%;width:34%;border-radius:5px;background:linear-gradient(90deg,#ff4d6d,#ff8a3c)}
+@media (prefers-reduced-motion:reduce){.scene-badge{animation:none}}
+</style>
 </head>
 <body style="background-color: rgb(88, 36, 16)">
 
@@ -69,6 +92,26 @@
     </div>
   </section>
 
+  <!-- WAHRZEICHEN (neu) -->
+  <section class="panel" data-label="Wahrzeichen" data-screen-label="Wahrzeichen · Besetze reale Orte">
+    <div class="split">
+      <div class="col-media" data-reveal style="--i:1">
+        <div class="phone"><div class="phone__screen">
+          <div class="scene">
+            <div class="scene-star">⭐</div>
+            <div class="scene-chip">Stadtpark-Denkmal</div>
+            <div class="scene-chip" style="color:#cdd9d2;border-color:rgba(255,255,255,.18)">Nähern: 50&nbsp;m</div>
+          </div>
+        </div></div>
+      </div>
+      <div class="col-text">
+        <p class="kicker" data-reveal style="--i:0"><span class="idx">03</span>&nbsp;Wahrzeichen</p>
+        <h2 class="title" data-reveal style="--i:1">Besetze<br /><span class="gold">reale Orte</span></h2>
+        <p class="lead" data-reveal style="--i:2">Denkmäler, Parks, Aussichtspunkte: Lauf echte Wahrzeichen deiner Stadt an und sammle sie als Trophäen in deinem Revier.</p>
+      </div>
+    </div>
+  </section>
+
   <!-- 04 — TRACKING -->
   <section class="panel" data-label="Tracking" data-screen-label="04 · Jeder Kilometer zählt">
     <div class="split">
@@ -78,7 +121,7 @@
       <div class="col-text">
         <p class="kicker" data-reveal style="--i:0"><span class="idx">03</span>&nbsp;Tracking</p>
         <h2 class="title" data-reveal style="--i:1">Jeder<br /><span class="accent">Kilometer zählt</span></h2>
-        <p class="lead" data-reveal style="--i:2">Distanz, Zeit, Pace und Wochenziel — dein Lauf wird live getrackt und direkt in Punkte verwandelt.</p>
+        <p class="lead" data-reveal style="--i:2">Distanz, Zeit, Pace und Wochenziel — live getrackt und direkt in Punkte verwandelt. Und du läufst mit dem, was du liebst: <strong>Garmin-</strong> und <strong>Strava-Import</strong> inklusive.</p>
       </div>
     </div>
   </section>
@@ -93,6 +136,26 @@
         <p class="kicker" data-reveal style="--i:0"><span class="idx">04</span>&nbsp;Erobern</p>
         <h2 class="title" data-reveal style="--i:1">Erobere<br /><span class="accent">&amp; raide Reviere</span></h2>
         <p class="lead" data-reveal style="--i:2">Schnapp dir fremde Gebiete, starte Raids und verteidige, was dir gehört. Am Ende entscheidet deine Stärke.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- THE BREACH (neu) -->
+  <section class="panel panel--alt" data-label="Breach" data-screen-label="The Breach · Verteidige dein Revier">
+    <div class="split split--rev">
+      <div class="col-media" data-reveal style="--i:1">
+        <div class="phone"><div class="phone__screen">
+          <div class="scene">
+            <div class="scene-badge">⚔️</div>
+            <div class="scene-chip scene-chip--red">Invasion · 68&nbsp;%</div>
+            <div class="scene-bar"><b>Verteidigung</b><span><i></i></span></div>
+          </div>
+        </div></div>
+      </div>
+      <div class="col-text">
+        <p class="kicker" data-reveal style="--i:0"><span class="idx">05</span>&nbsp;The&nbsp;Breach</p>
+        <h2 class="title" data-reveal style="--i:1">Die Invasion<br /><span class="accent">kommt</span></h2>
+        <p class="lead" data-reveal style="--i:2">Vernachlässigte Reviere werden angegriffen. Lauf physisch hin, wehr die Invasion ab und rette dein Gebiet — bevor es überrannt wird.</p>
       </div>
     </div>
   </section>
@@ -196,11 +259,11 @@
   </section>
 
   <!-- 13 — CTA -->
-  <section class="panel cta" id="play" data-label="Start" data-screen-label="13 · Bereit zu erobern?">
+  <section class="panel cta" id="play" data-label="Start" data-screen-label="CTA · Beanspruche dein Revier">
     <div class="hero__inner">
       <p class="kicker kicker--center" data-reveal style="--i:0">Saison läuft</p>
-      <h2 class="title" data-reveal style="--i:1">Bereit zu<br /><span class="accent">erobern?</span></h2>
-      <p class="sub" data-reveal style="--i:2">Schnür die Schuhe, starte deinen ersten Lauf und nimm dir deine erste Straße. Die Stadt wartet darauf, erobert zu werden.</p>
+      <h2 class="title" data-reveal style="--i:1">Beanspruche<br /><span class="accent">dein Revier</span></h2>
+      <p class="sub" data-reveal style="--i:2" id="ctaSub">Schnür die Schuhe, starte deinen ersten Lauf und nimm dir deine erste Straße. Die Stadt wartet darauf, erobert zu werden.</p>
       <div class="cta-actions" data-reveal style="--i:3">
         <a class="btn btn--primary" href="#"><i class="fa-solid fa-play"></i>&nbsp;Jetzt spielen</a>
         <a class="btn btn--ghost" href="#" id="toTop"><i class="fa-solid fa-arrow-up"></i>&nbsp;Nochmal ansehen</a>
@@ -214,6 +277,42 @@
 <script>
 (function () {
   const deck = document.getElementById('deck');
+  const params = new URLSearchParams(location.search);
+
+  /* ── Kurzmodus (?mode=short): Onboarding zeigt nur die emotionalen
+     Kern-Panels in Story-Reihenfolge (Hook → Konflikt → Stolz → Ease →
+     Aufstieg → CTA). Die Langversion bleibt über Hilfe→PROMO erreichbar. ── */
+  if (params.get('mode') === 'short') {
+    const order = ['Hero', 'Breach', 'Wahrzeichen', 'Tracking', 'Rangliste', 'Start'];
+    const byLabel = {};
+    deck.querySelectorAll('.panel').forEach(p => { byLabel[p.dataset.label] = p; });
+    deck.querySelectorAll('.panel').forEach(p => { if (!order.includes(p.dataset.label)) p.remove(); });
+    order.forEach(l => { if (byLabel[l]) deck.appendChild(byLabel[l]); });
+  }
+  /* Hintergrund-/Seiten-Wechsel und Kicker-Nummern nach evtl. Umbau neu
+     verteilen, damit beide Modi sauber alternieren und durchnummeriert sind. */
+  (function normalize() {
+    let k = 0, n = 0;
+    deck.querySelectorAll('.panel').forEach(p => {
+      const idx = p.querySelector('.kicker .idx');
+      if (idx) { n++; idx.textContent = String(n).padStart(2, '0'); }
+      if (p.classList.contains('hero') || p.classList.contains('cta')) return;
+      const alt = k % 2 === 1;
+      p.classList.toggle('panel--alt', alt);
+      const sp = p.querySelector('.split'); if (sp) sp.classList.toggle('split--rev', alt);
+      k++;
+    });
+  })();
+
+  /* ── Stadt-Personalisierung (?city=Berlin): "Berlin wartet auf dich" ── */
+  const city = (params.get('city') || '').trim().slice(0, 40);
+  if (city) {
+    const heroSub = document.querySelector('.hero .sub');
+    if (heroSub) heroSub.textContent = city + ' wartet auf dich. ' + heroSub.textContent;
+    const ctaSub = document.getElementById('ctaSub');
+    if (ctaSub) ctaSub.textContent = 'Schnür die Schuhe, starte deinen ersten Lauf und nimm dir deine erste Straße. ' + city + ' wartet darauf, erobert zu werden.';
+  }
+
   const panels = Array.from(deck.querySelectorAll('.panel'));
   const topbar = document.getElementById('topbar');
   const dotsWrap = document.getElementById('dots');
@@ -252,6 +351,12 @@
     curIdx = activeIdx;
     dots.forEach((d, di) => d.classList.toggle('active', di === activeIdx));
     const ap = panels[activeIdx];
+    /* Haptik beim Breach-Panel (einmalig): verstärkt die Bedrohung.
+       iOS/WKWebView kennt navigator.vibrate nicht -> dort stiller No-Op. */
+    if (ap.dataset.label === 'Breach' && !window._breachBuzzed) {
+      window._breachBuzzed = true;
+      try { navigator.vibrate?.([40, 70, 40]); } catch (e) {}
+    }
     const dark = ap.classList.contains('hero') || ap.classList.contains('cta');
     topbar.classList.toggle('on-dark', dark);
     topbar.classList.toggle('solid', !dark);

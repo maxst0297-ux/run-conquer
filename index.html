@@ -1615,7 +1615,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v64';
+const APP_VERSION='v65';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -1902,6 +1902,18 @@ function restartBgWatch(){
       console.warn('GPS:',e.code,e.message);
     },{enableHighAccuracy:true,maximumAge:0,timeout:30000});
   }
+}
+/* Stadtname einmalig ermitteln (Nominatim, best-effort) — personalisiert die
+   Promo ("Berlin wartet auf dich"). Wird dauerhaft gecacht, nie blockierend. */
+async function cacheCityOnce(lat,lng){
+  if(localStorage.getItem('rc_city'))return;
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=10&accept-language=de`);
+    if(!r.ok)return;
+    const a=(await r.json()).address||{};
+    const c=a.city||a.town||a.village||a.municipality||'';
+    if(c)localStorage.setItem('rc_city',String(c).slice(0,40));
+  }catch(e){}
 }
 function fmtDist(m){return m<1000?Math.round(m)+' m':(m/1000).toFixed(2)+' km'}
 function fmtDecay(mins){const d=Math.floor(mins/1440),h=Math.floor((mins%1440)/60);return d>0?`${d}d ${h}h`:h>0?`${h}h`:'< 1h'}
@@ -2773,13 +2785,15 @@ function showOnboardingOverlay(){
   };
   const _msgHandler=e=>{if(e.data==='promo:done')goToStep1();};
   window.addEventListener('message',_msgHandler);
-  _fallbackTimer=setTimeout(goToStep1,70000);
+  _fallbackTimer=setTimeout(goToStep1,45000); /* Kurzversion: 6 Panels × 5 s + Puffer */
   const render=()=>{
     if(step===0){
       /* Safe-Area: viewport-fit=cover zieht Inhalte sonst unter Statusleiste/
-         Dynamic Island — Promo-iframe deshalb unterhalb der Insets beginnen. */
+         Dynamic Island — Promo-iframe deshalb unterhalb der Insets beginnen.
+         Onboarding = Kurzversion (6 Story-Panels); Langversion in Hilfe→PROMO. */
+      const _pcity=encodeURIComponent(localStorage.getItem('rc_city')||'');
       ov.innerHTML=`<div style="position:relative;width:100%;height:100%;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);box-sizing:border-box">
-        <iframe src="/videos/Promo%20Slide/Promo%20Scroll.html" style="width:100%;height:100%;border:none;display:block"></iframe>
+        <iframe src="/videos/Promo%20Slide/Promo%20Scroll.html?mode=short${_pcity?'&city='+_pcity:''}" style="width:100%;height:100%;border:none;display:block"></iframe>
         <button id="obSkipBtn" style="position:absolute;top:calc(env(safe-area-inset-top,0px) + 14px);right:20px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.75);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:7px 18px;font-size:.72rem;letter-spacing:1px;cursor:pointer;font-family:'Poppins',sans-serif;backdrop-filter:blur(8px);-webkit-user-select:none;user-select:none;touch-action:manipulation">ÜBERSPRINGEN ›</button>
       </div>`;
     }
@@ -3687,6 +3701,7 @@ function onGPS(pos){
   /* Marker immer aktualisieren – auch bei Pause und außerhalb eines Laufs */
   if(userMarker)userMarker.setLatLng(pt);
   else if(mapL)userMarker=L.marker(pt,{icon:mkUserIcon()}).addTo(mapL);
+  if(!window._cityTried&&acc<500){window._cityTried=true;cacheCityOnce(lat,lng);}
   if(!isRunning||isPaused)return; /* Karte frei beweglich – kein Auto-Zentrieren */
   mapL.setView(pt,mapL.getZoom());
   if(acc>150)return; /* skip path recording for very inaccurate fixes */
@@ -5207,7 +5222,8 @@ function renderSettingsTab(tab){
       close.style.cssText='position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);right:16px;background:#fff2;color:#fff;border:none;border-radius:50%;width:38px;height:38px;font-size:1.1rem;cursor:pointer;z-index:1';
       close.onclick=()=>ov.remove();
       const fr=document.createElement('iframe');
-      fr.src='/videos/Promo%20Slide/Promo%20Scroll.html';
+      const _hcity=encodeURIComponent(localStorage.getItem('rc_city')||'');
+      fr.src='/videos/Promo%20Slide/Promo%20Scroll.html'+(_hcity?'?city='+_hcity:'');
       fr.style.cssText='width:100%;height:100%;border:none;display:block';
       ov.appendChild(fr);
       ov.appendChild(close);
