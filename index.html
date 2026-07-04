@@ -1615,7 +1615,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v63';
+const APP_VERSION='v64';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2768,7 +2768,7 @@ function showOnboardingOverlay(){
     step=1;
     window.removeEventListener('message',_msgHandler);
     clearTimeout(_fallbackTimer);
-    ov.style.cssText='position:fixed;inset:0;z-index:9800;background:rgba(0,0,0,.95);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;overflow-y:auto';
+    ov.style.cssText='position:fixed;inset:0;z-index:9800;background:rgba(0,0,0,.95);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:calc(env(safe-area-inset-top,0px) + 20px) 20px calc(env(safe-area-inset-bottom,0px) + 20px);box-sizing:border-box;overflow-y:auto';
     render();
   };
   const _msgHandler=e=>{if(e.data==='promo:done')goToStep1();};
@@ -2776,9 +2776,11 @@ function showOnboardingOverlay(){
   _fallbackTimer=setTimeout(goToStep1,70000);
   const render=()=>{
     if(step===0){
-      ov.innerHTML=`<div style="position:relative;width:100%;height:100%">
+      /* Safe-Area: viewport-fit=cover zieht Inhalte sonst unter Statusleiste/
+         Dynamic Island — Promo-iframe deshalb unterhalb der Insets beginnen. */
+      ov.innerHTML=`<div style="position:relative;width:100%;height:100%;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);box-sizing:border-box">
         <iframe src="/videos/Promo%20Slide/Promo%20Scroll.html" style="width:100%;height:100%;border:none;display:block"></iframe>
-        <button id="obSkipBtn" style="position:absolute;top:20px;right:20px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.75);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:7px 18px;font-size:.72rem;letter-spacing:1px;cursor:pointer;font-family:'Poppins',sans-serif;backdrop-filter:blur(8px);-webkit-user-select:none;user-select:none;touch-action:manipulation">ÜBERSPRINGEN ›</button>
+        <button id="obSkipBtn" style="position:absolute;top:calc(env(safe-area-inset-top,0px) + 14px);right:20px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.75);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:7px 18px;font-size:.72rem;letter-spacing:1px;cursor:pointer;font-family:'Poppins',sans-serif;backdrop-filter:blur(8px);-webkit-user-select:none;user-select:none;touch-action:manipulation">ÜBERSPRINGEN ›</button>
       </div>`;
     }
     if(step===1){
@@ -5198,10 +5200,11 @@ function renderSettingsTab(tab){
     if(userId){localStorage.setItem('rc_hilfe_seen_'+userId,'1');updateSettingsBadge();}
     document.getElementById('promoPlayBtn')?.addEventListener('click',()=>{
       const ov=document.createElement('div');
-      ov.style.cssText='position:fixed;inset:0;z-index:99999;background:#000;display:flex;align-items:center;justify-content:center';
+      /* Safe-Area beachten, sonst liegt die Promo unter Uhr/Notch/Akku */
+      ov.style.cssText='position:fixed;inset:0;z-index:99999;background:#000;display:flex;align-items:center;justify-content:center;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);box-sizing:border-box';
       const close=document.createElement('button');
       close.innerHTML='<i class="fas fa-times"></i>';
-      close.style.cssText='position:absolute;top:16px;right:16px;background:#fff2;color:#fff;border:none;border-radius:50%;width:38px;height:38px;font-size:1.1rem;cursor:pointer;z-index:1';
+      close.style.cssText='position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);right:16px;background:#fff2;color:#fff;border:none;border-radius:50%;width:38px;height:38px;font-size:1.1rem;cursor:pointer;z-index:1';
       close.onclick=()=>ov.remove();
       const fr=document.createElement('iframe');
       fr.src='/videos/Promo%20Slide/Promo%20Scroll.html';
