@@ -285,6 +285,8 @@ declare
   v_ov_area     float8;
   v_overlap_frac float8;
   v_km_through  float8;
+  v_cover_frac  float8;
+  v_cover_dmg   float8;
   v_dmg         float8;
   v_crit        boolean;
   v_last_atk    float8;
@@ -379,6 +381,11 @@ begin
     v_ov_area := coalesce(ST_Area(v_ov_geom::geography), 0);
     v_overlap_frac := least(1, v_ov_area / greatest(v_area, 1));
     v_km_through := (p_distance_m/1000.0) * v_overlap_frac;
+    -- Deckungsgrad: WIE VIEL DES GEGNER-Gebiets liegt in deinem Claim. Umrundest
+    -- (schließt du es ein) oder überdeckst du es, geht das gegen 1 -- unabhängig
+    -- davon, wie groß dein eigenes Polygon ist. Das ist die Basis dafür, dass
+    -- „umrunden/durchqueren" das GANZE Gebiet kippt, nicht nur ein Randstreifen.
+    v_cover_frac := least(1, v_ov_area / greatest(t.area_m2, 1));
 
     if t.owner = v_user then
       -- Eigenes Gebiet → Reparatur
@@ -413,8 +420,17 @@ begin
         continue;
       end if;
 
-      -- Feindgebiet → Angriff
-      v_dmg := v_km_through * c_str_dmg_per_km * v_atk_bonus;
+      -- Feindgebiet → Angriff. Zwei Schadensquellen, es zählt die STÄRKERE:
+      --  1) Durchlauf-Schaden: proportional zur tatsächlich im Gebiet gelaufenen
+      --     Strecke (ein gerader Durchgang schwächt anteilig).
+      --  2) Deckungs-Schaden: proportional dazu, wie viel des Gebiets dein Claim
+      --     abdeckt. Volle Deckung (umrunden/überdecken) = c_max_def Schaden ->
+      --     nimmt selbst ein voll verteidigtes Gebiet ein; Teildeckung schwächt
+      --     anteilig, und ein bereits schwaches Gebiet kippt schon bei wenig.
+      -- So erfüllt sich der Wunsch „umrunden/genug Schaden -> ganzes Gebiet wird
+      -- deins", ohne dass ein bloßer Randkontakt die Verteidigung wertlos macht.
+      v_cover_dmg := v_cover_frac * c_max_def * v_atk_bonus;
+      v_dmg := greatest(v_km_through * c_str_dmg_per_km * v_atk_bonus, v_cover_dmg);
       v_crit := random() < c_crit_chance;
       if v_crit then v_dmg := v_dmg * c_crit_mul; end if;
       v_dmg := least(v_decayed, v_dmg);
