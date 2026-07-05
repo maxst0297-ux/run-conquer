@@ -30,7 +30,7 @@
   --border:rgba(255,255,255,.09);
   --primary:#E6FF55; --primary-rgb:230,255,85;
   --red:#FF4D6D; --green:#10B981; --cyan:#00D4FF;
-  --muted:#5A8A6E; --text:#EEF7F2;
+  --muted:#93BBA4; --text:#EEF7F2;
   --gold:#FFD700; --gold-rgb:255,215,0;
   --radius:16px;
   --nav-h:72px; --hdr-h:64px;
@@ -53,21 +53,21 @@ body.theme-stone {
   --border:rgba(54,163,114,.18);
   --primary:#36A372; --primary-rgb:54,163,114;
   --red:#CC3355; --green:#36A372; --cyan:#0088BB;
-  --muted:#8A7E79; --text:#1A2E25;
+  --muted:#6E635D; --text:#1A2E25;
 }
 body.theme-pine {
   --bg:#455B51; --bg2:#3c5148; --card:#4e6459;
   --border:rgba(255,240,164,.13);
   --primary:#FFF0A4; --primary-rgb:255,240,164;
   --red:#FF6B7A; --green:#7ECBA1; --cyan:#7DD3E8;
-  --muted:#8AAB99; --text:#F0EBE9;
+  --muted:#CCE0D6; --text:#F0EBE9;
 }
 body.theme-petrol {
   --bg:#F4E9D4; --bg2:#EDE0C4; --card:#EDE0C4;
   --border:rgba(50,101,134,.16);
   --primary:#326586; --primary-rgb:50,101,134;
   --red:#C03355; --green:#2D7A5E; --cyan:#2277AA;
-  --muted:#8A7F70; --text:#1A2832;
+  --muted:#685E50; --text:#1A2832;
 }
 html{height:-webkit-fill-available;background:var(--bg)}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -1629,7 +1629,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v70';
+const APP_VERSION='v71';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -1754,7 +1754,7 @@ async function loadGlobalTerritories(){
     return true;
   }catch(e){logError('territory_load',e);return false;}
 }
-let territoriesChannel=null;
+let territoriesChannel=null,dmChannel=null;
 /* Realtime-Sync: das rohe postgres_changes-Payload liefert PostGIS-Geometrie
    als WKB statt GeoJSON -- statt das clientseitig zu parsen, wird bei jeder
    Änderung einfach der autoritative Stand per RPC neu geladen (debounced
@@ -1767,6 +1767,28 @@ function subscribeTerritories(){
       window._terrSyncTimer=setTimeout(async()=>{
         if(await loadGlobalTerritories()){updateUI();/* updateUI() rendert Gebiete bereits */}
       },400);
+    })
+    .subscribe();
+}
+/* Realtime für eingehende Direktnachrichten: eine zentrale Subscription auf
+   INSERT in direct_messages, gefiltert auf den eigenen Nutzer. Aktualisiert den
+   Ungelesen-Badge; ist der Chat mit dem Absender offen, wird die Nachricht live
+   nachgeladen (Reload dedupliziert gegen den Initial-Load) und als gelesen
+   markiert. Cleanup unnötig: Logout macht location.reload(). */
+function subscribeDMs(){
+  if(!sb||dmChannel||!userId)return;
+  dmChannel=sb.channel('dm-inbox-'+userId)
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'direct_messages',filter:'to_uid=eq.'+userId},payload=>{
+      const m=payload.new||{};
+      if(activeDmThread&&activeDmThread.uid===m.from_uid){
+        localReadTs[m.from_uid]=Date.now()+2000;persistDmRead();
+        loadDmMessages(m.from_uid);
+        try{sb.from('direct_messages').update({read_at:new Date().toISOString()}).eq('id',m.id).then(()=>updateDmBadge());}catch(e){updateDmBadge();}
+      }else{
+        updateDmBadge();
+        const ib=$('inboxModal');if(!activeDmThread&&ib&&ib.style.display==='flex')loadDmConvList();
+        toast('✉️ Neue Nachricht von '+esc(m.from_name||'jemandem'));
+      }
     })
     .subscribe();
 }
@@ -5962,7 +5984,7 @@ async function launchAppFromSession(user){
       await loadGlobalTerritories();
       subscribeTerritories();
       if(territories.filter(t=>t.owner!==userId).length===0){await genRivals();}
-      updateUI();processSyncQueue();loadFollowState();updateDmBadge();updateSettingsBadge();
+      updateUI();processSyncQueue();loadFollowState();updateDmBadge();subscribeDMs();updateSettingsBadge();
       setTimeout(checkOrphanedRun,1100);
       if(isAdmin)setTimeout(showInboxIfAdmin,800);
     },150);
