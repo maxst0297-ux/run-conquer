@@ -1629,7 +1629,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v71';
+const APP_VERSION='v72';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -6226,6 +6226,17 @@ function renderAchHexGrid(){
 function openDrawer(tab){$('drawerOverlay').classList.add('open');drawer.style.display='flex';setTimeout(()=>drawer.classList.add('open'),10);if(tab)currentTab=tab;renderDrawer();}
 function openDrawerTab(tab){openDrawer(tab);}
 window.openDrawer=openDrawer;
+/* Inline-onclick-Handler im HTML laufen im GLOBALEN Scope, die App-Funktionen
+   liegen aber in dieser IIFE. Die von onclick="…" referenzierten Funktionen
+   müssen daher explizit auf window liegen, sonst tun die Buttons nichts
+   ('X is not defined'). Betraf: Empty-State-Navigation, Boost-Info und den
+   Share-Card-Editor. */
+window.setView=setView;
+window.showBoostInfo=showBoostInfo;
+window.scToggle=scToggle;
+window.scSetAccent=scSetAccent;
+window.exportShareCard=exportShareCard;
+window.closeShareCard=closeShareCard;
 function closeDrawer(){$('drawerOverlay').classList.remove('open');drawer.classList.remove('open');setTimeout(()=>{if(!drawer.classList.contains('open'))drawer.style.display='none'},350)}
 function renderDrawer(){
   const tabs={
