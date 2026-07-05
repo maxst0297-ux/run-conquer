@@ -1,0 +1,28 @@
+name: Smoke-Test
+
+# Fängt kaputte Pushes ab, bevor Vercel/Capacitor sie ausliefern:
+# Syntax aller Inline-Scripts, api/-Handler, Asset-Referenzen + Headless-Boot.
+on:
+  push:
+    branches: [main, claude/youthful-keller-KFHrk]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Playwright-Chromium für Headless-Boot
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+
+      - name: Smoke-Test
+        run: node scripts/smoke-test.js

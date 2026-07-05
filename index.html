@@ -1399,6 +1399,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <button class="stab-btn active" data-atab="users">👥 Sportler</button>
       <button class="stab-btn" data-atab="support">📨 Support</button>
       <button class="stab-btn" data-atab="charts">📊 Charts</button>
+      <button class="stab-btn" data-atab="system">🩺 System</button>
     </div>
     <div id="adminTabBody" style="min-height:200px;max-height:52vh;overflow-y:auto"></div>
     <button class="btn" id="closeAdminBtn2" style="width:100%;margin-top:12px">Schließen</button>
@@ -1615,7 +1616,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v65';
+const APP_VERSION='v66';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -4494,7 +4495,7 @@ async function renderFriends(){
   const el=$('friendsList');if(!el)return;
   const addRow=`<div style="display:flex;gap:8px;margin-bottom:10px"><input type="text" id="friendSearchInput" class="modal-input" placeholder="Name suchen…" style="flex:1;font-size:.8rem"><button class="btn btn-p" id="friendSearchBtn" style="padding:6px 12px;flex-shrink:0"><i class="fas fa-search"></i></button></div>`;
   let html=addRow;
-  if(friends.length===0){html+='<div style="color:var(--muted);font-size:.78rem;padding:6px 0">Noch keine Freunde. Suche nach Spieler-Namen.</div>';}
+  if(friends.length===0){html+=emptyStateHtml('fa-user-friends','Noch keine Freunde — gemeinsam läuft es sich besser.<br>Such oben nach einem Namen oder stöbere durch die Spieler.','🔍 Spieler entdecken','rcGoDiscover()');}
   else{html+='<div style="display:flex;flex-direction:column;gap:6px" id="friendsRankList"><div style="padding:8px;text-align:center;color:var(--muted);font-size:.75rem">⏳ Lade…</div></div>';}
   el.innerHTML=html;
   document.getElementById('friendSearchBtn')?.addEventListener('click',async()=>{
@@ -4516,7 +4517,7 @@ async function renderClubWars(){
   const el=$('clubWarsList');if(!el)return;
   const allClubs=JSON.parse(localStorage.getItem('rc_clubs_db')||'{}');
   const clubCodes=Object.keys(allClubs);
-  if(!clubCodes.length){el.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:6px">Noch keine Clubs bekannt. Gründe oder tritt einem Club bei.</div>';return;}
+  if(!clubCodes.length){el.innerHTML=emptyStateHtml('fa-shield-alt','Noch keine Club-Duelle.<br>Gründe deinen eigenen Club oder tritt einem bei — dann zählt jede Woche.','🛡️ Club gründen / beitreten','rcGoClub()');return;}
   el.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:6px">⏳ Lade Club-Daten…</div>';
   try{
     const{data}=await sb.from('profiles').select('player_name,points,club_code').in('club_code',clubCodes.slice(0,20));
@@ -4875,10 +4876,24 @@ async function renderLeaderboard(){
 }
 
 /* ── RICH SOCIAL FEED ── */
+/* Empty-States mit Handlung: leere Listen sind für Neu-Nutzer eine Sackgasse —
+   jeder Leerzustand bekommt einen Knopf zur nächsten sinnvollen Aktion. */
+window.rcGoDiscover=function(){
+  setView('community');
+  setTimeout(()=>{const c=$('playerDiscoveryCard');if(c&&c.style.display!=='none')c.scrollIntoView({behavior:'smooth',block:'center'});else $('friendsList')?.scrollIntoView({behavior:'smooth',block:'center'});},350);
+};
+window.rcGoClub=function(){
+  closeAllModals();$('settingsModal').style.display='flex';renderSettingsTab('club');
+  document.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.stab==='club'));
+};
+function emptyStateHtml(icon,text,btnLabel,onclick){
+  return `<div class="empty-state" style="padding:22px 14px"><i class="fas ${icon}"></i><p>${text}</p>`+
+    (btnLabel?`<button class="btn btn-p" style="margin-top:12px;width:auto;padding:8px 18px;font-size:.75rem" onclick="${onclick}">${btnLabel}</button>`:'')+`</div>`;
+}
 function renderSocialFeed(){
   const now=Date.now();
   if(!followedUsers.length){
-    $('followerList').innerHTML=`<div class="list-row" style="justify-content:center;color:var(--muted);font-size:.8rem">Folge Spielern in der Rangliste, um ihre Eroberungen hier zu sehen</div>`;
+    $('followerList').innerHTML=emptyStateHtml('fa-bolt','Noch ganz ruhig hier.<br>Folge anderen Läufern, um ihre Eroberungen live zu sehen.','🔍 Spieler entdecken','rcGoDiscover()');
     return;
   }
   const followedIds=new Set(followedUsers.map(f=>f.uid));
@@ -5284,7 +5299,54 @@ function renderAdminTab(tab){
   } else if(tab==='charts'){
     body.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px"><div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center"><canvas id="adminWeekChart" height="80"></canvas><div style="font-size:.6rem;color:var(--muted);margin-top:4px">Wochenaktivität</div></div><div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center"><canvas id="adminTerrChart" height="80"></canvas><div style="font-size:.6rem;color:var(--muted);margin-top:4px">Gebiete</div></div></div><div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px;margin-bottom:8px"><canvas id="adminRadarChart" height="110"></canvas><div style="font-size:.6rem;color:var(--muted);text-align:center;margin-top:4px">Fitness-Radar</div></div><div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px"><canvas id="adminLineChart" height="70"></canvas><div style="font-size:.6rem;color:var(--muted);text-align:center;margin-top:4px">30-Tage Aktivität</div></div>`;
     setTimeout(initAdminCharts,60);
+  } else if(tab==='system'){
+    body.innerHTML='<div style="padding:12px;color:var(--muted);font-size:.8rem;text-align:center">⏳ Prüfe Server…</div>';
+    loadAdminSystem();
   }
+}
+/* ── Admin: Server-Selbstcheck + Fehler-Logs ──
+   Prüft, ob die Supabase-Migrationen wirklich installiert sind (fehlende
+   Tabellen/RPCs fallen sonst NICHT auf: der Client fängt Fehler still ab)
+   und zeigt die letzten app_logs-Einträge echter Nutzer. */
+function _sbMissing(err){const s=((err&&(err.message||''))+' '+(err&&(err.code||''))).toLowerCase();return /does not exist|could not find|pgrst202|pgrst205|42p01|schema cache/.test(s);}
+async function loadAdminSystem(){
+  const body=$('adminTabBody');if(!body||!sb)return;
+  const checks=[
+    {name:'app_logs (Fehler-Logging)',sql:'supabase_logs.sql',run:async()=>{const{count,error}=await sb.from('app_logs').select('id',{count:'exact',head:true});return{error,info:count!=null?count+' Einträge':''};}},
+    {name:'landmark_cache (Overpass-Cache)',sql:'supabase_landmarks.sql',run:async()=>{const{error}=await sb.from('landmark_cache').select('tile_key',{head:true});return{error,info:''};}},
+    {name:'territory_breaches (Invasionen)',sql:'supabase_breaches.sql',run:async()=>{const{count,error}=await sb.from('territory_breaches').select('id',{count:'exact',head:true});return{error,info:count!=null?count+' eigene':''};}},
+    {name:'rc_sync_breaches()',sql:'supabase_breaches.sql',run:async()=>{const{error}=await sb.rpc('rc_sync_breaches');return{error,info:''};}},
+    {name:'rc_repel_breach()',sql:'supabase_breaches.sql',run:async()=>{const{error}=await sb.rpc('rc_repel_breach',{p_breach_id:'00000000-0000-0000-0000-000000000000',p_lat:0,p_lng:0});return{error:(error&&_sbMissing(error))?error:null,info:''};}},
+  ];
+  const rows=[];
+  for(const c of checks){
+    try{
+      const{error,info}=await c.run();
+      if(error&&_sbMissing(error))rows.push({name:c.name,ok:false,detail:'FEHLT → '+c.sql+' im Supabase-SQL-Editor ausführen'});
+      else if(error)rows.push({name:c.name,ok:true,detail:'installiert (Hinweis: '+esc((error.message||'').slice(0,60))+')'});
+      else rows.push({name:c.name,ok:true,detail:'installiert'+(info?' · '+info:'')});
+    }catch(e){rows.push({name:c.name,ok:false,detail:'Prüfung fehlgeschlagen: '+esc((e.message||'').slice(0,60))});}
+  }
+  let logsHtml='';
+  try{
+    const{data,error}=await sb.from('app_logs').select('created_at,level,context,message,app_version').order('created_at',{ascending:false}).limit(30);
+    if(error)logsHtml='<div style="color:var(--muted);font-size:.72rem;padding:8px 0">Logs nicht lesbar ('+esc((error.message||'').slice(0,60))+')</div>';
+    else if(!data.length)logsHtml='<div style="color:var(--green);font-size:.75rem;padding:8px 0">✅ Keine Fehler geloggt — sehr gut.</div>';
+    else{
+      const byCtx={};data.forEach(l=>{byCtx[l.context||'?']=(byCtx[l.context||'?']||0)+1;});
+      logsHtml='<div style="font-size:.63rem;color:var(--muted);margin-bottom:6px">Häufigkeit: '+Object.entries(byCtx).map(([k,v])=>esc(k)+' ×'+v).join(' · ')+'</div>'
+        +data.map(l=>`<div style="padding:7px 0;border-bottom:1px solid var(--border)"><div style="display:flex;gap:6px;font-size:.62rem;color:var(--muted)"><b style="color:${l.level==='error'?'var(--red)':'var(--gold)'}">${esc(l.level)}</b><span>${esc(l.context||'—')}</span><span style="margin-left:auto">${new Date(l.created_at).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} · ${esc(l.app_version||'')}</span></div><div style="font-size:.72rem;word-break:break-word">${esc((l.message||'').slice(0,200))}</div></div>`).join('');
+    }
+  }catch(e){logsHtml='<div style="color:var(--muted);font-size:.72rem">Logs nicht verfügbar</div>';}
+  body.innerHTML=
+    '<div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Server-Migrationen</div>'
+    +rows.map(r=>`<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border)"><span>${r.ok?'✅':'❌'}</span><div style="flex:1;min-width:0"><div style="font-size:.76rem;font-weight:600">${esc(r.name)}</div><div style="font-size:.63rem;color:${r.ok?'var(--muted)':'var(--red)'}">${r.detail}</div></div></div>`).join('')
+    +'<div style="display:flex;align-items:center;gap:8px;margin:14px 0 6px"><div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Fehler-Logs (letzte 30)</div><button class="btn" id="adminLogPrune" style="margin-left:auto;width:auto;padding:4px 10px;font-size:.62rem">🧹 &gt;30 Tage löschen</button></div>'
+    +logsHtml;
+  document.getElementById('adminLogPrune')?.addEventListener('click',async()=>{
+    try{const{data,error}=await sb.rpc('rc_prune_app_logs',{older_than_days:30});if(error)throw error;toast('🧹 '+(data??0)+' alte Logs gelöscht');loadAdminSystem();}
+    catch(e){toast('Aufräumen fehlgeschlagen');}
+  });
 }
 async function loadAdminUsers(){
   const body=$('adminTabBody');if(!body)return;
