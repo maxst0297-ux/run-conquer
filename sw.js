@@ -1,4 +1,4 @@
-const CACHE_NAME = 'runconquer-v67';
+const CACHE_NAME = 'runconquer-v68';
 const PRECACHE = ['/', '/index.html', '/manifest.json', '/bg-poster.jpg'];
 
 self.addEventListener('install', e => {

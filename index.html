@@ -1531,7 +1531,7 @@ function getLvlProg(pts){const lv=getLevel(pts),cur=CFG.LVL_XP[lv-1]||0,nx=CFG.L
 /* STATE */
 let mapL,userMarker,pathLayer,terrLayer,heatLayer,landmarkLayer,heatPts=[];
 let isRunning=false,watchId=null,bgWatchId=null,bgGeoWatcher=null;
-let bgFixSeen=false,bgFallbackTimer=null;
+let accCircle=null,_gpsCentered=false;
 const isNative=typeof window.Capacitor!=='undefined'&&!!window.Capacitor.isNativePlatform?.();
 /* Serverless-API & Web-Seiten laufen auf Vercel. Im nativen Bundle
    (capacitor://localhost) existieren die /api/-Routen NICHT — relative
@@ -1598,7 +1598,13 @@ const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 const sb=window.supabase?.createClient(SB_URL,SB_KEY);
 let sbUserId=null,isAdmin=false;
 let followedUsers=[],followIncoming=[],followOutgoing=[],activeDmThread=null;
-let archivedConvs=[],archivedSupportIds=new Set(),localReadConvs=new Set();
+let archivedConvs=[],archivedSupportIds=new Set();
+/* Lese-Zeitstempel pro Konversation (uid -> ms). Persistent, damit gelesene
+   Chats auch nach Reload ausgrauen, selbst wenn der Server-read_at-Update
+   fehlschlägt; neue Nachrichten (created_at > Stempel) gelten wieder als
+   ungelesen. */
+let localReadTs={};
+function persistDmRead(){try{localStorage.setItem('rc_dmread_'+userId,JSON.stringify(localReadTs));}catch(e){}}
 let supportVisitTs=0;
 /* Muss VOR initSupabase()/getSession() registriert werden: supabase-js wartet beim
    ersten getSession()-Aufruf intern auf die URL-Auswertung (Recovery-Link-Tokens) und
@@ -1616,7 +1622,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v67';
+const APP_VERSION='v68';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -1872,37 +1878,36 @@ function stopKeepAlive(){
   try{silentSrc?.stop();silentCtx?.close();silentSrc=null;silentCtx=null;}catch(e){}
   clearInterval(silentHeartbeat);silentHeartbeat=null;
 }
+/* Durchgehender Vordergrund-GPS-Watch (Browser-Geolocation). Läuft auf ALLEN
+   Plattformen — Web, native WKWebView-Vordergrund UND iOS-Simulator (wo das
+   native Hintergrund-Plugin keine simulierten Fixes liefert). maximumAge:0 =
+   nie ein zwischengespeicherter, veralteter Fix; enableHighAccuracy = echtes
+   GPS statt WLAN/Funkzelle. Idempotent: startet nur einen Watch. */
+function ensurePersistentGpsWatch(){
+  if(bgWatchId!==null||!navigator.geolocation)return;
+  bgWatchId=navigator.geolocation.watchPosition(onGPS,e=>{
+    if(e.code===1){toast('📍 Standort-Freigabe nötig – bitte in den Einstellungen erlauben');}
+    else console.warn('GPS:',e.code,e.message);
+  },{enableHighAccuracy:true,maximumAge:0,timeout:30000});
+}
+/* Beim Laufstart: Vordergrund-Watch sicherstellen; auf nativen Geräten
+   ZUSÄTZLICH das Hintergrund-Plugin, damit bei gesperrtem Bildschirm weiter
+   aufgezeichnet wird. Beide speisen onGPS(); doppelte Fixes fängt die
+   dt<1s / d<=2m-Logik dort ab. */
 function restartBgWatch(){
+  ensurePersistentGpsWatch();
   if(isNative){
-    if(bgGeoWatcher!==null){BackgroundGeolocation.removeWatcher({id:bgGeoWatcher});bgGeoWatcher=null;}
-    bgFixSeen=false;
-    BackgroundGeolocation.addWatcher({backgroundMessage:'RunConquer – Lauf aktiv',backgroundTitle:'GPS läuft',requestPermissions:true,stale:false,distanceFilter:3},(loc,err)=>{
+    if(bgGeoWatcher!==null){try{BackgroundGeolocation.removeWatcher({id:bgGeoWatcher});}catch(e){}bgGeoWatcher=null;}
+    BackgroundGeolocation.addWatcher({backgroundMessage:'RunConquer – Lauf aktiv',backgroundTitle:'GPS läuft',requestPermissions:true,stale:false,distanceFilter:2},(loc,err)=>{
       if(err){console.warn('BG-GPS:',err);return;}
-      bgFixSeen=true;
-      /* Natives Plugin liefert -> WebView-Fallback wieder abschalten, damit
-         nicht zwei Quellen gleichzeitig in onGPS() schreiben. */
-      if(bgWatchId!==null){try{navigator.geolocation.clearWatch(bgWatchId);}catch(e){}bgWatchId=null;}
       onGPS({coords:{latitude:loc.latitude,longitude:loc.longitude,accuracy:loc.accuracy,speed:loc.speed,altitude:loc.altitude}});
     }).then(id=>{bgGeoWatcher=id;}).catch(e=>console.warn('BG-GPS init:',e));
-    /* Fallback: Liefert das native Plugin keine Fixes (z.B. iOS-Simulator mit
-       simulierter Route – dort funktioniert nur das WebView-GPS), nach kurzer
-       Schonfrist auf navigator.geolocation umschalten, damit der Lauf trotzdem
-       aufgezeichnet wird. Auf echten Geräten kommt der erste BG-Fix in
-       Sekunden -> der Timer läuft dann ins Leere. */
-    clearTimeout(bgFallbackTimer);
-    bgFallbackTimer=setTimeout(()=>{
-      if(bgFixSeen||!isRunning||bgWatchId!==null||!navigator.geolocation)return;
-      console.warn('BG-GPS: keine Fixes nach 6s – WebView-GPS-Fallback aktiv');
-      bgWatchId=navigator.geolocation.watchPosition(onGPS,e=>{
-        console.warn('GPS-Fallback:',e.code,e.message);
-      },{enableHighAccuracy:true,maximumAge:0,timeout:30000});
-    },6000);
-  }else{
-    if(bgWatchId!==null){navigator.geolocation.clearWatch(bgWatchId);bgWatchId=null;}
-    bgWatchId=navigator.geolocation.watchPosition(onGPS,e=>{
-      console.warn('GPS:',e.code,e.message);
-    },{enableHighAccuracy:true,maximumAge:0,timeout:30000});
   }
+}
+/* Hintergrund-Plugin stoppen (Vordergrund-Watch läuft weiter) — entfernt die
+   dauerhafte "GPS läuft"-Benachrichtigung, wenn kein Lauf aktiv ist. */
+function stopBgPlugin(){
+  if(isNative&&bgGeoWatcher!==null){try{BackgroundGeolocation.removeWatcher({id:bgGeoWatcher});}catch(e){}bgGeoWatcher=null;}
 }
 /* Stadtname einmalig ermitteln (Nominatim, best-effort) — personalisiert die
    Promo ("Berlin wartet auf dich"). Wird dauerhaft gecacht, nie blockierend. */
@@ -1970,6 +1975,7 @@ function load(){
   checkEnergyWeekReset();
   archivedConvs=JSON.parse(localStorage.getItem('rc_arch_dm_'+userId)||'[]');
   archivedSupportIds=new Set(JSON.parse(localStorage.getItem('rc_arch_sup_'+userId)||'[]'));
+  try{localReadTs=JSON.parse(localStorage.getItem('rc_dmread_'+userId)||'{}')||{};}catch(e){localReadTs={};}
   supportVisitTs=parseInt(localStorage.getItem('rc_sup_visit_'+userId)||'0');
 }
 const THEME_CLASSES=['theme-stone','theme-citrus','theme-pine','theme-petrol'];
@@ -3327,19 +3333,10 @@ function initMap(){
     }
     loadLandmarks();
   });
-  /* Persistenter GPS-Watcher: nur starten wenn GPS-Einwilligung vorliegt */
-  if(localStorage.getItem('rc_gps_consent')==='1'){
-    if(isNative){
-      if(!bgGeoWatcher)BackgroundGeolocation.addWatcher({backgroundMessage:'RunConquer – Lauf aktiv',backgroundTitle:'GPS läuft',requestPermissions:true,stale:false,distanceFilter:3},(loc,err)=>{
-        if(err){console.warn('BG-GPS:',err);return;}
-        onGPS({coords:{latitude:loc.latitude,longitude:loc.longitude,accuracy:loc.accuracy,speed:loc.speed,altitude:loc.altitude}});
-      }).then(id=>{bgGeoWatcher=id;}).catch(e=>console.warn('BG-GPS init:',e));
-    }else if(navigator.geolocation&&!bgWatchId){
-      bgWatchId=navigator.geolocation.watchPosition(onGPS,e=>{
-        console.warn('GPS-Hintergrund-Fehler:',e.code,e.message);
-      },{enableHighAccuracy:true,maximumAge:2000,timeout:30000});
-    }
-  }
+  /* Durchgehende Standortmessung ab Karten-Öffnung (Vordergrund-Watch auf allen
+     Plattformen). Nur wenn GPS-Einwilligung vorliegt — sonst startet sie, sobald
+     der Nutzer im Consent-Dialog zustimmt bzw. einen Lauf startet. */
+  if(localStorage.getItem('rc_gps_consent')==='1')ensurePersistentGpsWatch();
   mapL.on('moveend',debounce(loadLandmarks,1500));
   mapL.on('click',closeDrawer);
 }
@@ -3696,12 +3693,28 @@ function startRun(){
     },1800);
   }
 }
+function setLocateBadge(acc){
+  const b=$('locateBtn');if(!b)return;
+  let badge=b.querySelector('.acc-badge');
+  if(!badge){badge=document.createElement('span');badge.className='acc-badge';b.appendChild(badge);}
+  const col=acc<=10?'#10b981':acc<=25?'#e8ff47':acc<=60?'#ff9f1c':'#ff4d6d';
+  badge.textContent='±'+Math.round(acc)+'m';
+  badge.style.cssText=`position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);background:${col};color:#0a0a0a;font-size:.5rem;font-weight:800;letter-spacing:.2px;padding:1px 5px;border-radius:8px;white-space:nowrap;font-family:'Poppins',sans-serif;box-shadow:0 1px 5px rgba(0,0,0,.5);pointer-events:none`;
+}
 function onGPS(pos){
   const acc=pos.coords.accuracy||999;
   const lat=pos.coords.latitude,lng=pos.coords.longitude,pt=[lat,lng];
   /* Marker immer aktualisieren – auch bei Pause und außerhalb eines Laufs */
   if(userMarker)userMarker.setLatLng(pt);
   else if(mapL)userMarker=L.marker(pt,{icon:mkUserIcon()}).addTo(mapL);
+  /* Genauigkeits-Kreis: zeigt live, wie präzise der Fix ist (Radius = Meter) */
+  if(mapL){
+    if(!accCircle)accCircle=L.circle(pt,{radius:acc,color:userColor,weight:1,opacity:.35,fillColor:userColor,fillOpacity:.07,interactive:false}).addTo(mapL);
+    else{accCircle.setLatLng(pt);accCircle.setRadius(acc);}
+  }
+  setLocateBadge(acc);
+  /* Einmalig zum Standort zentrieren, sobald ein brauchbarer Fix vorliegt */
+  if(!_gpsCentered&&acc<=80&&mapL){_gpsCentered=true;mapL.setView(pt,Math.max(mapL.getZoom(),16));}
   if(!window._cityTried&&acc<500){window._cityTried=true;cacheCityOnce(lat,lng);}
   if(!isRunning||isPaused)return; /* Karte frei beweglich – kein Auto-Zentrieren */
   mapL.setView(pt,mapL.getZoom());
@@ -3831,7 +3844,7 @@ function updateAppHeader(view){
 function stopRun(){
   if(!isRunning)return;
   if(isPaused){isPaused=false;}else{runSecs+=Math.floor((Date.now()-runStart)/1000);}
-  isRunning=false;watchId=null;stopLiveUpdate();stopKeepAlive();
+  isRunning=false;watchId=null;stopLiveUpdate();stopKeepAlive();stopBgPlugin();
   statusBar.classList.remove('running');statusDot.style.background='var(--muted)';
   startBtn.disabled=false;pauseBtn.disabled=true;pauseBtn.innerHTML='<i class="fas fa-pause"></i> PAUSE';stopBtn.disabled=true;
   updateRunPill();
@@ -5275,9 +5288,9 @@ function renderSettingsTab(tab){
     document.getElementById('showImpressumBtn2')?.addEventListener('click',showImpressum);
     document.getElementById('revokeGpsBtn')?.addEventListener('click',()=>{
       localStorage.removeItem('rc_gps_consent');
-      if(isNative&&bgGeoWatcher!==null){BackgroundGeolocation.removeWatcher({id:bgGeoWatcher});bgGeoWatcher=null;}
-      clearTimeout(bgFallbackTimer);
+      stopBgPlugin();
       if(bgWatchId!==null){navigator.geolocation.clearWatch(bgWatchId);bgWatchId=null;}
+      if(accCircle&&mapL){mapL.removeLayer(accCircle);accCircle=null;}
       toast('GPS-Einwilligung widerrufen. Lauf-Funktion deaktiviert.');
       renderSettingsTab('datenschutz');
     });
@@ -5394,9 +5407,13 @@ async function updateDmBadge(){
   if(!sb||!userId){badge.style.display='none';return;}
   try{
     let total=0;
-    /* Ungelesene DMs: Nachrichten an mich mit read_at = null */
-    const{count:dmCount}=await sb.from('direct_messages').select('id',{count:'exact',head:true}).eq('to_uid',userId).is('read_at',null);
-    total+=(dmCount||0);
+    /* Ungelesene DMs: Nachrichten an mich ohne read_at, deren created_at nach
+       dem lokalen Lese-Zeitstempel der Konversation liegt (so sinkt die Zahl
+       sofort beim Öffnen und bleibt gesunken, auch wenn der Server-Update
+       scheitert; neue Nachrichten zählen wieder). */
+    const{data:unreadRows}=await sb.from('direct_messages').select('from_uid,created_at').eq('to_uid',userId).is('read_at',null).limit(1000);
+    const dmCount=(unreadRows||[]).filter(r=>new Date(r.created_at).getTime()>(localReadTs[r.from_uid]||0)).length;
+    total+=dmCount;
     /* Offene Follow-Anfragen an mich */
     const{count:frCount}=await sb.from('follow_requests').select('id',{count:'exact',head:true}).eq('target_uid',userId).eq('status','pending');
     total+=(frCount||0);
@@ -5656,7 +5673,7 @@ async function loadDmConvList(container){
       const oUid=m.from_uid===userId?m.to_uid:m.from_uid;
       const oName=m.from_uid===userId?m.to_name:m.from_name;
       if(!convMap[oUid]){convMap[oUid]={uid:oUid,name:oName,last:m,unread:0};}
-      if(m.to_uid===userId&&!m.read_at)convMap[oUid].unread++;
+      if(m.to_uid===userId&&!m.read_at&&new Date(m.created_at).getTime()>(localReadTs[oUid]||0))convMap[oUid].unread++;
     });
     const convs=Object.values(convMap).sort((a,b)=>new Date(b.last.created_at)-new Date(a.last.created_at));
     const newBtn=`<button class="btn btn-p" style="width:100%;margin-bottom:10px" id="newDmBtn"><i class="fas fa-pen"></i> Neue Nachricht</button>`;
@@ -5667,7 +5684,7 @@ async function loadDmConvList(container){
       const archCount=convs.length-activeConvs.length;
       const archHint=archCount>0?`<div style="text-align:center;font-size:.7rem;color:var(--muted);padding:6px 0 2px;cursor:pointer" id="showArchLink">📦 ${archCount} archiviert</div>`:'';
     el.innerHTML=newBtn+activeConvs.map(c=>{
-      const hasUnread=c.unread>0&&!localReadConvs.has(c.uid);
+      const hasUnread=c.unread>0;
       return`<div class="sw-wrap">
         <div class="sw-arch"><i class="fas fa-archive" style="font-size:.85rem;color:#fff"></i><span style="font-size:.58rem;color:#fff;font-weight:700;margin-top:2px">Archiv</span></div>
         <div class="dm-conv-row sw-content" data-dmuid="${c.uid}" data-dmname="${encodeURIComponent(c.name)}" style="margin-bottom:0">
@@ -5731,7 +5748,9 @@ async function openDmThread(uid,name,backFn=null){
      forget, damit ein RLS-/Netzwerkfehler nicht stillschweigend verschluckt
      wird (sonst zeigt die Konversation nach einem Reload wieder "ungelesen",
      obwohl der Nutzer den Chat bereits geöffnet hat). */
-  localReadConvs.add(uid);
+  /* +2s Puffer gegen leichte Client/Server-Uhr-Abweichung, damit alle bis
+     jetzt sichtbaren Nachrichten sicher als gelesen zählen. */
+  localReadTs[uid]=Date.now()+2000;persistDmRead();
   const markRead=sb?sb.from('direct_messages').update({read_at:new Date().toISOString()}).eq('to_uid',userId).eq('from_uid',uid).is('read_at',null)
     .then(({error})=>{if(error)console.warn('DM als gelesen markieren fehlgeschlagen:',error);updateDmBadge();}):Promise.resolve();
   await Promise.all([markRead,loadDmMessages(uid)]);
@@ -5916,11 +5935,7 @@ function showGpsConsent(onAccept){
   $('consentAcceptBtn').onclick=()=>{
     localStorage.setItem('rc_gps_consent','1');
     modal.style.display='none';
-    if(isNative){
-      if(!bgGeoWatcher)BackgroundGeolocation.addWatcher({backgroundMessage:'RunConquer – Lauf aktiv',backgroundTitle:'GPS läuft',requestPermissions:true,stale:false,distanceFilter:3},(loc,err)=>{if(err){console.warn('BG-GPS:',err);return;}onGPS({coords:{latitude:loc.latitude,longitude:loc.longitude,accuracy:loc.accuracy,speed:loc.speed,altitude:loc.altitude}});}).then(id=>{bgGeoWatcher=id;}).catch(e=>console.warn('BG-GPS init:',e));
-    }else if(bgWatchId===null&&navigator.geolocation){
-      bgWatchId=navigator.geolocation.watchPosition(onGPS,e=>console.warn('GPS:',e.code),{enableHighAccuracy:true,maximumAge:2000,timeout:30000});
-    }
+    ensurePersistentGpsWatch();   /* ab jetzt durchgehend messen */
     if(typeof onAccept==='function')onAccept();
   };
   $('consentDenyBtn').onclick=()=>{
@@ -5968,7 +5983,7 @@ async function deleteAccount(){
       await sb.from('runs').delete().eq('user_id',sbUserId);
       await sb.from('profiles').delete().eq('id',sbUserId);
     }
-    ['rc_v4_','rc_profile_','rc_seasons_','rc_follows_','rc_arch_dm_','rc_arch_sup_','rc_sup_visit_'].forEach(k=>localStorage.removeItem(k+userId));
+    ['rc_v4_','rc_profile_','rc_seasons_','rc_follows_','rc_arch_dm_','rc_arch_sup_','rc_sup_visit_','rc_dmread_'].forEach(k=>localStorage.removeItem(k+userId));
     localStorage.removeItem('rc_gps_consent');localStorage.removeItem('rc_strava_token');localStorage.removeItem('rc_strava_cid');
     try{if(sb)await sb.auth.signOut();}catch(e){}
     alert('Konto gelöscht. Dein Supabase-Account wird innerhalb von 30 Tagen vollständig entfernt (DSGVO Art. 17).');
@@ -6687,7 +6702,15 @@ window.initApp=function(){
   $('pvBtBtn').addEventListener('click',connectBT);
   $('pvThemeBtn').addEventListener('click',toggleTheme);
   /* Locate-me button */
-  $('locateBtn').addEventListener('click',()=>{if(mapL){mapL.locate({setView:true,maxZoom:17,enableHighAccuracy:true});toast('📍 Standort wird ermittelt…');}});
+  $('locateBtn').addEventListener('click',()=>{
+    toast('📍 Standort wird ermittelt…');
+    ensurePersistentGpsWatch();               /* laufende Messung sicherstellen */
+    if(!navigator.geolocation){toast('❌ Kein GPS auf diesem Gerät');return;}
+    navigator.geolocation.getCurrentPosition(
+      p=>{onGPS(p);if(mapL)mapL.setView([p.coords.latitude,p.coords.longitude],Math.max(mapL.getZoom(),16));},
+      e=>{toast(e.code===1?'❌ Standort-Freigabe verweigert – in den Einstellungen erlauben':e.code===3?'⏱️ GPS-Timeout – am besten freier Himmel':'❌ Kein GPS-Signal');},
+      {enableHighAccuracy:true,maximumAge:0,timeout:12000});
+  });
   /* Settings modal */
   $('settingsBtn').addEventListener('click',()=>{closeAllModals();$('settingsModal').style.display='flex';renderSettingsTab('profil');document.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.stab==='profil'));});
   $('closeSettingsBtn').addEventListener('click',()=>$('settingsModal').style.display='none');
