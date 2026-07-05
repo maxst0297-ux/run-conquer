@@ -1629,7 +1629,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v72';
+const APP_VERSION='v73';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2836,7 +2836,7 @@ function showOnboardingOverlay(){
     ov.style.cssText='position:fixed;inset:0;z-index:9800;background:rgba(0,0,0,.95);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:calc(env(safe-area-inset-top,0px) + 20px) 20px calc(env(safe-area-inset-bottom,0px) + 20px);box-sizing:border-box;overflow-y:auto';
     render();
   };
-  const _msgHandler=e=>{if(e.data==='promo:done')goToStep1();};
+  const _msgHandler=e=>{if(e.data==='promo:done'||e.data==='promo:play')goToStep1();};
   window.addEventListener('message',_msgHandler);
   _fallbackTimer=setTimeout(goToStep1,45000); /* Kurzversion: 6 Panels × 5 s + Puffer */
   const render=()=>{
@@ -5329,10 +5329,17 @@ function renderSettingsTab(tab){
       const ov=document.createElement('div');
       /* Safe-Area beachten, sonst liegt die Promo unter Uhr/Notch/Akku */
       ov.style.cssText='position:fixed;inset:0;z-index:99999;background:#000;display:flex;align-items:center;justify-content:center;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);box-sizing:border-box';
+      /* Am Promo-Ende sendet der iframe 'promo:done' (Button „Jetzt spielen").
+         Ohne Listener passierte hier nichts — Viewer schließen UND zur Start-
+         seite wechseln. Listener sauber wieder abmelden (kein Leak, kein spätes
+         Feuern nach erneutem Öffnen). */
+      const _dismiss=()=>{window.removeEventListener('message',_onPromoMsg);ov.remove();};
+      const _onPromoMsg=e=>{if(e.data==='promo:play'){_dismiss();setView('start');}};
+      window.addEventListener('message',_onPromoMsg);
       const close=document.createElement('button');
       close.innerHTML='<i class="fas fa-times"></i>';
       close.style.cssText='position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);right:16px;background:#fff2;color:#fff;border:none;border-radius:50%;width:38px;height:38px;font-size:1.1rem;cursor:pointer;z-index:1';
-      close.onclick=()=>ov.remove();
+      close.onclick=_dismiss;
       const fr=document.createElement('iframe');
       const _hcity=encodeURIComponent(localStorage.getItem('rc_city')||'');
       fr.src='/videos/Promo%20Slide/Promo%20Scroll.html'+(_hcity?'?city='+_hcity:'');

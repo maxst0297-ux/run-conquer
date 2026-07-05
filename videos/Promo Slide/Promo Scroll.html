@@ -416,7 +416,14 @@
   const navCta = document.getElementById('navCta');
   if (navCta) navCta.addEventListener('click', (e) => { e.preventDefault(); pause(); goTo(panels.length - 1); });
   const ctaPrimary = document.querySelector('.cta .btn--primary');
-  if (ctaPrimary) ctaPrimary.addEventListener('click', (e) => { e.preventDefault(); sendPromoDone(); });
+  /* Expliziter „Jetzt spielen"-Klick sendet ein EIGENES Signal (promo:play),
+     damit ein Standalone-Viewer nur beim echten Klick schließt — nicht schon,
+     wenn das Auto-Play passiv das letzte Panel erreicht (das bleibt promo:done
+     fürs Onboarding-Auto-Weiter). */
+  if (ctaPrimary) ctaPrimary.addEventListener('click', (e) => {
+    e.preventDefault();
+    try { window.parent.postMessage('promo:play', '*'); } catch (err) {}
+  });
 
   // expose for tweaks
   window.__promo = {
