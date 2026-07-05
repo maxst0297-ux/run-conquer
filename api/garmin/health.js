@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     const userId = await userIdFromJwt(req.query.token);
     if (!userId) return res.status(401).json({ error: 'unauthorized' });
 
-    const days = Math.min(parseInt(req.query.days) || 7, 30);
+    const days = Math.min(Math.max(parseInt(req.query.days) || 7, 1), 30);
     const since = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
 
     const data = await sbSelect('garmin_health_summaries',

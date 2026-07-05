@@ -3,8 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "sync:android": "npx cap sync android",
-    "sync:ios": "npx cap sync ios",
+    "build:web": "bash scripts/prepare-web.sh",
+    "sync:ios": "npm run build:web && npx cap sync ios",
+    "sync:android": "npm run build:web && npx cap sync android",
+    "open:ios": "npx cap open ios",
     "open:android": "npx cap open android"
   },
   "dependencies": {

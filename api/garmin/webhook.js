@@ -44,6 +44,11 @@ async function processActivities(body) {
 
       let detail = item;
       if (!item.samples && item.callbackURL) {
+        /* Nur Garmin-eigene Hosts abrufen — verhindert SSRF über gefälschte
+           Webhook-Payloads mit beliebiger callbackURL. */
+        let cbHost = '';
+        try { cbHost = new URL(item.callbackURL).hostname; } catch { /* invalid URL */ }
+        if (!/(^|\.)garmin\.com$/i.test(cbHost)) { console.warn('webhook: callbackURL-Host abgelehnt:', cbHost); continue; }
         const r = await signedFetch('GET', item.callbackURL,
           { tokenSecret: access_secret, extra: { oauth_token: access_token } });
         if (!r.ok) continue;
