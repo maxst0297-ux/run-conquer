@@ -1,4 +1,4 @@
-const CACHE_NAME = 'runconquer-v69';
+const CACHE_NAME = 'runconquer-v70';
 const PRECACHE = ['/', '/index.html', '/manifest.json', '/bg-poster.jpg'];
 
 self.addEventListener('install', e => {
@@ -39,7 +39,15 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // All other same-origin GETs → cache-first, update in background
+  // All other same-origin GETs → cache-first, update in background.
+  // Große Medien (Video) NICHT in den Cache legen (Quota) und Range-Requests
+  // durchreichen. fromNetwork bekommt ein .catch, damit ein Offline-Fetch bei
+  // vorhandenem Cache-Treffer keine unhandled rejection wirft.
+  const isMedia = /\.(mp4|mov|webm|m4a|mp3)$/i.test(url.pathname);
+  if (isMedia || e.request.headers.has('range')) {
+    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+    return;
+  }
   e.respondWith(
     caches.match(e.request).then(cached => {
       const fromNetwork = fetch(e.request).then(resp => {
@@ -48,7 +56,7 @@ self.addEventListener('fetch', e => {
           caches.open(CACHE_NAME).then(c => c.put(e.request, copy));
         }
         return resp;
-      });
+      }).catch(() => cached);
       return cached || fromNetwork;
     })
   );

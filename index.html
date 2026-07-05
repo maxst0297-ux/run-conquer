@@ -182,7 +182,7 @@ body.onboarding-active{background:#000}
 .hdr-logo{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.06em;color:var(--primary)}
 .hdr-badge{margin-left:auto;background:var(--card);border:1px solid var(--border);border-radius:40px;padding:5px 14px;font-size:.75rem;font-weight:600;display:flex;align-items:center;gap:6px;cursor:pointer}
 .hdr-actions{display:flex;gap:6px}
-.icon-btn{background:var(--card);border:1px solid var(--border);color:var(--primary);width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;transition:transform var(--motion-fast);-webkit-user-select:none;user-select:none}
+.icon-btn{background:var(--card);border:1px solid var(--border);color:var(--primary);width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;transition:transform var(--motion-fast);-webkit-user-select:none;user-select:none}
 .icon-btn:active{transform:scale(.9)}
 .notif-badge{position:absolute;top:-4px;right:-4px;background:#ff4d6d;color:#fff;font-size:.55rem;font-weight:700;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;pointer-events:none}
 #notifBtn{position:relative}
@@ -201,7 +201,7 @@ body.onboarding-active{background:#000}
 .dm-bubble{max-width:78%;padding:8px 12px;font-size:.82rem;line-height:1.5;word-break:break-word}
 .dm-bubble-me{background:var(--primary);color:#000;align-self:flex-end;border-radius:16px 16px 4px 16px}
 .dm-bubble-them{background:var(--card);border:1px solid var(--border);align-self:flex-start;border-radius:16px 16px 16px 4px}
-.follow-btn{font-size:.6rem;border:1px solid var(--border);background:none;color:var(--muted);border-radius:10px;padding:2px 8px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;font-family:'Poppins',sans-serif;white-space:nowrap;transition:var(--motion-fast)}
+.follow-btn{font-size:.68rem;border:1px solid var(--border);background:none;color:var(--muted);border-radius:10px;padding:8px 12px;min-height:36px;display:inline-flex;align-items:center;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;font-family:'Poppins',sans-serif;white-space:nowrap;transition:var(--motion-fast)}
 .follow-btn.following{border-color:var(--primary);color:var(--primary)}
 /* ═══ SWIPE ARCHIVE / DELETE ═══ */
 .sw-wrap{position:relative;overflow:hidden;margin-bottom:6px;border-radius:12px}
@@ -614,7 +614,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .map-panel-btn:active{transform:scale(.97)}
 
 /* ═══ SETTINGS / ADMIN TABS ═══ */
-.stab-btn{padding:6px 14px;border-radius:40px;border:none;background:var(--card);color:var(--muted);font-weight:600;font-size:.72rem;cursor:pointer;white-space:nowrap;transition:all .2s;font-family:'Poppins',sans-serif}
+.stab-btn{padding:8px 14px;min-height:40px;display:inline-flex;align-items:center;border-radius:40px;border:none;background:var(--card);color:var(--muted);font-weight:600;font-size:.72rem;cursor:pointer;white-space:nowrap;transition:all .2s;font-family:'Poppins',sans-serif}
 .stab-btn.active{background:var(--primary);color:var(--bg)}
 
 /* ═══ REDUCED MOTION ═══ */
@@ -816,6 +816,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
           <div class="ob-check-row"><input type="checkbox" id="oauthPrivacy"><label for="oauthPrivacy">Ich habe die <a href="/privacy.html" target="_blank">Datenschutzerklärung</a> gelesen und stimme der Verarbeitung meiner GPS- und Aktivitätsdaten zu.</label></div>
           <div class="ob-err" id="oauthSetupErr"></div>
           <button class="btn-start" id="oauthSetupBtn">Loslegen →</button>
+          <button class="ob-link" id="oauthSetupCancel">‹ Abbrechen &amp; abmelden</button>
         </div>
         <button class="ob-link ob-admin-link" id="obToAdminLink">Admin</button>
       </div>
@@ -1628,7 +1629,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v69';
+const APP_VERSION='v70';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -1686,7 +1687,7 @@ async function syncProfile(){
     // territories NICHT mehr hier -- das ist jetzt globaler Server-Zustand
     // (siehe rc_claim()/rc_list_territories() in supabase_territories.sql),
     // kein privater Spielstand mehr.
-    const gameSnap=JSON.stringify({points,energy,totalKm,totalConquered,totalDefended,totalDiscovered,streakDays,history:history.slice(-20),capturedLandmarks,raids});
+    const gameSnap=JSON.stringify({points,energy,totalKm,totalConquered,totalDefended,totalDiscovered,streakDays,lastRunDate,history:history.slice(-50),capturedLandmarks,raids});
     const{error:e1}=await sb.from('profiles').upsert({
       id:sbUserId,user_id:userId,player_name:playerName,user_avatar:userAvatar,user_color:userColor,
       points,total_km:totalKm,total_conquered:totalConquered,streak_days:streakDays,
@@ -1728,7 +1729,7 @@ async function loadFromCloud(){
       // Wert und darf nicht fälschlich auf den alten lokalen Stand zurückfallen.
       points=d.points??points;energy=d.energy??energy;
       totalKm=d.totalKm??totalKm;totalConquered=d.totalConquered??totalConquered;
-      totalDefended=d.totalDefended??totalDefended;streakDays=d.streakDays??streakDays;
+      totalDefended=d.totalDefended??totalDefended;streakDays=d.streakDays??streakDays;lastRunDate=d.lastRunDate??lastRunDate;
       totalDiscovered=d.totalDiscovered??totalDiscovered;
       capturedLandmarks=d.capturedLandmarks??capturedLandmarks;
       raids=d.raids??raids;
@@ -1837,7 +1838,19 @@ const runDock=$('runDock'),dockToggle=$('dockToggle'),liveRun=$('liveRun'),idleS
 const drawer=$('drawer'),drawerBody=$('drawerBody');
 
 /* UTILS */
-function toast(msg){toastEl.textContent=msg;toastEl.style.opacity=1;setTimeout(()=>toastEl.style.opacity=0,2600)}
+/* Toast-Queue: mehrere schnell hintereinander (z.B. mehrere freigeschaltete
+   Abzeichen am Lauf-Ende) überschreiben sich nicht mehr, sondern werden
+   nacheinander gezeigt. */
+let _toastQ=[],_toastBusy=false;
+function toast(msg){_toastQ.push(msg);if(!_toastBusy)_toastNext();}
+function _toastNext(){
+  if(!_toastQ.length){_toastBusy=false;return;}
+  _toastBusy=true;
+  const msg=_toastQ.shift();
+  toastEl.textContent=msg;toastEl.style.opacity=1;
+  const hold=_toastQ.length?1100:2600;   /* bei Stau schneller weiterschalten */
+  setTimeout(()=>{toastEl.style.opacity=0;setTimeout(_toastNext,220);},hold);
+}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function beep(f,d=.1){try{const c=new(window.AudioContext||window.webkitAudioContext)();if(c.state==='suspended')c.resume();const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=f;g.gain.value=.08;o.start();o.stop(c.currentTime+d);}catch(e){}}
 function vib(ms){if(navigator.vibrate)navigator.vibrate(ms)}
@@ -1978,7 +1991,7 @@ function load(){
   try{
     const d=JSON.parse(localStorage.getItem('rc_v4_'+userId));
     if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;lastRunDate=d.lastRunDate||'';stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;registeredAt=d.registeredAt||Date.now();starterQuestsDone=d.starterQuestsDone||[];starterQuestFlags=d.starterQuestFlags||{profileOpened:false};heatPersonalOnly=d.heatPersonalOnly||false;dailyChallenges=d.dailyChallenges||[];dailyChalDate=d.dailyChalDate||'';chalStreak=d.chalStreak||0;lastChalDoneDate=d.lastChalDoneDate||'';dailyLoginDate=d.dailyLoginDate||'';dailyLoginStreak=d.dailyLoginStreak||0;streakShields=d.streakShields||0;recentQuoteIds=d.recentQuoteIds||[];weeklyChals=d.weeklyChals||[];weekChalKey=d.weekChalKey||'';personalRecords=d.personalRecords||{};battlePassClaimed=d.battlePassClaimed||[];totalRaids=d.totalRaids||0;totalBoosts=d.totalBoosts||0;weeklyAchsDone=d.weeklyAchsDone||0;seasonXp=d.seasonXp||0;localStateTs=d.localStateTs||0;/* invasions: serverseitig (rc_sync_breaches), nicht mehr aus localStorage */}
-  }catch(e){}
+  }catch(e){logError('state_load',e);/* korrupter Blob -> Defaults; Cloud-Sync stellt wieder her */}
   // Rival territories werden nach erstem GPS-Fix generiert (locationfound)
   if(!quests.length)genQuests();
   if(achievements.length!==36||achievements[0]?.id!=='conq1'){initAch();if(typeof totalConquered!=='undefined')updateAch(true);}
@@ -4471,8 +4484,12 @@ async function syncGarminActivities(opts={}){
   catch(e){return{connected:false,configured:false,imported:0};}
   garminConnected=!!data.connected;
   if(!data.connected)return{connected:false,configured:data.configured,imported:0};
-  // dedupe gegen bereits importierte Garmin-Läufe (per external_id)
-  const known=new Set(history.filter(h=>h.importSource==='garmin').map(h=>h.extId));
+  /* Dedupe gegen bereits importierte Garmin-Läufe (per external_id). Die
+     History ist auf 30 gekappt -> zusätzlich ein persistentes ID-Set, damit
+     ältere Importe bei 'Alles synchronisieren' (opts.full) nicht doppelt
+     reinkommen. */
+  let persistedIds=new Set();try{persistedIds=new Set(JSON.parse(localStorage.getItem('rc_garmin_ids_'+userId)||'[]'));}catch(e){}
+  const known=new Set([...history.filter(h=>h.importSource==='garmin').map(h=>h.extId),...persistedIds]);
   let imported=0,newest=since?new Date(since).getTime():0;
   (data.activities||[]).slice().reverse().forEach(a=>{
     const ts=a.start_time?new Date(a.start_time).getTime():Date.now();
@@ -4495,6 +4512,7 @@ function importGarminActivity(distM,durSecs,dateMs,path,extId){
     duration:durSecs,gap:0,kcal,avgHR:0,splits:[],
     imported:true,importSource:'garmin',extId:extId||null};
   history.push(rec);if(history.length>30)history.shift();
+  if(extId){try{const k='rc_garmin_ids_'+userId;const s=new Set(JSON.parse(localStorage.getItem(k)||'[]'));s.add(extId);localStorage.setItem(k,JSON.stringify([...s].slice(-500)));}catch(e){}}
   totalKm+=distM/1000;points+=kmXP;
   checkStarterQuests();save();
   if(path&&path.length>=2&&mapL){
@@ -4546,7 +4564,7 @@ async function renderFriends(){
   el.innerHTML=html;
   document.getElementById('friendSearchBtn')?.addEventListener('click',async()=>{
     const name=(document.getElementById('friendSearchInput')?.value||'').trim();if(name.length<2)return;
-    try{const{data}=await sb.from('profiles').select('id,player_name,points').ilike('player_name',name).limit(5);
+    try{const{data}=await sb.from('profiles').select('id,player_name,points').ilike('player_name','%'+name+'%').limit(5);
     if(!data?.length){toast('Spieler nicht gefunden');return;}
     const r=data[0];if(r.id===sbUserId){toast('Das bist du 😄');return;}
     if(friends.some(f=>f.uid===r.id)){toast('Bereits befreundet');return;}
@@ -4591,7 +4609,7 @@ async function renderPlayerDiscovery(){
 function renderDiscoveryList(players){
   const dl=document.getElementById('discList');if(!dl)return;
   const list=players.filter(r=>r.user_id!==userId).slice(0,15);
-  if(!list.length){dl.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:8px">Keine Spieler gefunden</div>';return;}
+  if(!list.length){dl.innerHTML=emptyStateHtml('fa-compass','Noch keine Spieler in deiner Nähe.<br>Lade Freunde mit deinem Club-Code ein.','🛡️ Club teilen','rcGoClub()');return;}
   dl.innerHTML=list.map(r=>{
     const st=followStatus(r.user_id);
     const btnLabel=st==='accepted'?'✓ Verbunden':st==='pending_out'?'⏳ Angefragt':st==='pending_in'?'👤 Antworten':'+ Folgen';
@@ -4675,16 +4693,17 @@ function updateCommunity(){
   $('newsList').innerHTML=[...liveNews,...staticNews].slice(0,5).map(n=>`<div class="list-row"><span class="row-icon">${n.icon}</span><span class="row-txt">${n.txt}</span><span class="row-meta">${n.t}</span></div>`).join('');
   $('recordsList').innerHTML=[['🏃','Längster Lauf',fmtDist(Math.max(0,...history.map(r=>r.distance)))],['⚔️','Gebiete erobert',totalConquered],['📐','Größtes Gebiet',Math.round(Math.max(0,...territories.filter(t=>t.owner===userId).map(t=>t.area||0)))+' m²'],['🔥','Streak',streakDays+' Tage']].map(([i,l,v])=>`<div class="list-row"><span class="row-icon">${i}</span><span class="row-txt">${l}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary)">${v}</span></div>`).join('');
   renderEvents();
+  /* renderSocialFeed/renderPlayerDiscovery NUR im .then, wenn der Follow-Status
+     frisch geladen ist — der frühere synchrone Doppelaufruf rendert mit
+     veraltetem followedUsers und flackert. */
   loadFollowState().then(()=>{renderLeaderboard();renderFollowRequests();renderSocialFeed();renderPlayerDiscovery();});
-  renderSocialFeed();
   renderPowerRankings();
   renderClubCommunity();
   // Freunde
   renderFriends();
   // Club Wars
   renderClubWars();
-  // Spieler & Club Discovery
-  renderPlayerDiscovery();
+  // Club Discovery (Spieler-Discovery läuft im loadFollowState-.then oben)
   renderClubDiscovery();
   // Fraktion-Rangliste
   renderFactionWar();
@@ -5983,11 +6002,15 @@ async function downloadDataExport(){
     const profile=sb&&sbUserId?(await sb.from('profiles').select('*').eq('id',sbUserId).single())?.data||null:null;
     const priv=sb&&sbUserId?(await sb.from('profile_private').select('game_data').eq('id',sbUserId).single())?.data||null:null;
     const localData=JSON.parse(localStorage.getItem('rc_v4_'+userId)||'{}');
+    const _ls=k=>{try{return JSON.parse(localStorage.getItem(k+userId)||'null');}catch(e){return null;}};
     const export_={
       exportDate:new Date().toISOString(),
       profile:{playerName,userId,...profile,game_data:priv?.game_data},
       runs,
-      localGameData:localData
+      localGameData:localData,
+      localProfile:_ls('rc_profile_'),          /* Avatar-Bild, Freunde, Team, Club, Theme */
+      seasons:_ls('rc_seasons_'),
+      archivedDms:_ls('rc_arch_dm_')
     };
     const blob=new Blob([JSON.stringify(export_,null,2)],{type:'application/json'});
     if(isNative){
@@ -6513,6 +6536,13 @@ window.initApp=function(){
       }
       if(data?.session){
         await launchAppFromSession(data.user);
+      } else if(data?.user&&Array.isArray(data.user.identities)&&data.user.identities.length===0){
+        /* Supabase liefert zur Enumeration-Vermeidung bei bereits vergebener
+           E-Mail KEINEN 'already'-Fehler, sondern user ohne identities/session.
+           Das gezielt als "bereits registriert" behandeln statt eine
+           irreführende "Bestätigungs-Mail gesendet"-Meldung zu zeigen. */
+        showErr('❌ Diese E-Mail ist bereits registriert. Bitte einloggen oder Passwort zurücksetzen.');
+        return;
       } else {
         pendingConfirmEmail=email;
         $('obConfirmPendingMsg').textContent='Wir haben eine Bestätigungs-E-Mail an '+email+' gesendet. Bitte klicke auf den Link, um dein Konto zu aktivieren.';
@@ -6592,6 +6622,12 @@ window.initApp=function(){
     });
   });
   /* Neues Google/Facebook-Konto: Name wählen + Pflicht-Checkboxen bestätigen */
+  /* Ausweg aus dem OAuth-Setup: sonst steckt man ohne Zurück-Weg fest, wenn
+     man den Namen doch nicht vergeben will (Session bleibt sonst hängen). */
+  $('oauthSetupCancel')?.addEventListener('click',async()=>{
+    try{await sb?.auth.signOut();}catch(e){}
+    showObState('obLoginForm');
+  });
   $('oauthSetupBtn')?.addEventListener('click',async()=>{
     const name=($('oauthName')?.value||'').trim();
     const errEl=$('oauthSetupErr');
@@ -6712,7 +6748,11 @@ window.initApp=function(){
   $('impConfirmBtn')?.addEventListener('click',()=>{
     $('impError').style.display='none';
     const isFile=$('impTabGpx').classList.contains('active');
-    const dateMs=new Date($('impDate').value||new Date()).getTime()||Date.now();
+    /* Datum-Eingabe lokal interpretieren: new Date('2026-07-05') wäre UTC-
+       Mitternacht und könnte in der lokalen Kalenderansicht auf den Vortag
+       rutschen -> 'T00:00:00' erzwingt lokale Mitternacht. */
+    const _dv=$('impDate').value;
+    const dateMs=(_dv?new Date(_dv+'T00:00:00').getTime():Date.now())||Date.now();
     if(isFile){
       let res=impCurrentPath;
       if(!res){
