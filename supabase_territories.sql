@@ -258,6 +258,15 @@ declare
   c_import_area_cap_m2   constant float8 := 2000000; -- 2 km²
   c_import_max_speed_mps constant float8 := 10;       -- = CFG.MAX_SPEED_MPS
   c_import_daily_limit   constant int    := 8;
+  -- Tempo-Modell für den Angriffsschaden: der Schaden skaliert mit dem
+  -- Lauftempo. Bei c_speed_ref (m/s) ist der Faktor 1.0; darunter weniger (bis
+  -- c_speed_floor), darüber mehr (bis c_speed_cap). Dadurch reicht Umrunden
+  -- allein NICHT zur Übernahme -- man muss schnell genug laufen (oder das Gebiet
+  -- ist bereits geschwächt). c_speed_ref ≈ 14 km/h. Diese drei Werte sind die
+  -- Stellschrauben für die Balance.
+  c_speed_ref   constant float8 := 3.9;
+  c_speed_floor constant float8 := 0.45;
+  c_speed_cap   constant float8 := 1.8;
 
   v_user        uuid := auth.uid();
   v_cached      jsonb;
@@ -286,7 +295,7 @@ declare
   v_overlap_frac float8;
   v_km_through  float8;
   v_cover_frac  float8;
-  v_cover_dmg   float8;
+  v_speed_mult  float8;
   v_dmg         float8;
   v_crit        boolean;
   v_last_atk    float8;
@@ -358,6 +367,12 @@ begin
   v_level := public.rc_get_level(v_points);
   v_atk_bonus := (1 + (v_level-1)*c_atk_bonus_lvl) * (case when p_boosted then 1.3 else 1 end);
   v_def_bonus := 1 + (v_level-1)*c_def_regen_lvl;
+  -- Tempo-Faktor: schnelleres Laufen = mehr Angriffsschaden. Fehlt die Laufzeit
+  -- (alte Clients), neutral 1.0 annehmen.
+  v_speed_mult := case
+    when p_duration_s is not null and p_duration_s > 0
+      then least(c_speed_cap, greatest(c_speed_floor, (p_distance_m / p_duration_s) / c_speed_ref))
+    else 1 end;
   v_has_lm := coalesce(array_length(p_landmark_ids,1),0) > 0;
   v_now_ms := floor(extract(epoch from now())*1000);
 
@@ -420,17 +435,17 @@ begin
         continue;
       end if;
 
-      -- Feindgebiet → Angriff. Zwei Schadensquellen, es zählt die STÄRKERE:
-      --  1) Durchlauf-Schaden: proportional zur tatsächlich im Gebiet gelaufenen
-      --     Strecke (ein gerader Durchgang schwächt anteilig).
-      --  2) Deckungs-Schaden: proportional dazu, wie viel des Gebiets dein Claim
-      --     abdeckt. Volle Deckung (umrunden/überdecken) = c_max_def Schaden ->
-      --     nimmt selbst ein voll verteidigtes Gebiet ein; Teildeckung schwächt
-      --     anteilig, und ein bereits schwaches Gebiet kippt schon bei wenig.
-      -- So erfüllt sich der Wunsch „umrunden/genug Schaden -> ganzes Gebiet wird
-      -- deins", ohne dass ein bloßer Randkontakt die Verteidigung wertlos macht.
-      v_cover_dmg := v_cover_frac * c_max_def * v_atk_bonus;
-      v_dmg := greatest(v_km_through * c_str_dmg_per_km * v_atk_bonus, v_cover_dmg);
+      -- Feindgebiet → Angriff. Roh-Schaden = der STÄRKERE aus:
+      --  1) Durchlauf-Strecke: proportional zur im Gebiet gelaufenen Strecke.
+      --  2) Gebietsdeckung: wie viel des Gebiets der Claim abdeckt (umrunden/
+      --     überdecken → nahe c_max_def).
+      -- Dieser Roh-Schaden wird mit dem TEMPO-Faktor und dem Angriffsbonus
+      -- skaliert. Dadurch ist Umrunden allein KEIN sicherer Sieg: nur wer schnell
+      -- genug läuft (oder ein bereits geschwächtes Gebiet angreift) bringt genug
+      -- Schaden, um die Verteidigung ganz zu brechen. Ein Randkontakt bleibt
+      -- schwach, die Verteidigung also weiterhin sinnvoll.
+      v_dmg := greatest(v_km_through * c_str_dmg_per_km, v_cover_frac * c_max_def);
+      v_dmg := v_dmg * v_speed_mult * v_atk_bonus;
       v_crit := random() < c_crit_chance;
       if v_crit then v_dmg := v_dmg * c_crit_mul; end if;
       v_dmg := least(v_decayed, v_dmg);
