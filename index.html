@@ -1537,6 +1537,12 @@ const isNative=typeof window.Capacitor!=='undefined'&&!!window.Capacitor.isNativ
    (capacitor://localhost) existieren die /api/-Routen NICHT — relative
    Aufrufe verpuffen dort. Deshalb nativ absolut gegen das Deployment. */
 const API_BASE=isNative?'https://run-conquer.vercel.app':'';
+/* Auth-Redirect-Ziel: im nativen Bundle ist location.origin
+   capacitor://localhost — dorthin dürfen OAuth/E-Mail-Bestätigung/Passwort-
+   Reset NICHT zurückleiten (Supabase kennt die Domain nicht, der Link liefe
+   ins Leere). Nativ deshalb auf die echte Web-Domain, die den Token
+   verarbeitet; im Browser bleibt es die aktuelle Origin. */
+const AUTH_REDIRECT=isNative?'https://run-conquer.vercel.app':location.origin;
 /* Nativ: relative _blank-Links (Datenschutz) auf die echte Web-URL umbiegen,
    damit sie im System-Browser landen statt im App-WebView zu stranden. */
 if(isNative)document.addEventListener('click',e=>{
@@ -1552,7 +1558,7 @@ let userAvatarImg=null;
 let energy=CFG.ENERGY_MAX,lastEnergyTs=Date.now(),energyWeek='';
 let history=[],quests=[],achievements=[];
 let totalKm=0,totalConquered=0,totalDefended=0;
-let streakDays=0,stepsToday=0,lastStepTs=0;
+let streakDays=0,stepsToday=0,lastStepTs=0,lastRunDate='';
 let runStart=null,runSecs=0,isPaused=false;
 let heartRate=72,hrSource='sim';
 let cadence=0,gpsSpeed=null,gpsAlt=null;
@@ -1622,7 +1628,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v68';
+const APP_VERSION='v69';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -1745,7 +1751,7 @@ async function loadGlobalTerritories(){
       return nt;
     });
     return true;
-  }catch(e){console.warn('Gebiete laden:',e);return false;}
+  }catch(e){logError('territory_load',e);return false;}
 }
 let territoriesChannel=null;
 /* Realtime-Sync: das rohe postgres_changes-Payload liefert PostGIS-Geometrie
@@ -1758,7 +1764,7 @@ function subscribeTerritories(){
     .on('postgres_changes',{event:'*',schema:'public',table:'territories'},()=>{
       clearTimeout(window._terrSyncTimer);
       window._terrSyncTimer=setTimeout(async()=>{
-        if(await loadGlobalTerritories()){renderTerr();updateUI();}
+        if(await loadGlobalTerritories()){updateUI();/* updateUI() rendert Gebiete bereits */}
       },400);
     })
     .subscribe();
@@ -1934,7 +1940,7 @@ function debounce(fn,w){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn
 const syncProfileDebounced=debounce(syncProfile,1000);
 
 /* PERSIST */
-function save(){localStateTs=Date.now();localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,energyWeek,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered,registeredAt,starterQuestsDone,starterQuestFlags,heatPersonalOnly,dailyChallenges,dailyChalDate,chalStreak,lastChalDoneDate,dailyLoginDate,dailyLoginStreak,streakShields,recentQuoteIds,weeklyChals,weekChalKey,personalRecords,battlePassClaimed,totalRaids,totalBoosts,weeklyAchsDone,seasonXp,localStateTs}))}
+function save(){localStateTs=Date.now();localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,energyWeek,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,lastRunDate,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered,registeredAt,starterQuestsDone,starterQuestFlags,heatPersonalOnly,dailyChallenges,dailyChalDate,chalStreak,lastChalDoneDate,dailyLoginDate,dailyLoginStreak,streakShields,recentQuoteIds,weeklyChals,weekChalKey,personalRecords,battlePassClaimed,totalRaids,totalBoosts,weeklyAchsDone,seasonXp,localStateTs}))}
 /* Crash-resiliente Lauf-Persistenz: Pfad liegt sonst nur im RAM und ginge bei
    App-Kill/Crash mitten im Lauf komplett verloren. Wird alle ~12s gespiegelt,
    beim nächsten Boot per checkOrphanedRun() angeboten. */
@@ -1954,19 +1960,24 @@ function checkOrphanedRun(){
   let snap=null;
   try{snap=JSON.parse(localStorage.getItem('rc_active_run_'+userId));}catch(e){}
   if(!snap)return;
-  clearActiveRunSnapshot();
   const ageMs=Date.now()-(snap.savedAt||0);
-  if(ageMs>3*3600000||!snap.path||snap.path.length<3||!(snap.dist>=CFG.MIN_DIST))return;
+  /* Zu alt/zu kurz -> verwerfen (jetzt löschen). Ansonsten Snapshot ERST nach
+     der Nutzer-Entscheidung entfernen, damit ein unterbrochener Lauf bei
+     Ablehnung ODER App-Schließung während des Dialogs nicht verloren geht. */
+  if(ageMs>3*3600000||!snap.path||snap.path.length<3||!(snap.dist>=CFG.MIN_DIST)){clearActiveRunSnapshot();return;}
   const mins=Math.max(1,Math.round(ageMs/60000));
   if(confirm(`📡 Unterbrochener Lauf gefunden (vor ${mins} Min., ${(snap.dist/1000).toFixed(2)} km).\n\nAls abgeschlossenen Lauf speichern?`)){
     path=snap.path;dist=snap.dist;kmSplits=snap.kmSplits||[];lastSplitKm=snap.lastSplitKm||0;lastSplitSecs=snap.lastSplitSecs||0;
+    clearActiveRunSnapshot();
     finalizeRun(snap.runSecs||0);
+  }else{
+    clearActiveRunSnapshot();
   }
 }
 function load(){
   try{
     const d=JSON.parse(localStorage.getItem('rc_v4_'+userId));
-    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;registeredAt=d.registeredAt||Date.now();starterQuestsDone=d.starterQuestsDone||[];starterQuestFlags=d.starterQuestFlags||{profileOpened:false};heatPersonalOnly=d.heatPersonalOnly||false;dailyChallenges=d.dailyChallenges||[];dailyChalDate=d.dailyChalDate||'';chalStreak=d.chalStreak||0;lastChalDoneDate=d.lastChalDoneDate||'';dailyLoginDate=d.dailyLoginDate||'';dailyLoginStreak=d.dailyLoginStreak||0;streakShields=d.streakShields||0;recentQuoteIds=d.recentQuoteIds||[];weeklyChals=d.weeklyChals||[];weekChalKey=d.weekChalKey||'';personalRecords=d.personalRecords||{};battlePassClaimed=d.battlePassClaimed||[];totalRaids=d.totalRaids||0;totalBoosts=d.totalBoosts||0;weeklyAchsDone=d.weeklyAchsDone||0;seasonXp=d.seasonXp||0;localStateTs=d.localStateTs||0;/* invasions: serverseitig (rc_sync_breaches), nicht mehr aus localStorage */}
+    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;lastRunDate=d.lastRunDate||'';stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;registeredAt=d.registeredAt||Date.now();starterQuestsDone=d.starterQuestsDone||[];starterQuestFlags=d.starterQuestFlags||{profileOpened:false};heatPersonalOnly=d.heatPersonalOnly||false;dailyChallenges=d.dailyChallenges||[];dailyChalDate=d.dailyChalDate||'';chalStreak=d.chalStreak||0;lastChalDoneDate=d.lastChalDoneDate||'';dailyLoginDate=d.dailyLoginDate||'';dailyLoginStreak=d.dailyLoginStreak||0;streakShields=d.streakShields||0;recentQuoteIds=d.recentQuoteIds||[];weeklyChals=d.weeklyChals||[];weekChalKey=d.weekChalKey||'';personalRecords=d.personalRecords||{};battlePassClaimed=d.battlePassClaimed||[];totalRaids=d.totalRaids||0;totalBoosts=d.totalBoosts||0;weeklyAchsDone=d.weeklyAchsDone||0;seasonXp=d.seasonXp||0;localStateTs=d.localStateTs||0;/* invasions: serverseitig (rc_sync_breaches), nicht mehr aus localStorage */}
   }catch(e){}
   // Rival territories werden nach erstem GPS-Fix generiert (locationfound)
   if(!quests.length)genQuests();
@@ -3329,7 +3340,7 @@ function initMap(){
     if(!userMarker)userMarker=L.marker(e.latlng,{icon:mkUserIcon()}).addTo(mapL);
     else userMarker.setLatLng(e.latlng);
     if(territories.filter(t=>t.owner!==userId).length===0){
-      genRivals(e.latlng.lat,e.latlng.lng).then(()=>{renderTerr();updateUI();});
+      genRivals(e.latlng.lat,e.latlng.lng).then(()=>{updateUI();});
     }
     loadLandmarks();
   });
@@ -3874,13 +3885,17 @@ async function finalizeRun(elapsed){
   sessionConquests=0;
   const prevPts=points;
   const res=await processConquest(polyGeom,area,dist,boosted);
+  /* Boost nur verbrauchen, wenn die Eroberung serverseitig durchging — sonst
+     verliert der Nutzer bei einem RPC-Fehler einen seiner knappen Boosts für
+     0 Eroberungspunkte. */
+  const useBoost=boosted&&!res.error;
   const streakMul=streakDays>0?Math.min(2,1+(streakDays-1)*0.1):1;
   const kmXP=Math.round(xpForKm(dist/1000,getWeeklyKm())*streakMul);
-  const boostMul=boosted?1+CFG.ENERGY_BOOST_PTS:1;
+  const boostMul=useBoost?1+CFG.ENERGY_BOOST_PTS:1;
   const totalPts=Math.round((res.pts+kmXP)*boostMul);
   const lvBefore=getLevel(prevPts);
   points+=totalPts;
-  if(boosted){energy=Math.max(0,energy-1);toast(`⚡ Energie-Boost! ×${boostMul.toFixed(1)} · +${totalPts} Punkte · noch ${energy}/${CFG.ENERGY_MAX} Boosts`);}
+  if(useBoost){energy=Math.max(0,energy-1);toast(`⚡ Energie-Boost! ×${boostMul.toFixed(1)} · +${totalPts} Punkte · noch ${energy}/${CFG.ENERGY_MAX} Boosts`);}
   else if(streakDays>1)toast(`🔥 Streak ×${streakMul.toFixed(1)} · +${kmXP} km-XP`);
   const kcal=calcKcal(dist,elapsed);
   const rec={id:(crypto.randomUUID?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2))),synced:false,date:Date.now(),distance:dist,area,pts:res.pts,path:path.filter((_,i)=>i%3===0),conquered:res.conquered,defended:res.defended,duration:elapsed,gap,kcal,avgHR:heartRate,splits:[...kmSplits]};
@@ -3890,6 +3905,19 @@ async function finalizeRun(elapsed){
   if(boosted)totalBoosts++;seasonXp+=totalPts;
   if(!localStorage.getItem('rc_notif_asked_'+userId)){localStorage.setItem('rc_notif_asked_'+userId,'1');requestNotificationPermission();}
   if(pathLayer)mapL.removeLayer(pathLayer);path=[];dist=0;sessionConquests=0;
+  /* Tages-Streak fortschreiben: der erste gewertete Lauf eines Tages zählt.
+     Gestern gelaufen -> +1; Lücke -> Reset auf 1 (ein Schutzpunkt rettet den
+     Streak, analog zum Login-Streak). Steht NACH streakMul, damit dieser Lauf
+     noch mit dem eingehenden Streak multipliziert wurde. */
+  (function advanceRunStreak(){
+    const today=new Date().toDateString();
+    if(lastRunDate===today)return;
+    const yest=new Date(Date.now()-86400000).toDateString();
+    if(lastRunDate===yest||lastRunDate==='')streakDays=(streakDays||0)+1;
+    else if(streakShields>0){streakShields--;streakDays=(streakDays||0)+1;toast('🛡️ Streak-Schutz eingesetzt');}
+    else streakDays=1;
+    lastRunDate=today;
+  })();
   statusTxt.textContent='Bereit';save();updateUI();showPostRun(rec);
   processSyncQueue(true);
   const lvAfter=getLevel(points);
@@ -4218,16 +4246,21 @@ function openImportModal(){
   $('importModal').style.display='flex';
 }
 async function importActivity(distM,durSecs,dateMs,path,source,avgHR){
+  /* Duplikat-Schutz für ALLE Importe (mit/ohne Track): eine an diesem Tag
+     bereits importierte Aktivität gleicher Distanz/Dauer wird komplett
+     verworfen — sonst würden km, XP und History-Eintrag doppelt gezählt. */
+  const sameDay=h=>new Date(h.date).toDateString()===new Date(dateMs).toDateString();
+  if(history.some(h=>h.imported&&sameDay(h)&&Math.abs(h.distance-distM)<5&&Math.abs(h.duration-durSecs)<5)){
+    toast('⚠️ Diese Aktivität wurde bereits importiert');
+    return;
+  }
   const kcal=calcKcal(distM,durSecs);
   const kmXP=Math.round(xpForKm(distM/1000,getWeeklyKm()));
   const fullPath=path&&path.length>=2?path:null;
   let area=0,conquered=false,defended=false,gap=0,terrPts=0;
   if(fullPath){
-    const sameDay=h=>new Date(h.date).toDateString()===new Date(dateMs).toDateString();
-    const isDup=history.some(h=>h.imported&&sameDay(h)&&Math.abs(h.distance-distM)<5&&Math.abs(h.duration-durSecs)<5);
     const speedOk=durSecs>0&&(distM/durSecs)<=CFG.MAX_SPEED_MPS;
-    if(isDup)toast('⚠️ Identische Aktivität bereits importiert – keine erneute Gebietswertung');
-    else if(!speedOk)toast('⚠️ Unplausibles Tempo erkannt – nur als Statistik gespeichert');
+    if(!speedOk)toast('⚠️ Unplausibles Tempo erkannt – nur als Statistik gespeichert');
     else if(fullPath.length>=3&&distM>=CFG.MIN_DIST){
       try{
         const pd=mkPolyFrom(fullPath,distM);
@@ -4846,7 +4879,7 @@ async function renderLeaderboard(){
   try{
     if(!sb||!sbUserId)throw new Error('no sb');
     const{data,error}=await sb.from('profiles')
-      .select('user_id,player_name,user_avatar,user_color,points,total_km,total_conquered')
+      .select('user_id,player_name,user_avatar,user_color,points,total_km,total_conquered,streak_days')
       .order('points',{ascending:false})
       .limit(10);
     if(error||!data?.length)throw error||new Error('empty');
@@ -5910,7 +5943,7 @@ async function launchAppFromSession(user){
       await loadGlobalTerritories();
       subscribeTerritories();
       if(territories.filter(t=>t.owner!==userId).length===0){await genRivals();}
-      renderTerr();updateUI();processSyncQueue();loadFollowState();updateDmBadge();updateSettingsBadge();
+      updateUI();processSyncQueue();loadFollowState();updateDmBadge();updateSettingsBadge();
       setTimeout(checkOrphanedRun,1100);
       if(isAdmin)setTimeout(showInboxIfAdmin,800);
     },150);
@@ -5981,6 +6014,9 @@ async function deleteAccount(){
     if(sb&&sbUserId){
       await sb.from('support_messages').insert({user_id:sbUserId,subject:'KONTO-LÖSCHANTRAG DSGVO Art.17',message:'Sportler ('+(playerName||'Unbekannt')+') hat Konto-Löschung beantragt.'});
       await sb.from('runs').delete().eq('user_id',sbUserId);
+      /* profile_private enthält game_data inkl. GPS-Lauf-Historie -> muss bei
+         DSGVO-Löschung mit weg (wurde bisher zurückgelassen). */
+      await sb.from('profile_private').delete().eq('id',sbUserId);
       await sb.from('profiles').delete().eq('id',sbUserId);
     }
     ['rc_v4_','rc_profile_','rc_seasons_','rc_follows_','rc_arch_dm_','rc_arch_sup_','rc_sup_visit_','rc_dmread_'].forEach(k=>localStorage.removeItem(k+userId));
@@ -6469,7 +6505,7 @@ window.initApp=function(){
     $('regBtn').disabled=true;$('regBtn').textContent='⏳ Konto wird erstellt…';
     try{
       if(!sb)throw new Error('Supabase nicht verfügbar');
-      const{data,error}=await sb.auth.signUp({email,password:pw,options:{data:{playerName:name},emailRedirectTo:location.origin}});
+      const{data,error}=await sb.auth.signUp({email,password:pw,options:{data:{playerName:name},emailRedirectTo:AUTH_REDIRECT}});
       if(error){
         if(error.message?.toLowerCase().includes('already'))showErr('❌ Diese E-Mail ist bereits registriert. Bitte einloggen oder Passwort zurücksetzen.');
         else throw error;
@@ -6517,7 +6553,7 @@ window.initApp=function(){
     if(!isEmail(email)){showErr('Bitte gültige E-Mail-Adresse eingeben');return;}
     const btn=$('forgotBtn');btn.disabled=true;btn.textContent='⏳ Wird gesendet…';
     try{
-      if(sb)await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin});
+      if(sb)await sb.auth.resetPasswordForEmail(email,{redirectTo:AUTH_REDIRECT});
     }catch(e){/* bewusst ignoriert: keine Rückschlüsse auf Existenz des Kontos */}
     finally{
       btn.disabled=false;btn.textContent='LINK SENDEN →';
@@ -6550,7 +6586,7 @@ window.initApp=function(){
       if(!sb)return;
       btn.disabled=true;
       try{
-        const{error}=await sb.auth.signInWithOAuth({provider:btn.dataset.provider,options:{redirectTo:location.origin}});
+        const{error}=await sb.auth.signInWithOAuth({provider:btn.dataset.provider,options:{redirectTo:AUTH_REDIRECT}});
         if(error){toast('❌ '+(error.message||'OAuth-Login fehlgeschlagen'));btn.disabled=false;}
       }catch(e){toast('❌ OAuth-Login fehlgeschlagen');btn.disabled=false;}
     });
