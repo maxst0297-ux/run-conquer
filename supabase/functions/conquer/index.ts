@@ -54,6 +54,7 @@ Deno.serve(async (req) => {
     const durationS: number = +body.durationS || 0;
     const playerName: string = (body.playerName || '').slice(0, 40);
     const userColor: string = (body.userColor || '#e8ff47').slice(0, 9);
+    const userTeam: string | null = (body.userTeam || '').slice(0, 20) || null;
     if (!Array.isArray(path) || path.length < 2) return json({ error: 'bad_path' }, 400);
     const cadence = (body.cadence != null) ? +body.cadence : null; // Ø Schritte/Min (optional, aus HealthKit/Fit)
     const distanceKm = distanceM / 1000;
@@ -79,6 +80,7 @@ Deno.serve(async (req) => {
     const { data: hitCells } = await svc.from('h3_cells').select('territory_id').in('cell', [...candidate]);
     const terrIds = [...new Set((hitCells || []).map((r: any) => r.territory_id))];
 
+    const nowMs = Date.now();
     const territories: any[] = [];
     if (terrIds.length) {
       const { data: trows } = await svc.from('h3_territories').select('*').in('id', terrIds);
@@ -87,14 +89,25 @@ Deno.serve(async (req) => {
       for (const r of (allCells || [])) (byT[r.territory_id] ||= new Set()).add(r.cell);
       const today = new Date().toISOString().slice(0, 10);
       for (const t of (trows || [])) territories.push({
-        id: t.id, owner: t.owner, ownerName: t.owner_name, defense: t.defense,
+        id: t.id, owner: t.owner, ownerName: t.owner_name,
+        // Lazy-Decay: die wirksame Verteidigung wird aus updated_at berechnet,
+        // damit Angriffe gegen lange nicht verteidigte Gebiete leichter sind.
+        defense: engine.decayedDefense(t.defense, Date.parse(t.updated_at || t.created_at) || nowMs, nowMs),
         dailyAdded: t.daily_defense_added, lastDay: t.last_defense_day,
         today, cells: byT[t.id] || new Set(),
       });
     }
 
+    // ── Energie (server-autoritativ): 3 Boosts/Woche, +10% Angriff ───────────
+    const weekKey = (() => { const d = new Date(); const jan1 = Date.UTC(d.getUTCFullYear(), 0, 1); const wk = Math.floor((nowMs - jan1) / (7 * 86400000)); return d.getUTCFullYear() + '-' + wk; })();
+    const { data: prof } = await svc.from('profiles').select('points,energy,energy_week').eq('id', user.id).single();
+    let energy = (prof?.energy != null) ? prof.energy : engine.ENERGY_PER_WEEK;
+    if (prof?.energy_week !== weekKey) energy = engine.ENERGY_PER_WEEK; // Wochen-Reset
+    let applyBoost = false;
+    if (body.boosted && energy > 0) { applyBoost = true; energy -= 1; }
+
     // ── Engine entscheidet ───────────────────────────────────────────────────
-    const res = engine.resolveRun({ userId: user.id, runCells, enclosed, distanceKm, paceKmh, territories });
+    const res = engine.resolveRun({ userId: user.id, runCells, enclosed, distanceKm, paceKmh, territories, boosted: applyBoost });
 
     // ── Mutationen anwenden (Reihenfolge: delete -> update -> create, damit
     //    Zellen frei sind, bevor sie neu vergeben werden; cell ist global PK) ─
@@ -111,19 +124,19 @@ Deno.serve(async (req) => {
     }
     for (const cr of res.creates) {
       const { data: nt } = await svc.from('h3_territories')
-        .insert({ owner: cr.owner, owner_name: playerName, owner_color: userColor, defense: cr.defense, last_captured_at: now })
+        .insert({ owner: cr.owner, owner_name: playerName, owner_color: userColor, owner_team: userTeam, defense: cr.defense, last_captured_at: now })
         .select('id').single();
       if (nt && cr.cells.length)
         await svc.from('h3_cells').upsert(cr.cells.map((c: string) => ({ cell: c, territory_id: nt.id })), { onConflict: 'cell' });
     }
 
-    // ── Punkte gutschreiben ──────────────────────────────────────────────────
-    if (res.playerPoints) {
-      const { data: prof } = await svc.from('profiles').select('points').eq('id', user.id).single();
-      await svc.from('profiles').update({ points: (prof?.points || 0) + res.playerPoints }).eq('id', user.id);
-    }
+    // ── Punkte + Energie persistieren (Energie server-autoritativ) ───────────
+    await svc.from('profiles').update({
+      points: (prof?.points || 0) + (res.playerPoints || 0),
+      energy, energy_week: weekKey,
+    }).eq('id', user.id);
 
-    return json({ ok: true, points: res.playerPoints, events: res.events, atkPts: res.atkPts, defPts: res.defPts });
+    return json({ ok: true, points: res.playerPoints, events: res.events, atkPts: res.atkPts, defPts: res.defPts, energy, boosted: applyBoost });
   } catch (e) {
     return json({ error: String(e && (e as Error).message || e) }, 500);
   }

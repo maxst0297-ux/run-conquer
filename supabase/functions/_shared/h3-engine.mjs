@@ -65,6 +65,24 @@ export function clampDefense(v) {
   return Math.max(DEF_MIN, Math.min(DEF_MAX, v));
 }
 
+// ── Verfall: Verteidigung sinkt mit der Zeit bis auf DEF_MIN (1) ──
+// Lazy-Decay: kein Scheduler nötig. Aus dem Zeitstempel der letzten Änderung
+// wird die aktuell wirksame Verteidigung berechnet (beim Lesen wie beim Kampf).
+export const DECAY_PER_DAY = 8; // Punkte/Tag — zentrale Stellschraube fürs Tempo
+export function decayedDefense(defense, updatedAtMs, nowMs) {
+  const days = Math.max(0, (nowMs - updatedAtMs) / 86400000);
+  return Math.max(DEF_MIN, (defense || DEF_MIN) - days * DECAY_PER_DAY);
+}
+// Verbleibende Zeit (ms), bis die Verteidigung DEF_MIN erreicht.
+export function timeToMinMs(defense, updatedAtMs, nowMs) {
+  const cur = decayedDefense(defense, updatedAtMs, nowMs);
+  return Math.max(0, ((cur - DEF_MIN) / DECAY_PER_DAY) * 86400000);
+}
+
+// ── Energie-Boost: erhöht den Angriff eines Laufs um 10% ──
+export const ENERGY_BOOST = 0.10;
+export const ENERGY_PER_WEEK = 3;
+
 // ── Anti-Cheat-Regeln (GDS 3.1) — server-autoritativ, ohne Geo-Abhängigkeit ──
 export const MIN_DIST_M = 150;
 export const HARD_MAX_KMH = 25;   // > Rad/Auto -> Lauf ungültig
@@ -267,8 +285,9 @@ export function createEngine(h3) {
        updates : { id, defense, dailyAdded?, lastDay?, setCells? }  (setCells = neue Zell-Liste)
        deletes : [territoryId]   (vollständig erobert -> gelöscht, Zellen wandern in ein create)
        creates : { owner, cells[], defense, neutral? }  (neues Gebiet des Angreifers) */
-  function resolveRun({ userId, runCells, enclosed, distanceKm, paceKmh, territories }) {
-    const atkPts = runValue(distanceKm, paceKmh, 'atk');
+  function resolveRun({ userId, runCells, enclosed, distanceKm, paceKmh, territories, boosted }) {
+    // Energie-Boost: +10% Angriffspunkte (Verteidigungsaufbau bleibt unberührt).
+    const atkPts = runValue(distanceKm, paceKmh, 'atk') * (boosted ? (1 + ENERGY_BOOST) : 1);
     const defPts = runValue(distanceKm, paceKmh, 'def');
     const R = runCells instanceof Set ? runCells : new Set(runCells);
     const encl = enclosed instanceof Set ? enclosed : new Set(enclosed || []);
