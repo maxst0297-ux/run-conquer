@@ -1631,7 +1631,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v77';
+const APP_VERSION='v78';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -1693,6 +1693,7 @@ async function syncProfile(){
     const{error:e1}=await sb.from('profiles').upsert({
       id:sbUserId,user_id:userId,player_name:playerName,user_avatar:userAvatar,user_color:userColor,
       points,total_km:totalKm,total_conquered:totalConquered,streak_days:streakDays,
+      total_defended:totalDefended,total_discovered:totalDiscovered,total_raids:totalRaids,
       updated_at:new Date().toISOString(),
       user_team:userTeam||null,club_code:userClub?.code||null
     },{onConflict:'id'});
@@ -4686,10 +4687,12 @@ function renderDiscoveryList(players){
     const tm=TEAMS.find(t=>t.id===r.user_team);
     const col=esc(r.user_color||'#e8ff47');
     return`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
-      <div style="width:36px;height:36px;border-radius:50%;background:${col}22;border:2px solid ${col}55;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0">${esc(r.user_avatar||'🏃')}</div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:.82rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.player_name||'Läufer')}</div>
-        <div style="font-size:.63rem;color:var(--muted)">${tm?tm.icon+' '+tm.name+' · ':''}${(r.total_km||0).toFixed(1)} km</div>
+      <div class="disc-open" data-uid="${r.user_id}" data-name="${esc(r.player_name||'')}" style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer">
+        <div style="width:36px;height:36px;border-radius:50%;background:${col}22;border:2px solid ${col}55;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0">${esc(r.user_avatar||'🏃')}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.82rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.player_name||'Läufer')}</div>
+          <div style="font-size:.63rem;color:var(--muted)">${tm?tm.icon+' '+tm.name+' · ':''}${(r.total_km||0).toFixed(1)} km</div>
+        </div>
       </div>
       <span style="font-family:'Bebas Neue',sans-serif;color:var(--primary);font-size:.9rem;flex-shrink:0">${r.points||0}</span>
       <button class="follow-btn${st==='accepted'?' following':''}" data-uid="${r.user_id}" data-name="${esc(r.player_name||'')}" data-av="${esc(r.user_avatar||'🏃')}" data-st="${st}" style="font-size:.68rem;padding:4px 10px;flex-shrink:0">${btnLabel}</button>
@@ -4707,7 +4710,57 @@ function renderDiscoveryList(players){
       else{await sendFollowRequest(uid,name,av);renderDiscoveryList(players);}
     });
   });
+  dl.querySelectorAll('.disc-open').forEach(el=>el.addEventListener('click',()=>openPlayerCard(el.dataset.uid,el.dataset.name)));
 }
+
+/* ═══ FREMDPROFIL: Erfolge (aus öffentlichen Stats abgeleitet) + letzte Läufe
+   (aus der pathlosen View public_runs). Alles serverseitig, für alle sichtbar;
+   GPS-Routen bleiben privat. ═══ */
+function earnedFromStats(s){
+  const src={conq:s.total_conquered||0,km:s.total_km||0,atk:s.total_raids||0,def:s.total_defended||0,disc:s.total_discovered||0,streak:s.streak_days||0};
+  const defs=(typeof achievements!=='undefined'&&achievements.length)?achievements:(initAch(),achievements);
+  return defs.map(a=>({...a,earned:(src[a.cat]||0)>=a.target}));
+}
+async function openPlayerCard(uid,name){
+  if(!sb||!uid)return;
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;z-index:9900;background:rgba(0,0,0,.75);display:flex;align-items:flex-end;justify-content:center;padding:0';
+  ov.innerHTML=`<div style="width:100%;max-width:480px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:22px 22px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom,0px));-webkit-overflow-scrolling:touch"><div id="pcBody"><div style="text-align:center;color:var(--muted);padding:30px">⏳ Lade Profil…</div></div></div>`;
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+  document.body.appendChild(ov);
+  try{
+    const{data:prof}=await sb.from('profiles').select('*').or(`user_id.eq.${uid},id.eq.${uid}`).limit(1).maybeSingle();
+    if(!prof){$('pcBody')&&(document.getElementById('pcBody').innerHTML='<div style="text-align:center;color:var(--muted);padding:30px">Profil nicht gefunden.</div>');return;}
+    const{data:runs}=await sb.from('public_runs').select('*').eq('user_id',prof.id).order('created_at',{ascending:false}).limit(8);
+    const achs=earnedFromStats(prof).filter(a=>a.earned);
+    const tm=TEAMS.find(t=>t.id===prof.user_team);
+    const col=esc(prof.user_color||'#e8ff47');
+    const runsHtml=(runs||[]).length?(runs.map(r=>{
+      const d=new Date(r.created_at),ds=d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'});
+      const km=((r.distance||0)/1000).toFixed(2),min=Math.round((r.duration||0)/60);
+      return`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:.75rem"><span style="color:var(--muted);width:44px">${ds}</span><span style="flex:1;font-weight:600">${km} km</span><span style="color:var(--muted)">${min} Min</span><span style="color:var(--primary);width:44px;text-align:right">+${r.points||0}</span></div>`;
+    }).join('')):'<div style="color:var(--muted);font-size:.75rem;padding:10px 0">Noch keine Läufe.</div>';
+    const achHtml=achs.length?achs.map(a=>`<span style="display:inline-flex;align-items:center;gap:4px;background:${col}18;border:1px solid ${col}44;border-radius:20px;padding:3px 9px;font-size:.66rem;margin:0 5px 6px 0">🏅 ${esc(a.name)}</span>`).join(''):'<div style="color:var(--muted);font-size:.75rem">Noch keine Abzeichen.</div>';
+    document.getElementById('pcBody').innerHTML=`
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <div style="width:52px;height:52px;border-radius:50%;background:${col}22;border:2px solid ${col}66;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0">${esc(prof.user_avatar||'🏃')}</div>
+        <div style="flex:1;min-width:0"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:1px">${esc(prof.player_name||name||'Läufer')}</div>
+        <div style="font-size:.7rem;color:var(--muted)">${tm?tm.icon+' '+tm.name:''}</div></div>
+        <div style="text-align:right"><div style="font-family:'Bebas Neue',sans-serif;color:var(--primary);font-size:1.4rem">${prof.points||0}</div><div style="font-size:.6rem;color:var(--muted)">PUNKTE</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:16px">
+        <div style="background:rgba(255,255,255,.05);border-radius:10px;padding:8px;text-align:center"><div style="font-size:.95rem;font-weight:700">${(prof.total_km||0).toFixed(0)}</div><div style="font-size:.55rem;color:var(--muted)">km</div></div>
+        <div style="background:rgba(255,255,255,.05);border-radius:10px;padding:8px;text-align:center"><div style="font-size:.95rem;font-weight:700">${prof.total_conquered||0}</div><div style="font-size:.55rem;color:var(--muted)">Gebiete</div></div>
+        <div style="background:rgba(255,255,255,.05);border-radius:10px;padding:8px;text-align:center"><div style="font-size:.95rem;font-weight:700">${prof.streak_days||0}🔥</div><div style="font-size:.55rem;color:var(--muted)">Streak</div></div>
+        <div style="background:rgba(255,255,255,.05);border-radius:10px;padding:8px;text-align:center"><div style="font-size:.95rem;font-weight:700">${achs.length}</div><div style="font-size:.55rem;color:var(--muted)">Abzeichen</div></div>
+      </div>
+      <div style="font-size:.7rem;font-weight:700;letter-spacing:1px;color:var(--muted);margin-bottom:8px">🏅 ERFOLGE (${achs.length})</div>
+      <div style="margin-bottom:16px">${achHtml}</div>
+      <div style="font-size:.7rem;font-weight:700;letter-spacing:1px;color:var(--muted);margin-bottom:4px">🏃 LETZTE LÄUFE</div>
+      <div>${runsHtml}</div>`;
+  }catch(e){logError&&logError('player_card',e);const b=document.getElementById('pcBody');if(b)b.innerHTML='<div style="text-align:center;color:var(--muted);padding:30px">Konnte Profil nicht laden.</div>';}
+}
+window.openPlayerCard=openPlayerCard;
 /* CLUB DISCOVERY */
 async function renderClubDiscovery(){
   const el=$('clubDiscoveryList');if(!el)return;
