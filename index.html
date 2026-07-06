@@ -1631,7 +1631,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v75';
+const APP_VERSION='v76';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -1746,15 +1746,12 @@ async function loadFromCloud(){
    Tabelle ist bereits überlappungsfrei und autoritativ. */
 async function loadGlobalTerritories(){
   if(!sb)return false;
-  try{
-    const{data,error}=await sb.rpc('rc_list_territories');
-    if(error)throw error;
-    territories=(data||[]).map(nt=>{
-      if(Array.isArray(nt.landmarkIds))nt.landmarkIds=nt.landmarkIds.map(x=>/^\d+$/.test(x)?Number(x):x);
-      return nt;
-    });
-    return true;
-  }catch(e){logError('territory_load',e);return false;}
+  /* Cutover auf H3 (Phase 3b): der autoritative Gebietsstand kommt jetzt aus den
+     h3_*-Tabellen. loadH3Territories() lädt sie, spiegelt in `territories` (für
+     Stats/Quests) und rendert die Hexagons. Das alte rc_list_territories wird
+     nicht mehr genutzt. */
+  try{await loadH3Territories();return true;}
+  catch(e){logError&&logError('territory_load',e);return false;}
 }
 let territoriesChannel=null,dmChannel=null;
 /* Realtime-Sync: das rohe postgres_changes-Payload liefert PostGIS-Geometrie
@@ -3572,7 +3569,16 @@ async function loadH3Territories(){
     const{data,error}=await sb.from('h3_territories_full').select('*');
     if(error){if(error.code==='42P01')return;throw error;} // Tabelle noch nicht angelegt
     h3Territories=data||[];
+    /* Kompatibilitäts-Spiegel: Stats/Quests/Profil lesen weiterhin das alte
+       `territories`-Array. polygon:null -> das alte renderTerr überspringt diese
+       Einträge (kein Doppel-Rendering), die Hexagons zeichnet renderH3Territories. */
+    territories=h3Territories.map(t=>({
+      id:t.id,owner:t.owner,ownerName:t.owner_name,ownerColor:t.owner_color,
+      defense:t.defense,polygon:null,rarity:'common',landmarkIds:[],
+      area:(t.cells?t.cells.length:0)*15000,customName:null
+    }));
     renderH3Territories();
+    updateStatsUI&&updateStatsUI();
   }catch(e){logError&&logError('h3_load',e);}
 }
 function renderH3Territories(){
@@ -3974,7 +3980,7 @@ async function finalizeRun(elapsed){
   const boosted=energy>0;
   sessionConquests=0;
   const prevPts=points;
-  const res=await processConquest(polyGeom,area,dist,boosted,false,elapsed);
+  const res=await processConquest({path:path},area,dist,boosted,false,elapsed);
   /* Boost nur verbrauchen, wenn die Eroberung serverseitig durchging — sonst
      verliert der Nutzer bei einem RPC-Fehler einen seiner knappen Boosts für
      0 Eroberungspunkte. */
@@ -4031,77 +4037,48 @@ function mkPoly(){return mkPolyFrom(path,dist);}
    Distanz und wendet das autoritative Ergebnis (geänderte Gebiete + Event-
    Meldungen) lokal an. p_claim_id macht Netzwerk-Retries idempotent. */
 async function processConquest(np,area,d,boosted=false,isImport=false,durationS=null){
-  const claimId=crypto.randomUUID?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2));
+  /* H3-System (Phase 3b): roher GPS-Track an die Edge Function 'conquer'. np
+     kann {path:[[lat,lng],...]} sein (Live-Lauf/Import) oder — abwärtskompatibel
+     — ein Polygon; dann fällt es auf den globalen path zurück. */
+  const runPath=(np&&np.path)?np.path:(Array.isArray(np)?np:path);
+  if(!runPath||runPath.length<2)return{pts:0,conquered:false,defended:false,error:'other'};
   let data,error;
   try{
-    const r=await sb.rpc('rc_claim',{
-      p_claim_id:claimId,p_polygon_geojson:np.geometry,p_distance_m:d,
-      p_player_name:playerName,p_user_color:userColor,
-      p_landmark_ids:lmsInPoly(np.geometry).map(String),
-      p_is_import:isImport,p_duration_s:durationS,p_boosted:boosted
-    });
+    const r=await sb.functions.invoke('conquer',{body:{
+      path:runPath.map(p=>[p[0],p[1]]),
+      distanceM:d,durationS:durationS||0,
+      playerName,userColor
+    }});
     data=r.data;error=r.error;
   }catch(e){error=e;}
 
-  if(error){
-    const msg=error?.message||'';
-    if(msg.includes('import_area_cap_exceeded'))return{pts:0,conquered:false,defended:false,error:'import_area_cap_exceeded'};
-    if(msg.includes('import_pace_implausible'))return{pts:0,conquered:false,defended:false,error:'import_pace_implausible'};
-    if(msg.includes('import_daily_limit_reached'))return{pts:0,conquered:false,defended:false,error:'import_daily_limit_reached'};
-    logError('rc_claim',error,{msg});
+  if(error||!data||data.error){
+    const code=(data&&data.error)||(error&&error.message)||'other';
+    if(String(code).includes('speed_hardcap')){toast('⚠️ Unrealistisches Tempo – Lauf nicht gewertet');return{pts:0,conquered:false,defended:false,error:'other'};}
+    if(String(code).includes('too_short'))return{pts:0,conquered:false,defended:false,error:'other'};
+    logError&&logError('conquer',error||new Error(String(code)),{code:String(code)});
     toast('⚠️ Eroberung konnte nicht synchronisiert werden');
     return{pts:0,conquered:false,defended:false,error:'other'};
   }
 
-  let pts=data.pts||0,conquered=!!data.conquered,defended=!!data.defended;
-
-  (data.territories||[]).forEach(nt=>{
-    // landmark_ids ist serverseitig text[] -- Wahrzeichen-IDs (OSM) sind
-    // numerisch, lokal wird weiterhin per === gegen landmarks[].id verglichen.
-    if(Array.isArray(nt.landmarkIds))nt.landmarkIds=nt.landmarkIds.map(x=>/^\d+$/.test(x)?Number(x):x);
-    const idx=territories.findIndex(t=>t.id===nt.id);
-    if(idx>=0)territories[idx]={...territories[idx],...nt};else territories.push(nt);
-  });
-
-  (data.messages||[]).forEach(m=>{
-    if(m.type==='repaired'){
-      toast('🛡️ Gebiet verteidigt! Stärke: '+Math.round(m.defense)+'/100');
-    }else if(m.type==='bonus_7day'){
-      beep(880,.1);toast('🏆 7-Tage-Halte-Bonus! +'+m.xp+' XP');
-    }else if(m.type==='newcomer_protected'){
-      toast('🛡️ Dieses Gebiet ist noch unter Newcomer-Schutz');
-    }else if(m.type==='critical_hit'){
-      toast('✨ Kritischer Treffer! ×'+CFG.CRIT_MUL);beep(880,.15);vib(200);
-    }else if(m.type==='combo_bonus'){
-      toast('🔥 Combo! +'+m.xp+' XP');
-    }else if(m.type==='attacked'){
-      toast('⚔️ Angriff! Stärke: '+Math.round(m.defense)+'/100 (-'+Math.round(m.dmg)+')');
-    }else if(m.type==='landmark_bonus'){
-      toast('🏛️ Wahrzeichen! +'+m.pts);
-    }else if(m.type==='conquered'){
-      const t=territories.find(x=>x.id===m.territoryId);
-      (window._newTerrIds||(window._newTerrIds=new Set())).add(m.territoryId);
-      sessionNewTerrNames.push(t?.customName||('Gebiet #'+(m.territoryId||'').slice(-4)));
+  let conquered=false,defended=false;
+  (data.events||[]).forEach(ev=>{
+    if(ev.type==='conquered'||ev.type==='cut'){
+      conquered=true;
       [660,880,1100].forEach((f,i)=>setTimeout(()=>beep(f,.1),i*80));
-      const rarLbl=m.rarity&&m.rarity!=='common'?(' · '+RARITY_LABELS[m.rarity]):'';
-      const comboLbl=m.comboMul>1?` · KOMBO ×${m.comboMul}`:'';
-      toast('🔥 GEBIET EROBERT'+rarLbl+comboLbl+'! +'+m.xp+' XP');vib([100,50,100]);
-      if(m.comboMul>1)setTimeout(()=>showComboFlash(m.comboMul),400);
-      addNotif('🗺️','Neues Gebiet erobert! '+RARITY_LABELS[m.rarity||'common']);
-    }else if(m.type==='neutral_claim'){
-      const t=territories.find(x=>x.id===m.territoryId);
-      (window._newTerrIds||(window._newTerrIds=new Set())).add(m.territoryId);
-      sessionNewTerrNames.push(t?.customName||('Gebiet #'+(m.territoryId||'').slice(-4)));
-      totalDiscovered++;
-      const rarLbl=m.rarity!=='common'?(' · '+RARITY_LABELS[m.rarity]):'';
-      const comboLbl=m.comboMul>1?` · KOMBO ×${m.comboMul}`:'';
-      toast('🗺️ Neues Gebiet'+rarLbl+comboLbl+'! +'+m.xp+' XP');
-      if(m.comboMul>1)setTimeout(()=>showComboFlash(m.comboMul),400);
-      addNotif('🗺️','Neues Gebiet erobert! '+RARITY_LABELS[m.rarity]);
+      toast(ev.type==='cut'?'✂️ Gebiet abgeschnitten! (+'+ev.got+' Zellen)':'🔥 GEBIET EROBERT! (+'+ev.cells+' Zellen)');
+      vib([100,50,100]);addNotif('🗺️','Neues Gebiet erobert!');
+    }else if(ev.type==='neutral_claim'){
+      conquered=true;totalDiscovered++;
+      toast('🗺️ Neues Gebiet beansprucht! (+'+ev.cells+' Zellen)');addNotif('🗺️','Neues Gebiet beansprucht');
+    }else if(ev.type==='defended'){
+      defended=true;toast('🛡️ Gebiet verteidigt! +'+ev.built+' Verteidigung');
+    }else if(ev.type==='attacked'){
+      toast('⚔️ Angriff! −'+ev.damage+' gegnerische Verteidigung');
     }
   });
-
-  return{pts,conquered,defended};
+  loadH3Territories&&loadH3Territories(); // Karte + Stats mit neuem Stand aktualisieren
+  return{pts:data.points||0,conquered,defended};
 }
 
 /* STARTER QUESTS */
@@ -4357,7 +4334,7 @@ async function importActivity(distM,durSecs,dateMs,path,source,avgHR){
         if(pd){
           area=turf.area(pd.polyGeom);gap=pd.gap;
           sessionConquests=0;sessionNewTerrNames=[];sessionNewLandmarks=[];
-          const res=await processConquest(pd.polyGeom,area,distM,false,true,durSecs);
+          const res=await processConquest({path:fullPath},area,distM,false,true,durSecs);
           if(res.error==='import_area_cap_exceeded')toast('❌ Import zu groß für Gebietswertung – max. 2 km² pro Aktivität');
           else if(res.error==='import_pace_implausible')toast('⚠️ Unplausibles Tempo erkannt – nur als Statistik gespeichert');
           else if(res.error==='import_daily_limit_reached')toast('⚠️ Tageslimit für Gebiets-Importe erreicht (max. 8/Tag) – nur als Statistik gespeichert');
