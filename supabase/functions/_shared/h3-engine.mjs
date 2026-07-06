@@ -315,11 +315,14 @@ export function createEngine(h3) {
       }
     }
 
-    // Neutral-Claim: eingeschlossene (bzw. sonst durchlaufene) Zellen, die noch
-    // niemandem gehören, werden ein neues Gebiet des Angreifers.
+    // Neutral-Claim: alle Zellen, die dieser Lauf beansprucht und die noch
+    // niemandem gehören, werden ein neues Gebiet. Das ist der DURCHLAUFENE PFAD
+    // (auch der Teil außerhalb eigener Gebiete!) PLUS — bei einer Schleife — das
+    // eingeschlossene Innere. So geht die außerhalb gelaufene Strecke nicht
+    // verloren.
     const owned = new Set();
-    for (const t of terrs) for (const c of (t.cells instanceof Set ? t.cells : t.cells)) owned.add(c);
-    const source = encl.size ? encl : R;
+    for (const t of terrs) { const cs = t.cells instanceof Set ? t.cells : new Set(t.cells); for (const c of cs) owned.add(c); }
+    const source = new Set([...R, ...encl]);
     const neutral = [];
     for (const c of source) if (!owned.has(c) && !claimed.has(c)) neutral.push(c);
     if (neutral.length) {
