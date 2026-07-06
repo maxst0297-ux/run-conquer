@@ -65,7 +65,11 @@ Deno.serve(async (req) => {
     // ── GPS-Track -> H3-Zellen; geschlossener Loop -> eingeschlossene Zellen ──
     const runCells: Set<string> = engine.pathToCells(path);
     const gap = haversine(path[0], path[path.length - 1]);
-    const enclosed: Set<string> = gap < 60 ? engine.enclosedCells([...path, path[0]]) : new Set();
+    let enclosed: Set<string> = gap < 60 ? engine.enclosedCells([...path, path[0]]) : new Set();
+    // Sicherheits-Kappung: eine absurd große eingeschlossene Fläche (Spoofing /
+    // Riesen-Loop) würde tausende Zellen und teure Abfragen erzeugen. Res-10-Zelle
+    // ~0,015 km² -> 5000 Zellen ≈ 75 km². Darüber: Umrundung verwerfen.
+    if (enclosed.size > 5000) enclosed = new Set();
 
     // ── Betroffene Gebiete finden (Zellen + Randnachbarn für Rand-Berührung) ─
     const candidate = new Set<string>([...runCells, ...enclosed]);
