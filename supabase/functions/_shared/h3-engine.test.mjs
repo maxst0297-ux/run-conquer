@@ -120,5 +120,45 @@ const atkFast = runValue(6, 16, 'atk');   // 6km@16 = 6*18 + Bonus(6km=0) = 108 
   ok('Build ohne Umrundung -> 0', !r.circumnavigated && r.built === 0 && r.defense === 50);
 }
 
+// ================= resolveRun (Orchestrierung) =================
+const uid = 'me';
+const enemyT = { id: 'T1', owner: 'foe', ownerName: 'Gegner', defense: 100, cells: new Set(territory) };
+
+// 1) Neutral-Claim: Loop um leeres Land, keine Gebiete
+{
+  const r = eng.resolveRun({ userId: uid, runCells: new Set([center]), enclosed: enclosedSuper, distanceKm: 3, paceKmh: 12, territories: [] });
+  const neut = r.creates.find(c => c.neutral);
+  ok('resolveRun NEUTRAL-Claim erzeugt Gebiet', !!neut && neut.cells.length === enclosedSuper.size && r.deletes.length === 0, 'cells=' + (neut && neut.cells.length));
+}
+// 2) Enemy schwächen (Durchlauf 20%)
+{
+  const r = eng.resolveRun({ userId: uid, runCells: throughRun, enclosed: new Set(), distanceKm: 5, paceKmh: 12, territories: [{ ...enemyT, cells: new Set(territory) }] });
+  const up = r.updates.find(u => u.id === 'T1');
+  ok('resolveRun WEAKEN: update ohne create/delete', !!up && up.defense < 100 && !up.setCells && r.creates.length === 0 && r.deletes.length === 0, 'def=' + (up && up.defense));
+}
+// 3) Ganzes Gebiet erobern (schnelle Umrundung eines schwachen Gebiets)
+{
+  const r = eng.resolveRun({ userId: uid, runCells: new Set([center]), enclosed: enclosedSuper, distanceKm: 6, paceKmh: 16, territories: [{ ...enemyT, defense: 30, cells: new Set(territory) }] });
+  ok('resolveRun CONQUER: delete + create', r.deletes.includes('T1') && r.creates.some(c => !c.neutral && c.owner === uid && c.cells.length === territory.length), 'deletes=' + r.deletes.length + ' creates=' + r.creates.length);
+}
+// 4) Cut: Linie quer, genug Angriff
+{
+  const cInfo = eng.classify(new Set(territory), cutRun, new Set());
+  const small = cInfo.clusters[cInfo.clusters.length - 1].length;
+  const areaDef = 100 * (small / territory.length);
+  // paceKmh so wählen, dass atkPts > areaDef: 8km@16 = 8*18+20=164
+  const r = eng.resolveRun({ userId: uid, runCells: cutRun, enclosed: new Set(), distanceKm: 8, paceKmh: 16, territories: [{ ...enemyT, cells: new Set(territory) }] });
+  const up = r.updates.find(u => u.id === 'T1');
+  const cre = r.creates.find(c => !c.neutral);
+  ok('resolveRun CUT: update(setCells) + create(kleiner Cluster)', !!up && !!up.setCells && !!cre && cre.cells.length === small, 'atk=' + r.atkPts + ' small=' + small + ' got=' + (cre && cre.cells.length));
+}
+// 5) Verteidigungsaufbau eigenes Gebiet
+{
+  const r = eng.resolveRun({ userId: uid, runCells: new Set([center]), enclosed: enclosedSuper, distanceKm: 5, paceKmh: 12, territories: [{ id: 'OWN', owner: uid, defense: 50, dailyAdded: 0, lastDay: null, today: '2026-07-06', cells: new Set(territory) }] });
+  const up = r.updates.find(u => u.id === 'OWN');
+  // 5km@12 def = 5*16 + 0 = 80 -> 50+80=130
+  ok('resolveRun DEFEND: eigenes Gebiet +80 -> 130', !!up && up.defense === 130 && up.lastDay === '2026-07-06', 'def=' + (up && up.defense));
+}
+
 console.log(`\n==== ${pass} passed, ${fail} failed ====`);
 process.exit(fail ? 1 : 0);

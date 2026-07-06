@@ -58,9 +58,8 @@ export function distanceBonus(km) {
 
 /* Punkte eines Laufs = Distanz(km) × Pace-Faktor + Distanzbonus (GDS 1.2). */
 export function runValue(distanceKm, paceKmh, kind) {
-  return distanceKm * paceFactor(paceKmh, kind) + distanceBonus(km_(distanceKm));
+  return distanceKm * paceFactor(paceKmh, kind) + distanceBonus(distanceKm);
 }
-const km_ = v => v; // Klarheits-Alias
 
 export function clampDefense(v) {
   return Math.max(DEF_MIN, Math.min(DEF_MAX, v));
@@ -177,15 +176,17 @@ export function createEngine(h3) {
     if (info.mode === 'cut') {
       const total = E.size;
       const small = info.clusters[info.clusters.length - 1];
-      const big = info.clusters.slice(0, -1).flat();
+      const smallSet = new Set(small);
       const areaFrac = small.length / total;
       const areaDefense = enemyDefense * areaFrac;
       if (attackPoints >= areaDefense) {
-        // Erfolg: kleiner Cluster wird neues Gebiet des Angreifers.
+        // Erfolg: NUR der kleine (abgetrennte) Cluster wird Gebiet des Angreifers.
+        // Der Verteidiger behält alles Übrige (großer Cluster + durchlaufene
+        // Swath-Zellen) und verliert den Flächenanteil an Verteidigung (GDS 1.6).
         const overflow = attackPoints - areaDefense;
         return {
           ...base, cutOff: small,
-          defenderCells: big,
+          defenderCells: [...E].filter(c => !smallSet.has(c)),
           defenderDefense: clampDefense(enemyDefense * (1 - areaFrac)),
           attackerCells: small,
           attackerDefense: overflow + CAPTURE_BONUS,
@@ -233,9 +234,80 @@ export function createEngine(h3) {
     };
   }
 
+  /* Orchestriert EINEN Lauf gegen die Spielwelt (GDS Modul 1 gesamt).
+     Eingaben:
+       userId, playerName, userColor
+       runCells   : Set  durchlaufene H3-Zellen
+       enclosed   : Set  eingeschlossene Zellen (0 wenn kein Loop)
+       distanceKm, paceKmh
+       territories: [{ id, owner, ownerName, ownerColor, defense,
+                       dailyAdded, lastDay, today, cells:Set }]
+                    — ALLE Gebiete, die mind. eine betroffene Zelle enthalten.
+     Rückgabe: { atkPts, defPts, playerPoints, updates[], deletes[], creates[], events[] }
+       updates : { id, defense, dailyAdded?, lastDay?, setCells? }  (setCells = neue Zell-Liste)
+       deletes : [territoryId]   (vollständig erobert -> gelöscht, Zellen wandern in ein create)
+       creates : { owner, cells[], defense, neutral? }  (neues Gebiet des Angreifers) */
+  function resolveRun({ userId, runCells, enclosed, distanceKm, paceKmh, territories }) {
+    const atkPts = runValue(distanceKm, paceKmh, 'atk');
+    const defPts = runValue(distanceKm, paceKmh, 'def');
+    const R = runCells instanceof Set ? runCells : new Set(runCells);
+    const encl = enclosed instanceof Set ? enclosed : new Set(enclosed || []);
+    const terrs = territories || [];
+    const out = { atkPts, defPts, playerPoints: 0, updates: [], deletes: [], creates: [], events: [] };
+    const claimed = new Set(); // Zellen, die in diesem Lauf an den Angreifer gehen
+
+    for (const t of terrs) {
+      const cells = t.cells instanceof Set ? t.cells : new Set(t.cells);
+      if (t.owner === userId) {
+        const already = (t.lastDay && t.today && t.lastDay === t.today) ? (t.dailyAdded || 0) : 0;
+        const rb = resolveDefenseBuild({ ownCells: [...cells], ownDefense: t.defense, enclosed: encl, buildPoints: defPts, dailyAlready: already });
+        if (rb.built > 0) {
+          out.updates.push({ id: t.id, defense: rb.defense, dailyAdded: rb.dailyAfter, lastDay: t.today });
+          out.events.push({ type: 'defended', id: t.id, built: Math.round(rb.built) });
+          out.playerPoints += Math.round(rb.built);
+        }
+        continue;
+      }
+      const ra = resolveAttack({ enemyCells: [...cells], enemyDefense: t.defense, runCells: R, enclosed: encl, attackPoints: atkPts });
+      if (ra.mode === 'none') continue;
+      if (ra.conquered && ra.defenderCells.length === 0) {
+        out.deletes.push(t.id);
+        out.creates.push({ owner: userId, cells: ra.attackerCells, defense: ra.attackerDefense });
+        ra.attackerCells.forEach(c => claimed.add(c));
+        out.events.push({ type: 'conquered', id: t.id, cells: ra.attackerCells.length });
+        out.playerPoints += Math.round(atkPts);
+      } else if (ra.conquered && ra.cutOff) {
+        out.updates.push({ id: t.id, defense: ra.defenderDefense, setCells: ra.defenderCells });
+        out.creates.push({ owner: userId, cells: ra.attackerCells, defense: ra.attackerDefense });
+        ra.attackerCells.forEach(c => claimed.add(c));
+        out.events.push({ type: 'cut', id: t.id, got: ra.attackerCells.length });
+        out.playerPoints += Math.round(atkPts);
+      } else {
+        out.updates.push({ id: t.id, defense: ra.defenderDefense });
+        out.events.push({ type: 'attacked', id: t.id, damage: Math.round(ra.damage) });
+        out.playerPoints += Math.round(ra.damage);
+      }
+    }
+
+    // Neutral-Claim: eingeschlossene (bzw. sonst durchlaufene) Zellen, die noch
+    // niemandem gehören, werden ein neues Gebiet des Angreifers.
+    const owned = new Set();
+    for (const t of terrs) for (const c of (t.cells instanceof Set ? t.cells : t.cells)) owned.add(c);
+    const source = encl.size ? encl : R;
+    const neutral = [];
+    for (const c of source) if (!owned.has(c) && !claimed.has(c)) neutral.push(c);
+    if (neutral.length) {
+      const initDef = clampDefense(20 + Math.floor(distanceKm * 10));
+      out.creates.push({ owner: userId, cells: neutral, defense: initDef, neutral: true });
+      out.events.push({ type: 'neutral_claim', cells: neutral.length });
+      out.playerPoints += neutral.length;
+    }
+    return out;
+  }
+
   return {
     pathToCells, enclosedCells, clusters, classify,
-    resolveAttack, resolveDefenseBuild,
+    resolveAttack, resolveDefenseBuild, resolveRun,
     // Re-Exports als Convenience
     paceFactor, distanceBonus, runValue, clampDefense,
     RES, DEF_MIN, DEF_MAX, CAPTURE_BONUS, DAILY_BUILD_CAP,
