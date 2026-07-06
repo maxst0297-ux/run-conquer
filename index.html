@@ -16,6 +16,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/h3-js@4.1.0/dist/h3-js.umd.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -1531,6 +1532,7 @@ function getLvlProg(pts){const lv=getLevel(pts),cur=CFG.LVL_XP[lv-1]||0,nx=CFG.L
 
 /* STATE */
 let mapL,userMarker,pathLayer,terrLayer,heatLayer,landmarkLayer,heatPts=[];
+let h3Layer,h3Territories=[];
 let isRunning=false,watchId=null,bgWatchId=null,bgGeoWatcher=null;
 let accCircle=null,_gpsCentered=false;
 const isNative=typeof window.Capacitor!=='undefined'&&!!window.Capacitor.isNativePlatform?.();
@@ -1629,7 +1631,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v74';
+const APP_VERSION='v75';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3365,10 +3367,15 @@ function initMap(){
   L.control.zoom({position:'bottomright'}).addTo(mapL);
   setTiles();
   terrLayer=L.layerGroup().addTo(mapL);
+  h3Layer=L.layerGroup().addTo(mapL);
   heatLayer=L.heatLayer([],{radius:20,blur:15,maxZoom:17}).addTo(mapL);
   landmarkLayer=L.layerGroup().addTo(mapL);
   invasionLayer=L.layerGroup().addTo(mapL);
   renderInvasions();
+  /* Neues H3-System: additiv rendern (leer bis zum Cutover), bei Zoomwechsel
+     neu aggregieren. */
+  mapL.on('zoomend',()=>{try{renderH3Territories();}catch(e){}});
+  setTimeout(loadH3Territories,900);
   setTimeout(loadLandmarks,800);
   mapL.locate({setView:true,maxZoom:16,enableHighAccuracy:true});
   mapL.on('locationfound',e=>{
@@ -3550,6 +3557,54 @@ function renderTerr(){
   });
   updateStatsUI();
 }
+
+/* ═══ H3-TERRITORIEN (neues System — Phase 2: Rendering) ═══
+   Rendert die hexbasierten Gebiete additiv als zusammengeführte Umrisse
+   (h3.cellsToMultiPolygon fasst benachbarte Zellen zu einer Fläche zusammen,
+   Löcher werden zu inneren Ringen). Solange die h3_*-Tabellen leer sind (vor
+   dem Cutover in Phase 3), zeichnet das nichts und stört das alte Polygon-
+   System nicht. Bei weitem Zoom wird auf eine gröbere H3-Auflösung aggregiert,
+   damit nicht Tausende Zellen einzeln gerendert werden (Performance). */
+function h3Ready(){return typeof window.h3!=='undefined'&&!!window.h3.cellsToMultiPolygon;}
+async function loadH3Territories(){
+  if(!sb||!h3Ready())return;
+  try{
+    const{data,error}=await sb.from('h3_territories_full').select('*');
+    if(error){if(error.code==='42P01')return;throw error;} // Tabelle noch nicht angelegt
+    h3Territories=data||[];
+    renderH3Territories();
+  }catch(e){logError&&logError('h3_load',e);}
+}
+function renderH3Territories(){
+  if(!h3Layer||!h3Ready())return;
+  h3Layer.clearLayers();
+  const z=mapL?mapL.getZoom():15;
+  const aggRes=z<12?7:(z<14?9:10); // grob bei weitem Zoom, exakt beim Reinzoomen
+  h3Territories.forEach(t=>{
+    const cells=t.cells||[];
+    if(!cells.length)return;
+    const own=t.owner===userId;
+    const def=Math.max(1,t.defense||1);
+    const strPct=Math.min(1,def/300);
+    const fillColor=own?userColor:'#ff3333';
+    let renderCells=cells;
+    if(aggRes<10){
+      const set=new Set();
+      for(const c of cells){try{set.add(h3.cellToParent(c,aggRes));}catch(e){}}
+      renderCells=[...set];
+    }
+    let mp;
+    try{mp=h3.cellsToMultiPolygon(renderCells,false);}catch(e){return;}
+    mp.forEach(poly=>{
+      L.polygon(poly,{color:fillColor,weight:2,fillColor,
+        fillOpacity:own?Math.max(.18,strPct*.4):Math.max(.1,strPct*.28),
+        opacity:Math.max(.6,strPct*.9)})
+        .bindPopup(`<div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:${own?userColor:'#ff6666'}">${own?'🔵':'🔴'} ${esc(t.owner_name||'Gebiet')}</div><div style="font-size:.72rem;margin-top:3px">🛡️ ${Math.round(def)} · ${cells.length} Zellen</div>`)
+        .addTo(h3Layer);
+    });
+  });
+}
+window.loadH3Territories=loadH3Territories;
 function updateStatsUI(){
   const mine=territories.filter(t=>t.owner===userId);
   const area=mine.reduce((s,t)=>s+(t.area||0),0);
