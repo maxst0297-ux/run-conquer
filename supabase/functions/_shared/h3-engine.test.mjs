@@ -1,5 +1,5 @@
 import * as h3 from 'h3-js';
-import { createEngine, paceFactor, distanceBonus, runValue } from './h3-engine.mjs';
+import { createEngine, paceFactor, distanceBonus, runValue, validateRun } from './h3-engine.mjs';
 
 const eng = createEngine(h3);
 let pass = 0, fail = 0;
@@ -159,6 +159,14 @@ const enemyT = { id: 'T1', owner: 'foe', ownerName: 'Gegner', defense: 100, cell
   // 5km@12 def = 5*16 + 0 = 80 -> 50+80=130
   ok('resolveRun DEFEND: eigenes Gebiet +80 -> 130', !!up && up.defense === 130 && up.lastDay === '2026-07-06', 'def=' + (up && up.defense));
 }
+
+// ================= validateRun (Anti-Cheat, GDS 3.1) =================
+ok('validate: zu kurz', validateRun({ distanceM: 100, durationS: 60 }).reason === 'too_short');
+ok('validate: OK normaler Lauf', validateRun({ distanceM: 2000, durationS: 600 }).ok === true); // 12 km/h
+ok('validate: 25-km/h-Hardcap', validateRun({ distanceM: 5000, durationS: 600 }).reason === 'speed_hardcap'); // 30 km/h
+ok('validate: Cadence 0 bei Tempo -> ungültig', validateRun({ distanceM: 2000, durationS: 600, cadence: 0 }).reason === 'cadence_zero');
+ok('validate: Cadence null -> nicht geprüft (OK)', validateRun({ distanceM: 2000, durationS: 600, cadence: null }).ok === true);
+ok('validate: Cadence 160 -> OK', validateRun({ distanceM: 2000, durationS: 600, cadence: 160 }).ok === true);
 
 console.log(`\n==== ${pass} passed, ${fail} failed ====`);
 process.exit(fail ? 1 : 0);

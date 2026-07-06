@@ -12,7 +12,7 @@
    ========================================================================== */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import * as h3 from 'https://esm.sh/h3-js@4.1.0';
-import { createEngine } from '../_shared/h3-engine.mjs';
+import { createEngine, validateRun } from '../_shared/h3-engine.mjs';
 
 const engine = createEngine(h3);
 
@@ -55,10 +55,12 @@ Deno.serve(async (req) => {
     const playerName: string = (body.playerName || '').slice(0, 40);
     const userColor: string = (body.userColor || '#e8ff47').slice(0, 9);
     if (!Array.isArray(path) || path.length < 2) return json({ error: 'bad_path' }, 400);
-    if (distanceM < 150) return json({ error: 'too_short' }, 400);
+    const cadence = (body.cadence != null) ? +body.cadence : null; // Ø Schritte/Min (optional, aus HealthKit/Fit)
     const distanceKm = distanceM / 1000;
-    const paceKmh = durationS > 0 ? distanceKm / (durationS / 3600) : 0;
-    if (paceKmh > 25) return json({ error: 'speed_hardcap' }, 400);   // Rad/Auto-Erkennung
+    // Anti-Cheat (GDS 3.1): Mindestdistanz, 25-km/h-Hardcap, Cadence-Plausibilität.
+    const v = validateRun({ distanceM, durationS, cadence });
+    if (!v.ok) return json({ error: v.reason }, 400);
+    const paceKmh = v.paceKmh;
 
     // ── GPS-Track -> H3-Zellen; geschlossener Loop -> eingeschlossene Zellen ──
     const runCells: Set<string> = engine.pathToCells(path);

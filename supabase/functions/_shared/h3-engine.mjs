@@ -65,6 +65,24 @@ export function clampDefense(v) {
   return Math.max(DEF_MIN, Math.min(DEF_MAX, v));
 }
 
+// ── Anti-Cheat-Regeln (GDS 3.1) — server-autoritativ, ohne Geo-Abhängigkeit ──
+export const MIN_DIST_M = 150;
+export const HARD_MAX_KMH = 25;   // > Rad/Auto -> Lauf ungültig
+export const CADENCE_SPEED_KMH = 6; // ab hier ist Bewegung ohne Schritte verdächtig
+
+/* Prüft einen Lauf vor der Wertung. cadence (Schritte/Min, Ø) ist OPTIONAL:
+   ist sie null/undefined (keine Health-Daten), wird sie NICHT geprüft — die
+   GPS-Bewertung bleibt möglich. Ist sie 0 bei relevanter Geschwindigkeit,
+   deutet das auf Fahrzeug/Spoofing hin -> ungültig. */
+export function validateRun({ distanceM, durationS, cadence, paceKmh } = {}) {
+  if (!(distanceM >= MIN_DIST_M)) return { ok: false, reason: 'too_short' };
+  const pace = (paceKmh != null) ? paceKmh
+    : (durationS > 0 ? (distanceM / 1000) / (durationS / 3600) : 0);
+  if (pace > HARD_MAX_KMH) return { ok: false, reason: 'speed_hardcap' };
+  if (cadence != null && cadence <= 0 && pace > CADENCE_SPEED_KMH) return { ok: false, reason: 'cadence_zero' };
+  return { ok: true, paceKmh: pace };
+}
+
 export function createEngine(h3) {
   if (!h3 || !h3.latLngToCell) throw new Error('createEngine: h3-Lib fehlt');
 

@@ -1631,7 +1631,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v76';
+const APP_VERSION='v77';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -4031,22 +4031,38 @@ function mkPolyFrom(pth,d){
 }
 function mkPoly(){return mkPolyFrom(path,dist);}
 
-/* CONQUEST */
-/* Eroberungslogik läuft serverseitig in der SECURITY DEFINER RPC rc_claim()
-   (siehe supabase_territories.sql) -- der Client schickt nur das Polygon +
-   Distanz und wendet das autoritative Ergebnis (geänderte Gebiete + Event-
-   Meldungen) lokal an. p_claim_id macht Netzwerk-Retries idempotent. */
+/* CONQUEST (H3-System)
+   Eroberungslogik läuft server-autoritativ in der Edge Function 'conquer'
+   (supabase/functions/conquer) auf Basis der getesteten Engine. Der Client
+   schickt nur den rohen GPS-Track (+ Distanz/Dauer/Cadence) und wendet das
+   Ergebnis (Events + neuer Gebietsstand via loadH3Territories) lokal an. */
+/* Phase 4 Anti-Cheat: mittlere Schrittfrequenz des Laufs, falls ein natives
+   Health-Plugin (HealthKit / Health Connect) verfügbar ist. Ohne Plugin -> null;
+   der Server wertet dann GPS-only und blockt NICHT (kein Fehlalarm im Web/
+   Simulator). Die konkrete Plugin-Anbindung: supabase/functions/HEALTH.md. */
+async function getRunCadence(){
+  try{
+    const P=window.Capacitor&&window.Capacitor.Plugins;
+    const hk=P&&(P.HealthKit||P.Health||P.CapacitorHealthkit);
+    if(hk&&typeof hk.queryCadence==='function'){
+      const r=await hk.queryCadence({});
+      if(r&&typeof r.cadence==='number')return r.cadence;
+    }
+  }catch(e){}
+  return null;
+}
 async function processConquest(np,area,d,boosted=false,isImport=false,durationS=null){
   /* H3-System (Phase 3b): roher GPS-Track an die Edge Function 'conquer'. np
      kann {path:[[lat,lng],...]} sein (Live-Lauf/Import) oder — abwärtskompatibel
      — ein Polygon; dann fällt es auf den globalen path zurück. */
   const runPath=(np&&np.path)?np.path:(Array.isArray(np)?np:path);
   if(!runPath||runPath.length<2)return{pts:0,conquered:false,defended:false,error:'other'};
+  const cadence=await getRunCadence(); // Phase 4: null ohne Health-Plugin -> Server wertet GPS-only
   let data,error;
   try{
     const r=await sb.functions.invoke('conquer',{body:{
       path:runPath.map(p=>[p[0],p[1]]),
-      distanceM:d,durationS:durationS||0,
+      distanceM:d,durationS:durationS||0,cadence,
       playerName,userColor
     }});
     data=r.data;error=r.error;
