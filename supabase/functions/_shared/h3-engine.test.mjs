@@ -1,0 +1,172 @@
+import * as h3 from 'h3-js';
+import { createEngine, paceFactor, distanceBonus, runValue, validateRun } from './h3-engine.mjs';
+
+const eng = createEngine(h3);
+let pass = 0, fail = 0;
+const ok = (name, cond, extra = '') => { (cond ? pass++ : fail++); console.log((cond ? '✅' : '❌') + ' ' + name + (extra ? '  ' + extra : '')); };
+const near = (a, b, e = 1e-6) => Math.abs(a - b) < e;
+
+// ---------- GDS Tabelle 1: Pace-Faktor ----------
+ok('pace <8 -> 0/0', paceFactor(7.9, 'def') === 0 && paceFactor(7.9, 'atk') === 0);
+ok('pace 8 -> def10/atk8', paceFactor(8, 'def') === 10 && paceFactor(8, 'atk') === 8);
+ok('pace 11 -> def13/atk10', paceFactor(11, 'def') === 13 && paceFactor(11, 'atk') === 10);
+ok('pace 13 -> def16/atk12', paceFactor(13, 'def') === 16 && paceFactor(13, 'atk') === 12);
+ok('pace 15 -> def20/atk15', paceFactor(15, 'def') === 20 && paceFactor(15, 'atk') === 15);
+ok('pace 16+ -> def20/atk18', paceFactor(16, 'def') === 20 && paceFactor(20, 'atk') === 18);
+
+// ---------- GDS Tabelle 2: Distanzbonus ----------
+ok('bonus <8 ->0', distanceBonus(7.9) === 0);
+ok('bonus 8 ->20', distanceBonus(8) === 20);
+ok('bonus 12 ->35', distanceBonus(12) === 35);
+ok('bonus 15 ->50', distanceBonus(15) === 50);
+
+// ---------- runValue ----------
+// 10 km @ 13 km/h atk: 10*12 + Bonus(10km=20) = 140
+ok('runValue 10km@13 atk =140', near(runValue(10, 13, 'atk'), 140), '=' + runValue(10, 13, 'atk'));
+// 5 km @ 9 km/h def: 5*10 + 0 = 50
+ok('runValue 5km@9 def =50', near(runValue(5, 9, 'def'), 50));
+
+// ---------- Geometrie-Setup (echtes H3, Res 10) ----------
+const center = h3.latLngToCell(48.137, 11.575, 10);
+const territory = h3.gridDisk(center, 3);          // 37 Zellen
+const enclosedSuper = new Set(h3.gridDisk(center, 4)); // Obermenge -> Umrundung
+
+// EDGE: eine Zelle im Ring-Abstand 4 (grenzt an Gebiet, überlappt nicht)
+const ring4 = h3.gridRingUnsafe(center, 4);
+const edgeRun = new Set([ring4[0]]);
+ok('classify EDGE', eng.classify(new Set(territory), edgeRun, new Set()).mode === 'edge');
+
+// THROUGH: kurzer Stummel (center + 1 Nachbar) -> Rest bleibt 1 Cluster
+const throughRun = new Set([center, h3.gridDisk(center, 1)[1]]);
+{
+  const c = eng.classify(new Set(territory), throughRun, new Set());
+  ok('classify THROUGH (1 Cluster)', c.mode === 'through', 'mode=' + c.mode);
+}
+
+// CUT: volle Diagonale quer durchs Gebiet -> >=2 Cluster
+const west = h3.gridRingUnsafe(center, 3)[0];
+const east = h3.gridRingUnsafe(center, 3)[Math.floor(h3.gridRingUnsafe(center, 3).length / 2)];
+const cutRun = new Set(h3.gridPathCells(west, east));
+{
+  const c = eng.classify(new Set(territory), cutRun, new Set());
+  ok('classify CUT (>=2 Cluster)', c.mode === 'cut', 'mode=' + c.mode + (c.clusters ? ' clusters=' + c.clusters.length : ''));
+}
+
+// CIRCUMNAVIGATION
+ok('classify CIRCUMNAVIGATION', eng.classify(new Set(territory), new Set([center]), enclosedSuper).mode === 'circumnavigation');
+
+// COVERED: Pfad deckt gesamtes Gebiet
+ok('classify COVERED', eng.classify(new Set(territory), new Set(territory), new Set()).mode === 'covered');
+
+// ---------- resolveAttack: Umrundung LANGSAM vs SCHNELL vs schwaches Gebiet ----------
+// atk = runValue; fresh territory defense 100.
+const atkSlow = runValue(2, 10, 'atk');   // 2km@10 = 20 -> zu wenig für def 100
+const atkFast = runValue(6, 16, 'atk');   // 6km@16 = 6*18 + Bonus(6km=0) = 108 -> >100
+{
+  const r = eng.resolveAttack({ enemyCells: territory, enemyDefense: 100, runCells: new Set([center]), enclosed: enclosedSuper, attackPoints: atkSlow });
+  ok('Umrundung LANGSAM (atk20) -> KEIN Sieg', r.mode === 'circumnavigation' && !r.conquered && r.defenderDefense === 80, 'def=' + r.defenderDefense);
+}
+{
+  const r = eng.resolveAttack({ enemyCells: territory, enemyDefense: 100, runCells: new Set([center]), enclosed: enclosedSuper, attackPoints: atkFast });
+  ok('Umrundung SCHNELL (atk108) -> Sieg', r.mode === 'circumnavigation' && r.conquered && r.attackerDefense === (108 - 100) + 20, 'atkDef=' + r.attackerDefense);
+}
+{
+  const r = eng.resolveAttack({ enemyCells: territory, enemyDefense: 15, runCells: new Set([center]), enclosed: enclosedSuper, attackPoints: atkSlow });
+  ok('Umrundung langsam, Gebiet SCHWACH(15) -> Sieg', r.conquered && r.attackerDefense === Math.max(1, 20 - 15) + 20, 'atkDef=' + r.attackerDefense);
+}
+
+// ---------- resolveAttack: gerader Durchlauf = 20% ----------
+{
+  const r = eng.resolveAttack({ enemyCells: territory, enemyDefense: 100, runCells: throughRun, enclosed: new Set(), attackPoints: 100 });
+  ok('Durchlauf 20% (atk100 -> dmg20)', r.mode === 'through' && near(r.damage, 20) && r.defenderDefense === 80, 'dmg=' + r.damage);
+}
+// ---------- resolveAttack: Randberührung = 10% ----------
+{
+  const r = eng.resolveAttack({ enemyCells: territory, enemyDefense: 100, runCells: edgeRun, enclosed: new Set(), attackPoints: 100 });
+  ok('Rand 10% (atk100 -> dmg10)', r.mode === 'edge' && near(r.damage, 10) && r.defenderDefense === 90, 'dmg=' + r.damage);
+}
+
+// ---------- resolveAttack: CUT Erfolg + Fehlschlag (GDS 1.6) ----------
+{
+  const cInfo = eng.classify(new Set(territory), cutRun, new Set());
+  const small = cInfo.clusters[cInfo.clusters.length - 1].length;
+  const total = territory.length;
+  const areaFrac = small / total;
+  const areaDef = 100 * areaFrac;
+  // Erfolg: attack knapp über areaDef
+  const rSucc = eng.resolveAttack({ enemyCells: territory, enemyDefense: 100, runCells: cutRun, enclosed: new Set(), attackPoints: areaDef + 10 });
+  ok('CUT Erfolg -> Angreifer bekommt kleinen Cluster', rSucc.mode === 'cut' && rSucc.conquered && rSucc.attackerCells.length === small && near(rSucc.attackerDefense, 10 + 20), 'small=' + small + ' atkDef=' + rSucc.attackerDefense);
+  ok('CUT Erfolg -> Verteidiger verliert Flächenanteil', near(rSucc.defenderDefense, Math.max(1, 100 * (1 - areaFrac)), 1e-6), 'defDef=' + rSucc.defenderDefense);
+  // Fehlschlag: attack unter areaDef
+  const rFail = eng.resolveAttack({ enemyCells: territory, enemyDefense: 100, runCells: cutRun, enclosed: new Set(), attackPoints: areaDef - 5 });
+  ok('CUT Fehlschlag -> keine Abtrennung, voller Angriff ab', rFail.mode === 'cut' && !rFail.conquered && rFail.attackerCells === null && near(rFail.defenderDefense, 100 - (areaDef - 5)), 'defDef=' + rFail.defenderDefense);
+}
+
+// ---------- resolveDefenseBuild: Tageslimit + Max ----------
+{
+  const r = eng.resolveDefenseBuild({ ownCells: territory, ownDefense: 50, enclosed: enclosedSuper, buildPoints: 80, dailyAlready: 0 });
+  ok('Build: +80 auf 50 -> 130 (unter Cap)', r.circumnavigated && r.built === 80 && r.defense === 130);
+}
+{
+  const r = eng.resolveDefenseBuild({ ownCells: territory, ownDefense: 50, enclosed: enclosedSuper, buildPoints: 80, dailyAlready: 60 });
+  ok('Build: Tageslimit greift (nur +40 statt +80)', r.built === 40 && r.defense === 90 && r.dailyAfter === 100);
+}
+{
+  const r = eng.resolveDefenseBuild({ ownCells: territory, ownDefense: 290, enclosed: enclosedSuper, buildPoints: 80, dailyAlready: 0 });
+  ok('Build: Max 300 greift (nur +10)', r.built === 10 && r.defense === 300);
+}
+{
+  const r = eng.resolveDefenseBuild({ ownCells: territory, ownDefense: 50, enclosed: new Set(), buildPoints: 80, dailyAlready: 0 });
+  ok('Build ohne Umrundung -> 0', !r.circumnavigated && r.built === 0 && r.defense === 50);
+}
+
+// ================= resolveRun (Orchestrierung) =================
+const uid = 'me';
+const enemyT = { id: 'T1', owner: 'foe', ownerName: 'Gegner', defense: 100, cells: new Set(territory) };
+
+// 1) Neutral-Claim: Loop um leeres Land, keine Gebiete
+{
+  const r = eng.resolveRun({ userId: uid, runCells: new Set([center]), enclosed: enclosedSuper, distanceKm: 3, paceKmh: 12, territories: [] });
+  const neut = r.creates.find(c => c.neutral);
+  ok('resolveRun NEUTRAL-Claim erzeugt Gebiet', !!neut && neut.cells.length === enclosedSuper.size && r.deletes.length === 0, 'cells=' + (neut && neut.cells.length));
+}
+// 2) Enemy schwächen (Durchlauf 20%)
+{
+  const r = eng.resolveRun({ userId: uid, runCells: throughRun, enclosed: new Set(), distanceKm: 5, paceKmh: 12, territories: [{ ...enemyT, cells: new Set(territory) }] });
+  const up = r.updates.find(u => u.id === 'T1');
+  ok('resolveRun WEAKEN: update ohne create/delete', !!up && up.defense < 100 && !up.setCells && r.creates.length === 0 && r.deletes.length === 0, 'def=' + (up && up.defense));
+}
+// 3) Ganzes Gebiet erobern (schnelle Umrundung eines schwachen Gebiets)
+{
+  const r = eng.resolveRun({ userId: uid, runCells: new Set([center]), enclosed: enclosedSuper, distanceKm: 6, paceKmh: 16, territories: [{ ...enemyT, defense: 30, cells: new Set(territory) }] });
+  ok('resolveRun CONQUER: delete + create', r.deletes.includes('T1') && r.creates.some(c => !c.neutral && c.owner === uid && c.cells.length === territory.length), 'deletes=' + r.deletes.length + ' creates=' + r.creates.length);
+}
+// 4) Cut: Linie quer, genug Angriff
+{
+  const cInfo = eng.classify(new Set(territory), cutRun, new Set());
+  const small = cInfo.clusters[cInfo.clusters.length - 1].length;
+  const areaDef = 100 * (small / territory.length);
+  // paceKmh so wählen, dass atkPts > areaDef: 8km@16 = 8*18+20=164
+  const r = eng.resolveRun({ userId: uid, runCells: cutRun, enclosed: new Set(), distanceKm: 8, paceKmh: 16, territories: [{ ...enemyT, cells: new Set(territory) }] });
+  const up = r.updates.find(u => u.id === 'T1');
+  const cre = r.creates.find(c => !c.neutral);
+  ok('resolveRun CUT: update(setCells) + create(kleiner Cluster)', !!up && !!up.setCells && !!cre && cre.cells.length === small, 'atk=' + r.atkPts + ' small=' + small + ' got=' + (cre && cre.cells.length));
+}
+// 5) Verteidigungsaufbau eigenes Gebiet
+{
+  const r = eng.resolveRun({ userId: uid, runCells: new Set([center]), enclosed: enclosedSuper, distanceKm: 5, paceKmh: 12, territories: [{ id: 'OWN', owner: uid, defense: 50, dailyAdded: 0, lastDay: null, today: '2026-07-06', cells: new Set(territory) }] });
+  const up = r.updates.find(u => u.id === 'OWN');
+  // 5km@12 def = 5*16 + 0 = 80 -> 50+80=130
+  ok('resolveRun DEFEND: eigenes Gebiet +80 -> 130', !!up && up.defense === 130 && up.lastDay === '2026-07-06', 'def=' + (up && up.defense));
+}
+
+// ================= validateRun (Anti-Cheat, GDS 3.1) =================
+ok('validate: zu kurz', validateRun({ distanceM: 100, durationS: 60 }).reason === 'too_short');
+ok('validate: OK normaler Lauf', validateRun({ distanceM: 2000, durationS: 600 }).ok === true); // 12 km/h
+ok('validate: 25-km/h-Hardcap', validateRun({ distanceM: 5000, durationS: 600 }).reason === 'speed_hardcap'); // 30 km/h
+ok('validate: Cadence 0 bei Tempo -> ungültig', validateRun({ distanceM: 2000, durationS: 600, cadence: 0 }).reason === 'cadence_zero');
+ok('validate: Cadence null -> nicht geprüft (OK)', validateRun({ distanceM: 2000, durationS: 600, cadence: null }).ok === true);
+ok('validate: Cadence 160 -> OK', validateRun({ distanceM: 2000, durationS: 600, cadence: 160 }).ok === true);
+
+console.log(`\n==== ${pass} passed, ${fail} failed ====`);
+process.exit(fail ? 1 : 0);
