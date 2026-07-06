@@ -62,3 +62,9 @@ create or replace view public.h3_territories_full as
     from public.h3_territories t
     left join public.h3_cells c on c.territory_id = t.id
    group by t.id;
+
+-- WICHTIG: Ohne explizites GRANT kann der Client (Rolle authenticated/anon) die
+-- Tabellen/View nicht lesen -> die Karte bliebe leer, obwohl Gebiete existieren.
+grant select on public.h3_territories      to anon, authenticated;
+grant select on public.h3_cells            to anon, authenticated;
+grant select on public.h3_territories_full to anon, authenticated;

@@ -156,12 +156,20 @@ const enemyT = { id: 'T1', owner: 'foe', ownerName: 'Gegner', defense: 100, cell
   const cre = r.creates.find(c => !c.neutral);
   ok('resolveRun CUT: update(setCells) + create(kleiner Cluster)', !!up && !!up.setCells && !!cre && cre.cells.length === small, 'atk=' + r.atkPts + ' small=' + small + ' got=' + (cre && cre.cells.length));
 }
-// 5) Verteidigungsaufbau eigenes Gebiet
+// 5) Verteidigungsaufbau eigenes Gebiet — nur ABGELAUFENE Zellen zählen
 {
-  const r = eng.resolveRun({ userId: uid, runCells: new Set([center]), enclosed: enclosedSuper, distanceKm: 5, paceKmh: 12, territories: [{ id: 'OWN', owner: uid, defense: 50, dailyAdded: 0, lastDay: null, today: '2026-07-06', cells: new Set(territory) }] });
+  // Alle 37 eigenen Zellen tatsächlich abgelaufen -> volle Deckung. enclosed
+  // (Schleifen-Inneres) zählt NICHT mehr für den Verteidigungsaufbau.
+  const r = eng.resolveRun({ userId: uid, runCells: new Set(territory), enclosed: enclosedSuper, distanceKm: 5, paceKmh: 12, territories: [{ id: 'OWN', owner: uid, defense: 50, dailyAdded: 0, lastDay: null, today: '2026-07-06', cells: new Set(territory) }] });
   const up = r.updates.find(u => u.id === 'OWN');
-  // 5km@12 def = 5*16 + 0 = 80 -> 50+80=130
-  ok('resolveRun DEFEND (volle Deckung): +80 -> 130', !!up && up.defense === 130 && up.lastDay === '2026-07-06', 'def=' + (up && up.defense));
+  ok('resolveRun DEFEND (alle Zellen abgelaufen): +80 -> 130', !!up && up.defense === 130 && up.lastDay === '2026-07-06', 'def=' + (up && up.defense));
+}
+{
+  // Nur umrundet (Pfad außerhalb, nur enclosed deckt das Gebiet) -> KEIN Aufbau.
+  const ring = new Set(h3.gridRingUnsafe(center, 5));
+  const r = eng.resolveRun({ userId: uid, runCells: ring, enclosed: enclosedSuper, distanceKm: 5, paceKmh: 12, territories: [{ id: 'OWN', owner: uid, defense: 50, dailyAdded: 0, lastDay: null, today: '2026-07-06', cells: new Set(territory) }] });
+  const up = r.updates.find(u => u.id === 'OWN');
+  ok('resolveRun DEFEND (nur umrundet): kein Aufbau', !up || up.defense === 50, 'def=' + (up ? up.defense : 'kein update'));
 }
 // Teil-Deckung: nur 2 von 37 eigenen Zellen durchlaufen -> ~5% Zuwachs
 {
