@@ -280,9 +280,11 @@ export function createEngine(h3) {
       const cells = t.cells instanceof Set ? t.cells : new Set(t.cells);
       if (t.owner === userId) {
         const already = (t.lastDay && t.today && t.lastDay === t.today) ? (t.dailyAdded || 0) : 0;
-        // Anteil des eigenen Gebiets, den dieser Lauf berührt oder einschließt.
+        // Anteil des eigenen Gebiets, den dieser Lauf TATSÄCHLICH DURCHLÄUFT
+        // (nur die abgelaufenen Zellen; die eingeschlossene Fläche einer Schleife
+        // zählt bewusst NICHT — man muss das Gebiet abfahren, nicht umrunden).
         let covered = 0;
-        for (const c of cells) if (R.has(c) || encl.has(c)) covered++;
+        for (const c of cells) if (R.has(c)) covered++;
         const coverFrac = cells.size ? covered / cells.size : 0;
         const rb = resolveDefenseBuild({ ownDefense: t.defense, coverFrac, buildPoints: defPts, dailyAlready: already });
         if (rb.built > 0) {
