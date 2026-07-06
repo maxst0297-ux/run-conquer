@@ -187,5 +187,18 @@ ok('validate: Cadence 0 bei Tempo -> ungültig', validateRun({ distanceM: 2000, 
 ok('validate: Cadence null -> nicht geprüft (OK)', validateRun({ distanceM: 2000, durationS: 600, cadence: null }).ok === true);
 ok('validate: Cadence 160 -> OK', validateRun({ distanceM: 2000, durationS: 600, cadence: 160 }).ok === true);
 
+// Lauf durch eigenes Gebiet UND nach außen: Verteidigung steigt + Außen-Pfad
+// wird als neues Gebiet beansprucht (nichts geht verloren).
+{
+  const far = h3.gridRingUnsafe(center, 6)[0];
+  const runLine = new Set(h3.gridPathCells(center, far));
+  const r = eng.resolveRun({ userId: uid, runCells: runLine, enclosed: new Set(), distanceKm: 3, paceKmh: 12, territories: [{ id: 'OWN', owner: uid, defense: 50, dailyAdded: 0, lastDay: null, today: '2026-07-06', cells: new Set(territory) }] });
+  const up = r.updates.find(u => u.id === 'OWN');
+  const neutral = r.creates.find(c => c.neutral);
+  const tset = new Set(territory);
+  const outsideCount = [...runLine].filter(c => !tset.has(c)).length;
+  ok('resolveRun: Außen-Strecke beansprucht + eigene Verteidigung steigt', !!up && up.defense > 50 && !!neutral && neutral.cells.length === outsideCount, 'defUp=' + (up && up.defense.toFixed(1)) + ' neutral=' + (neutral && neutral.cells.length) + ' outside=' + outsideCount);
+}
+
 console.log(`\n==== ${pass} passed, ${fail} failed ====`);
 process.exit(fail ? 1 : 0);
