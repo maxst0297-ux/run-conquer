@@ -104,20 +104,24 @@ const atkFast = runValue(6, 16, 'atk');   // 6km@16 = 6*18 + Bonus(6km=0) = 108 
 
 // ---------- resolveDefenseBuild: Tageslimit + Max ----------
 {
-  const r = eng.resolveDefenseBuild({ ownCells: territory, ownDefense: 50, enclosed: enclosedSuper, buildPoints: 80, dailyAlready: 0 });
-  ok('Build: +80 auf 50 -> 130 (unter Cap)', r.circumnavigated && r.built === 80 && r.defense === 130);
+  const r = eng.resolveDefenseBuild({ ownDefense: 50, coverFrac: 1, buildPoints: 80, dailyAlready: 0 });
+  ok('Build: volle Deckung +80 auf 50 -> 130', r.built === 80 && r.defense === 130);
 }
 {
-  const r = eng.resolveDefenseBuild({ ownCells: territory, ownDefense: 50, enclosed: enclosedSuper, buildPoints: 80, dailyAlready: 60 });
-  ok('Build: Tageslimit greift (nur +40 statt +80)', r.built === 40 && r.defense === 90 && r.dailyAfter === 100);
+  const r = eng.resolveDefenseBuild({ ownDefense: 50, coverFrac: 0.25, buildPoints: 80, dailyAlready: 0 });
+  ok('Build: 25% Deckung -> nur +20 (anteilig)', r.built === 20 && r.defense === 70, 'built=' + r.built);
 }
 {
-  const r = eng.resolveDefenseBuild({ ownCells: territory, ownDefense: 290, enclosed: enclosedSuper, buildPoints: 80, dailyAlready: 0 });
+  const r = eng.resolveDefenseBuild({ ownDefense: 50, coverFrac: 1, buildPoints: 80, dailyAlready: 60 });
+  ok('Build: Tageslimit greift (nur +40)', r.built === 40 && r.defense === 90 && r.dailyAfter === 100);
+}
+{
+  const r = eng.resolveDefenseBuild({ ownDefense: 290, coverFrac: 1, buildPoints: 80, dailyAlready: 0 });
   ok('Build: Max 300 greift (nur +10)', r.built === 10 && r.defense === 300);
 }
 {
-  const r = eng.resolveDefenseBuild({ ownCells: territory, ownDefense: 50, enclosed: new Set(), buildPoints: 80, dailyAlready: 0 });
-  ok('Build ohne Umrundung -> 0', !r.circumnavigated && r.built === 0 && r.defense === 50);
+  const r = eng.resolveDefenseBuild({ ownDefense: 50, coverFrac: 0, buildPoints: 80, dailyAlready: 0 });
+  ok('Build: keine Deckung -> 0', r.built === 0 && r.defense === 50);
 }
 
 // ================= resolveRun (Orchestrierung) =================
@@ -157,7 +161,14 @@ const enemyT = { id: 'T1', owner: 'foe', ownerName: 'Gegner', defense: 100, cell
   const r = eng.resolveRun({ userId: uid, runCells: new Set([center]), enclosed: enclosedSuper, distanceKm: 5, paceKmh: 12, territories: [{ id: 'OWN', owner: uid, defense: 50, dailyAdded: 0, lastDay: null, today: '2026-07-06', cells: new Set(territory) }] });
   const up = r.updates.find(u => u.id === 'OWN');
   // 5km@12 def = 5*16 + 0 = 80 -> 50+80=130
-  ok('resolveRun DEFEND: eigenes Gebiet +80 -> 130', !!up && up.defense === 130 && up.lastDay === '2026-07-06', 'def=' + (up && up.defense));
+  ok('resolveRun DEFEND (volle Deckung): +80 -> 130', !!up && up.defense === 130 && up.lastDay === '2026-07-06', 'def=' + (up && up.defense));
+}
+// Teil-Deckung: nur 2 von 37 eigenen Zellen durchlaufen -> ~5% Zuwachs
+{
+  const r = eng.resolveRun({ userId: uid, runCells: throughRun, enclosed: new Set(), distanceKm: 5, paceKmh: 12, territories: [{ id: 'OWN', owner: uid, defense: 50, dailyAdded: 0, lastDay: null, today: '2026-07-06', cells: new Set(territory) }] });
+  const up = r.updates.find(u => u.id === 'OWN');
+  const expected = 50 + 80 * (2 / territory.length); // buildPts(5km@12)=80
+  ok('resolveRun DEFEND (Teil-Deckung): anteilig statt voll', !!up && Math.abs(up.defense - expected) < 1e-6 && up.defense < 60, 'def=' + (up && up.defense.toFixed(2)));
 }
 
 // ================= validateRun (Anti-Cheat, GDS 3.1) =================

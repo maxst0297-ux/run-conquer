@@ -232,23 +232,25 @@ export function createEngine(h3) {
     return { ...base, defenderDefense: clampDefense(nd), damage: dmg };
   }
 
-  /* Verteidigungsaufbau durch Umrunden des EIGENEN Gebiets (GDS 1.3).
-     Nur gültig, wenn der Lauf das eigene Gebiet vollständig einschließt. Baut
-     runValue('def') auf, gedeckelt durch Tageslimit (+100/Tag) und Max 300. */
-  function resolveDefenseBuild({ ownCells, ownDefense, enclosed, buildPoints, dailyAlready }) {
-    const O = new Set(ownCells);
-    const encl = enclosed instanceof Set ? enclosed : new Set(enclosed || []);
-    if (!O.size || !isSuperset(encl, O)) {
-      return { built: 0, defense: ownDefense, dailyAfter: dailyAlready, circumnavigated: false };
+  /* Verteidigungsaufbau im EIGENEN Gebiet — ANTEILIG zur überlaufenen Fläche.
+     coverFrac = Anteil der eigenen Zellen, die dieser Lauf berührt/einschließt
+     (0..1). Der Zuwachs ist buildPoints × coverFrac: läuft man nur einen Teil
+     des Gebiets ab, steigt die Gesamtverteidigung nur anteilig; volles Umrunden
+     (coverFrac=1) gibt den vollen Zuwachs. Gedeckelt durch Tageslimit (+100/Tag)
+     und Max 300. */
+  function resolveDefenseBuild({ ownDefense, coverFrac, buildPoints, dailyAlready }) {
+    const frac = Math.max(0, Math.min(1, coverFrac || 0));
+    if (frac <= 0) {
+      return { built: 0, defense: ownDefense, dailyAfter: dailyAlready || 0, coverFrac: 0 };
     }
     const dayRoom = Math.max(0, DAILY_BUILD_CAP - (dailyAlready || 0));
     const maxRoom = Math.max(0, DEF_MAX - ownDefense);
-    const built = Math.max(0, Math.min(buildPoints, dayRoom, maxRoom));
+    const built = Math.max(0, Math.min(buildPoints * frac, dayRoom, maxRoom));
     return {
       built,
       defense: clampDefense(ownDefense + built),
       dailyAfter: (dailyAlready || 0) + built,
-      circumnavigated: true,
+      coverFrac: frac,
     };
   }
 
@@ -278,7 +280,11 @@ export function createEngine(h3) {
       const cells = t.cells instanceof Set ? t.cells : new Set(t.cells);
       if (t.owner === userId) {
         const already = (t.lastDay && t.today && t.lastDay === t.today) ? (t.dailyAdded || 0) : 0;
-        const rb = resolveDefenseBuild({ ownCells: [...cells], ownDefense: t.defense, enclosed: encl, buildPoints: defPts, dailyAlready: already });
+        // Anteil des eigenen Gebiets, den dieser Lauf berührt oder einschließt.
+        let covered = 0;
+        for (const c of cells) if (R.has(c) || encl.has(c)) covered++;
+        const coverFrac = cells.size ? covered / cells.size : 0;
+        const rb = resolveDefenseBuild({ ownDefense: t.defense, coverFrac, buildPoints: defPts, dailyAlready: already });
         if (rb.built > 0) {
           out.updates.push({ id: t.id, defense: rb.defense, dailyAdded: rb.dailyAfter, lastDay: t.today });
           out.events.push({ type: 'defended', id: t.id, built: Math.round(rb.built) });
