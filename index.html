@@ -1000,7 +1000,6 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         </div>
         <div class="map-panel-sep"></div>
         <button class="map-panel-btn active" id="panelTerrBtn"><i class="fas fa-map"></i> Gebiete</button>
-        <button class="map-panel-btn active" id="panelHeatBtn"><i class="fas fa-fire"></i> Heatmap</button>
         <button class="map-panel-btn active" id="panelLmBtn"><i class="fas fa-star"></i> Wahrzeichen</button>
         <button class="map-panel-btn" id="panelFraktBtn"><i class="fas fa-flag"></i> Fraktionskarte</button>
         <button class="map-panel-btn" id="panelOwnTerrBtn"><i class="fas fa-map-marker-alt"></i> Eigene Gebiete</button>
@@ -1531,7 +1530,7 @@ function getLvlName(pts){return CFG.LVL_NAMES[Math.min(getLevel(pts)-1,CFG.LVL_N
 function getLvlProg(pts){const lv=getLevel(pts),cur=CFG.LVL_XP[lv-1]||0,nx=CFG.LVL_XP[lv]||CFG.LVL_XP[CFG.LVL_XP.length-1]+1;return{lv,name:getLvlName(pts),pct:Math.min(100,Math.round((pts-cur)/(nx-cur)*100)),xpLeft:Math.max(0,nx-pts)}}
 
 /* STATE */
-let mapL,userMarker,pathLayer,terrLayer,heatLayer,landmarkLayer,heatPts=[];
+let mapL,userMarker,pathLayer,terrLayer,landmarkLayer;
 let h3Layer,h3Territories=[];
 let isRunning=false,watchId=null,bgWatchId=null,bgGeoWatcher=null;
 let accCircle=null,_gpsCentered=false;
@@ -1631,7 +1630,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v78';
+const APP_VERSION='v79';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2077,19 +2076,6 @@ function pickRarity(hasLandmarks){
   return RARITY[i];
 }
 
-/* ── HEATMAP PERSONAL TOGGLE ── */
-function refreshHeat(){
-  if(!heatLayer)return;
-  if(heatPersonalOnly){
-    const pts=[];
-    history.forEach(r=>{(r.path||[]).forEach(p=>pts.push([p[0],p[1],.4]))});
-    heatLayer.setLatLngs(pts);
-  } else {
-    heatLayer.setLatLngs(heatPts||[]);
-  }
-  const btn=$('panelOwnTerrBtn');
-  if(btn)btn.classList.toggle('active',heatPersonalOnly);
-}
 
 /* ── NOTIFICATIONS ── */
 function addNotif(icon, text){
@@ -3366,7 +3352,6 @@ function initMap(){
   setTiles();
   terrLayer=L.layerGroup().addTo(mapL);
   h3Layer=L.layerGroup().addTo(mapL);
-  heatLayer=L.heatLayer([],{radius:20,blur:15,maxZoom:17}).addTo(mapL);
   landmarkLayer=L.layerGroup().addTo(mapL);
   invasionLayer=L.layerGroup().addTo(mapL);
   renderInvasions();
@@ -3847,7 +3832,6 @@ function onGPS(pos){
       if(path.length>=2&&Math.floor(dist/150)>(window._lastPrevAt||0)){window._lastPrevAt=Math.floor(dist/150);clearTimeout(window._prevTimer);window._prevTimer=setTimeout(()=>{const pv=mkPoly();if(pv){if(previewLayer)mapL.removeLayer(previewLayer);previewLayer=L.geoJSON({type:'Feature',geometry:pv.polyGeom.geometry},{style:{fillColor:userColor,fillOpacity:.12,color:userColor,weight:2,dashArray:'6 4',opacity:.5}}).addTo(mapL);}},200);}
       const km=Math.floor(dist/1000);
       if(km>lastSplitKm){const el=runSecs+Math.floor((Date.now()-runStart)/1000),ss=el-lastSplitSecs;kmSplits.push({km,pace:fmtPace(1000,ss),splitSecs:ss});lastSplitKm=km;lastSplitSecs=el;beep(660,.1);toast(`KM ${km} · ${fmtPace(1000,ss)}/km`);}
-      heatPts.push([lat,lng,.5]);if(!heatPersonalOnly)heatLayer.addLatLng([lat,lng,.5]);
     }
   } else if(!lastPos){path.push(pt);pathLayer.addLatLng(pt);lastPos=pt;lastPosTime=now;}
   landmarks.forEach(lm=>{
@@ -5412,13 +5396,6 @@ function renderSettingsTab(tab){
   </details>
 
   <details style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
-    <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">🌫️ Nebel des Krieges</summary>
-    <div style="margin-top:8px;color:var(--muted);line-height:1.6">
-      Die Karte ist zu Beginn mit einem schwarzen Nebel bedeckt. Jeder Meter, den du läufst, deckt einen kleinen Bereich auf. Über das Karten-Panel kannst du den Nebel ein- und ausschalten. Je mehr du läufst, desto mehr der Karte wird sichtbar.
-    </div>
-  </details>
-
-  <details style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
     <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">📲 Lauf teilen</summary>
     <div style="margin-top:8px;color:var(--muted);line-height:1.6">
       Nach jedem Lauf kannst du eine automatisch generierte Lauf-Karte teilen. Tippe im Abschlussdialog auf <b>Teilen</b>. Auf unterstützten Geräten öffnet sich das Share-Sheet, andernfalls wird das Bild als PNG heruntergeladen.
@@ -6977,7 +6954,6 @@ window.initApp=function(){
   $('mapPanelArrow')?.addEventListener('click',toggleMapPanel);
   $('panelLocateBtn')?.addEventListener('click',()=>{if(mapL){mapL.locate({setView:true,maxZoom:17,enableHighAccuracy:true});toast('📍 Standort wird ermittelt…')}});
   $('panelTerrBtn')?.addEventListener('click',function(){this.classList.toggle('active');if(this.classList.contains('active'))terrLayer&&mapL.addLayer(terrLayer);else terrLayer&&mapL.removeLayer(terrLayer);});
-  $('panelHeatBtn')?.addEventListener('click',function(){this.classList.toggle('active');if(this.classList.contains('active'))heatLayer&&mapL.addLayer(heatLayer);else heatLayer&&mapL.removeLayer(heatLayer);});
   $('panelOwnTerrBtn')?.addEventListener('click',function(){
     this.classList.toggle('active');
     const showOwn=this.classList.contains('active');
