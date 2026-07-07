@@ -1,5 +1,5 @@
 import * as h3 from 'h3-js';
-import { createEngine, paceFactor, distanceBonus, runValue, validateRun, decayedDefense, timeToMinMs, DECAY_PER_DAY, pickBotTargets } from './h3-engine.mjs';
+import { createEngine, paceFactor, distanceBonus, runValue, validateRun, decayedDefense, timeToMinMs, DECAY_PER_DAY, pickBotTargets, botAttack, BOT_NEW_DEFENSE } from './h3-engine.mjs';
 
 const eng = createEngine(h3);
 let pass = 0, fail = 0;
@@ -230,6 +230,11 @@ ok('timeToMin: def 41 -> 5 Tage', near(timeToMinMs(41, 0, 0) / DAY, (41 - 1) / D
   const terrs = [{ id: 'X', owner: 'p', defense: 300, updatedAtMs: 0 }];
   ok('pickBotTargets: nichts Verfallenes -> leer', pickBotTargets({ territories: terrs, nowMs: now }).length === 0);
 }
+
+// Bot-Angriff (durchschnittliche Stärke)
+ok('botAttack: stark genug -> übernommen', (()=>{const r=botAttack(40,50);return r.taken&&r.newDefense===BOT_NEW_DEFENSE;})());
+ok('botAttack: zu schwach -> nur geschwächt', (()=>{const r=botAttack(100,50);return !r.taken&&r.newDefense===50;})());
+ok('botAttack: Schwächung floored bei 1', (()=>{const r=botAttack(3,50);return r.taken;})()); // 50>=3 -> taken
 
 console.log(`\n==== ${pass} passed, ${fail} failed ====`);
 process.exit(fail ? 1 : 0);

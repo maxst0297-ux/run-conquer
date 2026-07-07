@@ -1628,7 +1628,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v81';
+const APP_VERSION='v82';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3336,7 +3336,7 @@ function initMap(){
   setTimeout(loadH3Territories,900);
   /* Bots beiläufig anstoßen: nimmt (server-gelockt, meist No-Op) vernachlässigte
      Gebiete ein; danach die Karte mit dem neuen Stand aktualisieren. */
-  setTimeout(()=>{try{sb&&sb.functions.invoke('bot_tick',{}).then(r=>{if(r&&r.data&&r.data.taken&&r.data.taken.length)loadH3Territories();}).catch(()=>{});}catch(e){}},2500);
+  setTimeout(()=>{try{sb&&sb.functions.invoke('bot_tick',{}).then(r=>{if(r&&r.data&&r.data.actions&&r.data.actions.length)loadH3Territories();}).catch(()=>{});}catch(e){}},2500);
   setTimeout(loadLandmarks,800);
   mapL.locate({setView:true,maxZoom:16,enableHighAccuracy:true});
   mapL.on('locationfound',e=>{

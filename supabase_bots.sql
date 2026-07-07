@@ -16,7 +16,11 @@ insert into public.profiles (id, player_name, user_avatar, user_color, user_team
   ('b0700000-0000-4000-8000-000000000001','Glutwölfe',    '🔥','#ff5a3c','fire',  true, 0),
   ('b0700000-0000-4000-8000-000000000002','Frostgarde',   '❄️','#4cc3ff','ice',   true, 0),
   ('b0700000-0000-4000-8000-000000000003','Sturmreiter',  '⚡','#a78bfa','storm', true, 0),
-  ('b0700000-0000-4000-8000-000000000004','Schattenpakt', '🌑','#8b5cf6','shadow',true, 0)
+  ('b0700000-0000-4000-8000-000000000004','Schattenpakt', '🌑','#8b5cf6','shadow',true, 0),
+  ('b0700000-0000-4000-8000-000000000005','Aschejäger',   '🔥','#ff7a45','fire',  true, 0),
+  ('b0700000-0000-4000-8000-000000000006','Eiszahn-Clan', '❄️','#38bdf8','ice',   true, 0),
+  ('b0700000-0000-4000-8000-000000000007','Donnerhufe',   '⚡','#c084fc','storm', true, 0),
+  ('b0700000-0000-4000-8000-000000000008','Nachtschwärme','🌑','#7c3aed','shadow',true, 0)
 on conflict (id) do update set
   is_bot = true, player_name = excluded.player_name, user_color = excluded.user_color,
   user_team = excluded.user_team, user_avatar = excluded.user_avatar;
