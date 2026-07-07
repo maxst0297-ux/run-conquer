@@ -1480,8 +1480,6 @@ const CFG={
   HR_BASE:70,STEP_THR:12,STEP_INTERVAL:250,
   // ConqRun Features
   LANDMARK_PTS:50,
-  RAID_DURATION_MS:86400000,
-  RAID_DAMAGE:40,
   COMBO_MULTI_3:1.5,
   COMBO_MULTI_5:2.0,
   CONTESTED_BONUS_MUL:2.0,
@@ -1630,7 +1628,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v79';
+const APP_VERSION='v80';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2879,29 +2877,6 @@ function showOnboardingOverlay(){
   render();
 }
 
-/* ── RAIDS ── */
-function startRaid(terrId){
-  if(raids.find(r=>r.terrId===terrId)){toast('⚔️ Raid läuft bereits!');return;}
-  raids.push({terrId,attackedAt:Date.now(),attackerName:playerName});
-  totalRaids++;
-  save();renderTerr();
-  toast('⚔️ Raid gestartet! 24 Stunden laufen…');beep(660,.12);vib(150);
-}
-function resolveRaids(){
-  if(!raids.length)return;
-  const now=Date.now();let changed=false;
-  raids=raids.filter(r=>{
-    if(now-r.attackedAt<CFG.RAID_DURATION_MS)return true;
-    const t=territories.find(tt=>tt.id===r.terrId);
-    if(t&&t.owner!==userId){
-      t.defense=Math.max(0,t.defense-CFG.RAID_DAMAGE);
-      toast('⚔️ Raid auf '+(t.customName||'Gebiet')+' beendet! -'+CFG.RAID_DAMAGE+' Stärke');
-    }
-    changed=true;return false;
-  });
-  if(changed){save();renderTerr();}
-}
-window.startRaid=startRaid;
 
 /* ── SOCIAL SHARING ── */
 async function shareRun(){
@@ -3521,16 +3496,7 @@ function renderTerr(){
           h+=`<br><span style="font-size:.68rem;color:var(--green)">⚡ Energie: ${energy}/${CFG.ENERGY_MAX}</span>`;
           h+=`<br><button onclick="window.openRename('${t.id}')" style="margin-top:8px;background:#e8ff47;color:#09090f;border:none;border-radius:8px;padding:4px 12px;cursor:pointer;font-size:.72rem">✏️ Umbenennen</button>`;
         } else {
-          const decayMinsLeft=Math.max(0,Math.round(t.defense/(CFG.DECAY_PER_DAY/24/60)));
-          const dmgPotPct=Math.round(CFG.STR_DMG_PER_KM*2);
-          const raid=raids.find(r=>r.terrId===t.id);
-          if(raid){const hrs=Math.max(0,Math.ceil((CFG.RAID_DURATION_MS-(Date.now()-raid.attackedAt))/3600000));h+=`<br><span style="font-size:.68rem;color:#ff4d6d">⚔️ Raid läuft – ${hrs} Std. verbleibend</span>`;}
-          h+=`<br><span style="font-size:.68rem;color:#ff9f1c">⏳ Verfall in ${fmtDecay(decayMinsLeft)}</span>`;
-          h+=`<br><span style="font-size:.68rem;color:#ff4d6d">💥 Schadenspotential: ${dmgPotPct}% / km</span>`;
-          h+=`<div style="display:flex;gap:6px;margin-top:8px">`;
-          h+=`<button onclick="window.likeTerritory('${t.id}')" style="flex:1;background:#ff4d6d;color:#fff;border:none;border-radius:8px;padding:4px 8px;cursor:pointer;font-size:.72rem">⚔️ LIKE!</button>`;
-          if(!raid)h+=`<button onclick="window.startRaid('${t.id}')" style="flex:1;background:#ff9f1c;color:#fff;border:none;border-radius:8px;padding:4px 8px;cursor:pointer;font-size:.72rem">🔥 Raid</button>`;
-          h+=`</div>`;
+          h+=`<br><span style="font-size:.68rem;color:#ff9f1c">⏳ Verfall bis Verteidigung 1</span>`;
         }
         const terrLms=(t.landmarkIds||[]).map(lid=>landmarks.find(l=>l.id===lid)).filter(Boolean);
         if(terrLms.length){h+=`<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><div style="font-size:.6rem;font-weight:700;letter-spacing:1px;color:#ffd700;margin-bottom:4px">⭐ WAHRZEICHEN</div>${terrLms.map(lm=>`<div style="font-size:.72rem;color:var(--text);padding:1px 0">• ${esc(lm.name)}</div>`).join('')}</div>`;}
@@ -3567,6 +3533,12 @@ async function loadH3Territories(){
     updateStatsUI&&updateStatsUI();
   }catch(e){logError&&logError('h3_load',e);}
 }
+/* Lazy-Decay im Client: gleiche Rate wie in der Engine (DECAY_PER_DAY=8). Die
+   wirksame Verteidigung (und die Dauer, bis sie 1 erreicht) wird live aus dem
+   Zeitstempel der letzten Änderung berechnet. */
+const H3_DECAY_PER_DAY=8;
+function h3Decayed(defense,updatedAt){const ms=Date.parse(updatedAt||'')||Date.now();const days=Math.max(0,(Date.now()-ms)/86400000);return Math.max(1,(defense||1)-days*H3_DECAY_PER_DAY);}
+function h3MinsToOne(defense,updatedAt){return Math.max(0,(h3Decayed(defense,updatedAt)-1)/H3_DECAY_PER_DAY*1440);}
 function renderH3Territories(){
   if(!h3Layer||!h3Ready())return;
   h3Layer.clearLayers();
@@ -3576,9 +3548,11 @@ function renderH3Territories(){
     const cells=t.cells||[];
     if(!cells.length)return;
     const own=t.owner===userId;
-    const def=Math.max(1,t.defense||1);
+    const def=h3Decayed(t.defense,t.updated_at); // wirksame (verfallene) Verteidigung
     const strPct=Math.min(1,def/300);
     const fillColor=own?userColor:'#ff3333';
+    const team=(typeof TEAMS!=='undefined')?TEAMS.find(tm=>tm.id===t.owner_team):null;
+    const tteMin=h3MinsToOne(t.defense,t.updated_at);
     let renderCells=cells;
     if(aggRes<10){
       const set=new Set();
@@ -3591,7 +3565,13 @@ function renderH3Territories(){
       L.polygon(poly,{color:fillColor,weight:2,fillColor,
         fillOpacity:own?Math.max(.18,strPct*.4):Math.max(.1,strPct*.28),
         opacity:Math.max(.6,strPct*.9)})
-        .bindPopup(`<div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:${own?userColor:'#ff6666'}">${own?'🔵':'🔴'} ${esc(t.owner_name||'Gebiet')}</div><div style="font-size:.72rem;margin-top:3px">🛡️ ${Math.round(def)} · ${cells.length} Zellen</div>`)
+        .bindPopup(`<div style="min-width:170px">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.05rem;letter-spacing:.5px;color:${own?userColor:'#ff6666'}">${own?'🔵':'🔴'} ${esc(t.owner_name||'Läufer')}${own?' (Du)':''}</div>
+          ${team?`<div style="margin:4px 0"><span style="background:${team.color}22;color:${team.color};border-radius:6px;padding:1px 8px;font-size:.66rem;font-weight:700">${team.icon} ${team.name}</span></div>`:'<div style="font-size:.64rem;color:var(--muted);margin:4px 0">Keine Fraktion</div>'}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:4px">
+            <div style="background:rgba(255,255,255,.05);border-radius:7px;padding:5px 8px"><div style="font-size:.56rem;color:var(--muted)">VERTEIDIGUNG</div><div style="font-size:.85rem;font-weight:700">${Math.round(def)}</div></div>
+            <div style="background:rgba(255,255,255,.05);border-radius:7px;padding:5px 8px"><div style="font-size:.56rem;color:var(--muted)">DAUER BIS 1</div><div style="font-size:.85rem;font-weight:700">${fmtDecay(tteMin)}</div></div>
+          </div></div>`)
         .addTo(h3Layer);
     });
   });
@@ -3962,21 +3942,21 @@ async function finalizeRun(elapsed){
   if(elapsed>0&&(dist/elapsed)>CFG.MAX_SPEED_MPS){toast('⚠️ Unrealistisches Tempo erkannt – Lauf wird nicht gewertet');if(pathLayer)mapL.removeLayer(pathLayer);path=[];dist=0;sessionConquests=0;return}
   const pd=mkPoly();if(!pd)return;
   const{polyGeom,gap}=pd,area=turf.area(polyGeom);
-  const boosted=energy>0;
+  const boosted=energy>0; // Absicht: Boost automatisch nutzen, wenn Energie da ist
   sessionConquests=0;
   const prevPts=points;
   const res=await processConquest({path:path},area,dist,boosted,false,elapsed);
-  /* Boost nur verbrauchen, wenn die Eroberung serverseitig durchging — sonst
-     verliert der Nutzer bei einem RPC-Fehler einen seiner knappen Boosts für
-     0 Eroberungspunkte. */
-  const useBoost=boosted&&!res.error;
+  /* Energie + Boost sind jetzt server-autoritativ: der +10%-Angriff steckt
+     bereits in res.pts, die Energie hat der Server abgebucht und via
+     processConquest in `energy` aktualisiert. Der Client rechnet daher KEINEN
+     zusätzlichen Multiplikator und bucht nichts lokal ab. */
+  const useBoost=!!res.boostUsed;
   const streakMul=streakDays>0?Math.min(2,1+(streakDays-1)*0.1):1;
   const kmXP=Math.round(xpForKm(dist/1000,getWeeklyKm())*streakMul);
-  const boostMul=useBoost?1+CFG.ENERGY_BOOST_PTS:1;
-  const totalPts=Math.round((res.pts+kmXP)*boostMul);
+  const totalPts=Math.round(res.pts+kmXP);
   const lvBefore=getLevel(prevPts);
   points+=totalPts;
-  if(useBoost){energy=Math.max(0,energy-1);toast(`⚡ Energie-Boost! ×${boostMul.toFixed(1)} · +${totalPts} Punkte · noch ${energy}/${CFG.ENERGY_MAX} Boosts`);}
+  if(useBoost)toast(`⚡ Energie-Boost aktiv (+10% Angriff) · noch ${energy}/${CFG.ENERGY_MAX} Boosts`);
   else if(streakDays>1)toast(`🔥 Streak ×${streakMul.toFixed(1)} · +${kmXP} km-XP`);
   const kcal=calcKcal(dist,elapsed);
   const rec={id:(crypto.randomUUID?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2))),synced:false,date:Date.now(),distance:dist,area,pts:res.pts,path:path.filter((_,i)=>i%3===0),conquered:res.conquered,defended:res.defended,duration:elapsed,gap,kcal,avgHR:heartRate,splits:[...kmSplits]};
@@ -4048,7 +4028,7 @@ async function processConquest(np,area,d,boosted=false,isImport=false,durationS=
     const r=await sb.functions.invoke('conquer',{body:{
       path:runPath.map(p=>[p[0],p[1]]),
       distanceM:d,durationS:durationS||0,cadence,
-      playerName,userColor
+      playerName,userColor,userTeam,boosted:!!boosted
     }});
     data=r.data;error=r.error;
   }catch(e){error=e;}
@@ -4065,7 +4045,7 @@ async function processConquest(np,area,d,boosted=false,isImport=false,durationS=
   let conquered=false,defended=false;
   (data.events||[]).forEach(ev=>{
     if(ev.type==='conquered'||ev.type==='cut'){
-      conquered=true;
+      conquered=true;totalRaids++; // Sieg über ein Feindgebiet -> zählt für die „Sieg"-Abzeichen
       [660,880,1100].forEach((f,i)=>setTimeout(()=>beep(f,.1),i*80));
       toast(ev.type==='cut'?'✂️ Gebiet abgeschnitten! (+'+ev.got+' Zellen)':'🔥 GEBIET EROBERT! (+'+ev.cells+' Zellen)');
       vib([100,50,100]);addNotif('🗺️','Neues Gebiet erobert!');
@@ -4078,8 +4058,9 @@ async function processConquest(np,area,d,boosted=false,isImport=false,durationS=
       toast('⚔️ Angriff! −'+ev.damage+' gegnerische Verteidigung');
     }
   });
+  if(typeof data.energy==='number')energy=data.energy; // Energie ist server-autoritativ
   loadH3Territories&&loadH3Territories(); // Karte + Stats mit neuem Stand aktualisieren
-  return{pts:data.points||0,conquered,defended};
+  return{pts:data.points||0,conquered,defended,boostUsed:!!data.boosted};
 }
 
 /* STARTER QUESTS */
@@ -5318,21 +5299,21 @@ function renderSettingsTab(tab){
   <details open style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
     <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">🗺️ Gebiete erobern</summary>
     <div style="margin-top:8px;color:var(--muted);line-height:1.6">
-      Starte einen Lauf und zeichne eine geschlossene Route auf der Karte. Sobald du auf <b>Stop</b> tippst, wird die gelaufene Fläche als dein Gebiet eingetragen. Je größer die Fläche, desto mehr Punkte. Du kannst nur Gebiete beanspruchen, die nicht vollständig von anderen Gebieten überlappt werden.
+      Starte einen Lauf. Die Zellen, die du durchläufst — und bei einer geschlossenen Runde auch die eingeschlossene Fläche — werden zu deinem Gebiet (ein feines Hexagon-Raster). Auch die außerhalb gelaufene Strecke wird beansprucht. Läufst du durch ein <b>fremdes</b> Gebiet, greifst du es an — wie stark, hängt von deinem <b>Tempo</b> ab (schneller = mehr Schaden). Übersteigt dein Angriff den Verteidigungswert, wird das Gebiet deins.
     </div>
   </details>
 
   <details style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
     <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">🛡️ Stärke &amp; Verfall</summary>
     <div style="margin-top:8px;color:var(--muted);line-height:1.6">
-      Jedes Gebiet hat eine <b>Stärke (0–100 %)</b>. Verteidige es durch erneutes Durchlaufen, um die Stärke wieder auf 100 % zu bringen. Unverteidigte Gebiete verlieren täglich an Stärke. Fällt ein Gebiet unter 0 %, wird es aufgelöst. Feindliche Gebiete können durch Raids geschwächt werden.
+      Jedes Gebiet hat einen <b>Verteidigungswert von 1 bis 300</b>. Läufst du durch dein <b>eigenes</b> Gebiet, steigt der Wert anteilig zur tatsächlich abgelaufenen Fläche (max. +100 pro Tag). Unverteidigte Gebiete <b>verfallen mit der Zeit</b>: der Wert sinkt langsam bis auf <b>1</b> — das Gebiet bleibt bestehen, wird aber immer leichter angreifbar. Tippe ein Gebiet an, um Fraktion, Besitzer, aktuellen Verteidigungswert und die <b>Dauer bis 1</b> zu sehen.
     </div>
   </details>
 
   <details style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
     <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">⚡ Energie</summary>
     <div style="margin-top:8px;color:var(--muted);line-height:1.6">
-      Gebiete kosten Energie beim Erstellen. Energie regeneriert sich über die Zeit automatisch. Die maximale Energie beträgt <b>${CFG.ENERGY_MAX}</b>. Energie-Boosts erhältst du durch: Erste Läufe nach Pause, besondere Wahrzeichen-Capture, Saison-Belohnungen.
+      Energie gibt dir einen <b>Angriffs-Boost von +10 %</b> für einen Lauf. Du hast <b>3 Boosts pro Woche</b>, die zu Wochenbeginn automatisch zurückgesetzt werden. Ein Boost wird automatisch eingesetzt, sobald du noch welche übrig hast — so triffst du Feindgebiete härter.
     </div>
   </details>
 
@@ -5352,13 +5333,6 @@ function renderSettingsTab(tab){
       <span style="color:#9b5de5">🟣 Episch</span> — 12 % (lila Umrandung)<br>
       <span style="color:#ffd700">🟡 Legendär</span> — 3 % (goldgestrichelte Umrandung)<br>
       Gebiete in der Nähe von Wahrzeichen haben eine höhere Chance auf bessere Seltenheit.
-    </div>
-  </details>
-
-  <details style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
-    <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">⚔️ Raids</summary>
-    <div style="margin-top:8px;color:var(--muted);line-height:1.6">
-      Tippe auf ein feindliches Gebiet und starte einen <b>Raid</b>. Nach 24 Stunden verliert das Gebiet automatisch Stärke (−${CFG.RAID_DAMAGE} %). Du kannst gleichzeitig mehrere Raids laufen haben. Raids können nur gestartet werden, wenn du gerade keinen Lauf aktiv hast.
     </div>
   </details>
 
@@ -6249,7 +6223,7 @@ function updateProfile(){
       domEl.innerHTML=`<div class="empty-state" style="padding:24px 12px"><i class="fas fa-flag" style="color:var(--primary);opacity:.5"></i><p>Noch keine Gebiete<br><span style="font-size:.75rem">Lauf durch ein Viertel, um es zu markieren und zu beanspruchen.</span></p></div>`;
     } else {
       const totalArea=mine.reduce((s,t)=>s+(t.area||0),0);const avgDef=mine.length?Math.round(mine.reduce((s,t)=>s+t.defense,0)/mine.length):0;const legCount=mine.filter(t=>t.rarity==='legendary').length;
-      domEl.innerHTML=`<div class="dominion-grid">${[['🗺️ Fläche',totalArea>9999?(totalArea/1000000).toFixed(2)+' km²':Math.round(totalArea)+' m²'],['🛡️ Ø Stärke',avgDef+'/100'],['🏅 Legendär',legCount],['🔥 Raids',raids.length]].map(([l,v])=>`<div class="dom-card"><div class="dom-val">${v}</div><div class="dom-lbl">${l}</div></div>`).join('')}</div>`;
+      domEl.innerHTML=`<div class="dominion-grid">${[['🗺️ Fläche',totalArea>9999?(totalArea/1000000).toFixed(2)+' km²':Math.round(totalArea)+' m²'],['🛡️ Ø Stärke',avgDef+'/100'],['🏅 Legendär',legCount]].map(([l,v])=>`<div class="dom-card"><div class="dom-val">${v}</div><div class="dom-lbl">${l}</div></div>`).join('')}</div>`;
     }
   }
   const bm=history.filter(r=>r.distance>=500).reduce((b,r)=>{const p=r.duration/60/(r.distance/1000);return p<b?p:b},Infinity);
@@ -6532,7 +6506,6 @@ function setupBg(){
   setInterval(invasionTick,60000);
   setTimeout(invasionTick,20000);
   setInterval(()=>{if(hrSource==='sim')simHR()},3000);
-  setTimeout(()=>{resolveRaids();setInterval(resolveRaids,90*1000);},15000);
   /* Sync-Queue erneut anstoßen, sobald wieder online bzw. periodisch im
      Hintergrund — fängt Fälle ab, in denen processSyncQueue() bei Run-Ende
      oder App-Start mangels Verbindung nichts ausrichten konnte. */
