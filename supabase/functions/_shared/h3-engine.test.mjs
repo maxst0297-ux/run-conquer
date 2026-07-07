@@ -1,5 +1,5 @@
 import * as h3 from 'h3-js';
-import { createEngine, paceFactor, distanceBonus, runValue, validateRun } from './h3-engine.mjs';
+import { createEngine, paceFactor, distanceBonus, runValue, validateRun, decayedDefense, timeToMinMs, DECAY_PER_DAY } from './h3-engine.mjs';
 
 const eng = createEngine(h3);
 let pass = 0, fail = 0;
@@ -198,6 +198,18 @@ ok('validate: Cadence 160 -> OK', validateRun({ distanceM: 2000, durationS: 600,
   const tset = new Set(territory);
   const outsideCount = [...runLine].filter(c => !tset.has(c)).length;
   ok('resolveRun: Außen-Strecke beansprucht + eigene Verteidigung steigt', !!up && up.defense > 50 && !!neutral && neutral.cells.length === outsideCount, 'defUp=' + (up && up.defense.toFixed(1)) + ' neutral=' + (neutral && neutral.cells.length) + ' outside=' + outsideCount);
+}
+
+// ================= Verfall + Energie-Boost =================
+const DAY = 86400000;
+ok('decay: 100 nach 2 Tagen -> 84 (Rate 8)', near(decayedDefense(100, 0, 2 * DAY), 100 - 2 * DECAY_PER_DAY));
+ok('decay: floored bei 1', decayedDefense(20, 0, 10 * DAY) === 1);
+ok('decay: frisch = unverändert', near(decayedDefense(50, 5 * DAY, 5 * DAY), 50));
+ok('timeToMin: def 41 -> 5 Tage', near(timeToMinMs(41, 0, 0) / DAY, (41 - 1) / DECAY_PER_DAY));
+{
+  const base = eng.resolveRun({ userId: uid, runCells: throughRun, enclosed: new Set(), distanceKm: 5, paceKmh: 12, territories: [{ ...enemyT, cells: new Set(territory) }] });
+  const boost = eng.resolveRun({ userId: uid, runCells: throughRun, enclosed: new Set(), distanceKm: 5, paceKmh: 12, boosted: true, territories: [{ ...enemyT, cells: new Set(territory) }] });
+  ok('Energie-Boost: +10% Angriff', near(boost.atkPts, base.atkPts * 1.1), 'base=' + base.atkPts + ' boost=' + boost.atkPts.toFixed(1));
 }
 
 console.log(`\n==== ${pass} passed, ${fail} failed ====`);
