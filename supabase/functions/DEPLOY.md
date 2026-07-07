@@ -55,3 +55,9 @@ Fehlerfälle geben klaren JSON-Text zurück:
   Für den Start ausreichend; echtes Optimistic Locking (GDS 2.2) kommt später.
 - Die App ruft die Function noch NICHT auf — das ist Phase 3b (Client-Umschaltung).
   Bis dahin läuft das alte Polygon-System unverändert weiter.
+
+## Bots (Phase B)
+1. `supabase_bots.sql` im SQL-Editor ausführen (Bot-Profile + game_state-Lock).
+2. `supabase functions deploy bot_tick`
+Bots nehmen mit der Zeit vernachlässigte (stark verfallene) Gebiete ein; der
+Client stößt bot_tick beim Start an (server-gelockt, meist No-Op).

@@ -1,5 +1,5 @@
 import * as h3 from 'h3-js';
-import { createEngine, paceFactor, distanceBonus, runValue, validateRun, decayedDefense, timeToMinMs, DECAY_PER_DAY } from './h3-engine.mjs';
+import { createEngine, paceFactor, distanceBonus, runValue, validateRun, decayedDefense, timeToMinMs, DECAY_PER_DAY, pickBotTargets } from './h3-engine.mjs';
 
 const eng = createEngine(h3);
 let pass = 0, fail = 0;
@@ -210,6 +210,25 @@ ok('timeToMin: def 41 -> 5 Tage', near(timeToMinMs(41, 0, 0) / DAY, (41 - 1) / D
   const base = eng.resolveRun({ userId: uid, runCells: throughRun, enclosed: new Set(), distanceKm: 5, paceKmh: 12, territories: [{ ...enemyT, cells: new Set(territory) }] });
   const boost = eng.resolveRun({ userId: uid, runCells: throughRun, enclosed: new Set(), distanceKm: 5, paceKmh: 12, boosted: true, territories: [{ ...enemyT, cells: new Set(territory) }] });
   ok('Energie-Boost: +10% Angriff', near(boost.atkPts, base.atkPts * 1.1), 'base=' + base.atkPts + ' boost=' + boost.atkPts.toFixed(1));
+}
+
+// ================= Bots: Übernahme verfallener Gebiete =================
+{
+  const now = 100 * DAY;
+  const terrs = [
+    { id: 'A', owner: 'p1', defense: 300, updatedAtMs: now }, // frisch, stark -> nein
+    { id: 'B', owner: 'p2', defense: 40, updatedAtMs: now - 6 * DAY }, // 40-48<1 -> ~1 -> ja
+    { id: 'C', owner: 'p3', defense: 100, updatedAtMs: now - 20 * DAY }, // -> 1 -> ja
+    { id: 'D', owner: 'bot1', defense: 2, updatedAtMs: now }, // gehört Bot -> nein
+    { id: 'E', owner: 'p4', defense: 60, updatedAtMs: now - 1 * DAY }, // 52 -> nein
+  ];
+  const picks = pickBotTargets({ territories: terrs, nowMs: now, botOwnerIds: ['bot1'], limit: 2 });
+  ok('pickBotTargets: nur verfallene Nicht-Bot-Gebiete', picks.length === 2 && picks.includes('B') && picks.includes('C') && !picks.includes('A') && !picks.includes('D') && !picks.includes('E'), 'picks=' + picks.join(','));
+}
+{
+  const now = 0;
+  const terrs = [{ id: 'X', owner: 'p', defense: 300, updatedAtMs: 0 }];
+  ok('pickBotTargets: nichts Verfallenes -> leer', pickBotTargets({ territories: terrs, nowMs: now }).length === 0);
 }
 
 console.log(`\n==== ${pass} passed, ${fail} failed ====`);
