@@ -1628,7 +1628,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v82';
+const APP_VERSION='v83';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3568,12 +3568,13 @@ function renderH3Territories(){
       L.polygon(poly,{color:fillColor,weight:2,fillColor,
         fillOpacity:own?Math.max(.18,strPct*.4):Math.max(.1,strPct*.28),
         opacity:Math.max(.6,strPct*.9)})
-        .bindPopup(`<div style="min-width:170px">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.05rem;letter-spacing:.5px;color:${own?userColor:'#ff6666'}">${own?'🔵':'🔴'} ${esc(t.owner_name||'Läufer')}${own?' (Du)':''}</div>
-          ${team?`<div style="margin:4px 0"><span style="background:${team.color}22;color:${team.color};border-radius:6px;padding:1px 8px;font-size:.66rem;font-weight:700">${team.icon} ${team.name}</span></div>`:'<div style="font-size:.64rem;color:var(--muted);margin:4px 0">Keine Fraktion</div>'}
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:4px">
-            <div style="background:rgba(255,255,255,.05);border-radius:7px;padding:5px 8px"><div style="font-size:.56rem;color:var(--muted)">VERTEIDIGUNG</div><div style="font-size:.85rem;font-weight:700">${Math.round(def)}</div></div>
-            <div style="background:rgba(255,255,255,.05);border-radius:7px;padding:5px 8px"><div style="font-size:.56rem;color:var(--muted)">DAUER BIS 1</div><div style="font-size:.85rem;font-weight:700">${fmtDecay(tteMin)}</div></div>
+        .bindPopup(`<div style="min-width:190px">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.02rem;letter-spacing:.5px;color:${own?userColor:'#ff6666'};margin-bottom:6px">${own?'🔵':'🔴'} Gebiet</div>
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Fraktion</span>${team?`<span style="background:${team.color}22;color:${team.color};border-radius:6px;padding:1px 8px;font-size:.66rem;font-weight:700">${team.icon} ${team.name}</span>`:'<span style="font-size:.72rem;color:var(--muted)">Keine</span>'}</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Besitzer</span><span style="font-size:.8rem;font-weight:700;color:${own?userColor:'#ff9f9f'}">${esc(t.owner_name||'Läufer')}${own?' (Du)':''}</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Verteidigung</span><span style="font-size:.8rem;font-weight:700">${Math.round(def)} / 300</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Dauer bis 1</span><span style="font-size:.8rem;font-weight:700">${fmtDecay(tteMin)}</span></div>
           </div></div>`)
         .addTo(h3Layer);
     });
