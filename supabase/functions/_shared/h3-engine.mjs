@@ -83,6 +83,25 @@ export function timeToMinMs(defense, updatedAtMs, nowMs) {
 export const ENERGY_BOOST = 0.10;
 export const ENERGY_PER_WEEK = 3;
 
+// ── Bots: nehmen mit der Zeit stark verfallene Gebiete ein ──
+// Reine Auswahl-Logik (testbar): liefert die IDs der Gebiete, die ein Bot in
+// diesem Tick übernimmt — die am stärksten verfallenen (wirksame Verteidigung
+// <= maxDef), die noch keinem Bot gehören, begrenzt auf `limit`.
+export const BOT_TAKE_DEF_MAX = 5;   // ab hier gilt ein Gebiet als vernachlässigt
+export const BOT_TAKE_LIMIT = 2;     // max. Übernahmen pro Tick
+export const BOT_NEW_DEFENSE = 30;   // Startverteidigung eines übernommenen Gebiets
+export function pickBotTargets({ territories, nowMs, maxDef = BOT_TAKE_DEF_MAX, limit = BOT_TAKE_LIMIT, botOwnerIds = [] } = {}) {
+  const bots = new Set(botOwnerIds);
+  const cand = [];
+  for (const t of (territories || [])) {
+    if (bots.has(t.owner)) continue; // gehört schon einem Bot
+    const def = decayedDefense(t.defense, t.updatedAtMs || 0, nowMs);
+    if (def <= maxDef) cand.push({ id: t.id, def });
+  }
+  cand.sort((a, b) => a.def - b.def); // schwächste zuerst
+  return cand.slice(0, limit).map(c => c.id);
+}
+
 // ── Anti-Cheat-Regeln (GDS 3.1) — server-autoritativ, ohne Geo-Abhängigkeit ──
 export const MIN_DIST_M = 150;
 export const HARD_MAX_KMH = 25;   // > Rad/Auto -> Lauf ungültig
