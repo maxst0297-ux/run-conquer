@@ -1,16 +1,23 @@
 /* ============================================================================
-   Runners Conquer — Edge Function "bot_tick"
+   Runners Conquer — Edge Function "bot_tick" (aktive, ortsbezogene Bots)
    ----------------------------------------------------------------------------
-   Bots nehmen mit der Zeit vernachlässigte (stark verfallene) Gebiete ein.
-   Kein Cron: der Client stößt diese Function beim App-Start beiläufig an. Ein
-   Server-Lock (game_state.last_bot_tick, atomar per bedingtem UPDATE) sorgt
-   dafür, dass nur EIN Aufruf pro Zeitfenster tatsächlich Züge ausführt — alle
-   anderen sind No-Ops. Die Auswahl-Logik liegt in der getesteten Engine.
+   Bots agieren RUND UM Spielergebiete (dort, wo tatsächlich gespielt wird):
+   pro Tick mehrere Aktionen — entweder ein Angriff auf ein benachbartes
+   Spielergebiet (mittlere Stärke, UNABHÄNGIG vom Verteidigungswert; schwache/
+   mittlere fallen, starke werden nur geschwächt) oder das Beanspruchen neutraler
+   Nachbarzellen als neues Bot-Gebiet.
+
+   Kein Cron: der Client stößt die Function beim Start an. Ein Server-Lock
+   (game_state) drosselt global und verhindert Doppelausführung.
 
    Deploy:  supabase functions deploy bot_tick
    ========================================================================== */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { pickBotTargets, BOT_NEW_DEFENSE } from '../_shared/h3-engine.mjs';
+import * as h3 from 'https://esm.sh/h3-js@4.1.0';
+import {
+  botAttack, decayedDefense,
+  BOT_NEW_DEFENSE, BOT_ACTIONS_PER_TICK, BOT_ATK_MIN, BOT_ATK_MAX, BOT_CLAIM_CELLS,
+} from '../_shared/h3-engine.mjs';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -19,7 +26,7 @@ const CORS = {
 };
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
-const LOCK_MINUTES = 30; // frühestens alle 30 Min ein Bot-Zug (global)
+const LOCK_MINUTES = 15; // frühestens alle 15 Min ein Bot-Tick (global)
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
@@ -28,8 +35,7 @@ Deno.serve(async (req) => {
   try {
     const svc = createClient(SUPABASE_URL, SERVICE);
 
-    // ── Server-Lock: die Zeitschranke nur weiterstellen, wenn sie alt genug ist.
-    //    Nur der Aufruf, der hier eine Zeile zurückbekommt, führt Züge aus. ──
+    // ── Server-Lock ──
     const cutoff = new Date(Date.now() - LOCK_MINUTES * 60000).toISOString();
     const { data: locked } = await svc.from('game_state')
       .update({ last_bot_tick: new Date().toISOString() })
@@ -38,28 +44,75 @@ Deno.serve(async (req) => {
 
     const { data: bots } = await svc.from('profiles')
       .select('id,player_name,user_color,user_team').eq('is_bot', true);
-    if (!bots || !bots.length) return json({ ok: true, taken: [], note: 'no bots' });
-    const botIds = bots.map((b: any) => b.id);
+    if (!bots || !bots.length) return json({ ok: true, actions: [], note: 'no bots' });
+    const botIdSet = new Set(bots.map((b: any) => b.id));
+    const randBot = () => bots[Math.floor(Math.random() * bots.length)];
 
     const { data: trows } = await svc.from('h3_territories').select('id,owner,defense,updated_at');
-    const territories = (trows || []).map((t: any) => ({
-      id: t.id, owner: t.owner, defense: t.defense, updatedAtMs: Date.parse(t.updated_at) || 0,
-    }));
-    const targets: string[] = pickBotTargets({ territories, nowMs: Date.now(), botOwnerIds: botIds });
+    if (!trows || !trows.length) return json({ ok: true, actions: [], note: 'empty world' });
+    const { data: crows } = await svc.from('h3_cells').select('cell,territory_id');
 
-    // ── Übernahmen anwenden: Besitzer -> zufälliger Bot, Startverteidigung. Die
-    //    Zellen (h3_cells) bleiben am Gebiet — der Bot erbt sie. ──
-    const now = new Date().toISOString();
-    const taken: any[] = [];
-    for (const id of targets) {
-      const bot = bots[Math.floor(Math.random() * bots.length)];
-      await svc.from('h3_territories').update({
-        owner: bot.id, owner_name: bot.player_name, owner_color: bot.user_color,
-        owner_team: bot.user_team, defense: BOT_NEW_DEFENSE, updated_at: now, last_captured_at: now,
-      }).eq('id', id);
-      taken.push({ id, bot: bot.player_name });
+    const terrCells = new Map<string, string[]>();
+    const ownedCells = new Set<string>();
+    for (const c of (crows || [])) {
+      ownedCells.add(c.cell);
+      if (!terrCells.has(c.territory_id)) terrCells.set(c.territory_id, []);
+      terrCells.get(c.territory_id)!.push(c.cell);
     }
-    return json({ ok: true, taken });
+
+    const nowMs = Date.now();
+    const now = new Date().toISOString();
+    const claimedThisTick = new Set<string>();
+    const actions: any[] = [];
+
+    // Bots agieren bevorzugt an Spielergebieten (dort wird gespielt).
+    const playerTerr = trows.filter((t: any) => !botIdSet.has(t.owner));
+    const anchors = playerTerr.length ? playerTerr : trows;
+
+    for (let i = 0; i < BOT_ACTIONS_PER_TICK && anchors.length; i++) {
+      const anchor: any = anchors[Math.floor(Math.random() * anchors.length)];
+      const anchorCells = terrCells.get(anchor.id) || [];
+      if (!anchorCells.length) continue;
+      const doAttack = Math.random() < 0.5;
+
+      if (doAttack && !botIdSet.has(anchor.owner)) {
+        // Angriff auf ein Spielergebiet — mittlere Stärke, unabhängig vom Wert.
+        const def = decayedDefense(anchor.defense, Date.parse(anchor.updated_at) || nowMs, nowMs);
+        const strength = BOT_ATK_MIN + Math.random() * (BOT_ATK_MAX - BOT_ATK_MIN);
+        const r = botAttack(def, strength);
+        const bot = randBot();
+        if (r.taken) {
+          await svc.from('h3_territories').update({
+            owner: bot.id, owner_name: bot.player_name, owner_color: bot.user_color,
+            owner_team: bot.user_team, defense: r.newDefense, updated_at: now, last_captured_at: now,
+          }).eq('id', anchor.id);
+          anchor.owner = bot.id;
+          actions.push({ type: 'attack_take', id: anchor.id, bot: bot.player_name });
+        } else {
+          await svc.from('h3_territories').update({ defense: r.newDefense, updated_at: now }).eq('id', anchor.id);
+          actions.push({ type: 'attack_weaken', id: anchor.id, def: Math.round(r.newDefense) });
+        }
+      } else {
+        // Neutrale Nachbarzellen des Anchors beanspruchen -> neues Bot-Gebiet.
+        const seed = anchorCells[Math.floor(Math.random() * anchorCells.length)];
+        let ring: string[] = [];
+        try { ring = h3.gridDisk(seed, 2); } catch (_) { /*noop*/ }
+        const neutral = ring.filter((c) => !ownedCells.has(c) && !claimedThisTick.has(c)).slice(0, BOT_CLAIM_CELLS);
+        if (neutral.length) {
+          const bot = randBot();
+          const { data: nt } = await svc.from('h3_territories').insert({
+            owner: bot.id, owner_name: bot.player_name, owner_color: bot.user_color,
+            owner_team: bot.user_team, defense: BOT_NEW_DEFENSE, last_captured_at: now,
+          }).select('id').single();
+          if (nt) {
+            await svc.from('h3_cells').upsert(neutral.map((c) => ({ cell: c, territory_id: nt.id })), { onConflict: 'cell' });
+            neutral.forEach((c) => { claimedThisTick.add(c); ownedCells.add(c); });
+            actions.push({ type: 'claim', bot: bot.player_name, cells: neutral.length });
+          }
+        }
+      }
+    }
+    return json({ ok: true, actions });
   } catch (e) {
     return json({ error: String(e && (e as Error).message || e) }, 500);
   }

@@ -89,7 +89,23 @@ export const ENERGY_PER_WEEK = 3;
 // <= maxDef), die noch keinem Bot gehören, begrenzt auf `limit`.
 export const BOT_TAKE_DEF_MAX = 5;   // ab hier gilt ein Gebiet als vernachlässigt
 export const BOT_TAKE_LIMIT = 2;     // max. Übernahmen pro Tick
-export const BOT_NEW_DEFENSE = 30;   // Startverteidigung eines übernommenen Gebiets
+export const BOT_NEW_DEFENSE = 35;   // Startverteidigung eines Bot-Gebiets (~mittel)
+// Aktive Bots: pro Tick mehrere Aktionen rund um Spielergebiete, unabhängig vom
+// Verteidigungswert. "Durchschnittlich stark": Angriff zufällig im mittleren
+// Bereich — schwache/mittlere Gebiete fallen, gut verteidigte werden nur
+// geschwächt.
+export const BOT_ACTIONS_PER_TICK = 6;
+export const BOT_ATK_MIN = 35;
+export const BOT_ATK_MAX = 70;       // Ø ~52, im Bereich eines typischen Lauf-Angriffs
+export const BOT_CLAIM_CELLS = 7;    // Größe eines neu beanspruchten Bot-Gebiets
+
+/* Ein Bot-Angriff der Stärke `strength` auf ein Gebiet mit `defense`.
+   strength >= defense -> übernommen (Startverteidigung BOT_NEW_DEFENSE), sonst
+   nur geschwächt (min. 1). Rein + testbar. */
+export function botAttack(defense, strength) {
+  if (strength >= defense) return { taken: true, newDefense: BOT_NEW_DEFENSE };
+  return { taken: false, newDefense: Math.max(DEF_MIN, defense - strength) };
+}
 export function pickBotTargets({ territories, nowMs, maxDef = BOT_TAKE_DEF_MAX, limit = BOT_TAKE_LIMIT, botOwnerIds = [] } = {}) {
   const bots = new Set(botOwnerIds);
   const cand = [];
