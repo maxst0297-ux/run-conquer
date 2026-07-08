@@ -261,7 +261,7 @@ body.onboarding-active{background:#000}
 .btn:disabled{opacity:.35;pointer-events:none}
 
 /* ── Run Control Pill ── */
-#runCtrlPill{position:fixed;bottom:calc(var(--nav-total) + 14px);left:50%;transform:translateX(-50%);
+#runCtrlPill{position:fixed;bottom:calc(var(--nav-total) + 6px);left:50%;transform:translateX(-50%);
   z-index:1100;display:flex;align-items:center;gap:8px;padding:10px 10px;
   border-radius:50px;
   background:rgba(13,18,30,.92);border:1px solid rgba(255,255,255,.1);
@@ -983,13 +983,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <canvas id="likeCanvas"></canvas>
       <button id="mapPanelArrow" aria-label="Kartenoptionen"><i class="fas fa-chevron-left" id="mapPanelIcon"></i></button>
       <div id="mapPanel">
-        <button class="map-panel-btn active" id="panelTerrBtn"><i class="fas fa-map"></i> Gebiete</button>
-        <button class="map-panel-btn active" id="panelLmBtn"><i class="fas fa-star"></i> Wahrzeichen</button>
-        <button class="map-panel-btn" id="panelFraktBtn"><i class="fas fa-flag"></i> Fraktionskarte</button>
-        <button class="map-panel-btn" id="panelOwnTerrBtn"><i class="fas fa-map-marker-alt"></i> Eigene Gebiete</button>
-        <!-- Start/Stop bewusst ans untere Ende des Panels (unteres Viertel, daumenfreundlich) -->
-        <div style="margin-top:auto">
-          <div class="map-panel-sep"></div>
+        <div>
           <button id="panelStartBtn"><i class="fas fa-play"></i> START</button>
           <div id="panelRunBox">
             <div class="panel-run-grid">
@@ -1004,6 +998,11 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
             </div>
           </div>
         </div>
+        <div class="map-panel-sep"></div>
+        <button class="map-panel-btn active" id="panelTerrBtn"><i class="fas fa-map"></i> Gebiete</button>
+        <button class="map-panel-btn active" id="panelLmBtn"><i class="fas fa-star"></i> Wahrzeichen</button>
+        <button class="map-panel-btn" id="panelFraktBtn"><i class="fas fa-flag"></i> Fraktionskarte</button>
+        <button class="map-panel-btn" id="panelOwnTerrBtn"><i class="fas fa-map-marker-alt"></i> Eigene Gebiete</button>
       </div>
     </div>
 
@@ -1629,7 +1628,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v85';
+const APP_VERSION='v86';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
