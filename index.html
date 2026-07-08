@@ -1754,7 +1754,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v102';
+const APP_VERSION='v103';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -5663,6 +5663,8 @@ async function loadAdminSystem(){
     {name:'territory_breaches (Invasionen)',sql:'supabase_breaches.sql',run:async()=>{const{count,error}=await sb.from('territory_breaches').select('id',{count:'exact',head:true});return{error,info:count!=null?count+' eigene':''};}},
     {name:'rc_sync_breaches()',sql:'supabase_breaches.sql',run:async()=>{const{error}=await sb.rpc('rc_sync_breaches');return{error,info:''};}},
     {name:'rc_repel_breach()',sql:'supabase_breaches.sql',run:async()=>{const{error}=await sb.rpc('rc_repel_breach',{p_breach_id:'00000000-0000-0000-0000-000000000000',p_lat:0,p_lng:0});return{error:(error&&_sbMissing(error))?error:null,info:''};}},
+    {name:'Bots (is_bot-Profile)',sql:'supabase_bots.sql',run:async()=>{const{count,error}=await sb.from('profiles').select('id',{count:'exact',head:true}).eq('is_bot',true);return{error,info:count!=null?count+' Bots':''};}},
+    {name:'game_state (Bot-Lock)',sql:'supabase_bots.sql',run:async()=>{const{error}=await sb.from('game_state').select('id',{head:true});return{error,info:''};}},
   ];
   const rows=[];
   for(const c of checks){
@@ -5687,8 +5689,25 @@ async function loadAdminSystem(){
   body.innerHTML=
     '<div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Server-Migrationen</div>'
     +rows.map(r=>`<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border)"><span>${r.ok?'✅':'❌'}</span><div style="flex:1;min-width:0"><div style="font-size:.76rem;font-weight:600">${esc(r.name)}</div><div style="font-size:.63rem;color:${r.ok?'var(--muted)':'var(--red)'}">${r.detail}</div></div></div>`).join('')
-    +'<div style="display:flex;align-items:center;gap:8px;margin:14px 0 6px"><div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Fehler-Logs (letzte 30)</div><button class="btn" id="adminLogPrune" style="margin-left:auto;width:auto;padding:4px 10px;font-size:.62rem">🧹 &gt;30 Tage löschen</button></div>'
+    +'<div style="margin:16px 0 6px;font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Bots</div>'
+    +'<button class="btn btn-p" id="adminBotTick" style="width:100%;font-size:.8rem">🤖 Bots jetzt ticken (Test)</button>'
+    +'<div id="adminBotTickOut" style="font-size:.72rem;color:var(--muted);margin-top:8px;line-height:1.5">Prüft: Function deployt? Bots + game_state vorhanden? Führt einen erzwungenen Tick aus.</div>'
+    +'<div style="display:flex;align-items:center;gap:8px;margin:16px 0 6px"><div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Fehler-Logs (letzte 30)</div><button class="btn" id="adminLogPrune" style="margin-left:auto;width:auto;padding:4px 10px;font-size:.62rem">🧹 &gt;30 Tage löschen</button></div>'
     +logsHtml;
+  document.getElementById('adminBotTick')?.addEventListener('click',async()=>{
+    const out=document.getElementById('adminBotTickOut');if(out)out.textContent='⏳ rufe bot_tick (force)…';
+    try{
+      const{data,error}=await sb.functions.invoke('bot_tick',{body:{force:true}});
+      if(error){out.textContent='❌ Function-Fehler: '+(error.message||error)+' — ist bot_tick deployt? (supabase functions deploy bot_tick)';return;}
+      if(!data){out.textContent='⚠️ Keine Antwort — bot_tick vermutlich nicht deployt.';return;}
+      if(data.error){out.textContent='❌ '+data.error;return;}
+      if(data.note==='no bots'){out.textContent='ℹ️ Keine Bot-Profile → supabase_bots.sql im SQL-Editor ausführen.';return;}
+      if(data.note==='empty world'){out.textContent='ℹ️ Noch keine Gebiete auf der Welt — Bots brauchen Spielergebiete als Anker.';return;}
+      const n=(data.actions&&data.actions.length)||0;
+      out.textContent='✅ '+n+' Bot-Aktion(en): '+((data.actions||[]).map(a=>a.type).join(', ')||'—');
+      if(n){loadH3Territories&&loadH3Territories();toast('🤖 '+n+' Bot-Aktion(en)');}
+    }catch(e){out.textContent='❌ '+(e.message||e);}
+  });
   document.getElementById('adminLogPrune')?.addEventListener('click',async()=>{
     try{const{data,error}=await sb.rpc('rc_prune_app_logs',{older_than_days:30});if(error)throw error;toast('🧹 '+(data??0)+' alte Logs gelöscht');loadAdminSystem();}
     catch(e){toast('Aufräumen fehlgeschlagen');}
