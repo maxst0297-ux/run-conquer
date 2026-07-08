@@ -475,8 +475,10 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .bottom-nav{position:relative;flex:0 0 auto;height:var(--nav-total);background:var(--bg);border-top:1px solid rgba(255,255,255,.08);display:flex;align-items:flex-start;justify-content:space-around;padding:4px calc(8px + var(--sal)) var(--sab) calc(8px + var(--sar));z-index:710;-webkit-backdrop-filter:blur(20px) saturate(150%);backdrop-filter:blur(20px) saturate(150%)}
 .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--muted);font-size:.62rem;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;transition:color var(--motion-base);padding:8px 0;position:relative;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .nav-item i{font-size:1.35rem;transition:transform var(--motion-base)}
+.nav-item .ai-ic{font-size:1.35rem;transition:transform var(--motion-base)}
 .nav-item.active{color:var(--primary)}
 .nav-item.active i{transform:translateY(-2px)}
+.nav-item.active .ai-ic{transform:translateY(-2px)}
 .nav-indicator{position:absolute;top:0;left:10%;right:10%;height:2px;background:var(--primary);border-radius:2px;transform:scaleX(0);transition:transform var(--motion-base) var(--ease-out)}
 .nav-item.active .nav-indicator{transform:scaleX(1)}
 
@@ -656,6 +658,19 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
   box-shadow:0 0 22px rgba(var(--primary-rgb),.5);-webkit-tap-highlight-color:transparent}
 .nav-fab.is-running{background:var(--red);box-shadow:0 0 22px rgba(255,77,109,.55)}
 .nav-fab:active{transform:translateX(-50%) scale(.95)}
+
+/* ═══ animate-ui Icons — Vanilla-Port (Inline-SVG + Stroke-Draw) ═══
+   Portiert die animate-ui-Icons (React/motion) als reine SVGs. Die "default"-
+   Animation dort (pathLength 0->1, pathOffset 1->0) entspricht einem Selbst-
+   Zeichnen des Strichs -> hier via stroke-dashoffset (pathLength="1" normiert
+   die Länge auf 1). Auslösung beim Antippen (.ai-play) oder Endlos (.ai-loop). */
+.ai-ic{display:inline-flex;align-items:center;justify-content:center;width:1em;height:1em;line-height:0;color:inherit;vertical-align:-0.125em}
+.ai-ic svg{width:100%;height:100%;display:block;overflow:visible}
+.ai-ic svg [pathLength]{stroke-dashoffset:0}
+@keyframes aiDraw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+.ai-ic.ai-play svg [pathLength]{animation:aiDraw var(--ai-dur,.8s) ease-in-out}
+.ai-ic.ai-loop svg [pathLength]{animation:aiDraw var(--ai-dur,3s) ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.ai-ic svg [pathLength]{animation:none!important}}
 
 /* ═══ REDESIGN — HEADER ═══ */
 .hdr-greeting{display:flex;flex-direction:column;justify-content:center;flex:1;min-width:0;overflow:hidden}
@@ -1250,7 +1265,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 
   <nav class="bottom-nav">
     <div class="nav-item active" data-view="map"><div class="nav-indicator"></div><i class="fas fa-map"></i><span>Karte</span></div>
-    <div class="nav-item" data-view="start"><div class="nav-indicator"></div><i class="fas fa-house"></i><span>Start</span></div>
+    <div class="nav-item" data-view="start"><div class="nav-indicator"></div><span class="ai-ic" data-ai="activity"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path pathLength="1" d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg></span><span>Start</span></div>
     <div class="nav-item" data-view="community"><div class="nav-indicator"></div><i class="fas fa-globe"></i><span>Community</span></div>
     <div class="nav-item" data-view="profile"><div class="nav-indicator"></div><i class="fas fa-user"></i><span>Profil</span></div>
   </nav>
@@ -1628,7 +1643,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v86';
+const APP_VERSION='v87';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -1667,6 +1682,36 @@ window.addEventListener('error',e=>{
 window.addEventListener('unhandledrejection',e=>{
   logError('unhandledrejection',e.reason);
 });
+
+/* ═══ animate-ui Icons — Vanilla-Renderer ═══
+   Registry: nur die reinen SVG-Innereien (Pfade/Linien) je Icon, 1:1 aus dem
+   animate-ui-"Handbuch"-Code übernommen. aiIcon() setzt sie in ein SVG mit den
+   gleichen Attributen (stroke=currentColor, width 2, runde Enden). pathLength="1"
+   normiert jede Strichlänge auf 1, damit stroke-dashoffset 1->0 den Strich
+   "zeichnet" (entspricht der animate-ui default-Animation). */
+const AI_ICONS={
+  activity:'<path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/>',
+};
+/* Baut das Icon-Markup. opts: size(px), loop(bool)=Endlos, play(bool)=beim
+   Erscheinen einmal zeichnen, cls(extra Klassen), dur(Sekunden). */
+function aiIcon(name,opts){
+  const o=opts||{};
+  const body=(AI_ICONS[name]||'').replace(/<(path|line|circle|polyline|polygon|rect)(\s|\/|>)/g,'<$1 pathLength="1"$2');
+  const cls='ai-ic'+(o.loop?' ai-loop':'')+(o.play&&!o.loop?' ai-play':'')+(o.cls?' '+o.cls:'');
+  const style=(o.size?`width:${o.size}px;height:${o.size}px;`:'')+(o.dur?`--ai-dur:${o.dur}s;`:'');
+  return `<span class="${cls}" data-ai="${name}"${style?` style="${style}"`:''}><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg></span>`;
+}
+/* Spielt die Zeichen-Animation eines Icons erneut ab (Neustart via Reflow). */
+function aiReplay(el){if(!el||el.classList.contains('ai-loop'))return;el.classList.remove('ai-play');void el.offsetWidth;el.classList.add('ai-play');}
+/* Antippen eines Elements, das ein ai-Icon enthält (z.B. ein Nav-Item), löst die
+   Animation aus — wie animateOnHover/Tap bei animate-ui. */
+document.addEventListener('click',e=>{
+  const host=e.target.closest('.nav-item,.ai-ic,[data-ai-host],button');
+  if(!host)return;
+  if(host.classList&&host.classList.contains('ai-ic')){aiReplay(host);return;}
+  const ic=host.querySelector&&host.querySelector('.ai-ic:not(.ai-loop)');
+  if(ic)aiReplay(ic);
+},true);
 
 async function initSupabase(){
   if(!sb)return null;
