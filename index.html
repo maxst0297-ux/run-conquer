@@ -688,6 +688,11 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 @keyframes aiSpin90{from{transform:rotate(0)}to{transform:rotate(90deg)}}
 .ai-ic[data-ai="stop"].ai-play svg{animation:aiSpin90 var(--ai-dur,.45s) ease-in-out}
 .ai-ic[data-ai="stop"].ai-loop svg{animation:aiSpin90 var(--ai-dur,1.2s) ease-in-out infinite}
+/* cog (Einstellungen): Zahnrad dreht sich (0->90->180) bzw. endlos */
+@keyframes aiCog{0%{transform:rotate(0)}50%{transform:rotate(90deg)}100%{transform:rotate(180deg)}}
+@keyframes aiSpin360{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.ai-ic[data-ai="cog"].ai-play svg{animation:aiCog var(--ai-dur,1.25s) ease-in-out}
+.ai-ic[data-ai="cog"].ai-loop svg{animation:aiSpin360 var(--ai-dur,2.5s) linear infinite}
 @media (prefers-reduced-motion:reduce){.ai-ic svg *{animation:none!important}}
 
 /* ═══ REDESIGN — HEADER ═══ */
@@ -947,7 +952,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
     <!-- Right actions -->
     <span class="hdr-flame-pill" id="hdrFlamePill"><i class="fas fa-fire"></i><span id="hdrStreakVal">0</span></span>
     <button class="icon-btn" id="inboxBtn" aria-label="Posteingang" style="display:none;flex-shrink:0"><i class="fas fa-envelope"></i><span id="inboxBadge" class="notif-badge" style="display:none">0</span></button>
-    <button class="icon-btn" id="settingsBtn" style="position:relative;flex-shrink:0"><i class="fas fa-gear"></i><span id="settingsBadge" class="notif-badge" style="display:none;background:#ff4d6d;font-size:.55rem">!</span></button>
+    <button class="icon-btn" id="settingsBtn" style="position:relative;flex-shrink:0"><span class="ai-ic" data-ai="cog"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g><path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/><path d="M12 2v2"/><path d="M12 22v-2"/><path d="m17 20.66-1-1.73"/><path d="M11 10.27 7 3.34"/><path d="m20.66 17-1.73-1"/><path d="m3.34 7 1.73 1"/><path d="M14 12h8"/><path d="M2 12h2"/><path d="m20.66 7-1.73 1"/><path d="m3.34 17 1.73-1"/><path d="m17 3.34-1 1.73"/><path d="m11 13.73-4 6.93"/></g></svg></span><span id="settingsBadge" class="notif-badge" style="display:none;background:#ff4d6d;font-size:.55rem">!</span></button>
     <button class="icon-btn" id="notifBtn" aria-label="Benachrichtigungen" style="position:relative;flex-shrink:0"><i class="fas fa-bell"></i><span id="notifBadge" class="notif-badge" style="display:none">0</span></button>
   </header>
   <div id="notifPanel" class="notif-panel">
@@ -1662,7 +1667,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v88';
+const APP_VERSION='v89';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -1713,6 +1718,7 @@ const AI_ICONS={
   play:'<polygon points="6 3 20 12 6 21 6 3"/>',
   pause:'<rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/>',
   stop:'<line x1="6" y1="18" x2="18" y2="6"/><line x1="6" y1="6" x2="18" y2="18"/>',
+  cog:'<g><path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/><path d="M12 2v2"/><path d="M12 22v-2"/><path d="m17 20.66-1-1.73"/><path d="M11 10.27 7 3.34"/><path d="m20.66 17-1.73-1"/><path d="m3.34 7 1.73 1"/><path d="M14 12h8"/><path d="M2 12h2"/><path d="m20.66 7-1.73 1"/><path d="m3.34 17 1.73-1"/><path d="m17 3.34-1 1.73"/><path d="m11 13.73-4 6.93"/></g>',
 };
 /* Baut das Icon-Markup. opts: size(px), loop(bool)=Endlos, play(bool)=beim
    Erscheinen einmal zeichnen, cls(extra Klassen), dur(Sekunden). */
