@@ -665,12 +665,30 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
    Zeichnen des Strichs -> hier via stroke-dashoffset (pathLength="1" normiert
    die Länge auf 1). Auslösung beim Antippen (.ai-play) oder Endlos (.ai-loop). */
 .ai-ic{display:inline-flex;align-items:center;justify-content:center;width:1em;height:1em;line-height:0;color:inherit;vertical-align:-0.125em}
-.ai-ic svg{width:100%;height:100%;display:block;overflow:visible}
+.ai-ic svg{width:100%;height:100%;display:block;overflow:visible;transform-origin:center center}
 .ai-ic svg [pathLength]{stroke-dashoffset:0}
+/* Transform-Referenz = viewBox -> 1px == 1 SVG-Einheit (skaliert mit jeder Größe) */
+.ai-ic svg polygon,.ai-ic svg rect,.ai-ic svg line{transform-box:view-box;transform-origin:center}
+/* draw (activity): der Strich zeichnet sich */
 @keyframes aiDraw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
-.ai-ic.ai-play svg [pathLength]{animation:aiDraw var(--ai-dur,.8s) ease-in-out}
-.ai-ic.ai-loop svg [pathLength]{animation:aiDraw var(--ai-dur,3s) ease-in-out infinite}
-@media (prefers-reduced-motion:reduce){.ai-ic svg [pathLength]{animation:none!important}}
+.ai-ic[data-ai="activity"].ai-play svg [pathLength]{animation:aiDraw var(--ai-dur,.8s) ease-in-out}
+.ai-ic[data-ai="activity"].ai-loop svg [pathLength]{animation:aiDraw var(--ai-dur,3s) ease-in-out infinite}
+/* play: Dreieck rutscht seitlich und zurück */
+@keyframes aiNudgeR{0%{transform:translateX(0)}50%{transform:translateX(3px)}100%{transform:translateX(0)}}
+.ai-ic[data-ai="play"].ai-play svg polygon{animation:aiNudgeR var(--ai-dur,.45s) ease-in-out}
+.ai-ic[data-ai="play"].ai-loop svg polygon{animation:aiNudgeR var(--ai-dur,.6s) ease-in-out infinite}
+/* pause: die zwei Balken spreizen auseinander und zurück */
+@keyframes aiSpreadR{0%{transform:translateX(0)}50%{transform:translateX(1.5px)}100%{transform:translateX(0)}}
+@keyframes aiSpreadL{0%{transform:translateX(0)}50%{transform:translateX(-1.5px)}100%{transform:translateX(0)}}
+.ai-ic[data-ai="pause"].ai-play svg rect:nth-of-type(1){animation:aiSpreadR var(--ai-dur,.5s) ease-in-out}
+.ai-ic[data-ai="pause"].ai-play svg rect:nth-of-type(2){animation:aiSpreadL var(--ai-dur,.5s) ease-in-out}
+.ai-ic[data-ai="pause"].ai-loop svg rect:nth-of-type(1){animation:aiSpreadR var(--ai-dur,.6s) ease-in-out infinite}
+.ai-ic[data-ai="pause"].ai-loop svg rect:nth-of-type(2){animation:aiSpreadL var(--ai-dur,.6s) ease-in-out infinite}
+/* stop (x): Vierteldrehung */
+@keyframes aiSpin90{from{transform:rotate(0)}to{transform:rotate(90deg)}}
+.ai-ic[data-ai="stop"].ai-play svg{animation:aiSpin90 var(--ai-dur,.45s) ease-in-out}
+.ai-ic[data-ai="stop"].ai-loop svg{animation:aiSpin90 var(--ai-dur,1.2s) ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.ai-ic svg *{animation:none!important}}
 
 /* ═══ REDESIGN — HEADER ═══ */
 .hdr-greeting{display:flex;flex-direction:column;justify-content:center;flex:1;min-width:0;overflow:hidden}
@@ -1263,9 +1281,10 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 
   </div><!-- /screens -->
 
-  <nav class="bottom-nav">
+  <nav class="bottom-nav with-fab">
     <div class="nav-item active" data-view="map"><div class="nav-indicator"></div><i class="fas fa-map"></i><span>Karte</span></div>
-    <div class="nav-item" data-view="start"><div class="nav-indicator"></div><span class="ai-ic" data-ai="activity"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path pathLength="1" d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg></span><span>Start</span></div>
+    <div class="nav-item" data-view="start"><div class="nav-indicator"></div><span class="ai-ic" data-ai="activity"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path pathLength="1" d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg></span><span>Aktivität</span></div>
+    <button class="nav-fab" id="navFab" aria-label="Lauf starten"><span class="ai-ic" data-ai="play"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon pathLength="1" points="6 3 20 12 6 21 6 3"/></svg></span></button>
     <div class="nav-item" data-view="community"><div class="nav-indicator"></div><i class="fas fa-globe"></i><span>Community</span></div>
     <div class="nav-item" data-view="profile"><div class="nav-indicator"></div><i class="fas fa-user"></i><span>Profil</span></div>
   </nav>
@@ -1643,7 +1662,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v87';
+const APP_VERSION='v88';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -1691,6 +1710,9 @@ window.addEventListener('unhandledrejection',e=>{
    "zeichnet" (entspricht der animate-ui default-Animation). */
 const AI_ICONS={
   activity:'<path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/>',
+  play:'<polygon points="6 3 20 12 6 21 6 3"/>',
+  pause:'<rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/>',
+  stop:'<line x1="6" y1="18" x2="18" y2="6"/><line x1="6" y1="6" x2="18" y2="18"/>',
 };
 /* Baut das Icon-Markup. opts: size(px), loop(bool)=Endlos, play(bool)=beim
    Erscheinen einmal zeichnen, cls(extra Klassen), dur(Sekunden). */
@@ -3931,31 +3953,20 @@ function resumeRun(){
   updateRunPill();beep(440,.08);
 }
 function updateRunPill(){
-  const pill=$('runCtrlPill');if(!pill)return;
-  const pause=$('rcpPause'),stop=$('rcpStop');
-  if(!pause||!stop)return;
-  if(!isRunning){
-    pill.classList.remove('visible');
-  } else if(isPaused){
-    pause.classList.remove('rcp-hidden');stop.classList.remove('rcp-hidden');
-    pause.innerHTML='<i class="fas fa-play"></i> Weiter';
-    pill.classList.add('visible');
-  } else {
-    pause.classList.remove('rcp-hidden');stop.classList.remove('rcp-hidden');
-    pause.innerHTML='<i class="fas fa-pause"></i> Pause';
-    pill.classList.add('visible');
-  }
+  // Der frühere schwebende Pause/Stop-Pill entfällt: Start/Stop läuft jetzt über
+  // den zentralen Nav-Button (#navFab), der beim Laufen zum Stop-Button wird.
+  const pill=$('runCtrlPill');if(pill)pill.classList.remove('visible');
   updateNavFab();
 }
 function updateNavFab(){
   const fab=$('navFab');if(!fab)return;
   if(isRunning){
     fab.classList.add('is-running');
-    fab.innerHTML='<i class="fas fa-stop"></i>';
+    fab.innerHTML=aiIcon('stop',{play:true});
     fab.setAttribute('aria-label','Lauf stoppen');
   }else{
     fab.classList.remove('is-running');
-    fab.innerHTML='<i class="fas fa-play"></i>';
+    fab.innerHTML=aiIcon('play',{play:true});
     fab.setAttribute('aria-label','Lauf starten');
   }
   /* Sync hero start button */
