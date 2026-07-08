@@ -453,7 +453,9 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .sc-backdrop{position:relative;overflow:hidden;border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.7)}
 .sc-backdrop.checker{background-color:#15151a;background-image:linear-gradient(45deg,#20222b 25%,transparent 25%),linear-gradient(-45deg,#20222b 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#20222b 75%),linear-gradient(-45deg,transparent 75%,#20222b 75%);background-size:40px 40px;background-position:0 0,0 20px,20px -20px,-20px 0}
 #scBdImg{position:absolute;inset:0;background-size:cover;background-position:center;pointer-events:none}
-.rc-share-card{position:relative;width:100%;height:100%;display:flex;flex-direction:column;padding:74px 64px 60px;color:#fff}
+.rc-share-card{position:relative;width:100%;height:100%;display:flex;flex-direction:column;padding:74px 64px 60px;color:#fff;transform-origin:center center;will-change:transform;cursor:grab;touch-action:none}
+.rc-share-card.sc-dragging{cursor:grabbing}
+.sc-resize-handle{position:absolute;right:14px;bottom:14px;width:72px;height:72px;border-radius:50%;background:rgba(0,0,0,.55);border:3px solid rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;color:#fff;font-size:30px;cursor:nwse-resize;touch-action:none;z-index:20;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
 .rc-scrim{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.45) 0%,rgba(0,0,0,0) 26%),linear-gradient(0deg,rgba(0,0,0,.5) 0%,rgba(0,0,0,0) 24%)}
 .rc-tagline{text-align:center;font-family:'Poppins',sans-serif;font-weight:600;font-size:22px;letter-spacing:8px;text-transform:uppercase;color:rgba(255,255,255,.82);text-shadow:0 2px 10px rgba(0,0,0,.5);margin:0}
 .rc-stats{display:grid;grid-template-columns:1fr 1px 1fr 1px 1fr;align-items:center;margin-top:54px}
@@ -1762,7 +1764,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v107';
+const APP_VERSION='v108';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3096,6 +3098,40 @@ function downloadCanvas(canvas){
 
 /* ── Share Card Editor ── */
 let _scRec=null,_scAccent='#9B5DE5',_scFormat='Quadrat',_scGlow=1,_scShowMap=true,_scShowFlag=true,_scScrim=false,_scBg='checker',_scBgPhoto=null;
+/* Vordergrund-Template: verschieb-/skalierbar über dem (Foto-)Hintergrund. */
+let _scCardTX=0,_scCardTY=0,_scCardScale=1,_scViewScale=1;
+function scApplyCardTransform(){const c=document.getElementById('rcShareCard');if(c)c.style.transform='translate('+_scCardTX+'px,'+_scCardTY+'px) scale('+_scCardScale+')';}
+function scInitDragResize(){
+  const card=document.getElementById('rcShareCard');if(!card||card._drInit)return;card._drInit=1;
+  const handle=document.getElementById('scResizeHandle');
+  let mode=null,sx=0,sy=0,bx=0,by=0,bs=1,cx=0,cy=0,d0=1;
+  card.addEventListener('pointerdown',e=>{
+    if(e.target.closest('.sc-resize-handle'))return;
+    mode='move';sx=e.clientX;sy=e.clientY;bx=_scCardTX;by=_scCardTY;
+    card.classList.add('sc-dragging');try{card.setPointerCapture(e.pointerId);}catch(_){}
+  });
+  card.addEventListener('pointermove',e=>{
+    if(mode!=='move')return;
+    const sc=_scViewScale||1;
+    _scCardTX=bx+(e.clientX-sx)/sc;_scCardTY=by+(e.clientY-sy)/sc;scApplyCardTransform();
+  });
+  const end=()=>{mode=null;card.classList.remove('sc-dragging');};
+  card.addEventListener('pointerup',end);card.addEventListener('pointercancel',end);
+  if(handle){
+    handle.addEventListener('pointerdown',e=>{
+      e.stopPropagation();mode='resize';bs=_scCardScale;
+      const r=card.getBoundingClientRect();cx=r.left+r.width/2;cy=r.top+r.height/2;
+      d0=Math.hypot(e.clientX-cx,e.clientY-cy)||1;try{handle.setPointerCapture(e.pointerId);}catch(_){}
+    });
+    handle.addEventListener('pointermove',e=>{
+      if(mode!=='resize')return;
+      const d=Math.hypot(e.clientX-cx,e.clientY-cy);
+      _scCardScale=Math.max(.3,Math.min(2.2,bs*(d/d0)));scApplyCardTransform();
+    });
+    handle.addEventListener('pointerup',()=>{if(mode==='resize')mode=null;});
+    handle.addEventListener('pointercancel',()=>{if(mode==='resize')mode=null;});
+  }
+}
 const SC_FMTS={Quadrat:{w:1080,h:1080},Hochkant:{w:1080,h:1350},Story:{w:1080,h:1920}};
 const SC_SWATCHES=['#9B5DE5','#E6FF55','#FF4D6D','#00D4FF','#FFD700','#FF9F1C','#10B981'];
 const SC_BGS={dark:'#0b0f0d',purple:'radial-gradient(120% 90% at 30% 10%,#3a2a5a,#160f24 60%,#0a0710)',sunset:'linear-gradient(160deg,#ff8a3c 0%,#c2305a 48%,#2a1633 100%)'};
@@ -3147,10 +3183,11 @@ function scScale(){
   const fmt=SC_FMTS[_scFormat]||SC_FMTS.Quadrat;
   bd.style.width=fmt.w+'px';bd.style.height=fmt.h+'px';
   const s=Math.min((stage.clientWidth-24)/fmt.w,(stage.clientHeight-12)/fmt.h,.82);
+  _scViewScale=s;
   scaler.style.transform='scale('+s+')';
 }
 
-function scRender(){scUpdateCard();scUpdateBg();scUpdateHero();scScale();}
+function scRender(){scUpdateCard();scUpdateBg();scUpdateHero();scScale();scApplyCardTransform();}
 
 function scSetAccent(c){
   _scAccent=c;
@@ -3176,6 +3213,8 @@ function showShareCardEditor(rec){
   _scRec=rec;
   _scAccent=userColor||'#9B5DE5';
   _scFormat='Quadrat';_scGlow=1;_scShowMap=true;_scShowFlag=true;_scScrim=false;_scBg='checker';
+  _scCardTX=0;_scCardTY=0;_scCardScale=1; // Template-Position/Größe zurücksetzen
+  scInitDragResize();
   if(_scBgPhoto){URL.revokeObjectURL(_scBgPhoto);_scBgPhoto=null;}
   // stats
   document.getElementById('scTime').textContent=fmtTime(rec.duration);
@@ -3229,10 +3268,16 @@ async function exportShareCard(){
   const prevOvf=stage.style.overflow;
   scaler.style.transform='none';
   stage.style.overflow='visible';
+  // Resize-Griff nie mit exportieren; bei "checker" das Karo entfernen -> echte
+  // Transparenz (PNG mit Alpha, damit man das Template über ein Foto legen kann).
+  const isChecker=_scBg==='checker';
+  const handle=document.getElementById('scResizeHandle');const prevHandle=handle?handle.style.display:'';if(handle)handle.style.display='none';
+  const prevBdClass=bd.className;if(isChecker)bd.className='sc-backdrop';
+  const restore=()=>{scaler.style.transform=prevT;stage.style.overflow=prevOvf;if(handle)handle.style.display=prevHandle;bd.className=prevBdClass;};
   await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
   try{
-    const cv=await html2canvas(bd,{scale:1,useCORS:true,backgroundColor:_scBg==='checker'?'#15151a':null,logging:false,width:fmt.w,height:fmt.h});
-    scaler.style.transform=prevT;stage.style.overflow=prevOvf;
+    const cv=await html2canvas(bd,{scale:1,useCORS:true,backgroundColor:null,logging:false,width:fmt.w,height:fmt.h});
+    restore();
     cv.toBlob(async blob=>{
       if(!blob){toast('Export fehlgeschlagen');return;}
       const file=new File([blob],'rq-lauf.png',{type:'image/png'});
@@ -3242,7 +3287,7 @@ async function exportShareCard(){
       }else{downloadCanvas(cv);}
     },'image/png');
   }catch(err){
-    scaler.style.transform=prevT;stage.style.overflow=prevOvf;
+    restore();
     console.warn('Share card export:',err);toast('Export fehlgeschlagen');
   }
 }
@@ -7351,7 +7396,8 @@ if('serviceWorker' in navigator){
             <div class="rc-stat"><i class="fa-solid fa-route"></i><div class="v" id="scDist">-</div><div class="l">km</div></div>
           </div>
           <div class="rc-hero" id="scHero"></div>
-          <div class="rc-logo"><div class="mark">RQ</div><div class="underline" id="scUnderline"></div></div>
+          <div class="rc-logo"><div class="mark">RC</div><div class="underline" id="scUnderline"></div></div>
+          <div class="sc-resize-handle" id="scResizeHandle" title="Größe ändern"><i class="fa-solid fa-up-right-and-down-left-from-center"></i></div>
         </div>
       </div>
     </div>
