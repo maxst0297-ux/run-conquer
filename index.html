@@ -1754,7 +1754,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v101';
+const APP_VERSION='v102';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -5991,8 +5991,15 @@ async function deleteDmConv(uid){
 }
 async function deleteSupportMsg(id){
   if(!sb||!isAdmin)return false;
-  const{error}=await sb.from('support_messages').delete().eq('id',id);
-  if(error){toast('❌ '+error.message);return false;}
+  // .select() gibt die tatsächlich gelöschten Zeilen zurück. Blockiert RLS den
+  // DELETE, kommen 0 Zeilen OHNE Fehler zurück (Supabase-Eigenheit) -> die
+  // Nachricht käme beim Neuladen wieder. Das fangen wir hier ab.
+  const{data,error}=await sb.from('support_messages').delete().eq('id',id).select('id');
+  if(error){
+    (error.code==='42501'||/policy|permission/i.test(error.message||''))?showSqlHint('support'):toast('❌ '+error.message);
+    return false;
+  }
+  if(!data||!data.length){toast('❌ Löschen ohne Wirkung – RLS-Löschregel fehlt');showSqlHint('support');return false;}
   archivedSupportIds.delete(id);saveArchived();updateDmBadge();return true;
 }
 
