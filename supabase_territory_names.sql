@@ -18,9 +18,12 @@
 alter table public.h3_territories
   add column if not exists name text;
 
--- 2) View neu bauen, damit `name` mitgeliefert wird (t.* wird beim Anlegen der
---    View in feste Spalten expandiert -> ohne Neuanlage fehlt die neue Spalte).
-create or replace view public.h3_territories_full as
+-- 2) View NEU bauen (nicht "create or replace"): seit ihrer ersten Anlage kamen
+--    Tabellen-Spalten hinzu (z.B. owner_team). Dadurch ändert sich durch t.* die
+--    Spaltenreihenfolge, was "create or replace view" verbietet (Fehler 42P16:
+--    "cannot change name of view column"). Deshalb erst droppen, dann anlegen.
+drop view if exists public.h3_territories_full;
+create view public.h3_territories_full as
   select t.*,
          coalesce(array_agg(c.cell) filter (where c.cell is not null), '{}') as cells
     from public.h3_territories t
