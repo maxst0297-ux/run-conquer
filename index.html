@@ -187,6 +187,16 @@ body.onboarding-active{background:#000}
 .icon-btn:active{transform:scale(.9)}
 .notif-badge{position:absolute;top:-4px;right:-4px;background:#ff4d6d;color:#fff;font-size:.55rem;font-weight:700;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;pointer-events:none}
 #notifBtn{position:relative}
+/* Einstellungen-Dropdown (animate-ui DropdownMenu als Vanilla, mit gleitendem Highlight) */
+.rc-dropdown{position:fixed;top:calc(var(--hdr-total) + 4px);right:14px;min-width:214px;background:var(--card);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:6px;z-index:720;box-shadow:0 16px 48px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08);opacity:0;visibility:hidden;transform:translateY(-8px) scale(.97);transform-origin:top right;transition:opacity .2s cubic-bezier(.16,1,.3,1),transform .2s cubic-bezier(.16,1,.3,1),visibility .2s;-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%)}
+.rc-dropdown.open{opacity:1;visibility:visible;transform:translateY(0) scale(1)}
+.rc-dd-list{position:relative}
+.rc-dd-hl{position:absolute;left:0;right:0;top:0;height:0;background:rgba(var(--primary-rgb),.14);border-radius:10px;opacity:0;pointer-events:none;z-index:0;transition:transform .25s cubic-bezier(.2,.8,.2,1),height .18s,opacity .18s}
+.rc-dd-item{position:relative;z-index:1;display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;font-size:.83rem;color:var(--text);cursor:pointer;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+.rc-dd-item .dd-emoji{width:1.15em;text-align:center;flex-shrink:0;font-size:.95em}
+.rc-dd-item.logout{color:#ff6b6b}
+.rc-dd-sep{height:1px;background:rgba(255,255,255,.08);margin:5px 6px}
+.rc-dd-label{padding:6px 12px 4px;font-size:.6rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
 .notif-panel{position:fixed;top:calc(var(--hdr-total) + 4px);right:14px;width:min(320px,calc(100vw - 28px));background:var(--card);border:1px solid rgba(255,255,255,.1);border-radius:20px;z-index:700;box-shadow:0 16px 48px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08);max-height:380px;overflow-y:auto;display:none;-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);animation:notifPanelIn .32s cubic-bezier(.16,1,.3,1)}
 .notif-panel.open{display:block}
 /* ═══ INBOX (Admin) ═══ */
@@ -1009,6 +1019,24 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
     <div id="notifList"></div>
   </div>
 
+  <!-- Einstellungen-Dropdown (öffnet vom Zahnrad) -->
+  <div id="settingsDropdown" class="rc-dropdown" role="menu">
+    <div class="rc-dd-list" id="settingsDDList">
+      <div class="rc-dd-hl" id="settingsDDHl"></div>
+      <div class="rc-dd-label">Einstellungen</div>
+      <div class="rc-dd-item" data-stab="profil" role="menuitem"><span class="dd-emoji">👤</span> Profil</div>
+      <div class="rc-dd-item" data-stab="theme" role="menuitem"><span class="dd-emoji">🎨</span> Design</div>
+      <div class="rc-dd-item" data-stab="fraktion" role="menuitem"><span class="dd-emoji">⚔️</span> Fraktion</div>
+      <div class="rc-dd-item" data-stab="club" role="menuitem"><span class="dd-emoji">🏰</span> Club</div>
+      <div class="rc-dd-item" data-stab="spiel" role="menuitem"><span class="dd-emoji">🎮</span> Spiel</div>
+      <div class="rc-dd-item" data-stab="datenschutz" role="menuitem"><span class="dd-emoji">🔒</span> Datenschutz</div>
+      <div class="rc-dd-item" data-stab="hilfe" role="menuitem"><span class="dd-emoji">❓</span> Hilfe</div>
+      <div class="rc-dd-item" data-stab="support" role="menuitem"><span class="dd-emoji">📨</span> Support</div>
+      <div class="rc-dd-sep"></div>
+      <div class="rc-dd-item logout" data-action="logout" role="menuitem"><span class="dd-emoji">🚪</span> Abmelden</div>
+    </div>
+  </div>
+
   <!-- INBOX MODAL (nur Admin) -->
   <div id="inboxModal" class="modal" style="display:none">
     <div class="modal-card" style="max-width:440px;width:100%;max-height:82vh;display:flex;flex-direction:column;padding:16px">
@@ -1717,7 +1745,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v95';
+const APP_VERSION='v96';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2380,7 +2408,7 @@ function renderPowerRankings(){
 function renderClubCommunity(){
   const el=$('clubCommunityList');if(!el)return;
   if(!userClub){
-    el.innerHTML=`<div style="text-align:center;padding:16px;color:var(--muted);font-size:.82rem">Du bist noch in keinem Club.<br><button onclick="document.querySelector('[data-view=profile]')?.click();$('settingsBtn')?.click();setTimeout(()=>{document.querySelector('[data-stab=club]')?.click();},100)" style="margin-top:10px;background:var(--primary);color:var(--bg);border:none;border-radius:8px;padding:6px 16px;cursor:pointer;font-family:'Bebas Neue',sans-serif;font-size:.9rem">Club erstellen / beitreten</button></div>`;
+    el.innerHTML=`<div style="text-align:center;padding:16px;color:var(--muted);font-size:.82rem">Du bist noch in keinem Club.<br><button onclick="openSettingsAt('club')" style="margin-top:10px;background:var(--primary);color:var(--bg);border:none;border-radius:8px;padding:6px 16px;cursor:pointer;font-family:'Bebas Neue',sans-serif;font-size:.9rem">Club erstellen / beitreten</button></div>`;
     return;
   }
   const wappenHtml=userClub.wappen?`<div style="width:48px;height:48px;flex-shrink:0">${crestSVG(userClub.wappen,48)}</div>`:`<div style="font-size:2.4rem;flex-shrink:0">${userClub.icon||'🛡️'}</div>`;
@@ -6495,6 +6523,20 @@ function updateScrollProgress(){
 document.addEventListener('scroll',e=>{const t=e.target;if(t&&t.classList&&t.classList.contains('view')&&t.classList.contains('active'))updateScrollProgress();},true);
 window.addEventListener('resize',updateScrollProgress);
 
+/* Einstellungen-Dropdown (animate-ui DropdownMenu als Vanilla) */
+function moveDDHighlight(item){const hl=document.getElementById('settingsDDHl');if(!hl||!item)return;hl.style.opacity='1';hl.style.transform='translateY('+item.offsetTop+'px)';hl.style.height=item.offsetHeight+'px';}
+function openSettingsAt(tab){closeSettingsDropdown();closeAllModals();const m=document.getElementById('settingsModal');if(m)m.style.display='flex';renderSettingsTab(tab);document.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.stab===tab));}
+function openSettingsDropdown(){const dd=document.getElementById('settingsDropdown');if(!dd)return;document.getElementById('notifPanel')&&document.getElementById('notifPanel').classList.remove('open');dd.classList.add('open');}
+function closeSettingsDropdown(){const dd=document.getElementById('settingsDropdown');if(dd)dd.classList.remove('open');const hl=document.getElementById('settingsDDHl');if(hl)hl.style.opacity='0';}
+function initSettingsDropdown(){
+  const dd=document.getElementById('settingsDropdown');if(!dd||dd._init)return;dd._init=1;
+  dd.querySelectorAll('.rc-dd-item').forEach(it=>{
+    it.addEventListener('pointerenter',()=>moveDDHighlight(it));
+    it.addEventListener('click',()=>{if(it.dataset.action==='logout'){closeSettingsDropdown();if(typeof logoutUser==='function')logoutUser();}else{openSettingsAt(it.dataset.stab);}});
+  });
+  dd.addEventListener('pointerleave',()=>{const hl=document.getElementById('settingsDDHl');if(hl)hl.style.opacity='0';});
+}
+
 /* NAV */
 function setView(view){
   closeAllModals();
@@ -7039,7 +7081,8 @@ window.initApp=function(){
       {enableHighAccuracy:true,maximumAge:0,timeout:12000});
   });
   /* Settings modal */
-  $('settingsBtn').addEventListener('click',()=>{closeAllModals();$('settingsModal').style.display='flex';renderSettingsTab('profil');document.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.stab==='profil'));});
+  $('settingsBtn').addEventListener('click',e=>{e.stopPropagation();const dd=$('settingsDropdown');if(dd&&dd.classList.contains('open'))closeSettingsDropdown();else openSettingsDropdown();});
+  initSettingsDropdown();
   $('closeSettingsBtn').addEventListener('click',()=>$('settingsModal').style.display='none');
   $('inboxBtn')?.addEventListener('click',()=>{$('inboxModal').style.display='flex';loadInbox();});
   $('closeInboxBtn')?.addEventListener('click',()=>$('inboxModal').style.display='none');
@@ -7051,7 +7094,7 @@ window.initApp=function(){
     panel.classList.toggle('open',!isOpen);
     if(!isOpen){notifications.forEach(n=>n.read=true);updateNotifBadge();renderNotifPanel();}
   });
-  document.addEventListener('click',e=>{if(!e.target.closest('#notifPanel')&&!e.target.closest('#notifBtn'))$('notifPanel')?.classList.remove('open');});
+  document.addEventListener('click',e=>{if(!e.target.closest('#notifPanel')&&!e.target.closest('#notifBtn'))$('notifPanel')?.classList.remove('open');if(!e.target.closest('#settingsDropdown')&&!e.target.closest('#settingsBtn'))closeSettingsDropdown();});
   $('clearNotifBtn')?.addEventListener('click',()=>{notifications=[];updateNotifBadge();renderNotifPanel();});
   document.querySelectorAll('.stab-btn').forEach(b=>b.addEventListener('click',function(){document.querySelectorAll('.stab-btn').forEach(t=>t.classList.remove('active'));this.classList.add('active');renderSettingsTab(this.dataset.stab);}));
   /* Admin modal */
