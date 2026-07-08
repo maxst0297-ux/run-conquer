@@ -663,6 +663,9 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 
 /* ═══ REDESIGN — NAV FAB ═══ */
 .bottom-nav.with-fab{overflow:visible}
+/* Gleitendes Highlight hinter dem aktiven Tab (animate-ui Highlight als Vanilla) */
+.nav-hl{position:absolute;top:8px;bottom:8px;left:0;width:0;border-radius:16px;background:rgba(var(--primary-rgb),.13);z-index:0;opacity:0;pointer-events:none;transition:transform .32s cubic-bezier(.2,.8,.2,1),width .32s cubic-bezier(.2,.8,.2,1),opacity .2s}
+.bottom-nav .nav-item{z-index:1}
 .nav-fab{position:absolute;left:50%;top:-26px;transform:translateX(-50%);
   width:62px;height:62px;border-radius:50%;background:transparent;color:var(--bg);
   border:4px solid var(--bg);padding:0;
@@ -1365,6 +1368,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
   </div><!-- /screens -->
 
   <nav class="bottom-nav with-fab">
+    <div class="nav-hl" id="navHl"></div>
     <div class="nav-item active" data-view="map"><div class="nav-indicator"></div><span class="ai-ic" data-ai="compass"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/><circle cx="12" cy="12" r="10"/></svg></span><span>Karte</span></div>
     <div class="nav-item" data-view="start"><div class="nav-indicator"></div><span class="ai-ic" data-ai="activity"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path pathLength="1" d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg></span><span>Aktivität</span></div>
     <button class="nav-fab" id="navFab" aria-label="Lauf starten"><span class="fab-flip"><span class="fab-face fab-front"><span class="ai-ic" data-ai="play"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon pathLength="1" points="6 3 20 12 6 21 6 3"/></svg></span></span><span class="fab-face fab-back"><span class="ai-ic" data-ai="stop"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="6" y1="18" x2="18" y2="6"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></span></span></button>
@@ -1745,7 +1749,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v96';
+const APP_VERSION='v97';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -6523,6 +6527,17 @@ function updateScrollProgress(){
 document.addEventListener('scroll',e=>{const t=e.target;if(t&&t.classList&&t.classList.contains('view')&&t.classList.contains('active'))updateScrollProgress();},true);
 window.addEventListener('resize',updateScrollProgress);
 
+/* Gleitendes Highlight hinter dem aktiven Nav-Tab (animate-ui Highlight). */
+function moveNavHighlight(){
+  const hl=document.getElementById('navHl');
+  const active=document.querySelector('.bottom-nav .nav-item.active');
+  if(!hl||!active)return;
+  hl.style.width=active.offsetWidth+'px';
+  hl.style.transform='translateX('+active.offsetLeft+'px)';
+  hl.style.opacity='1';
+}
+window.addEventListener('resize',moveNavHighlight);
+
 /* Einstellungen-Dropdown (animate-ui DropdownMenu als Vanilla) */
 function moveDDHighlight(item){const hl=document.getElementById('settingsDDHl');if(!hl||!item)return;hl.style.opacity='1';hl.style.transform='translateY('+item.offsetTop+'px)';hl.style.height=item.offsetHeight+'px';}
 function openSettingsAt(tab){closeSettingsDropdown();closeAllModals();const m=document.getElementById('settingsModal');if(m)m.style.display='flex';renderSettingsTab(tab);document.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.stab===tab));}
@@ -6552,6 +6567,7 @@ function setView(view){
   /* Use rAF so the browser paints the initial invisible state before transitioning in */
   requestAnimationFrame(()=>document.getElementById(map2[view])?.classList.add('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.view===view));
+  moveNavHighlight();
   const onMap=view==='map';
   if(dockToggle)dockToggle.style.display=onMap?'':'none';
   if(runDock){if(!onMap)runDock.classList.remove('up');runDock.style.display=onMap?'':'none';}
@@ -7083,6 +7099,7 @@ window.initApp=function(){
   /* Settings modal */
   $('settingsBtn').addEventListener('click',e=>{e.stopPropagation();const dd=$('settingsDropdown');if(dd&&dd.classList.contains('open'))closeSettingsDropdown();else openSettingsDropdown();});
   initSettingsDropdown();
+  requestAnimationFrame(moveNavHighlight);setTimeout(moveNavHighlight,150);
   $('closeSettingsBtn').addEventListener('click',()=>$('settingsModal').style.display='none');
   $('inboxBtn')?.addEventListener('click',()=>{$('inboxModal').style.display='flex';loadInbox();});
   $('closeInboxBtn')?.addEventListener('click',()=>$('inboxModal').style.display='none');
