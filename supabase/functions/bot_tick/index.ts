@@ -16,7 +16,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import * as h3 from 'https://esm.sh/h3-js@4.1.0';
 import {
   botAttack, decayedDefense,
-  BOT_NEW_DEFENSE, BOT_ACTIONS_PER_TICK, BOT_ATK_MIN, BOT_ATK_MAX, BOT_CLAIM_CELLS,
+  BOT_NEW_DEFENSE, BOT_ACTIONS_PER_TICK, BOT_ATK_MIN, BOT_ATK_MAX, BOT_CLAIM_CELLS, BOT_ATTACK_CHANCE,
 } from '../_shared/h3-engine.mjs';
 
 const CORS = {
@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
       const anchor: any = anchors[Math.floor(Math.random() * anchors.length)];
       const anchorCells = terrCells.get(anchor.id) || [];
       if (!anchorCells.length) continue;
-      const doAttack = Math.random() < 0.5;
+      const doAttack = Math.random() < BOT_ATTACK_CHANCE;
 
       if (doAttack && !botIdSet.has(anchor.owner)) {
         // Angriff auf ein Spielergebiet — mittlere Stärke, unabhängig vom Wert.

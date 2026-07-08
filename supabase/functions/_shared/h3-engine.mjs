@@ -98,10 +98,11 @@ export const BOT_NEW_DEFENSE = 35;   // Startverteidigung eines Bot-Gebiets (~mi
 // Verteidigungswert. "Durchschnittlich stark": Angriff zufällig im mittleren
 // Bereich — schwache/mittlere Gebiete fallen, gut verteidigte werden nur
 // geschwächt.
-export const BOT_ACTIONS_PER_TICK = 6;
-export const BOT_ATK_MIN = 35;
-export const BOT_ATK_MAX = 70;       // Ø ~52, im Bereich eines typischen Lauf-Angriffs
+export const BOT_ACTIONS_PER_TICK = 5;
+export const BOT_ATK_MIN = 15;
+export const BOT_ATK_MAX = 40;       // Ø ~27: schwächt Spielergebiete eher, statt sie zu übernehmen
 export const BOT_CLAIM_CELLS = 7;    // Größe eines neu beanspruchten Bot-Gebiets
+export const BOT_ATTACK_CHANCE = 0.28; // Anteil der Aktionen, die ein Spielergebiet angreifen (Rest: neutrale Zellen)
 
 /* Ein Bot-Angriff der Stärke `strength` auf ein Gebiet mit `defense`.
    strength >= defense -> übernommen (Startverteidigung BOT_NEW_DEFENSE), sonst
