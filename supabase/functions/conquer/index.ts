@@ -116,6 +116,9 @@ Deno.serve(async (req) => {
     for (const u of res.updates) {
       const patch: any = { defense: u.defense, updated_at: now };
       if (u.dailyAdded != null) { patch.daily_defense_added = u.dailyAdded; patch.last_defense_day = u.lastDay; }
+      // Eigenes Gebiet (Verteidigungsaufbau): Fraktion/Name/Farbe auffrischen bzw.
+      // nachtragen — sonst bleibt owner_team bei Altbeständen leer ("Keine Fraktion").
+      if (u.own) { patch.owner_team = userTeam; patch.owner_name = playerName; patch.owner_color = userColor; }
       await svc.from('h3_territories').update(patch).eq('id', u.id);
       if (u.setCells) {
         await svc.from('h3_cells').delete().eq('territory_id', u.id);

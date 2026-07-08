@@ -17,6 +17,10 @@ export const DEF_MIN = 1;
 export const DEF_MAX = 300;
 export const CAPTURE_BONUS = 20;      // +20 nach Eroberung (darf 300 überschreiten)
 export const DAILY_BUILD_CAP = 100;   // max +100 Verteidigung pro Gebiet & Tag
+// Mindest-Verteidigungsaufbau im EIGENEN Gebiet je gelaufenem km — unabhängig vom
+// Tempo. So verstärkt auch ein ruhiger Lauf durch eigenes Revier die Verteidigung
+// (Tempo gibt mehr, ist aber keine Voraussetzung). Anteilig zur überlaufenen Fläche.
+export const OWN_BUILD_MIN_PER_KM = 6;
 
 // GDS Tabelle 1 — Punkte pro km nach Pace (km/h), getrennt für Verteidigung/Angriff.
 const PACE_TABLE = [
@@ -340,9 +344,12 @@ export function createEngine(h3) {
         let covered = 0;
         for (const c of cells) if (R.has(c)) covered++;
         const coverFrac = cells.size ? covered / cells.size : 0;
-        const rb = resolveDefenseBuild({ ownDefense: t.defense, coverFrac, buildPoints: defPts, dailyAlready: already });
+        // Verteidigungspunkte: Tempo-basiert, aber mit tempo-unabhängigem Mindestwert
+        // je km, damit auch langsames Durchlaufen des eigenen Gebiets verstärkt.
+        const buildPoints = Math.max(defPts, distanceKm * OWN_BUILD_MIN_PER_KM);
+        const rb = resolveDefenseBuild({ ownDefense: t.defense, coverFrac, buildPoints, dailyAlready: already });
         if (rb.built > 0) {
-          out.updates.push({ id: t.id, defense: rb.defense, dailyAdded: rb.dailyAfter, lastDay: t.today });
+          out.updates.push({ id: t.id, own: true, defense: rb.defense, dailyAdded: rb.dailyAfter, lastDay: t.today });
           out.events.push({ type: 'defended', id: t.id, built: Math.round(rb.built) });
           out.playerPoints += Math.round(rb.built);
         }
@@ -393,6 +400,6 @@ export function createEngine(h3) {
     resolveAttack, resolveDefenseBuild, resolveRun,
     // Re-Exports als Convenience
     paceFactor, distanceBonus, runValue, clampDefense,
-    RES, DEF_MIN, DEF_MAX, CAPTURE_BONUS, DAILY_BUILD_CAP,
+    RES, DEF_MIN, DEF_MAX, CAPTURE_BONUS, DAILY_BUILD_CAP, OWN_BUILD_MIN_PER_KM,
   };
 }
