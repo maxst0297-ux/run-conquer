@@ -203,6 +203,7 @@ body.onboarding-active{background:#000}
 #inboxBtn{position:relative}
 .inbox-card{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;overflow:hidden;transition:border-color .2s}
 .inbox-card.inbox-unread{border-left:3px solid var(--primary)}
+.inbox-card.sup-read{opacity:.58}
 .inbox-card-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;cursor:pointer;gap:8px;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .inbox-card-hdr:active{background:var(--bg2)}
 .inbox-card-body{padding:0 12px 12px}
@@ -1729,7 +1730,7 @@ const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 const sb=window.supabase?.createClient(SB_URL,SB_KEY);
 let sbUserId=null,isAdmin=false;
 let followedUsers=[],followIncoming=[],followOutgoing=[],activeDmThread=null;
-let archivedConvs=[],archivedSupportIds=new Set();
+let archivedConvs=[],archivedSupportIds=new Set(),readSupportIds=new Set();
 /* Lese-Zeitstempel pro Konversation (uid -> ms). Persistent, damit gelesene
    Chats auch nach Reload ausgrauen, selbst wenn der Server-read_at-Update
    fehlschlägt; neue Nachrichten (created_at > Stempel) gelten wieder als
@@ -1753,7 +1754,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v100';
+const APP_VERSION='v101';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -1948,7 +1949,14 @@ function subscribeDMs(){
         try{sb.from('direct_messages').update({read_at:new Date().toISOString()}).eq('id',m.id).then(()=>updateDmBadge());}catch(e){updateDmBadge();}
       }else{
         updateDmBadge();
-        const ib=$('inboxModal');if(!activeDmThread&&ib&&ib.style.display==='flex')loadDmConvList();
+        // Nur die DM-Liste neu laden, wenn der DM-Tab wirklich sichtbar ist —
+        // sonst würde eine ankommende DM den offenen Support-Tab überschreiben
+        // (offene Karten „schließen" sich). Beim Admin ins richtige Tab-Ziel rendern.
+        const ib=$('inboxModal');
+        if(ib&&ib.style.display==='flex'&&!activeDmThread){
+          const onDmTab=!isAdmin||!!document.querySelector('.stab-btn[data-itab="dms"].active');
+          if(onDmTab)loadDmConvList(isAdmin?document.getElementById('inboxTabBody'):$('inboxBody'));
+        }
         toast('✉️ Neue Nachricht von '+esc(m.from_name||'jemandem'));
       }
     })
@@ -2183,6 +2191,7 @@ function load(){
   checkEnergyWeekReset();
   archivedConvs=JSON.parse(localStorage.getItem('rc_arch_dm_'+userId)||'[]');
   archivedSupportIds=new Set(JSON.parse(localStorage.getItem('rc_arch_sup_'+userId)||'[]'));
+  try{readSupportIds=new Set(JSON.parse(localStorage.getItem('rc_readsup_'+userId)||'[]'));}catch(e){readSupportIds=new Set();}
   try{localReadTs=JSON.parse(localStorage.getItem('rc_dmread_'+userId)||'{}')||{};}catch(e){localReadTs={};}
   supportVisitTs=parseInt(localStorage.getItem('rc_sup_visit_'+userId)||'0');
 }
@@ -5731,17 +5740,18 @@ async function updateDmBadge(){
     /* Offene Follow-Anfragen an mich */
     const{count:frCount}=await sb.from('follow_requests').select('id',{count:'exact',head:true}).eq('target_uid',userId).eq('status','pending');
     total+=(frCount||0);
-    /* Admin: neue Support-Nachrichten seit letztem Besuch */
+    /* Admin: ungelesene, unbeantwortete, nicht archivierte Support-Nachrichten
+       (gleiche Definition wie die Kopfzeile „X neu"). */
     if(isAdmin){
-      const since=new Date(supportVisitTs||0).toISOString();
-      const{count:supCount}=await sb.from('support_messages').select('id',{count:'exact',head:true}).is('admin_reply',null).gt('created_at',since);
+      const{data:supRows}=await sb.from('support_messages').select('id,admin_reply').is('admin_reply',null).limit(1000);
+      const supCount=(supRows||[]).filter(r=>!readSupportIds.has(r.id)&&!archivedSupportIds.has(r.id)).length;
       total+=(supCount||0);
     }
     badge.textContent=total>99?'99+':total;
     badge.style.display=total>0?'flex':'none';
   }catch(e){badge.style.display='none';}
 }
-function saveArchived(){localStorage.setItem('rc_arch_dm_'+userId,JSON.stringify(archivedConvs));localStorage.setItem('rc_arch_sup_'+userId,JSON.stringify([...archivedSupportIds]));}
+function saveArchived(){localStorage.setItem('rc_arch_dm_'+userId,JSON.stringify(archivedConvs));localStorage.setItem('rc_arch_sup_'+userId,JSON.stringify([...archivedSupportIds]));localStorage.setItem('rc_readsup_'+userId,JSON.stringify([...readSupportIds]));}
 
 /* ── FOLLOW-ANFRAGEN (Gating für Profilansicht + DMs) ── */
 async function loadFollowState(){
@@ -5842,21 +5852,21 @@ async function loadAdminSupportMsgs(container){
     const msgs=data.filter(m=>!archivedSupportIds.has(m.id));
     const archCount=data.length-msgs.length;
     const archSupportHint=archCount>0?`<div style="text-align:center;font-size:.7rem;color:var(--muted);padding:6px 0 2px;cursor:pointer" id="showArchSupportLink">📦 ${archCount} archiviert</div>`:'';
-    const unread=msgs.filter(m=>!m.admin_reply).length;
-    el.innerHTML=`<div style="font-size:.65rem;color:var(--muted);padding:0 0 10px;text-transform:uppercase;letter-spacing:1px">${msgs.length} Nachricht${msgs.length===1?'':'en'} · <span style="color:var(--primary)">${unread} neu</span></div>`
+    const unread=msgs.filter(m=>!(m.admin_reply&&m.admin_reply.trim())&&!readSupportIds.has(m.id)).length;
+    el.innerHTML=`<div style="font-size:.65rem;color:var(--muted);padding:0 0 10px;text-transform:uppercase;letter-spacing:1px">${msgs.length} Nachricht${msgs.length===1?'':'en'} · <span style="color:var(--primary)" id="supUnreadCount">${unread} neu</span></div>`
       +msgs.map(m=>{
         const d=new Date(m.created_at);
         const ds=d.toLocaleDateString('de',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('de',{hour:'2-digit',minute:'2-digit'});
         const replied=!!(m.admin_reply?.trim());
-        const wasRead=false;
+        const isRead=!replied&&readSupportIds.has(m.id); // geöffnet, aber (noch) nicht beantwortet
         return`<div class="sw-wrap" style="margin-bottom:8px">
   <div class="sw-arch"><i class="fas fa-archive" style="font-size:.85rem;color:#fff"></i><span style="font-size:.58rem;color:#fff;font-weight:700;margin-top:2px">Archiv</span></div>
-  <div class="inbox-card${replied?'':' inbox-unread'} sw-content" id="imsg-${m.id}" style="margin-bottom:0">
+  <div class="inbox-card${replied?'':(isRead?' sup-read':' inbox-unread')} sw-content" id="imsg-${m.id}" style="margin-bottom:0">
 <div class="inbox-card-hdr" data-toggle="${m.id}">
   <div style="flex:1;min-width:0">
     <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px">
       <span style="font-weight:700;font-size:.82rem">${esc(m.player_name||'Unbekannt')}</span>
-      ${replied?'<span style="font-size:.58rem;background:#10b98122;color:#10b981;border:1px solid #10b98144;border-radius:10px;padding:1px 6px;flex-shrink:0">✓ Beantwortet</span>':'<span class="sup-new-badge" style="font-size:.58rem;background:var(--primary)22;color:var(--primary);border:1px solid var(--primary)44;border-radius:10px;padding:1px 6px;flex-shrink:0;font-weight:700">Neu</span>'}
+      ${replied?'<span style="font-size:.58rem;background:#10b98122;color:#10b981;border:1px solid #10b98144;border-radius:10px;padding:1px 6px;flex-shrink:0">✓ Beantwortet</span>':isRead?'<span style="font-size:.58rem;color:var(--muted);flex-shrink:0">Gelesen</span>':'<span class="sup-new-badge" style="font-size:.58rem;background:var(--primary)22;color:var(--primary);border:1px solid var(--primary)44;border-radius:10px;padding:1px 6px;flex-shrink:0;font-weight:700">Neu</span>'}
     </div>
     <div style="font-size:.73rem;font-weight:600;color:var(--primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.subject||'Kein Betreff')}</div>
   </div>
@@ -5885,7 +5895,19 @@ async function loadAdminSupportMsgs(container){
     document.getElementById('showArchSupportLink')?.addEventListener('click',()=>loadArchiveView(el));
     _inboxSetHandler(el,function(e){
       const tog=e.target.closest('[data-toggle]');
-      if(tog){const b=document.getElementById('ibody-'+tog.dataset.toggle);if(b){const o=b.style.display!=='none';b.style.display=o?'none':'block';const ic=tog.querySelector('i.fa-chevron-down');if(ic)ic.style.transform=o?'':'rotate(180deg)';}}
+      if(tog){const id=tog.dataset.toggle;const b=document.getElementById('ibody-'+id);if(b){const o=b.style.display!=='none';b.style.display=o?'none':'block';const ic=tog.querySelector('i.fa-chevron-down');if(ic)ic.style.transform=o?'':'rotate(180deg)';
+        // Gerade geöffnet -> als gelesen markieren (ausgrauen), Zähler/Badge aktualisieren.
+        if(!o&&!readSupportIds.has(id)){
+          readSupportIds.add(id);saveArchived();
+          const card=document.getElementById('imsg-'+id);
+          if(card&&card.classList.contains('inbox-unread')){
+            card.classList.remove('inbox-unread');card.classList.add('sup-read');
+            const nb=card.querySelector('.sup-new-badge');if(nb)nb.outerHTML='<span style="font-size:.58rem;color:var(--muted);flex-shrink:0">Gelesen</span>';
+          }
+          const sc=document.getElementById('supUnreadCount');if(sc)sc.textContent=el.querySelectorAll('.inbox-card.inbox-unread').length+' neu';
+          updateDmBadge();
+        }
+      }}
       const rep=e.target.closest('[data-reply]');
       if(rep&&!rep.disabled){
         const id=rep.dataset.reply,ta=document.getElementById('ireply-'+id),txt=(ta?.value||'').trim();
