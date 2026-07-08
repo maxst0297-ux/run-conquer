@@ -275,7 +275,7 @@ body.onboarding-active{background:#000}
 .btn:disabled{opacity:.35;pointer-events:none}
 
 /* ── Run Control Pill ── */
-#runCtrlPill{position:fixed;bottom:calc(var(--nav-total) + 6px);left:50%;transform:translateX(-50%);
+#runCtrlPill{position:fixed;bottom:calc(var(--nav-total) + 10px);left:50%;transform:translateX(calc(-50% - 112px));
   z-index:1100;display:flex;align-items:center;gap:8px;padding:10px 10px;
   border-radius:50px;
   background:rgba(13,18,30,.92);border:1px solid rgba(255,255,255,.1);
@@ -1754,7 +1754,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v105';
+const APP_VERSION='v106';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -4060,9 +4060,19 @@ function resumeRun(){
   updateRunPill();beep(440,.08);
 }
 function updateRunPill(){
-  // Der frühere schwebende Pause/Stop-Pill entfällt: Start/Stop läuft jetzt über
-  // den zentralen Nav-Button (#navFab), der beim Laufen zum Stop-Button wird.
-  const pill=$('runCtrlPill');if(pill)pill.classList.remove('visible');
+  // Stop läuft über den zentralen FAB. Während des Laufs zeigen wir zusätzlich
+  // einen Pause-Button (links neben dem FAB), der bei Pause zu „Weiter" wird.
+  const pill=$('runCtrlPill'),pause=$('rcpPause'),stop=$('rcpStop');
+  if(pill&&pause){
+    if(isRunning){
+      if(stop)stop.classList.add('rcp-hidden');
+      pause.classList.remove('rcp-hidden');
+      pause.innerHTML=isPaused?'<i class="fas fa-play"></i> Weiter':'<i class="fas fa-pause"></i> Pause';
+      pill.classList.add('visible');
+    }else{
+      pill.classList.remove('visible');
+    }
+  }
   updateNavFab();
 }
 function updateNavFab(){
