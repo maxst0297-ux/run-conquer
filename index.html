@@ -1717,7 +1717,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v94';
+const APP_VERSION='v95';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -4210,9 +4210,22 @@ function renderStarterQuests(){
 function updateQuests(rec){quests.forEach(q=>{if(q.claimed)return;if(q.type==='distance')q.progress=Math.min(q.target,q.progress+rec.distance);if(q.type==='conquer'&&rec.conquered)q.progress++;if(q.type==='defend'&&rec.defended)q.progress++;if(q.progress>=q.target){q.claimed=true;points+=q.reward;toast('✅ '+q.desc+' +'+q.reward);}});checkStarterQuests();}
 function updateAch(){achievements.forEach(a=>{let p=0;if(a.cat==='km')p=totalKm;else if(a.cat==='conq')p=totalConquered;else if(a.cat==='atk')p=totalRaids;else if(a.cat==='def')p=totalDefended;else if(a.cat==='disc')p=totalDiscovered;else if(a.cat==='streak')p=streakDays;a.progress=p;if(!a.earned&&p>=a.target){a.earned=true;points+=200;toast('🏆 Abzeichen: '+a.name+' +200 XP');}})}
 
+/* Zahl hochzählen (animate-ui CountingNumber als Vanilla): animiert von `from`
+   auf `to` mit easeOutCubic. opts: from,duration(ms),decimals,prefix,suffix,delay,sep. */
+function countUp(el,to,opts){
+  if(!el)return;
+  var o=opts||{},from=o.from||0,dur=o.duration||900,dp=o.decimals||0,pre=o.prefix||'',suf=o.suffix||'',delay=o.delay||0,sep=o.sep||'';
+  to=+to||0;
+  function fmt(v){var s=v.toFixed(dp);if(sep){var p=s.split('.');p[0]=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,sep);s=p.join('.');}return pre+s+suf;}
+  var ease=function(t){return 1-Math.pow(1-t,3);};
+  if(typeof requestAnimationFrame!=='function'||o.reduce){el.textContent=fmt(to);return;}
+  el.textContent=fmt(from);var startTs=null;
+  function step(ts){if(startTs===null)startTs=ts;var t=Math.min(1,(ts-startTs)/dur);el.textContent=fmt(from+(to-from)*ease(t));if(t<1)requestAnimationFrame(step);else el.textContent=fmt(to);}
+  clearTimeout(el._cuT);el._cuT=setTimeout(function(){requestAnimationFrame(step);},delay);
+}
 /* POST RUN */
 function showPostRun(rec){
-  $('postPts').textContent='+'+rec.pts;
+  countUp($('postPts'),rec.pts,{prefix:'+',duration:1000,delay:200,reduce:window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches});
   $('postStats').innerHTML=`<div class="stat-card"><div class="sv">${fmtDist(rec.distance)}</div><div class="sl">Distanz</div></div><div class="stat-card"><div class="sv">${fmtTime(rec.duration)}</div><div class="sl">Zeit</div></div><div class="stat-card"><div class="sv">${fmtPace(rec.distance,rec.duration)}</div><div class="sl">Pace</div></div><div class="stat-card"><div class="sv">${rec.kcal}</div><div class="sl">kcal</div></div>`;
   $('postSplits').innerHTML=rec.splits?.length?`<div class="splits-table"><div class="split-hdr"><span>KM</span><span>Pace</span><span>Zeit</span></div>${rec.splits.map(s=>`<div class="split-row"><span>${s.km}</span><span>${s.pace}</span><span>${fmtTime(s.splitSecs)}</span></div>`).join('')}</div>`:'';
   $('postSong').innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--card);border-radius:12px;color:var(--muted);font-size:.82rem"><i class="fas fa-music" style="color:var(--primary)"></i> Song wird analysiert…</div>`;
