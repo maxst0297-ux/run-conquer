@@ -668,7 +668,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .ai-ic svg{width:100%;height:100%;display:block;overflow:visible;transform-origin:center center}
 .ai-ic svg [pathLength]{stroke-dashoffset:0}
 /* Transform-Referenz = viewBox -> 1px == 1 SVG-Einheit (skaliert mit jeder Größe) */
-.ai-ic svg polygon,.ai-ic svg rect,.ai-ic svg line{transform-box:view-box;transform-origin:center}
+.ai-ic svg polygon,.ai-ic svg rect,.ai-ic svg line,.ai-ic svg circle,.ai-ic[data-ai="profile"] svg path{transform-box:view-box;transform-origin:center}
 /* draw (activity): der Strich zeichnet sich */
 @keyframes aiDraw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
 .ai-ic[data-ai="activity"].ai-play svg [pathLength]{animation:aiDraw var(--ai-dur,.8s) ease-in-out}
@@ -693,6 +693,12 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 @keyframes aiSpin360{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 .ai-ic[data-ai="cog"].ai-play svg{animation:aiCog var(--ai-dur,1.25s) ease-in-out}
 .ai-ic[data-ai="cog"].ai-loop svg{animation:aiSpin360 var(--ai-dur,2.5s) linear infinite}
+/* profile (userRound): Kopf & Schultern wippen leicht */
+@keyframes aiBobA{0%{transform:translateY(0)}33%{transform:translateY(4px)}66%{transform:translateY(-2px)}100%{transform:translateY(0)}}
+@keyframes aiBobB{0%{transform:translateY(0)}33%{transform:translateY(1px)}66%{transform:translateY(-2px)}100%{transform:translateY(0)}}
+.ai-ic[data-ai="profile"].ai-play svg path,.ai-ic[data-ai="profile"].ai-loop svg path{animation:aiBobA var(--ai-dur,.6s) ease-in-out}
+.ai-ic[data-ai="profile"].ai-play svg circle,.ai-ic[data-ai="profile"].ai-loop svg circle{animation:aiBobB var(--ai-dur,.6s) ease-in-out}
+.ai-ic[data-ai="profile"].ai-loop svg path,.ai-ic[data-ai="profile"].ai-loop svg circle{animation-iteration-count:infinite}
 @media (prefers-reduced-motion:reduce){.ai-ic svg *{animation:none!important}}
 
 /* ═══ REDESIGN — HEADER ═══ */
@@ -1291,7 +1297,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
     <div class="nav-item" data-view="start"><div class="nav-indicator"></div><span class="ai-ic" data-ai="activity"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path pathLength="1" d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg></span><span>Aktivität</span></div>
     <button class="nav-fab" id="navFab" aria-label="Lauf starten"><span class="ai-ic" data-ai="play"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon pathLength="1" points="6 3 20 12 6 21 6 3"/></svg></span></button>
     <div class="nav-item" data-view="community"><div class="nav-indicator"></div><i class="fas fa-globe"></i><span>Community</span></div>
-    <div class="nav-item" data-view="profile"><div class="nav-indicator"></div><i class="fas fa-user"></i><span>Profil</span></div>
+    <div class="nav-item" data-view="profile"><div class="nav-indicator"></div><span class="ai-ic" data-ai="profile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="8" r="5"/></svg></span><span>Profil</span></div>
   </nav>
 
   <div id="drawerOverlay"></div>
@@ -1667,7 +1673,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v89';
+const APP_VERSION='v90';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -1719,6 +1725,7 @@ const AI_ICONS={
   pause:'<rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/>',
   stop:'<line x1="6" y1="18" x2="18" y2="6"/><line x1="6" y1="6" x2="18" y2="18"/>',
   cog:'<g><path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/><path d="M12 2v2"/><path d="M12 22v-2"/><path d="m17 20.66-1-1.73"/><path d="M11 10.27 7 3.34"/><path d="m20.66 17-1.73-1"/><path d="m3.34 7 1.73 1"/><path d="M14 12h8"/><path d="M2 12h2"/><path d="m20.66 7-1.73 1"/><path d="m3.34 17 1.73-1"/><path d="m17 3.34-1 1.73"/><path d="m11 13.73-4 6.93"/></g>',
+  profile:'<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="8" r="5"/>',
 };
 /* Baut das Icon-Markup. opts: size(px), loop(bool)=Endlos, play(bool)=beim
    Erscheinen einmal zeichnen, cls(extra Klassen), dur(Sekunden). */
