@@ -585,10 +585,10 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .xp-bar-wrap{background:rgba(255,255,255,.07);border-radius:6px;height:4px;overflow:hidden;margin-top:4px}
 .xp-bar{height:100%;background:var(--primary);border-radius:6px;transition:width .8s ease}
 /* ── Territory strength bar in popup ── */
-.leaflet-popup-content{font-family:'Poppins',sans-serif;font-size:.82rem;color:#f0f0f8;min-width:160px}
+.leaflet-popup-content{font-family:'Poppins',sans-serif;font-size:.82rem;color:var(--text,#f0f0f8);min-width:160px}
 .leaflet-popup-content-wrapper{background:var(--card,#1C2336);box-shadow:0 4px 24px rgba(0,0,0,.35)}
 .leaflet-popup-tip{background:var(--card,#1C2336)}
-.leaflet-popup-close-button{color:#f0f0f8!important}
+.leaflet-popup-close-button{color:var(--text,#f0f0f8)!important}
 
 /* ═══ LOCATE BUTTON ═══ */
 #locateBtn{position:fixed;bottom:calc(var(--nav-total) + 82px);right:14px;background:var(--card);border:1px solid var(--border);color:var(--primary);width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;cursor:pointer;z-index:600;box-shadow:0 2px 12px rgba(0,0,0,.3);-webkit-user-select:none;user-select:none;transition:transform .15s}
@@ -1754,7 +1754,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v104';
+const APP_VERSION='v105';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3739,10 +3739,10 @@ function renderH3Territories(){
     const ally=!own&&t.owner_team&&t.owner_team===userTeam;
     // Ampel-Rand: bei eigenem Gebiet die eigene Farbe, sonst nach Erober-Schwierigkeit.
     const borderCol=own?userColor:h3AmpelColor(def);
-    const relLine=own
-      ?`<span style="color:${userColor}">🔵 Dein Gebiet</span>`
-      :(ally?'<span style="color:#5eead4">🤝 Verbündet</span>':'<span style="color:#ff6666">⚔️ Feindliches Gebiet</span>')
-        +(isBot?' <span style="color:#c084fc">· 🤖 Bot</span>':'');
+    const relLine=(own
+      ?'🔵 Dein Gebiet'
+      :(ally?'🤝 Verbündet':'⚔️ Feindliches Gebiet')+(isBot?' · 🤖 Bot':''))
+      .replace(/^(.*)$/,'<span style="color:var(--text)">$1</span>');
     let renderCells=cells;
     if(aggRes<10){
       const set=new Set();
@@ -3759,7 +3759,7 @@ function renderH3Territories(){
           <div style="font-size:.72rem;font-weight:700;margin-bottom:7px">${relLine}</div>
           <div style="display:flex;flex-direction:column;gap:5px">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Fraktion</span>${team?`<span style="background:${team.color}22;color:${team.color};border-radius:6px;padding:1px 8px;font-size:.66rem;font-weight:700">${team.icon} ${team.name}</span>`:'<span style="font-size:.72rem;color:var(--muted)">Keine</span>'}</div>
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Besitzer</span><span style="font-size:.8rem;font-weight:700;color:${own?userColor:'#ff9f9f'}">${esc(t.owner_name||'Läufer')}${own?' (Du)':''}</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Besitzer</span><span style="font-size:.8rem;font-weight:700;color:var(--text)">${esc(t.owner_name||'Läufer')}${own?' (Du)':''}</span></div>
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Verteidigung</span><span style="font-size:.8rem;font-weight:700">${Math.round(def)} / 300</span></div>
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Dauer bis 1</span><span style="font-size:.8rem;font-weight:700">${fmtDecay(tteMin)}</span></div>
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Größe</span><span style="font-size:.8rem;font-weight:700">${cells.length} ${cells.length===1?'Zelle':'Zellen'}</span></div>
