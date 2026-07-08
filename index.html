@@ -215,6 +215,9 @@ body.onboarding-active{background:#000}
 .dm-bubble-them{background:var(--card);border:1px solid var(--border);align-self:flex-start;border-radius:16px 16px 16px 4px}
 .follow-btn{font-size:.68rem;border:1px solid var(--border);background:none;color:var(--muted);border-radius:10px;padding:8px 12px;min-height:36px;display:inline-flex;align-items:center;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;font-family:'Poppins',sans-serif;white-space:nowrap;transition:var(--motion-fast)}
 .follow-btn.following{border-color:var(--primary);color:var(--primary)}
+.lb-tabs{display:flex;gap:6px;margin:2px 0 12px}
+.lb-tab{flex:1;background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:20px;padding:7px 6px;font-size:.72rem;font-weight:700;font-family:'Poppins',sans-serif;cursor:pointer;transition:background .2s,color .2s,border-color .2s;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.lb-tab.active{background:var(--primary);color:var(--bg);border-color:var(--primary)}
 /* ═══ SWIPE ARCHIVE / DELETE ═══ */
 .sw-wrap{position:relative;overflow:hidden;margin-bottom:6px;border-radius:12px}
 .sw-arch{position:absolute;left:0;top:0;height:100%;width:88px;background:linear-gradient(135deg,#10b981,#059669);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:3px;z-index:0;border-radius:12px 0 0 12px}
@@ -236,6 +239,12 @@ body.onboarding-active{background:#000}
    im Inhaltsbereich, füllt sich mit der Scroll-Position der aktiven Ansicht. */
 #scrollProgress{position:absolute;top:0;left:0;height:3px;width:100%;transform:scaleX(0);transform-origin:left center;background:var(--primary);z-index:60;pointer-events:none;transition:transform .1s linear;border-radius:0 3px 3px 0;box-shadow:0 0 8px rgba(var(--primary-rgb),.5)}
 .view.leaving{opacity:0;transform:translateX(-20px) scale(.97);transition:opacity .22s ease,transform .22s ease;pointer-events:none}
+/* Wiederverwendbare Slide-in-Animation für Inhalte, die in-place neu gerendert
+   werden (Einstellungen-Tabs, Postfach-Tabs, Community-Listen …), damit sich
+   ALLE Bereiche einheitlich „hereinschieben" – nicht nur die Hauptansichten. */
+@keyframes contentSlideIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:none}}
+.slide-in{animation:contentSlideIn .28s cubic-bezier(.16,1,.3,1)}
+@media (prefers-reduced-motion:reduce){.slide-in{animation:none}}
 #mapView{padding:0;overflow:hidden;-webkit-overflow-scrolling:unset}
 #map{height:100%;width:100%;z-index:1}
 
@@ -499,7 +508,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .nav-item.active .nav-indicator{transform:scaleX(1)}
 
 /* ═══ DRAWER ═══ */
-#drawer{position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid rgba(255,255,255,.1);border-radius:22px 22px 0 0;z-index:700;max-height:78vh;overflow:hidden;display:none;flex-direction:column;transform:translateY(100%);transition:transform var(--motion-slow) var(--ease-out);-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);box-shadow:0 -8px 40px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08)}
+#drawer{position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid rgba(255,255,255,.1);border-radius:22px 22px 0 0;z-index:700;max-height:84vh;overflow:hidden;display:none;flex-direction:column;transform:translateY(100%);transition:transform var(--motion-slow) var(--ease-out);-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);box-shadow:0 -8px 40px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08)}
 #drawer.open{transform:translateY(0)}
 .drawer-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px 4px;cursor:pointer;-webkit-user-select:none;user-select:none;flex-shrink:0}
 .drawer-handle{width:36px;height:4px;background:var(--border);border-radius:4px;margin:0 auto}
@@ -511,7 +520,10 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .tab-btn{padding:0 20px;min-height:44px;display:inline-flex;align-items:center;border-radius:40px;border:none;background:var(--card);color:var(--muted);font-weight:600;font-size:.86rem;cursor:pointer;white-space:nowrap;transition:background var(--motion-base),color var(--motion-base),transform var(--motion-fast);-webkit-tap-highlight-color:transparent;touch-action:manipulation;flex-shrink:0}
 .tab-btn:active{transform:scale(.93)}
 .tab-btn.active{background:var(--primary);color:var(--bg)}
-.drawer-body{padding:14px 14px calc(40px + env(safe-area-inset-bottom,0px));min-height:0;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch}
+/* Bottom-Padding ≥ Höhe der Navigationsleiste (liegt mit z-index 710 ÜBER dem
+   Drawer): sonst verschwindet die unterste Zeile – z.B. die letzte Kalenderwoche
+   – hinter der Leiste. */
+.drawer-body{padding:14px 14px calc(var(--nav-total) + 24px);min-height:0;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch}
 .drawer-body.anim{animation:drawerContentIn .24s cubic-bezier(.16,1,.3,1)}
 @keyframes drawerContentIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
@@ -579,6 +591,21 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 
 /* ═══ TOAST ═══ */
 #toast{position:fixed;bottom:calc(var(--nav-h) + 14px);left:50%;transform:translateX(-50%);background:var(--primary);color:var(--bg);padding:9px 22px;border-radius:40px;z-index:2000;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;font-size:.82rem;font-weight:700}
+/* Zentriertes Erfolg-Popup (nach dem Lauf) */
+.ach-pop-overlay{position:fixed;inset:0;z-index:3000;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.ach-pop-overlay.open{display:flex;animation:achFade .25s ease}
+.ach-pop-card{position:relative;overflow:hidden;width:100%;max-width:340px;background:linear-gradient(160deg,var(--bg2),var(--card));border:1px solid rgba(var(--primary-rgb),.4);border-radius:24px;padding:30px 24px 22px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08);animation:achPop .45s cubic-bezier(.16,1.3,.4,1)}
+.ach-pop-glow{position:absolute;top:-45%;left:50%;transform:translateX(-50%);width:220px;height:220px;background:radial-gradient(circle,rgba(var(--primary-rgb),.35),transparent 70%);pointer-events:none}
+.ach-pop-ic{position:relative;font-size:4.2rem;line-height:1;filter:drop-shadow(0 4px 16px rgba(var(--primary-rgb),.5));animation:achBounce .6s ease .05s both}
+.ach-pop-kicker{position:relative;margin-top:12px;font-family:'Bebas Neue',sans-serif;letter-spacing:3px;font-size:.82rem;color:var(--primary);text-transform:uppercase}
+.ach-pop-name{position:relative;margin-top:6px;font-family:'Bebas Neue',sans-serif;font-size:1.9rem;line-height:1.08;color:var(--text);word-break:break-word;overflow-wrap:anywhere}
+.ach-pop-xp{position:relative;margin-top:8px;font-size:.9rem;font-weight:700;color:var(--primary)}
+.ach-pop-btn{position:relative;margin-top:20px;width:100%;background:var(--primary);color:var(--bg);border:none;border-radius:14px;padding:13px;font-size:.9rem;font-weight:800;font-family:'Poppins',sans-serif;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.ach-pop-count{position:relative;margin-top:10px;font-size:.66rem;color:var(--muted);min-height:.8rem}
+@keyframes achFade{from{opacity:0}to{opacity:1}}
+@keyframes achPop{from{opacity:0;transform:scale(.82) translateY(20px)}to{opacity:1;transform:none}}
+@keyframes achBounce{0%{transform:scale(0) rotate(-20deg)}60%{transform:scale(1.15) rotate(6deg)}100%{transform:scale(1) rotate(0)}}
+@media (prefers-reduced-motion:reduce){.ach-pop-overlay.open,.ach-pop-card,.ach-pop-ic{animation:none}}
 
 /* misc */
 .muted{color:var(--muted)}
@@ -801,7 +828,9 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
   transition:transform var(--motion-fast)}
 .hero-start-btn:active{transform:scale(.97)}
 .hero-energy-pill{background:rgba(var(--primary-rgb),.08);border:1px solid rgba(var(--primary-rgb),.2);
-  border-radius:12px;padding:10px 14px;text-align:center;min-width:72px;cursor:pointer;flex-shrink:0}
+  border-radius:12px;padding:10px 14px;text-align:center;min-width:72px;cursor:pointer;flex-shrink:0;transition:box-shadow .2s,border-color .2s,background .2s}
+.hero-energy-pill.armed,.stat-card.armed{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary),0 0 14px rgba(var(--primary-rgb),.35)}
+.hero-energy-pill.armed{background:rgba(var(--primary-rgb),.16)}
 .he-v{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;color:var(--primary)}
 .he-l{font-size:.58rem;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-top:1px}
 </style>
@@ -1091,7 +1120,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <div class="idle-stats" id="idleStats">
           <div class="stat-card"><div class="sv" id="ptsVal">0</div><div class="sl">Punkte</div></div>
           <div class="stat-card"><div class="sv" id="areaVal">0</div><div class="sl">m²</div></div>
-          <div class="stat-card" onclick="showBoostInfo()" style="cursor:pointer" title="Boosts verdoppeln deine Punkte"><div class="sv" id="energyVal">⚡3</div><div class="sl">Boosts</div></div>
+          <div class="stat-card" onclick="toggleBoost()" style="cursor:pointer" title="Boosts verdoppeln deine Punkte"><div class="sv" id="energyVal">⚡3</div><div class="sl">Boosts</div></div>
         </div>
         <div class="status-bar" id="statusBar">
           <span class="blink" id="statusDot"></span>
@@ -1150,7 +1179,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
           <button class="hero-start-btn" id="heroStartBtn">
             <i class="fas fa-play" id="heroStartIcon"></i><span id="heroStartLabel">START</span>
           </button>
-          <div class="hero-energy-pill" onclick="showBoostInfo()" title="Energie / Boosts">
+          <div class="hero-energy-pill" onclick="toggleBoost()" title="Energie / Boosts">
             <div class="he-v" id="heroEnergyVal">⚡3</div>
             <div class="he-l">Energie</div>
           </div>
@@ -1290,7 +1319,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <div class="comm-card" id="eventsCard"><h3><i class="fas fa-flag-checkered"></i> Events &amp; Turniere</h3><div id="eventsList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-trophy"></i> Deine Rekorde</h3><div id="recordsList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-bolt"></i> Live-Aktivität</h3><div id="followerList"></div></div>
-      <div class="comm-card"><h3><i class="fas fa-medal"></i> Rangliste</h3><div id="leaderboardList"></div></div>
+      <div class="comm-card"><h3><i class="fas fa-medal"></i> Rangliste</h3><div class="lb-tabs" id="lbTabs"><button class="lb-tab active" data-scope="local">📍 Umkreis 20 km</button><button class="lb-tab" data-scope="world">🌍 Weltweit</button></div><div id="leaderboardList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-crown"></i> Wöchentliche Power-Rankings</h3><div id="powerRankList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-user-friends"></i> Freunde</h3><div id="friendsList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-shield-alt"></i> Fraktions-Krieg <span style="font-size:.62rem;color:var(--muted);font-weight:400">— alle Spieler</span></h3><div id="teamRankList"></div></div>
@@ -1312,6 +1341,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <span class="pv-edit" id="pvEditBtn"><i class="fas fa-pen"></i> Bearbeiten</span>
         <div class="pv-avatar" id="pvAvatar">🏃</div>
         <div class="pv-name" id="pvName">Läufer</div>
+        <div class="pv-rank" id="pvRank" style="display:none;margin:6px auto 0;width:fit-content;font-size:.72rem;font-weight:700;color:var(--primary);background:rgba(var(--primary-rgb),.12);border:1px solid rgba(var(--primary-rgb),.32);border-radius:20px;padding:4px 12px"></div>
         <div class="pv-since" id="pvSince">Noch kein Lauf</div>
         <div style="margin-top:14px;width:100%;max-width:268px;margin-left:auto;margin-right:auto">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
@@ -1545,6 +1575,15 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 
 <canvas id="applauseCanvas" style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1500;display:none"></canvas>
 <div id="toast"></div>
+<div id="achPopup" class="ach-pop-overlay"><div class="ach-pop-card">
+  <div class="ach-pop-glow"></div>
+  <div class="ach-pop-ic" id="achPopIc">🏆</div>
+  <div class="ach-pop-kicker">Erfolg freigeschaltet</div>
+  <div class="ach-pop-name" id="achPopName"></div>
+  <div class="ach-pop-xp">+200 XP</div>
+  <button class="ach-pop-btn" id="achPopBtn">Weiter</button>
+  <div class="ach-pop-count" id="achPopCount"></div>
+</div></div>
 
 <script>
 (function(){
@@ -1692,6 +1731,10 @@ let territories=[],points=0,localStateTs=0;
 let userId='user',playerName='',userColor=COLORS[0],userAvatar=AVATARS[0];
 let userAvatarImg=null;
 let energy=CFG.ENERGY_MAX,lastEnergyTs=Date.now(),energyWeek='';
+/* Zuletzt bekannter Standort (nur lokal, für die Umkreis-Rangliste). */
+let lastKnownLoc=(()=>{try{return JSON.parse(localStorage.getItem('rc_lastloc')||'null');}catch(e){return null;}})();
+/* Boost „scharf"? Standard: an (bisheriges Auto-Verhalten). */
+let boostArmed=(()=>{try{const v=localStorage.getItem('rc_boostarmed');return v===null?true:v==='1';}catch(e){return true;}})();
 let history=[],quests=[],achievements=[];
 let totalKm=0,totalConquered=0,totalDefended=0;
 let streakDays=0,stepsToday=0,lastStepTs=0,lastRunDate='';
@@ -1764,7 +1807,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v108';
+const APP_VERSION='v109';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2057,6 +2100,33 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 function beep(f,d=.1){try{const c=new(window.AudioContext||window.webkitAudioContext)();if(c.state==='suspended')c.resume();const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=f;g.gain.value=.08;o.start();o.stop(c.currentTime+d);}catch(e){}}
 function vib(ms){if(navigator.vibrate)navigator.vibrate(ms)}
 function showBoostInfo(){toast('⚡ Boosts verdoppeln deine Punkte für einen Lauf. Du erhältst '+CFG.ENERGY_MAX+' neue Boosts pro Woche.');}
+/* Energie/Boost als echter Schalter: der Server bleibt autoritativ (er bucht die
+   Energie ab), der Client entscheidet aber, OB beim nächsten Lauf ein Boost
+   eingesetzt werden soll. So „aktiviert"/„deaktiviert" das Antippen den Boost
+   sichtbar, statt nur einen Info-Toast zu zeigen. */
+function updateBoostUI(){
+  const armed=boostArmed&&energy>0;
+  const pill=document.querySelector('.hero-energy-pill');
+  if(pill){pill.classList.toggle('armed',armed);pill.title=energy<=0?'Keine Boosts übrig':(armed?'Boost aktiv – tippen zum Deaktivieren':'Boost aus – tippen zum Aktivieren');}
+  const stat=$('energyVal');const card=stat&&stat.closest&&stat.closest('.stat-card');if(card)card.classList.toggle('armed',armed);
+}
+function toggleBoost(){
+  if(energy<=0){toast('⚡ Keine Boosts übrig – neue gibt es zu Wochenbeginn ('+CFG.ENERGY_MAX+' pro Woche).');return;}
+  boostArmed=!boostArmed;
+  try{localStorage.setItem('rc_boostarmed',boostArmed?'1':'0');}catch(e){}
+  updateBoostUI();vib(20);
+  toast(boostArmed?'⚡ Boost aktiviert – dein nächster Lauf trifft +10 % härter.':'💤 Boost deaktiviert – er bleibt für später gespart.');
+}
+
+/* ── GEBIETSNAMEN ──────────────────────────────────────────────────────────
+   Jedes Gebiet trägt IMMER einen Namen. Ist kein eigener Name gesetzt, wird aus
+   der (stabilen) Gebiets-ID deterministisch ein stimmungsvoller Name erzeugt –
+   gleiche ID ⇒ gleicher Name, über Sessions und Geräte hinweg. */
+const TERR_ADJ=['Nördliche','Südliche','Wilde','Stille','Eiserne','Goldene','Alte','Freie','Hohe','Dunkle','Sturm-','Nebel-','Sonnen-','Schatten-','Frost-','Glut-','Wolfs-','Adler-','Löwen-','Raben-','Donner-','Silber-'];
+const TERR_NOUN=['Bastion','Revier','Feste','Mark','Höhe','Bucht','Klippe','Senke','Aue','Warte','Schanze','Furt','Halde','Weite','Schwelle','Kessel','Spitze','Terrasse','Zinne','Schlucht','Ebene','Bastei'];
+function _terrHash(s){s=String(s||'');let h=2166136261>>>0;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)>>>0;}return h>>>0;}
+function genTerrName(id){const h=_terrHash(id);const a=TERR_ADJ[h%TERR_ADJ.length];const n=TERR_NOUN[Math.floor(h/TERR_ADJ.length)%TERR_NOUN.length];return a+(/-$/.test(a)?'':' ')+n;}
+function territoryName(t){if(!t)return genTerrName('');const c=t.customName&&String(t.customName).trim();const n=t.name&&String(t.name).trim();return c||n||genTerrName(t.id||'');}
 
 /* ── LAUF-KEEP-ALIVE (verhindert GPS-Suspendierung im Hintergrund) ── */
 function startKeepAlive(){
@@ -3702,7 +3772,7 @@ function renderTerr(){
         const teamInfo=TEAMS.find(tm=>tm.id===ownerTeam);
         const ownerName=esc(own?playerName:(botOwner?botOwner.name:t.ownerName||'Unbekannt'));
         const areaRnd=t.area>=1000?`${(t.area/1000).toFixed(2)} km²`:`${Math.round(t.area)} m²`;
-        const terrName=esc(t.customName||`Gebiet #${(t.id||'').slice(-4)}`);
+        const terrName=esc(territoryName(t));
         const decayMins=Math.max(0,Math.round(t.defense/(CFG.DECAY_PER_DAY/24/60)));
         /* Header */
         let h=`<div style="font-family:'Bebas Neue',sans-serif;font-size:1.05rem;letter-spacing:1px;color:${own?userColor:'#ff6666'}">${own?'🔵':'🔴'} ${terrName}</div>`;
@@ -3757,7 +3827,7 @@ async function loadH3Territories(){
     territories=h3Territories.map(t=>({
       id:t.id,owner:t.owner,ownerName:t.owner_name,ownerColor:t.owner_color,
       defense:t.defense,polygon:null,rarity:'common',landmarkIds:[],
-      area:(t.cells?t.cells.length:0)*15000,customName:null
+      area:(t.cells?t.cells.length:0)*15000,customName:null,name:t.name||null
     }));
     renderH3Territories();
     updateStatsUI&&updateStatsUI();
@@ -3833,6 +3903,7 @@ function updateStatsUI(){
   const sv=$('hdrStreakVal');if(sv)sv.textContent=streakDays||0;
   /* Sync hero energy if on start tab */
   const ev=$('heroEnergyVal');if(ev)ev.textContent='⚡'+energy;
+  updateBoostUI();
 }
 
 /* STEPS */
@@ -4022,6 +4093,8 @@ function setLocateBadge(acc){
 function onGPS(pos){
   const acc=pos.coords.accuracy||999;
   const lat=pos.coords.latitude,lng=pos.coords.longitude,pt=[lat,lng];
+  /* Standort für die Umkreis-Rangliste merken (nur lokal, kein Server). */
+  if(acc<=200){lastKnownLoc={lat,lng};try{localStorage.setItem('rc_lastloc',JSON.stringify(lastKnownLoc));}catch(e){}}
   /* Marker immer aktualisieren – auch bei Pause und außerhalb eines Laufs */
   if(userMarker)userMarker.setLatLng(pt);
   else if(mapL)userMarker=L.marker(pt,{icon:mkUserIcon()}).addTo(mapL);
@@ -4176,7 +4249,7 @@ async function finalizeRun(elapsed){
   if(elapsed>0&&(dist/elapsed)>CFG.MAX_SPEED_MPS){toast('⚠️ Unrealistisches Tempo erkannt – Lauf wird nicht gewertet');if(pathLayer)mapL.removeLayer(pathLayer);path=[];dist=0;sessionConquests=0;return}
   const pd=mkPoly();if(!pd)return;
   const{polyGeom,gap}=pd,area=turf.area(polyGeom);
-  const boosted=energy>0; // Absicht: Boost automatisch nutzen, wenn Energie da ist
+  const boosted=energy>0&&boostArmed; // Boost nur, wenn Energie da UND vom Nutzer aktiviert
   sessionConquests=0;
   const prevPts=points;
   const res=await processConquest({path:path},area,dist,boosted,false,elapsed);
@@ -4312,7 +4385,23 @@ function renderStarterQuests(){
 
 /* QUESTS/ACH */
 function updateQuests(rec){quests.forEach(q=>{if(q.claimed)return;if(q.type==='distance')q.progress=Math.min(q.target,q.progress+rec.distance);if(q.type==='conquer'&&rec.conquered)q.progress++;if(q.type==='defend'&&rec.defended)q.progress++;if(q.progress>=q.target){q.claimed=true;points+=q.reward;toast('✅ '+q.desc+' +'+q.reward);}});checkStarterQuests();}
-function updateAch(){achievements.forEach(a=>{let p=0;if(a.cat==='km')p=totalKm;else if(a.cat==='conq')p=totalConquered;else if(a.cat==='atk')p=totalRaids;else if(a.cat==='def')p=totalDefended;else if(a.cat==='disc')p=totalDiscovered;else if(a.cat==='streak')p=streakDays;a.progress=p;if(!a.earned&&p>=a.target){a.earned=true;points+=200;toast('🏆 Abzeichen: '+a.name+' +200 XP');}})}
+function updateAch(){const earned=[];achievements.forEach(a=>{let p=0;if(a.cat==='km')p=totalKm;else if(a.cat==='conq')p=totalConquered;else if(a.cat==='atk')p=totalRaids;else if(a.cat==='def')p=totalDefended;else if(a.cat==='disc')p=totalDiscovered;else if(a.cat==='streak')p=streakDays;a.progress=p;if(!a.earned&&p>=a.target){a.earned=true;points+=200;earned.push(a);}});if(earned.length)queueAchPopup(earned);return earned;}
+/* Zentriertes Erfolg-Popup (ersetzt den abgeschnittenen Toast): mehrere neue
+   Erfolge werden nacheinander gezeigt, mehrzeilig und immer mittig. */
+const ACH_CAT_IC={conq:'🏙️',km:'🏃',atk:'⚔️',def:'🛡️',disc:'🧭',streak:'🔥'};
+let _achQ=[];
+function queueAchPopup(list){if(!list||!list.length)return;_achQ.push(...list);const ov=$('achPopup');if(ov&&!ov.classList.contains('open'))_showNextAch();}
+function _showNextAch(){
+  const ov=$('achPopup');if(!ov)return;
+  if(!_achQ.length){ov.classList.remove('open');return;}
+  const a=_achQ.shift();
+  $('achPopIc').textContent=ACH_CAT_IC[a.cat]||'🏆';
+  $('achPopName').textContent=a.name;
+  const rest=_achQ.length;
+  $('achPopCount').textContent=rest?`Noch ${rest} weitere${rest===1?'r':''} Erfolg${rest===1?'':'e'}`:'';
+  ov.classList.remove('open');void ov.offsetWidth;ov.classList.add('open');
+  try{beep(880,.12);vib(30);}catch(e){}
+}
 
 /* Zahl hochzählen (animate-ui CountingNumber als Vanilla): animiert von `from`
    auf `to` mit easeOutCubic. opts: from,duration(ms),decimals,prefix,suffix,delay,sep. */
@@ -4350,6 +4439,7 @@ function updateDash(){
   $('todayKcal').textContent=tr.reduce((s,r)=>s+(r.kcal||0),0);$('todaySteps').textContent=stepsToday;
   const gl=$('heroGreetLine');if(gl)gl.textContent='Bereit, '+(playerName||'Läufer')+'?';
   const ev=$('heroEnergyVal');if(ev)ev.textContent='⚡'+energy;
+  updateBoostUI();
   const tc=$('statTerrCount');if(tc)tc.textContent=territories.filter(t=>t.owner===userId).length;
   const sh=$('statStreakHero');if(sh)sh.textContent=(streakDays||0)+'🔥';
   updateNavFab();
@@ -5050,7 +5140,7 @@ function updateCommunity(){
   }
 }
 window.flyTo=function(id){const t=territories.find(t=>t.id===id);if(!t)return;try{const c=turf.centroid(turf.feature(t.polygon)).geometry.coordinates;mapL.setView([c[1],c[0]],16);setView('map');}catch(e){}};
-window.openRename=function(id){closeAllModals();selectedTerrId=id;const t=territories.find(t=>t.id===id);$('renameInput').value=t?.customName||'';$('renameModal').style.display='flex'};
+window.openRename=function(id){closeAllModals();selectedTerrId=id;const t=territories.find(t=>t.id===id);const inp=$('renameInput');inp.value=(t&&(t.customName||t.name))||'';inp.placeholder=t?territoryName(t):'Name des Gebiets';$('renameModal').style.display='flex'};
 
 /* ── LIKE / ATTACK SYSTEM ── */
 window.likeTerritory=function(terrId){
@@ -5058,7 +5148,7 @@ window.likeTerritory=function(terrId){
   if(!t||t.owner===userId)return;
   mapL.closePopup();
   playLikeAnimation(t);
-  toast('LIKE! ⚔️ '+(t.customName||'Rivale'));
+  toast('LIKE! ⚔️ '+territoryName(t));
 };
 function playLikeAnimation(t){
   let screenPt={x:window.innerWidth/2,y:window.innerHeight/2};
@@ -5225,54 +5315,119 @@ async function renderFactionWar(){
 }
 
 /* ── LEADERBOARD ── */
+/* Rangliste mit zwei Reitern: „Umkreis 20 km" (Spieler nahe meinem Standort) und
+   „Weltweit" (global nach Punkten). Der Umkreis wird ohne Standort-Spalte gelöst:
+   die Distanz zum nächstgelegenen Gebiets-Zentroid je Spieler (H3-Zellen) — so
+   erscheinen nur Spieler, die tatsächlich in der Nähe Gebiete halten. */
+let lbScope=(()=>{try{return localStorage.getItem('rc_lbscope')||'local';}catch(e){return 'local';}})();
+function initLbTabs(){
+  const tabs=$('lbTabs');if(!tabs||tabs._init)return;tabs._init=1;
+  tabs.querySelectorAll('.lb-tab').forEach(b=>{
+    b.classList.toggle('active',b.dataset.scope===lbScope);
+    b.addEventListener('click',()=>{if(lbScope===b.dataset.scope)return;lbScope=b.dataset.scope;try{localStorage.setItem('rc_lbscope',lbScope);}catch(e){}tabs.querySelectorAll('.lb-tab').forEach(x=>x.classList.toggle('active',x.dataset.scope===lbScope));renderLeaderboard();});
+  });
+}
+/* Standort für die Umkreis-Rangliste: zuletzt bekannte GPS-Position → Kartenmitte
+   → einmalige Abfrage. Kein Dauer-Tracking, nichts wird beim Server gespeichert. */
+function leaderboardLoc(){
+  return new Promise(resolve=>{
+    if(lastKnownLoc&&typeof lastKnownLoc.lat==='number')return resolve(lastKnownLoc);
+    if(_gpsCentered&&mapL){try{const c=mapL.getCenter();return resolve({lat:c.lat,lng:c.lng});}catch(e){}}
+    if(!navigator.geolocation)return resolve(null);
+    let done=false;const fin=v=>{if(done)return;done=true;resolve(v);};
+    const to=setTimeout(()=>fin(lastKnownLoc||null),4200);
+    navigator.geolocation.getCurrentPosition(
+      p=>{clearTimeout(to);const loc={lat:p.coords.latitude,lng:p.coords.longitude};lastKnownLoc=loc;try{localStorage.setItem('rc_lastloc',JSON.stringify(loc));}catch(e){}fin(loc);},
+      ()=>{clearTimeout(to);fin(null);},
+      {enableHighAccuracy:false,timeout:4000,maximumAge:300000}
+    );
+  });
+}
+function _terrCentroidLL(cells){
+  if(!cells||!cells.length||!window.h3||!window.h3.cellToLatLng)return null;
+  const step=Math.max(1,Math.floor(cells.length/12));let sLat=0,sLng=0,n=0;
+  for(let i=0;i<cells.length;i+=step){try{const ll=window.h3.cellToLatLng(cells[i]);sLat+=ll[0];sLng+=ll[1];n++;}catch(e){}}
+  return n?[sLat/n,sLng/n]:null;
+}
+function _lbRow(r,i,medals){
+  const isMe=r.user_id===userId||r.player_name===playerName;
+  const st=isMe?null:followStatus(r.user_id);
+  const btnLabel=st==='accepted'?'✓ Verbunden':st==='pending_out'?'⏳ Angefragt':st==='pending_in'?'👤 Antworten':'+ Folgen';
+  const sub=r._sub||`${r.total_conquered||0} Gebiete · ${(r.total_km||0).toFixed(1)} km`;
+  const rowAttrs=!isMe?`data-rowuid="${r.user_id}" data-rowname="${esc(r.player_name)}" data-rowav="${esc(r.user_avatar||'🏃')}" data-rowcol="${esc(r.user_color||'#e8ff47')}" data-rowkm="${r.total_km||0}" data-rowterr="${r.total_conquered||0}" data-rowpts="${r.points||0}" data-rowstreak="${r.streak_days||0}" style="cursor:pointer"`:'';
+  return`<div class="list-row" ${rowAttrs} style="background:${isMe?'rgba(232,255,71,.06)':''}${!isMe?';cursor:pointer':''}">
+    <span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:${i<3?'var(--primary)':'var(--muted)'};width:22px;flex-shrink:0">${i<3?medals[i]:i+1}</span>
+    <span class="row-icon" style="font-size:1.2rem">${esc(r.user_avatar||'🏃')}</span>
+    <div class="row-txt"><b style="color:${isMe?'var(--primary)':'var(--text)'}">${esc(r.player_name)}</b>
+    <div style="font-size:.65rem;color:var(--muted)">${sub}</div></div>
+    <span style="font-family:'Bebas Neue',sans-serif;color:var(--primary);margin-left:auto">${r.points}</span>
+    ${!isMe?`<button class="follow-btn${st==='accepted'?' following':''}" data-uid="${r.user_id}" data-name="${esc(r.player_name)}" data-av="${esc(r.user_avatar||'🏃')}" data-st="${st}">${btnLabel}</button>`:''}
+  </div>`;
+}
+function _lbWire(lb){
+  lb.querySelectorAll('.follow-btn').forEach(btn=>{
+    btn.addEventListener('click',async e=>{
+      e.stopPropagation();
+      const {uid,name,av,st}=btn.dataset;
+      if(st==='accepted'||st==='pending_out'){await cancelOrUnfollow(uid,name);renderLeaderboard();}
+      else if(st==='pending_in'){
+        const card=$('followReqCard');
+        if(card){card.scrollIntoView({behavior:'smooth',block:'center'});card.style.outline='2px solid var(--primary)';setTimeout(()=>{card.style.outline='';},1200);}
+      }
+      else{await sendFollowRequest(uid,name,av);renderLeaderboard();}
+    });
+  });
+  lb.querySelectorAll('[data-rowuid]').forEach(row=>{
+    row.addEventListener('click',e=>{
+      if(e.target.closest('.follow-btn'))return;
+      const uid=row.dataset.rowuid;
+      if(followStatus(uid)!=='accepted'){toast('🔒 Profil erst sichtbar, sobald die Follow-Anfrage angenommen wurde');return;}
+      showPublicProfile({user_id:uid,player_name:row.dataset.rowname,user_avatar:row.dataset.rowav,user_color:row.dataset.rowcol,total_km:parseFloat(row.dataset.rowkm),total_conquered:parseInt(row.dataset.rowterr),points:parseInt(row.dataset.rowpts),streak_days:parseInt(row.dataset.rowstreak)});
+    });
+  });
+}
 async function renderLeaderboard(){
   const lb=$('leaderboardList');
   if(!lb)return;
-  lb.innerHTML='<div style="padding:12px;color:var(--muted);font-size:.8rem;text-align:center">⏳ Lade Rangliste…</div>';
+  initLbTabs();
   const medals=['🥇','🥈','🥉'];
+  lb.innerHTML='<div style="padding:12px;color:var(--muted);font-size:.8rem;text-align:center">⏳ Lade Rangliste…</div>';
   try{
     if(!sb||!sbUserId)throw new Error('no sb');
+    if(lbScope==='local'){
+      const loc=await leaderboardLoc();
+      if(!loc){lb.innerHTML=`<div style="padding:18px 14px;text-align:center;color:var(--muted);font-size:.8rem">📍 Kein Standort verfügbar.<br>Starte einen Lauf oder erlaube den Standort, um Spieler in deinem Umkreis zu sehen.</div>`;return;}
+      if(!h3Territories||!h3Territories.length){await loadH3Territories();}
+      const ownerDist=new Map();
+      for(const t of (h3Territories||[])){
+        if(!t.owner)continue;
+        const c=_terrCentroidLL(t.cells);if(!c)continue;
+        let dKm;try{dKm=turf.distance(turf.point([loc.lng,loc.lat]),turf.point([c[1],c[0]]),{units:'kilometers'});}catch(e){continue;}
+        const cur=ownerDist.get(t.owner);
+        if(cur==null||dKm<cur)ownerDist.set(t.owner,dKm);
+      }
+      const{data,error}=await sb.from('profiles').select('id,user_id,player_name,user_avatar,user_color,points,total_km,total_conquered,streak_days').order('points',{ascending:false}).limit(500);
+      if(error)throw error;
+      const near=(data||[]).map(r=>{
+        const d=ownerDist.has(r.user_id)?ownerDist.get(r.user_id):(ownerDist.has(r.id)?ownerDist.get(r.id):null);
+        if(d==null||d>20)return null;
+        return{...r,_sub:`${d<1?Math.round(d*1000)+' m':d.toFixed(1)+' km'} entfernt · ${r.total_conquered||0} Gebiete`};
+      }).filter(Boolean).sort((a,b)=>(b.points||0)-(a.points||0)).slice(0,10);
+      if(!near.length){lb.innerHTML=`<div style="padding:18px 14px;text-align:center;color:var(--muted);font-size:.8rem">🏃 Noch keine Spieler im Umkreis von 20 km.<br>Erobere Gebiete, um die Karte hier lebendig zu machen!</div>`;return;}
+      lb.innerHTML=near.map((r,i)=>_lbRow(r,i,medals)).join('');
+      _lbWire(lb);
+      return;
+    }
+    // Weltweit — global nach Punkten
     const{data,error}=await sb.from('profiles')
-      .select('user_id,player_name,user_avatar,user_color,points,total_km,total_conquered,streak_days')
+      .select('id,user_id,player_name,user_avatar,user_color,points,total_km,total_conquered,streak_days')
       .order('points',{ascending:false})
       .limit(10);
     if(error||!data?.length)throw error||new Error('empty');
-    lb.innerHTML=data.map((r,i)=>{
-      const isMe=r.user_id===userId||r.player_name===playerName;
-      const st=isMe?null:followStatus(r.user_id);
-      const btnLabel=st==='accepted'?'✓ Verbunden':st==='pending_out'?'⏳ Angefragt':st==='pending_in'?'👤 Antworten':'+ Folgen';
-      const rowAttrs=!isMe?`data-rowuid="${r.user_id}" data-rowname="${esc(r.player_name)}" data-rowav="${esc(r.user_avatar||'🏃')}" data-rowcol="${esc(r.user_color||'#e8ff47')}" data-rowkm="${r.total_km||0}" data-rowterr="${r.total_conquered||0}" data-rowpts="${r.points||0}" data-rowstreak="${r.streak_days||0}" style="cursor:pointer"`:'';
-      return`<div class="list-row" ${rowAttrs} style="background:${isMe?'rgba(232,255,71,.06)':''}${!isMe?';cursor:pointer':''}">
-        <span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:${i<3?'var(--primary)':'var(--muted)'};width:22px;flex-shrink:0">${i<3?medals[i]:i+1}</span>
-        <span class="row-icon" style="font-size:1.2rem">${esc(r.user_avatar||'🏃')}</span>
-        <div class="row-txt"><b style="color:${isMe?'var(--primary)':'var(--text)'}">${esc(r.player_name)}</b>
-        <div style="font-size:.65rem;color:var(--muted)">${r.total_conquered||0} Gebiete · ${(r.total_km||0).toFixed(1)} km</div></div>
-        <span style="font-family:'Bebas Neue',sans-serif;color:var(--primary);margin-left:auto">${r.points}</span>
-        ${!isMe?`<button class="follow-btn${st==='accepted'?' following':''}" data-uid="${r.user_id}" data-name="${esc(r.player_name)}" data-av="${esc(r.user_avatar||'🏃')}" data-st="${st}">${btnLabel}</button>`:''}
-      </div>`;
-    }).join('');
-    lb.querySelectorAll('.follow-btn').forEach(btn=>{
-      btn.addEventListener('click',async e=>{
-        e.stopPropagation();
-        const {uid,name,av,st}=btn.dataset;
-        if(st==='accepted'||st==='pending_out'){await cancelOrUnfollow(uid,name);renderLeaderboard();}
-        else if(st==='pending_in'){
-          const card=$('followReqCard');
-          if(card){card.scrollIntoView({behavior:'smooth',block:'center'});card.style.outline='2px solid var(--primary)';setTimeout(()=>{card.style.outline='';},1200);}
-        }
-        else{await sendFollowRequest(uid,name,av);renderLeaderboard();}
-      });
-    });
-    lb.querySelectorAll('[data-rowuid]').forEach(row=>{
-      row.addEventListener('click',e=>{
-        if(e.target.closest('.follow-btn'))return;
-        const uid=row.dataset.rowuid;
-        if(followStatus(uid)!=='accepted'){toast('🔒 Profil erst sichtbar, sobald die Follow-Anfrage angenommen wurde');return;}
-        showPublicProfile({user_id:uid,player_name:row.dataset.rowname,user_avatar:row.dataset.rowav,user_color:row.dataset.rowcol,total_km:parseFloat(row.dataset.rowkm),total_conquered:parseInt(row.dataset.rowterr),points:parseInt(row.dataset.rowpts),streak_days:parseInt(row.dataset.rowstreak)});
-      });
-    });
+    lb.innerHTML=data.map((r,i)=>_lbRow(r,i,medals)).join('');
+    _lbWire(lb);
   }catch(e){
-    // Fallback: lokale Mockdaten
+    // Fallback: lokale Mockdaten (sinnvoll v.a. für die Weltweit-Ansicht)
     const myTerr=territories.filter(t=>t.owner===userId).length;
     const board=[
       ...BOTS.map(b=>({name:b.name,av:b.avatar,pts:b.pts,terr:territories.filter(t=>t.owner===BOT_UUIDS[b.id]).length,km:b.totalKm.toFixed(1)})),
@@ -5316,7 +5471,7 @@ function renderSocialFeed(){
     const f=followedUsers.find(u=>u.uid===t.owner);
     const diff=Math.round((now-(t.createdAt||now))/60000);
     const tAgo=diff<1?'gerade':diff<60?`vor ${diff} Min.`:diff<1440?`vor ${Math.floor(diff/60)} Std.`:`vor ${Math.floor(diff/1440)} Tg.`;
-    return{id:t.id,name:f?.name||t.ownerName||'Unbekannt',av:f?.av||'🏃',txt:`hat „${esc(t.customName||'ein Gebiet')}“ erobert (${Math.round(t.area||0)} m²)`,t:tAgo};
+    return{id:t.id,name:f?.name||t.ownerName||'Unbekannt',av:f?.av||'🏃',txt:`hat „${esc(territoryName(t))}“ erobert (${Math.round(t.area||0)} m²)`,t:tAgo};
   });
   $('followerList').innerHTML=feedItems.map(f=>{
     const lk=parseInt(localStorage.getItem('rc_likes_act_'+f.id)||'0');
@@ -5327,6 +5482,8 @@ function renderSocialFeed(){
 /* ── SETTINGS MODAL ── */
 function renderSettingsTab(tab){
   const body=$('settingsBody');
+  /* Slide-in beim Tab-Wechsel (Inhalt wird synchron gesetzt, Klasse per rAF). */
+  if(body){body.classList.remove('slide-in');requestAnimationFrame(()=>body.classList.add('slide-in'));}
   if(tab==='profil'){
     body.innerHTML=`<div class="field"><label>Name</label><input type="text" id="setName" class="modal-input" value="${esc(playerName||'')}"></div><div class="field"><label>Avatar</label><div class="avatar-row" id="setAvatarRow"></div></div><button class="btn btn-p" id="saveSetProfil" style="width:100%">Speichern</button><button id="logoutBtn" style="width:100%;margin-top:8px;background:none;border:1px solid #ff4d6d;color:#ff4d6d;border-radius:12px;padding:12px;font-size:.85rem;font-family:'Poppins',sans-serif;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent">🚪 Abmelden</button>`;
     const setAvatarRow=$('setAvatarRow');
@@ -6015,6 +6172,7 @@ async function loadInbox(){
     const switchTab=tab=>{
       body.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.itab===tab));
       const tc=document.getElementById('inboxTabBody');
+      if(tc){tc.classList.remove('slide-in');requestAnimationFrame(()=>tc.classList.add('slide-in'));}
       if(tab==='support')loadAdminSupportMsgs(tc);
       else loadDmConvList(tc);
     };
@@ -6458,8 +6616,22 @@ function initAdminCharts(){
 /* ── MAP PANEL TOGGLE (deprecated – removed) ── */
 
 /* PROFILE */
+/* Weltweite Platzierung: Anzahl Spieler mit mehr Punkten + 1. Rein lesend,
+   scheitert leise (dann bleibt das Badge verborgen). */
+async function updateProfileRank(){
+  const el=$('pvRank');if(!el)return;
+  if(!sb||!sbUserId){el.style.display='none';return;}
+  try{
+    const{count:ahead}=await sb.from('profiles').select('id',{count:'exact',head:true}).gt('points',points);
+    const{count:total}=await sb.from('profiles').select('id',{count:'exact',head:true});
+    const rank=(ahead||0)+1;
+    el.textContent=`🌍 Platz #${rank}${total?' von '+total:''} weltweit`;
+    el.style.display='';
+  }catch(e){el.style.display='none';}
+}
 function updateProfile(){
   if(!starterQuestFlags.profileOpened){starterQuestFlags.profileOpened=true;checkStarterQuests();save();}
+  updateProfileRank();
   $('pvAvatar').innerHTML=avatarHTML(54);$('pvName').textContent=playerName;
   const banner=$('pvBanner');banner.style.background=`linear-gradient(135deg,${userColor}44,${userColor}11,var(--bg2))`;banner.style.borderColor=userColor+'55';
   if(history.length){const d=new Date(history[0].date);$('pvSince').textContent='Aktiv seit '+d.toLocaleDateString('de',{month:'long',year:'numeric'});}
@@ -6580,6 +6752,7 @@ window.openDrawer=openDrawer;
    Share-Card-Editor. */
 window.setView=setView;
 window.showBoostInfo=showBoostInfo;
+window.toggleBoost=toggleBoost;
 window.scToggle=scToggle;
 window.openSettingsAt=openSettingsAt; /* für Inline-onclick der Club-CTA */
 window.scSetAccent=scSetAccent;
@@ -6590,7 +6763,7 @@ function renderDrawer(){
   const tabs={
     history:()=>history.slice(-8).reverse().map(r=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)"><span style="font-size:1.2rem">${r.conquered?'⚔️':r.defended?'🛡️':'🏃'}</span><div style="flex:1"><div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary)">${fmtDist(r.distance)}</div><div style="font-size:.68rem;color:var(--muted)">${new Date(r.date).toLocaleDateString('de')} · ${fmtTime(r.duration)}</div></div><span style="font-family:'Bebas Neue',sans-serif;color:var(--primary)">+${r.pts}</span></div>`).join('')||'<div class="muted" style="padding:16px">Noch keine Läufe</div>',
     quests:()=>{genWeeklyChallenges();const now=new Date(),dow=(now.getDay()+6)%7,daysLeft=7-dow;const wkHdr=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><span style="font-size:.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--primary);font-weight:700">🗓️ Wochen-Challenges</span><span style="font-size:.62rem;color:var(--muted)">noch ${daysLeft} Tag${daysLeft!==1?'e':''}</span></div>`;const wkCards=weeklyChals.map(c=>{const p=Math.min(100,Math.round((c.progress||0)/c.target*100));const lbl=c.key==='km'?((c.progress||0).toFixed(1)+'/'+c.target+' km'):c.key==='runs'?Math.floor(c.progress||0)+'/'+c.target+' Läufe':(Math.floor(c.progress||0)+'/'+c.target);return`<div style="background:var(--card);border-radius:14px;padding:12px;margin-bottom:8px;border:1px solid ${c.done?'var(--primary)44':'var(--border)'}"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:1.2rem">${c.done?'✅':c.icon}</span><span style="flex:1;font-size:.82rem;font-weight:600;color:${c.done?'#10b981':'var(--text)'}">${c.desc}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;color:var(--primary)">+${c.reward}</span></div><div class="q-bar"><div class="q-fill" style="width:${p}%"></div></div><div style="font-size:.62rem;color:var(--muted);margin-top:4px">${lbl}</div></div>`;}).join('');const divider='<div style="height:1px;background:var(--border);margin:12px 0"></div><div style="font-size:.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700;margin-bottom:8px">⭐ Starter-Quests</div>';const sqCards=quests.map(q=>{const p=Math.min(100,Math.round(q.progress/q.target*100));return`<div style="background:var(--card);border-radius:14px;padding:12px;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:1.2rem">${q.icon}</span><span style="flex:1;font-size:.82rem;font-weight:600;color:${q.claimed?'#10b981':'var(--text)'}">${q.desc}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;color:var(--primary)">🎁 ${q.reward}</span></div><div class="q-bar"><div class="q-fill" style="width:${p}%"></div></div></div>`;}).join('');return wkHdr+wkCards+divider+sqCards;},
-    terr:()=>territories.filter(t=>t.owner===userId).map(t=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)"><div style="width:10px;height:10px;border-radius:50%;background:${userColor}"></div><span style="flex:1;cursor:pointer" onclick="window.flyTo('${t.id}')">${esc(t.customName||'Unbenannt')}</span><span class="muted" style="font-size:.72rem">${Math.round(t.area)} m²</span><button onclick="window.openRename('${t.id}')" style="background:none;border:none;color:var(--muted);cursor:pointer">✏️</button></div>`).join('')||'<div class="muted" style="padding:16px">Noch keine Gebiete</div>',
+    terr:()=>territories.filter(t=>t.owner===userId).map(t=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)"><div style="width:10px;height:10px;border-radius:50%;background:${userColor}"></div><span style="flex:1;cursor:pointer" onclick="window.flyTo('${t.id}')">${esc(territoryName(t))}</span><span class="muted" style="font-size:.72rem">${Math.round(t.area)} m²</span><button onclick="window.openRename('${t.id}')" style="background:none;border:none;color:var(--muted);cursor:pointer">✏️</button></div>`).join('')||'<div class="muted" style="padding:16px">Noch keine Gebiete</div>',
     fitness:()=>{setTimeout(()=>{document.getElementById('btBtn2')?.addEventListener('click',connectBT)},100);return`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${[['Schritte',stepsToday],['Puls',heartRate+' bpm'],['Laufzeit',fmtTime(runSecs)],['Pace',fmtPace(dist,runSecs)],['Gesamt km',totalKm.toFixed(1)],['Streak',streakDays+'🔥'],['kcal',history.reduce((s,r)=>s+(r.kcal||0),0)],['Gebiete',territories.filter(t=>t.owner===userId).length]].map(([l,v])=>`<div class="stat-card"><div class="sv">${v}</div><div class="sl">${l}</div></div>`).join('')}</div><button class="btn" id="btBtn2" style="width:100%;margin-top:14px"><i class="fas fa-heartbeat"></i> Pulsmesser koppeln</button>`},
     ach:()=>{
       const CAT_NAMES={conq:'Straßen erobert',km:'Kilometer gelaufen',atk:'Angriffe gewonnen',def:'Verteidigungen',disc:'Orte besucht',streak:'Tage in Folge'};
@@ -7135,6 +7308,9 @@ window.initApp=function(){
   $('saveProfileBtn').addEventListener('click',()=>{playerName=$('editName').value.trim()||playerName;userAvatar=editAvatar;saveProfile();$('profileModal').style.display='none';toast('Profil gespeichert');updateProfile()});
   $('closeProfileBtn').addEventListener('click',()=>$('profileModal').style.display='none');
   $('closePostBtn').addEventListener('click',()=>$('postRunModal').style.display='none');
+  $('achPopBtn')?.addEventListener('click',_showNextAch);
+  /* Klick auf den abgedunkelten Hintergrund blättert ebenfalls weiter. */
+  $('achPopup')?.addEventListener('click',e=>{if(e.target&&e.target.id==='achPopup')_showNextAch();});
   /* Import modal */
   $('importActivityBtn')?.addEventListener('click',openImportModal);
   $('impCancelBtn')?.addEventListener('click',()=>$('importModal').style.display='none');
@@ -7199,7 +7375,11 @@ window.initApp=function(){
       $('importModal').style.display='none';
     }
   });
-  $('saveRenameBtn').addEventListener('click',()=>{if(selectedTerrId){const t=territories.find(t=>t.id===selectedTerrId);if(t){t.customName=$('renameInput').value.trim()||null;save();updateUI();}}$('renameModal').style.display='none'});
+  $('saveRenameBtn').addEventListener('click',async()=>{if(selectedTerrId){const t=territories.find(t=>t.id===selectedTerrId);const nm=$('renameInput').value.trim()||null;if(t){t.customName=nm;t.name=nm;save();updateUI();}
+    /* Dauerhaft + für alle sichtbar speichern (falls RPC vorhanden). Fehlt die
+       Funktion/SQL, bleibt der Name lokal für die Session — kein harter Fehler. */
+    if(sb&&sbUserId){try{const{error}=await sb.rpc('rc_rename_territory',{terr_id:selectedTerrId,new_name:nm});if(error&&error.code!=='42883')logError&&logError('terr_rename',error);}catch(e){}}
+  }$('renameModal').style.display='none'});
   $('closeRenameBtn').addEventListener('click',()=>$('renameModal').style.display='none');
   $('showNearBtn').addEventListener('click',()=>setView('map'));
   $('pvBtBtn').addEventListener('click',connectBT);
