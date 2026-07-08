@@ -203,7 +203,7 @@ body.onboarding-active{background:#000}
 #inboxBtn{position:relative}
 .inbox-card{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;overflow:hidden;transition:border-color .2s}
 .inbox-card.inbox-unread{border-left:3px solid var(--primary)}
-.inbox-card.sup-read{opacity:.58}
+.inbox-card.sup-read .inbox-card-hdr{opacity:.62}
 .inbox-card-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;cursor:pointer;gap:8px;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .inbox-card-hdr:active{background:var(--bg2)}
 .inbox-card-body{padding:0 12px 12px}
@@ -1754,7 +1754,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v103';
+const APP_VERSION='v104';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
