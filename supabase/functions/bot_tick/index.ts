@@ -26,21 +26,26 @@ const CORS = {
 };
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
-const LOCK_MINUTES = 15; // frühestens alle 15 Min ein Bot-Tick (global)
+const LOCK_MINUTES = 5; // frühestens alle 5 Min ein Bot-Tick (global)
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
   const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  // force:true (Admin-Diagnose) umgeht den Lock, damit der Test immer wirklich läuft.
+  let force = false;
+  try { const b = await req.json(); force = !!(b && b.force); } catch (_) { /* kein Body */ }
   try {
     const svc = createClient(SUPABASE_URL, SERVICE);
 
-    // ── Server-Lock ──
-    const cutoff = new Date(Date.now() - LOCK_MINUTES * 60000).toISOString();
-    const { data: locked } = await svc.from('game_state')
-      .update({ last_bot_tick: new Date().toISOString() })
-      .eq('id', 1).lt('last_bot_tick', cutoff).select('id');
-    if (!locked || !locked.length) return json({ skipped: true });
+    // ── Server-Lock (bei force übersprungen) ──
+    if (!force) {
+      const cutoff = new Date(Date.now() - LOCK_MINUTES * 60000).toISOString();
+      const { data: locked } = await svc.from('game_state')
+        .update({ last_bot_tick: new Date().toISOString() })
+        .eq('id', 1).lt('last_bot_tick', cutoff).select('id');
+      if (!locked || !locked.length) return json({ skipped: true });
+    }
 
     const { data: bots } = await svc.from('profiles')
       .select('id,player_name,user_color,user_team').eq('is_bot', true);
