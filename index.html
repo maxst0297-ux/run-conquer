@@ -1807,7 +1807,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v109';
+const APP_VERSION='v110';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3853,15 +3853,18 @@ function renderH3Territories(){
     const cells=t.cells||[];
     if(!cells.length)return;
     const own=t.owner===userId;
+    if(window._showOwnOnly&&!own)return; // Panel-Filter „Eigene Gebiete": Fremde ausblenden
     const def=h3Decayed(t.defense,t.updated_at); // wirksame (verfallene) Verteidigung
     const strPct=Math.min(1,def/300);
-    const fillColor=own?userColor:'#ff3333';
+    let fillColor=own?userColor:'#ff3333';
     const team=(typeof TEAMS!=='undefined')?TEAMS.find(tm=>tm.id===t.owner_team):null;
     const tteMin=h3MinsToOne(t.defense,t.updated_at);
     const isBot=h3IsBot(t.owner);
     const ally=!own&&t.owner_team&&t.owner_team===userTeam;
     // Ampel-Rand: bei eigenem Gebiet die eigene Farbe, sonst nach Erober-Schwierigkeit.
-    const borderCol=own?userColor:h3AmpelColor(def);
+    let borderCol=own?userColor:h3AmpelColor(def);
+    // Fraktionskarte: Gebiete nach Fraktionsfarbe einfärben (grau = ohne Fraktion).
+    if(window._fraktMapMode){fillColor=team?team.color:(own?userColor:'#8891a0');borderCol=fillColor;}
     const relLine=(own
       ?'🔵 Dein Gebiet'
       :(ally?'🤝 Verbündet':'⚔️ Feindliches Gebiet')+(isBot?' · 🤖 Bot':''))
@@ -7444,27 +7447,42 @@ window.initApp=function(){
   /* Map panel */
   $('mapPanelArrow')?.addEventListener('click',toggleMapPanel);
   $('panelLocateBtn')?.addEventListener('click',()=>{if(mapL){mapL.locate({setView:true,maxZoom:17,enableHighAccuracy:true});toast('📍 Standort wird ermittelt…')}});
-  $('panelTerrBtn')?.addEventListener('click',function(){this.classList.toggle('active');if(this.classList.contains('active'))terrLayer&&mapL.addLayer(terrLayer);else terrLayer&&mapL.removeLayer(terrLayer);});
+  /* Karten-Panel-Umschalter: die Gebiete werden als H3-Hexagone in `h3Layer`
+     gerendert (nicht mehr im alten `terrLayer`). Die Umschalter wirken daher auf
+     `h3Layer` bzw. auf Render-Flags, die `renderH3Territories()` auswertet. */
+  $('panelTerrBtn')?.addEventListener('click',function(){
+    this.classList.toggle('active');
+    const on=this.classList.contains('active');
+    if(on){h3Layer&&mapL.addLayer(h3Layer);terrLayer&&mapL.addLayer(terrLayer);}
+    else{h3Layer&&mapL.removeLayer(h3Layer);terrLayer&&mapL.removeLayer(terrLayer);}
+    toast(on?'🗺️ Gebiete eingeblendet':'Gebiete ausgeblendet');
+  });
   $('panelOwnTerrBtn')?.addEventListener('click',function(){
     this.classList.toggle('active');
-    const showOwn=this.classList.contains('active');
-    if(showOwn){
-      const myTerrs=territories.filter(t=>t.owner===userId);
-      if(myTerrs.length&&mapL){
-        const pts=myTerrs.flatMap(t=>{try{const g=t.polygon?.features?.[0]?.geometry||t.polygon?.geometry||t.polygon;return turf.coordAll(turf.feature(g)).map(c=>[c[1],c[0]]);}catch{return [];}});
-        if(pts.length)mapL.fitBounds(pts,{padding:[30,30]});
-      }
-      toast('📍 '+territories.filter(t=>t.owner===userId).length+' eigene Gebiete');
-    }
+    window._showOwnOnly=this.classList.contains('active');
+    renderH3Territories();
+    if(window._showOwnOnly){
+      const mine=h3Territories.filter(t=>t.owner===userId);
+      const pts=[];
+      mine.forEach(t=>(t.cells||[]).forEach(c=>{try{const ll=h3.cellToLatLng(c);pts.push([ll[0],ll[1]]);}catch(e){}}));
+      if(pts.length&&mapL)mapL.fitBounds(pts,{padding:[40,40]});
+      toast('📍 Nur eigene Gebiete · '+mine.length);
+    }else{toast('Alle Gebiete sichtbar');}
   });
   $('panelFraktBtn')?.addEventListener('click',function(){
     this.classList.toggle('active');
-    const fraktMode=this.classList.contains('active');
-    window._fraktMapMode=fraktMode;
-    renderTerr();
-    toast(fraktMode?'🏳️ Fraktionskarte aktiv':'Normale Kartenansicht');
+    window._fraktMapMode=this.classList.contains('active');
+    renderH3Territories();
+    if(typeof renderTerr==='function')renderTerr();
+    toast(window._fraktMapMode?'🏳️ Fraktionskarte aktiv (Farbe = Fraktion)':'Normale Kartenansicht');
   });
-  $('panelLmBtn')?.addEventListener('click',function(){this.classList.toggle('active');if(this.classList.contains('active'))landmarkLayer&&mapL.addLayer(landmarkLayer);else landmarkLayer&&mapL.removeLayer(landmarkLayer);});
+  $('panelLmBtn')?.addEventListener('click',function(){
+    this.classList.toggle('active');
+    const on=this.classList.contains('active');
+    if(on)landmarkLayer&&mapL.addLayer(landmarkLayer);else landmarkLayer&&mapL.removeLayer(landmarkLayer);
+    const n=(landmarkLayer&&landmarkLayer.getLayers)?landmarkLayer.getLayers().length:0;
+    toast(on?(n?'⭐ Wahrzeichen eingeblendet':'⭐ Wahrzeichen an – noch keine in der Nähe'):'Wahrzeichen ausgeblendet');
+  });
   /* Panel-Lauf-Buttons */
   $('panelStartBtn')?.addEventListener('click',()=>{startRun();});
   $('panelPauseBtn2')?.addEventListener('click',()=>{isPaused?resumeRun():pauseRun();});
