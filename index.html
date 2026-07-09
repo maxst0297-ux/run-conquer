@@ -563,6 +563,11 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 /* ═══ CONTESTED ZONE ═══ */
 .contested-pulse{animation:conPulse 2.5s infinite}
 @keyframes conPulse{0%,100%{opacity:.9;r:18}50%{opacity:.4;r:24}}
+/* Hervorgehobenes Revier: langsames Pulsieren + Glow, damit die Gebiete optisch
+   „heraustreten". Läuft dauerhaft, bis clearOwnerHighlight() die Klasse entfernt. */
+@keyframes terrHi{0%,100%{fill-opacity:.30;filter:drop-shadow(0 0 3px rgba(255,255,255,.6))}50%{fill-opacity:.82;filter:drop-shadow(0 0 12px rgba(255,255,255,1))}}
+.terr-hi{animation:terrHi 1.9s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.terr-hi{animation:none;fill-opacity:.7;filter:drop-shadow(0 0 8px rgba(255,255,255,.9))}}
 /* ═══ INVASION ("The Breach") ═══ */
 .inv-marker{display:flex;flex-direction:column;align-items:center;gap:2px;pointer-events:none}
 .inv-badge{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;background:rgba(255,40,60,.22);border:2px solid #ff283c;box-shadow:0 0 14px #ff283c88;animation:invPulse 1.2s ease-in-out infinite}
@@ -716,10 +721,10 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 /* Zweiter runder FAB: Pause (gleiche Form wie Stop), erscheint neben dem Stop-FAB
    während des Laufs. Beide werden dann als Paar zentriert (je 40px versetzt). */
 .nav-fab-pause{display:none;align-items:center;justify-content:center;background:var(--primary);color:var(--bg);box-shadow:0 0 22px rgba(var(--primary-rgb),.5)}
-.bottom-nav.run-active #navFab{transform:translateX(calc(-50% + 40px))}
-.bottom-nav.run-active #navFab:active{transform:translateX(calc(-50% + 40px)) scale(.95)}
-.bottom-nav.run-active .nav-fab-pause{display:flex;transform:translateX(calc(-50% - 40px))}
-.bottom-nav.run-active .nav-fab-pause:active{transform:translateX(calc(-50% - 40px)) scale(.95)}
+.bottom-nav.run-active #navFab{transform:translateX(calc(-50% + 34px)) translateY(-10px)}
+.bottom-nav.run-active #navFab:active{transform:translateX(calc(-50% + 34px)) translateY(-10px) scale(.95)}
+.bottom-nav.run-active .nav-fab-pause{display:flex;transform:translateX(calc(-50% - 34px)) translateY(-10px)}
+.bottom-nav.run-active .nav-fab-pause:active{transform:translateX(calc(-50% - 34px)) translateY(-10px) scale(.95)}
 
 /* ═══ animate-ui Icons — Vanilla-Port (Inline-SVG + Stroke-Draw) ═══
    Portiert die animate-ui-Icons (React/motion) als reine SVGs. Die "default"-
@@ -1807,7 +1812,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v111';
+const APP_VERSION='v112';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3633,7 +3638,7 @@ function initMap(){
   setTimeout(loadH3Territories,900);
   /* Bots beiläufig anstoßen: nimmt (server-gelockt, meist No-Op) vernachlässigte
      Gebiete ein; danach die Karte mit dem neuen Stand aktualisieren. */
-  setTimeout(()=>{try{sb&&sb.functions.invoke('bot_tick',{}).then(r=>{if(r&&r.data&&r.data.actions&&r.data.actions.length)loadH3Territories();}).catch(()=>{});}catch(e){}},2500);
+  setTimeout(triggerBotTick,2500);
   setTimeout(loadLandmarks,800);
   mapL.locate({setView:true,maxZoom:16,enableHighAccuracy:true});
   mapL.on('locationfound',e=>{
@@ -3649,7 +3654,8 @@ function initMap(){
      der Nutzer im Consent-Dialog zustimmt bzw. einen Lauf startet. */
   if(localStorage.getItem('rc_gps_consent')==='1')ensurePersistentGpsWatch();
   mapL.on('moveend',debounce(loadLandmarks,1500));
-  mapL.on('click',closeDrawer);
+  mapL.on('click',()=>{closeDrawer();clearOwnerHighlight();});
+  mapL.on('popupclose',clearOwnerHighlight); // Revier-Hervorhebung endet beim Verlassen der Gebiets-Ansicht
 }
 function isLightTheme(){const t=getActiveTheme();return t==='theme-stone'||t==='theme-petrol';}
 function setTiles(){
@@ -3844,32 +3850,32 @@ function h3MinsToOne(defense,updatedAt){return Math.max(0,(h3Decayed(defense,upd
 function h3AmpelColor(def){return def<50?'#22c55e':(def<150?'#eab308':'#ef4444');}
 /* Bots haben feste UUIDs (b0700000-…) — so ohne DB-Join erkennbar. */
 function h3IsBot(owner){return typeof owner==='string'&&owner.slice(0,9)==='b0700000-';}
-/* Klick auf ein Gebiet hebt kurz ALLE Gebiete desselben Besitzers hervor
-   (blinkt weiß auf), damit man das gesamte Revier eines Spielers auf einen
-   Blick sieht. Der Basis-Stil jedes Polygons wird gemerkt und danach exakt
+/* Klick auf ein Gebiet hebt ALLE Gebiete desselben Besitzers dauerhaft hervor:
+   sie treten mit weißem Rand + pulsierendem Glow „hervor" (langsame Animation)
+   und bleiben so, bis man die Ansicht verlässt (Popup schließen / auf die Karte
+   tippen / anderes Gebiet wählen). Der Basis-Stil wird gemerkt und exakt
    wiederhergestellt. */
-let _ownerPolys={},_blinkTimers=[];
+let _ownerPolys={},_hiPolys=[];
+function clearOwnerHighlight(){
+  _hiPolys.forEach(p=>{try{if(p._path)p._path.classList.remove('terr-hi');if(p._baseStyle)p.setStyle(p._baseStyle);}catch(e){}});
+  _hiPolys=[];
+}
 function highlightOwnerTerr(owner){
-  _blinkTimers.forEach(clearInterval);_blinkTimers=[];
-  // evtl. noch hervorgehobene Gebiete zuerst auf den Basis-Stil zurücksetzen
-  Object.keys(_ownerPolys).forEach(o=>_ownerPolys[o].forEach(p=>{try{if(p._baseStyle)p.setStyle(p._baseStyle);}catch(e){}}));
-  const polys=_ownerPolys[owner]||[];
-  polys.forEach(p=>{
-    const base=p._baseStyle||{fillOpacity:.2,weight:2,color:'#888'};
-    let n=0;
-    const iv=setInterval(()=>{
-      n++;const hi=n%2===1;
-      try{p.setStyle(hi?{fillOpacity:Math.min(.85,(base.fillOpacity||.2)+.45),weight:4,color:'#ffffff'}:base);}
-      catch(e){clearInterval(iv);return;}
-      if(n>=6){clearInterval(iv);try{p.setStyle(base);}catch(e){}}
-    },170);
-    _blinkTimers.push(iv);
+  clearOwnerHighlight();
+  (_ownerPolys[owner]||[]).forEach(p=>{
+    try{
+      const base=p._baseStyle||{weight:2};
+      p.setStyle({weight:Math.max(3,(base.weight||2)+1.5),color:'#ffffff'});
+      p.bringToFront&&p.bringToFront();
+      if(p._path)p._path.classList.add('terr-hi');
+      _hiPolys.push(p);
+    }catch(e){}
   });
 }
 function renderH3Territories(){
   if(!h3Layer||!h3Ready())return;
   h3Layer.clearLayers();
-  _blinkTimers.forEach(clearInterval);_blinkTimers=[];_ownerPolys={};
+  clearOwnerHighlight();_ownerPolys={};
   const z=mapL?mapL.getZoom():15;
   const aggRes=z<12?7:(z<14?9:10); // grob bei weitem Zoom, exakt beim Reinzoomen
   h3Territories.forEach(t=>{
@@ -3921,6 +3927,10 @@ function renderH3Territories(){
   });
 }
 window.loadH3Territories=loadH3Territories;
+/* Bots serverseitig anstoßen (server-gelockt, meist No-Op). Wird beim App-Start
+   UND nach jedem Lauf aufgerufen, damit die Welt sichtbar reagiert, wenn der
+   Spieler neue Gebiete erobert. Voraussetzung: Edge Function bot_tick deployt. */
+function triggerBotTick(){try{sb&&sb.functions.invoke('bot_tick',{}).then(r=>{if(r&&r.data&&r.data.actions&&r.data.actions.length)loadH3Territories();}).catch(()=>{});}catch(e){}}
 function updateStatsUI(){
   const mine=territories.filter(t=>t.owner===userId);
   const area=mine.reduce((s,t)=>s+(t.area||0),0);
@@ -4316,6 +4326,7 @@ async function finalizeRun(elapsed){
     lastRunDate=today;
   })();
   statusTxt.textContent='Bereit';save();updateUI();showPostRun(rec);
+  setTimeout(triggerBotTick,1500); // Bots reagieren auf frisch eroberte Gebiete
   processSyncQueue(true);
   const lvAfter=getLevel(points);
   if(lvAfter>lvBefore)setTimeout(()=>showLevelUp(lvAfter,getLvlName(points)),1800);
