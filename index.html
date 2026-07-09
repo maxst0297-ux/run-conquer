@@ -1219,10 +1219,11 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <div class="goal-card">
         <div class="goal-top">
           <span class="goal-label"><i class="fas fa-bullseye" style="margin-right:4px"></i>Wochenziel</span>
-          <span class="goal-val" id="goalVal">0 / 30 km</span>
+          <span style="display:flex;align-items:center;gap:8px"><span class="goal-val" id="goalVal">0 / 30 km</span><button onclick="editGoals()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.82rem;padding:2px 4px;touch-action:manipulation" title="Ziele bearbeiten">✏️</button></span>
         </div>
         <div class="goal-bar-bg"><div class="goal-bar" id="goalBar" style="width:0%"></div></div>
         <div class="goal-days" id="goalDays"></div>
+        <div id="dailyGoalLine" style="font-size:.7rem;color:var(--muted);margin-top:8px"></div>
       </div>
 
       <!-- Stat grid: total km · territories · streak -->
@@ -1713,7 +1714,8 @@ const BOTS=[
   {id:'bot_ultra',name:'Sturmbrecher',avatar:'⚡',color:'#10b981',pts:2100,totalKm:41.5,streak:5,conquered:8},
 ];
 const BOT_UUIDS={bot_speed:'00000000-0000-0000-0000-0000000000b1',bot_mtn:'00000000-0000-0000-0000-0000000000b2',bot_night:'00000000-0000-0000-0000-0000000000b3',bot_city:'00000000-0000-0000-0000-0000000000b4',bot_ultra:'00000000-0000-0000-0000-0000000000b5'};
-const WEEKLY_GOAL=10;
+let WEEKLY_GOAL=10;   // Wochenziel in km (vom Nutzer einstellbar)
+let DAILY_GOAL_KM=3;  // Tagesziel in km (vom Nutzer einstellbar)
 /* ↓ Strava Developer App Client ID — einmalig auf developers.strava.com registrieren (kostenlos) */
 const STRAVA_CLIENT_ID='';
 const TEAMS=[
@@ -1847,7 +1849,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v119';
+const APP_VERSION='v120';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2341,7 +2343,7 @@ function applyTheme(name){
 }
 function saveProfile(){
   const theme=getActiveTheme();
-  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,friends,streakUnlocks,equipped,userBio,profilePublic,pushEnabled,lastNameChangeDate}));
+  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,friends,streakUnlocks,equipped,userBio,profilePublic,pushEnabled,lastNameChangeDate,WEEKLY_GOAL,DAILY_GOAL_KM}));
   $('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;
   const hi=$('hdrHi');if(hi)hi.textContent='Hallo, '+(playerName||'Läufer');
   // Update theme-color meta for Android status bar
@@ -2350,7 +2352,7 @@ function saveProfile(){
   syncProfileDebounced();
 }
 function loadProfile(){
-  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';friends=p.friends||[];streakUnlocks=p.streakUnlocks||[];equipped=p.equipped||{};userBio=p.userBio||'';profilePublic=p.profilePublic!==false;pushEnabled=!!p.pushEnabled;lastNameChangeDate=p.lastNameChangeDate||'';const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
+  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';friends=p.friends||[];streakUnlocks=p.streakUnlocks||[];equipped=p.equipped||{};userBio=p.userBio||'';profilePublic=p.profilePublic!==false;pushEnabled=!!p.pushEnabled;lastNameChangeDate=p.lastNameChangeDate||'';if(p.WEEKLY_GOAL>0)WEEKLY_GOAL=p.WEEKLY_GOAL;if(p.DAILY_GOAL_KM>0)DAILY_GOAL_KM=p.DAILY_GOAL_KM;const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
   return false;
 }
 /* ── STREAK-BELOHNUNGEN (Inventar) ──────────────────────────────────────────
@@ -3834,7 +3836,10 @@ async function loadLandmarks(){
     const r=await fetch(`${API_BASE}/api/landmarks?bbox=${encodeURIComponent(bb)}`);
     if(r.ok){
       const d=await r.json();
-      if(Array.isArray(d.landmarks)){
+      /* Nur übernehmen, wenn der Cache tatsächlich Wahrzeichen liefert. Kommt eine
+         LEERE Liste zurück (Cache noch nicht befüllt), NICHT abbrechen, sondern
+         unten direkt Overpass abfragen – sonst bliebe die Karte dauerhaft leer. */
+      if(Array.isArray(d.landmarks)&&d.landmarks.length){
         landmarks=d.landmarks;
         renderLandmarks();
         return;
@@ -4082,8 +4087,8 @@ function renderH3Territories(){
     try{mp=h3.cellsToMultiPolygon(renderCells,false);}catch(e){return;}
     mp.forEach(poly=>{
       const pl=L.polygon(poly,{color:borderCol,weight:rstyle.weight,dashArray:rstyle.dash||undefined,fillColor,
-        fillOpacity:own?Math.max(.18,strPct*.4):Math.max(.1,strPct*.28),
-        opacity:Math.max(.7,strPct*.9)})
+        fillOpacity:window._fraktMapMode?0.55:(own?Math.max(.18,strPct*.4):Math.max(.1,strPct*.28)),
+        opacity:window._fraktMapMode?0.95:Math.max(.7,strPct*.9)})
         .bindPopup(`<div style="min-width:194px;border:2px solid ${borderCol};border-radius:10px;padding:9px 11px">
           <div style="font-size:.72rem;font-weight:700;margin-bottom:7px">${relLine}</div>
           <div style="display:flex;flex-direction:column;gap:5px">
@@ -4478,8 +4483,13 @@ async function finalizeRun(elapsed){
   const totalPts=Math.round(res.pts+kmXP);
   const lvBefore=getLevel(prevPts);
   points+=totalPts;
-  if(useBoost)toast(`⚡ Energie-Boost aktiv (+10% Angriff) · noch ${energy}/${CFG.ENERGY_MAX} Boosts`);
-  else if(boosted&&energy>0)toast('⚡ Boost war bereit, blieb aber ungenutzt – er wirkt nur beim Angriff auf ein Feindgebiet.');
+  /* Boost-Verbrauch clientseitig & verlässlich: war der Boost aktiviert und wurde
+     ein Gebiet erobert/beansprucht, wird 1 Energie abgebucht – unabhängig davon,
+     ob die Edge Function die Energie server-seitig bucht. */
+  const boostConsumed=boosted&&energy>0&&res.conquered;
+  if(boostConsumed){energy=Math.max(0,energy-1);save();}
+  if(boostConsumed||useBoost)toast(`⚡ Energie-Boost eingesetzt (+10% Angriff) · noch ${energy}/${CFG.ENERGY_MAX} Boosts`);
+  else if(boosted&&energy>0)toast('⚡ Boost war bereit, blieb aber ungenutzt – er wirkt nur beim Erobern/Beanspruchen eines Gebiets.');
   else if(streakDays>1)toast(`🔥 Streak ×${streakMul.toFixed(1)} · +${kmXP} km-XP`);
   const kcal=calcKcal(dist,elapsed);
   const rec={id:(crypto.randomUUID?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2))),synced:false,date:Date.now(),distance:dist,area,pts:res.pts,path:path.filter((_,i)=>i%3===0),conquered:res.conquered,defended:res.defended,duration:elapsed,gap,kcal,avgHR:heartRate,splits:[...kmSplits]};
@@ -4585,7 +4595,10 @@ async function processConquest(np,area,d,boosted=false,isImport=false,durationS=
       _runEvents.push({type:'attacked',damage:ev.damage||0});
     }
   });
-  if(typeof data.energy==='number')energy=data.energy; // Energie ist server-autoritativ
+  /* Energie wird clientseitig verbraucht (siehe finalizeRun). Server-Wert nur
+     übernehmen, wenn er NIEDRIGER ist (falls die Edge Function doch abbucht) –
+     niemals wieder hochsetzen, sonst „verbraucht sich nichts". */
+  if(typeof data.energy==='number'&&data.energy<energy)energy=data.energy;
   loadH3Territories&&loadH3Territories(); // Karte + Stats mit neuem Stand aktualisieren
   return{pts:data.points||0,conquered,defended,boostUsed:!!data.boosted};
 }
@@ -4718,11 +4731,39 @@ function renderGarminHealth(data){
 function getWeeklyKm(){const now=new Date(),dow=(now.getDay()+6)%7,ws=new Date(now);ws.setDate(now.getDate()-dow);ws.setHours(0,0,0,0);return history.filter(r=>r.date>=ws.getTime()).reduce((s,r)=>s+r.distance/1000,0)}
 function xpForKm(km,totalKmThisWeek){const baseXP=km*10;if(totalKmThisWeek<20)return Math.round(baseXP*1.0);if(totalKmThisWeek<50)return Math.round(baseXP*0.7);else return Math.round(baseXP*0.4);}
 function isNewcomer(){return Date.now()-registeredAt<14*24*3600000;}
+/* Tages- und Wochenziel selbst festlegen. */
+function editGoals(){
+  document.getElementById('goalsEditOv')?.remove();
+  const ov=document.createElement('div');ov.id='goalsEditOv';
+  ov.style.cssText='position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.innerHTML=`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:20px;width:100%;max-width:340px">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:1px;margin-bottom:12px">🎯 Ziele festlegen</div>
+    <label style="font-size:.72rem;color:var(--muted)">Wochenziel (km)</label>
+    <input id="wGoalInput" type="number" min="1" max="1000" value="${WEEKLY_GOAL}" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px;color:var(--text);font-size:1rem;margin:4px 0 12px;box-sizing:border-box">
+    <label style="font-size:.72rem;color:var(--muted)">Tagesziel (km)</label>
+    <input id="dGoalInput" type="number" min="0.5" max="200" step="0.5" value="${DAILY_GOAL_KM}" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px;color:var(--text);font-size:1rem;margin:4px 0 16px;box-sizing:border-box">
+    <div style="display:flex;gap:8px">
+      <button id="gCancel" style="flex:1;background:none;border:1px solid var(--border);color:var(--muted);border-radius:12px;padding:11px;cursor:pointer">Abbrechen</button>
+      <button id="gSave" class="btn btn-p" style="flex:1">Speichern</button>
+    </div></div>`;
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+  document.body.appendChild(ov);
+  document.getElementById('gCancel').onclick=()=>ov.remove();
+  document.getElementById('gSave').onclick=()=>{
+    const w=parseFloat(document.getElementById('wGoalInput').value),d=parseFloat(document.getElementById('dGoalInput').value);
+    if(w>0)WEEKLY_GOAL=Math.min(1000,w);
+    if(d>0)DAILY_GOAL_KM=Math.min(200,d);
+    saveProfile();renderGoal();toast('🎯 Ziele gespeichert');ov.remove();
+  };
+}
+window.editGoals=editGoals;
 function renderGoal(){
   const wkm=getWeeklyKm(),pct=Math.min(100,(wkm/WEEKLY_GOAL)*100);
   const rem=(WEEKLY_GOAL-wkm).toFixed(1);
   $('goalVal').textContent=wkm===0?`Noch ${WEEKLY_GOAL} km bis Wochenziel`:wkm>=WEEKLY_GOAL?`🎉 Wochenziel! ${wkm.toFixed(1)} km`:`Noch ${rem} km bis Wochenziel`;
   $('goalBar').style.width=pct+'%';
+  const _ts=new Date().toDateString();const _todayKm=history.filter(r=>new Date(r.date).toDateString()===_ts).reduce((s,r)=>s+r.distance/1000,0);
+  const _dg=$('dailyGoalLine');if(_dg)_dg.textContent=`🎯 Tagesziel: ${_todayKm.toFixed(1)} / ${DAILY_GOAL_KM} km`+(_todayKm>=DAILY_GOAL_KM?' ✅':'');
   const days=['Mo','Di','Mi','Do','Fr','Sa','So'],today=(new Date().getDay()+6)%7;
   const maxD=Math.max(1,...days.map((_,i)=>{const d=new Date();d.setDate(d.getDate()-today+i);d.setHours(0,0,0,0);return history.filter(r=>new Date(r.date).toDateString()===d.toDateString()).reduce((s,r)=>s+r.distance/1000,0)}));
   $('goalDays').innerHTML=days.map((_,i)=>{const d=new Date();d.setDate(d.getDate()-today+i);d.setHours(0,0,0,0);const km=history.filter(r=>new Date(r.date).toDateString()===d.toDateString()).reduce((s,r)=>s+r.distance/1000,0),h=Math.round((km/maxD)*100)||0,act=i===today;return`<div class="goal-day"><div class="goal-day-bar" style="border:${act?'1px solid var(--primary)':'none'}"><div class="goal-day-fill" style="height:${h}%;opacity:${act?1:.5}"></div></div><div class="goal-day-lbl" style="color:${act?'var(--primary)':'var(--muted)'}">${days[i]}</div></div>`}).join('');
@@ -5355,9 +5396,15 @@ window.joinClubFromDisc=function(code,name){
 };
 /* COMMUNITY */
 function updateCommunity(){
-  const staticNews=[{icon:'📰',txt:'Neuer Wochenrekord gebrochen!',t:'vor 2 Std.'},{icon:'🏆',txt:'Kampf um den Stadtpark!',t:'vor 1 Std.'}];
+  /* Echte, dynamische News statt Fake-Meldungen: aus tatsächlichem Spielstand. */
   const liveNews=botActivities.slice(0,4).map(a=>{const diff=Math.round((Date.now()-a.time)/60000);const t=diff<1?'gerade':diff<60?`vor ${diff} Min.`:`vor ${Math.floor(diff/60)} Std.`;return{icon:'🏃',txt:a.text,t};});
-  $('newsList').innerHTML=[...liveNews,...staticNews].slice(0,5).map(n=>`<div class="list-row"><span class="row-icon">${n.icon}</span><span class="row-txt">${n.txt}</span><span class="row-meta">${n.t}</span></div>`).join('');
+  const dynNews=[];
+  if(window._factionLeaderId){const lt=TEAMS.find(t=>t.id===window._factionLeaderId);if(lt)dynNews.push({icon:lt.icon,txt:`${lt.name} führt den Fraktionskrieg an`,t:'jetzt'});}
+  const _myTerr=(h3Territories||[]).filter(t=>t.owner===userId).length;
+  if(_myTerr>0)dynNews.push({icon:'🗺️',txt:`Du hältst aktuell ${_myTerr} ${_myTerr===1?'Gebiet':'Gebiete'}`,t:'jetzt'});
+  if(streakDays>1)dynNews.push({icon:'🔥',txt:`${streakDays} Tage Streak – bleib dran!`,t:'jetzt'});
+  const _news=[...liveNews,...dynNews].slice(0,5);
+  $('newsList').innerHTML=_news.length?_news.map(n=>`<div class="list-row"><span class="row-icon">${n.icon}</span><span class="row-txt">${esc(n.txt)}</span><span class="row-meta">${n.t}</span></div>`).join(''):'<div class="muted" style="padding:8px;font-size:.78rem">Noch keine Aktivität – starte einen Lauf!</div>';
   $('recordsList').innerHTML=[['🏃','Längster Lauf',fmtDist(Math.max(0,...history.map(r=>r.distance)))],['⚔️','Gebiete erobert',totalConquered],['📐','Größtes Gebiet',Math.round(Math.max(0,...territories.filter(t=>t.owner===userId).map(t=>t.area||0)))+' m²'],['🔥','Streak',streakDays+' Tage']].map(([i,l,v])=>`<div class="list-row"><span class="row-icon">${i}</span><span class="row-txt">${l}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary)">${v}</span></div>`).join('');
   renderEvents();
   /* renderSocialFeed/renderPlayerDiscovery NUR im .then, wenn der Follow-Status
@@ -5374,14 +5421,24 @@ function updateCommunity(){
   renderClubDiscovery();
   // Fraktion-Rangliste
   renderFactionWar();
-  $('bigTerrList').innerHTML=[...territories].sort((a,b)=>(b.area||0)-(a.area||0)).slice(0,5).map(t=>`<div class="list-row"><div class="terr-dot" style="background:${t.owner===userId?userColor:t.color}"></div><span class="row-txt">${esc(t.customName||'Unbenannt')}</span><span class="muted" style="font-size:.72rem">${Math.round(t.area||0)} m²</span><span class="terr-owner" style="color:${t.owner===userId?'var(--primary)':'var(--red)'}">${t.owner===userId?'Deins':'Feind'}</span></div>`).join('')||'<div class="muted" style="padding:8px">Keine Gebiete</div>';
-  if(userMarker){
-    const pos=userMarker.getLatLng();
-    const near=territories.map(t=>{try{const c=turf.centroid(turf.feature(t.polygon));return{...t,d:turf.distance(turf.point([pos.lng,pos.lat]),c,{units:'meters'})};}catch(e){return{...t,d:99999}}}).sort((a,b)=>a.d-b.d).slice(0,6);
-    $('nearTerrList').innerHTML=near.map(t=>`<div class="list-row" style="cursor:pointer" onclick="window.flyTo('${t.id}')"><div class="terr-dot" style="background:${t.owner===userId?userColor:t.owner.startsWith('rival')?'var(--red)':'var(--muted)'}"></div><span class="row-txt">${esc(t.customName||'Unbenannt')}</span><span class="muted" style="font-size:.72rem">${Math.round(t.d)} m</span><span class="terr-owner" style="color:${t.owner===userId?'var(--primary)':t.owner.startsWith('rival')?'var(--red)':'var(--muted)'}">${t.owner===userId?'Deins':t.owner.startsWith('rival')?'Feind':'Neutral'}</span><button class="terr-fly">→ Karte</button></div>`).join('')||'<div class="muted" style="padding:8px">Keine in der Nähe</div>';
-  }
+  /* Größte Gebiete: aus h3Territories (die haben Zellen). Größe = Zellenzahl. */
+  const _bt=[...(h3Territories||[])].sort((a,b)=>((b.cells?b.cells.length:0)-(a.cells?a.cells.length:0))).slice(0,5);
+  $('bigTerrList').innerHTML=_bt.map(t=>{const own=t.owner===userId;const bot=h3IsBot(t.owner);const n=t.cells?t.cells.length:0;return `<div class="list-row" style="cursor:pointer" onclick="window.flyTo('${t.id}')"><div class="terr-dot" style="background:${own?userColor:(t.owner_color||'#ff6666')}"></div><span class="row-txt">${esc(territoryName(t))}</span><span class="muted" style="font-size:.72rem">${n} ${n===1?'Zelle':'Zellen'}</span><span class="terr-owner" style="color:${own?'var(--primary)':'var(--red)'}">${own?'Deins':(bot?'Bot':'Feind')}</span></div>`;}).join('')||'<div class="muted" style="padding:8px">Keine Gebiete</div>';
+  /* Nächste Gebiete: Zentroid je Gebiet aus H3-Zellen, Distanz zum Standort. */
+  const _loc=userMarker?userMarker.getLatLng():(lastKnownLoc&&typeof lastKnownLoc.lat==='number'?{lat:lastKnownLoc.lat,lng:lastKnownLoc.lng}:null);
+  if(_loc){
+    const near=(h3Territories||[]).map(t=>{const c=_terrCentroidLL(t.cells);if(!c)return null;let d;try{d=turf.distance(turf.point([_loc.lng,_loc.lat]),turf.point([c[1],c[0]]),{units:'meters'});}catch(e){return null;}return{...t,_d:d};}).filter(Boolean).sort((a,b)=>a._d-b._d).slice(0,6);
+    $('nearTerrList').innerHTML=near.map(t=>{const own=t.owner===userId;const bot=h3IsBot(t.owner);const col=own?userColor:(bot?'var(--muted)':'var(--red)');return `<div class="list-row" style="cursor:pointer" onclick="window.flyTo('${t.id}')"><div class="terr-dot" style="background:${col}"></div><span class="row-txt">${esc(territoryName(t))}</span><span class="muted" style="font-size:.72rem">${_d2label(t._d)}</span><span class="terr-owner" style="color:${col}">${own?'Deins':(bot?'Bot':'Feind')}</span><button class="terr-fly">→ Karte</button></div>`;}).join('')||'<div class="muted" style="padding:8px">Keine in der Nähe</div>';
+  } else { $('nearTerrList').innerHTML='<div class="muted" style="padding:8px">Standort aktivieren, um Gebiete in der Nähe zu sehen</div>'; }
 }
-window.flyTo=function(id){const t=territories.find(t=>t.id===id);if(!t)return;try{const c=turf.centroid(turf.feature(t.polygon)).geometry.coordinates;mapL.setView([c[1],c[0]],16);setView('map');}catch(e){}};
+function _d2label(m){return m<1000?Math.round(m)+' m':(m/1000).toFixed(1)+' km';}
+window.flyTo=function(id){
+  const t=(h3Territories||[]).find(x=>x.id===id)||territories.find(x=>x.id===id);
+  if(!t)return;
+  let c=t.cells?_terrCentroidLL(t.cells):null;
+  if(!c&&t.polygon){try{const g=turf.centroid(turf.feature(t.polygon)).geometry.coordinates;c=[g[1],g[0]];}catch(e){}}
+  if(c&&mapL){mapL.setView(c,16);setView('map');}
+};
 window.openRename=function(id){closeAllModals();selectedTerrId=id;const t=territories.find(t=>t.id===id);const inp=$('renameInput');inp.value=(t&&(t.customName||t.name))||'';inp.placeholder=t?territoryName(t):'Name des Gebiets';$('renameModal').style.display='flex'};
 
 /* ── LIKE / ATTACK SYSTEM ── */
@@ -5529,6 +5586,8 @@ async function renderFactionWar(){
   stats.sort((a,b)=>b.total-a.total);
   const grand=stats.reduce((s,t)=>s+t.total,0)||1;
   const leader=stats[0];
+  /* Führende Fraktion global merken -> Mitglieder bekommen ein Extra-Icon im Profil. */
+  window._factionLeaderId=(leader&&leader.total>0)?leader.id:null;
   el.innerHTML=(isLive?'':'<div style="font-size:.62rem;color:var(--muted);margin-bottom:6px">📡 Offline – lokale Schätzung</div>')
     +stats.map((tm,i)=>{
       const share=Math.round((tm.total/grand)*100);
@@ -6878,6 +6937,7 @@ function updateProfile(){
     badgeDiv.innerHTML=`<span class="ruler-badge">👑 ${title}</span>`;
     const _st=equippedTitle();if(_st)badgeDiv.innerHTML+=`<span class="team-badge" style="background:rgba(var(--primary-rgb),.15);color:var(--primary);border:1px solid rgba(var(--primary-rgb),.4)">⭐ ${esc(_st)}</span>`;
     if(userTeam){const tm=TEAMS.find(t=>t.id===userTeam);if(tm)badgeDiv.innerHTML+=`<span class="team-badge" style="background:${tm.color}22;color:${tm.color};border:1px solid ${tm.color}44">${tm.icon} ${tm.name}</span>`;}
+    if(userTeam&&window._factionLeaderId===userTeam)badgeDiv.innerHTML+=`<span class="team-badge" style="background:rgba(255,215,0,.15);color:#FFD700;border:1px solid rgba(255,215,0,.45)">👑 Führende Fraktion</span>`;
     if(userClub)badgeDiv.innerHTML+=`<span class="club-badge">${esc(userClub.icon)} ${esc(userClub.name)}</span>`;
     sinceEl.insertAdjacentElement('afterend',badgeDiv);
   }
