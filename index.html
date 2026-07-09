@@ -1847,7 +1847,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v117';
+const APP_VERSION='v118';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -5759,6 +5759,11 @@ function renderSettingsTab(tab){
       {id:'theme-petrol',name:'Petrol Sand',dark:false,bg:'#F4E9D4',accent:'#326586',desc:'Hell · Blau & Sand'}
     ];
     body.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${themes.map(th=>`<button class="theme-pick-btn" data-tid="${th.id}" style="padding:14px 10px;border-radius:14px;border:2px solid ${cur===th.id?th.accent:'var(--border)'};background:${th.bg};cursor:pointer;transition:.2s;display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left"><div style="display:flex;gap:6px;align-items:center"><div style="width:18px;height:18px;border-radius:50%;background:${th.accent};box-shadow:0 0 8px ${th.accent}44"></div>${cur===th.id?'<div style="font-size:.6rem;background:'+th.accent+'33;color:'+th.accent+';padding:1px 7px;border-radius:10px;font-weight:700">AKTIV</div>':''}</div><div style="font-weight:700;font-size:.82rem;color:${th.dark?'#fff':th.bg==='#F4E9D4'?'#1a2832':'#1a2e25'}">${th.name}</div><div style="font-size:.6rem;color:${th.dark?'rgba(255,255,255,.5)':'rgba(0,0,0,.4)'}">${th.desc}</div></button>`).join('')}</div>`;
+    /* Gebietsfarbe wählen: Standard-Palette + über Belohnungen freigeschaltete Farben.
+       Setzt userColor -> färbt Hexagone, Standort-Marker und Profil. */
+    const _allCols=[...COLORS];streakUnlocks.forEach(id=>{const r=REWARD_BY_ID[id];if(r&&r.type==='color'&&!_allCols.includes(r.value))_allCols.push(r.value);});
+    body.insertAdjacentHTML('afterbegin',`<div style="margin-bottom:18px"><div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🎨 Gebietsfarbe</div><div style="display:flex;gap:10px;flex-wrap:wrap">${_allCols.map(c=>{const sel=String(userColor).toLowerCase()===c.toLowerCase();return `<button class="col-pick-btn" data-col="${c}" style="width:40px;height:40px;border-radius:50%;background:${c};border:3px solid ${sel?'#fff':'transparent'};box-shadow:0 0 0 1px var(--border)${sel?',0 0 12px '+c:''};cursor:pointer;touch-action:manipulation"></button>`;}).join('')}</div><div style="font-size:.62rem;color:var(--muted);margin-top:7px">Farbe deiner Gebiete auf der Karte & deines Standort-Markers.</div></div><div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🌗 Erscheinungsbild</div>`);
+    body.querySelectorAll('.col-pick-btn').forEach(btn=>btn.addEventListener('click',()=>{userColor=btn.dataset.col;saveProfile();if(typeof renderH3Territories==='function')renderH3Territories();if(typeof renderTerr==='function')renderTerr();try{if(userMarker&&mapL)userMarker.setIcon(mkUserIcon());}catch(e){}if(typeof updateProfile==='function')updateProfile();renderSettingsTab('theme');toast('🎨 Gebietsfarbe gesetzt');}));
     body.querySelectorAll('.theme-pick-btn').forEach(btn=>{btn.addEventListener('click',()=>{applyTheme(btn.dataset.tid);saveProfile();renderSettingsTab('theme');});});
   } else if(tab==='fraktion'){
     const cur=userTeam;
