@@ -1849,7 +1849,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v120';
+const APP_VERSION='v121';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -4026,6 +4026,9 @@ function h3Rarity(cellCount){const n=cellCount||0;if(n>=12)return'legendary';if(
 const H3_RARITY_STYLE={common:{weight:2,dash:null},rare:{weight:2.6,dash:null},epic:{weight:3.2,dash:null},legendary:{weight:3.8,dash:'6 4'}};
 /* Bots haben feste UUIDs (b0700000-…) — so ohne DB-Join erkennbar. */
 function h3IsBot(owner){return typeof owner==='string'&&owner.slice(0,9)==='b0700000-';}
+/* Deterministische Fraktion für einen Bot (falls owner_team fehlt): jeder Bot ist
+   damit garantiert in einer der 4 Fraktionen. */
+function _botTeamFor(id){return TEAMS[_terrHash(id)%TEAMS.length].id;}
 /* Klick auf ein Gebiet hebt ALLE Gebiete desselben Besitzers dauerhaft hervor:
    sie treten mit weißem Rand + pulsierendem Glow „hervor" (langsame Animation)
    und bleiben so, bis man die Ansicht verlässt (Popup schließen / auf die Karte
@@ -4062,10 +4065,13 @@ function renderH3Territories(){
     const def=h3Decayed(t.defense,t.updated_at); // wirksame (verfallene) Verteidigung
     const strPct=Math.min(1,def/300);
     let fillColor=own?userColor:'#ff3333';
-    const team=(typeof TEAMS!=='undefined')?TEAMS.find(tm=>tm.id===t.owner_team):null;
-    const tteMin=h3MinsToOne(t.defense,t.updated_at);
     const isBot=h3IsBot(t.owner);
-    const ally=!own&&t.owner_team&&t.owner_team===userTeam;
+    /* Jeder Bot ist in einer Fraktion: fehlt owner_team (z.B. Alt-Gebiet), wird
+       deterministisch aus der Bot-ID eine der 4 Fraktionen abgeleitet. */
+    const effTeamId=t.owner_team||(isBot?_botTeamFor(t.owner):null);
+    const team=(typeof TEAMS!=='undefined')?TEAMS.find(tm=>tm.id===effTeamId):null;
+    const tteMin=h3MinsToOne(t.defense,t.updated_at);
+    const ally=!own&&effTeamId&&effTeamId===userTeam;
     // Seltenheit nach Größe -> bestimmt die Randstufe (Rahmen).
     const rar=h3Rarity(cells.length);const rstyle=H3_RARITY_STYLE[rar];
     // Rand: seltene Gebiete tragen ihre Seltenheitsfarbe; gewöhnliche behalten die
