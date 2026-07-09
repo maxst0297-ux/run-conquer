@@ -1807,7 +1807,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v110';
+const APP_VERSION='v111';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3844,9 +3844,32 @@ function h3MinsToOne(defense,updatedAt){return Math.max(0,(h3Decayed(defense,upd
 function h3AmpelColor(def){return def<50?'#22c55e':(def<150?'#eab308':'#ef4444');}
 /* Bots haben feste UUIDs (b0700000-…) — so ohne DB-Join erkennbar. */
 function h3IsBot(owner){return typeof owner==='string'&&owner.slice(0,9)==='b0700000-';}
+/* Klick auf ein Gebiet hebt kurz ALLE Gebiete desselben Besitzers hervor
+   (blinkt weiß auf), damit man das gesamte Revier eines Spielers auf einen
+   Blick sieht. Der Basis-Stil jedes Polygons wird gemerkt und danach exakt
+   wiederhergestellt. */
+let _ownerPolys={},_blinkTimers=[];
+function highlightOwnerTerr(owner){
+  _blinkTimers.forEach(clearInterval);_blinkTimers=[];
+  // evtl. noch hervorgehobene Gebiete zuerst auf den Basis-Stil zurücksetzen
+  Object.keys(_ownerPolys).forEach(o=>_ownerPolys[o].forEach(p=>{try{if(p._baseStyle)p.setStyle(p._baseStyle);}catch(e){}}));
+  const polys=_ownerPolys[owner]||[];
+  polys.forEach(p=>{
+    const base=p._baseStyle||{fillOpacity:.2,weight:2,color:'#888'};
+    let n=0;
+    const iv=setInterval(()=>{
+      n++;const hi=n%2===1;
+      try{p.setStyle(hi?{fillOpacity:Math.min(.85,(base.fillOpacity||.2)+.45),weight:4,color:'#ffffff'}:base);}
+      catch(e){clearInterval(iv);return;}
+      if(n>=6){clearInterval(iv);try{p.setStyle(base);}catch(e){}}
+    },170);
+    _blinkTimers.push(iv);
+  });
+}
 function renderH3Territories(){
   if(!h3Layer||!h3Ready())return;
   h3Layer.clearLayers();
+  _blinkTimers.forEach(clearInterval);_blinkTimers=[];_ownerPolys={};
   const z=mapL?mapL.getZoom():15;
   const aggRes=z<12?7:(z<14?9:10); // grob bei weitem Zoom, exakt beim Reinzoomen
   h3Territories.forEach(t=>{
@@ -3878,7 +3901,7 @@ function renderH3Territories(){
     let mp;
     try{mp=h3.cellsToMultiPolygon(renderCells,false);}catch(e){return;}
     mp.forEach(poly=>{
-      L.polygon(poly,{color:fillColor,weight:2,fillColor,
+      const pl=L.polygon(poly,{color:fillColor,weight:2,fillColor,
         fillOpacity:own?Math.max(.18,strPct*.4):Math.max(.1,strPct*.28),
         opacity:Math.max(.6,strPct*.9)})
         .bindPopup(`<div style="min-width:194px;border:2px solid ${borderCol};border-radius:10px;padding:9px 11px">
@@ -3891,6 +3914,9 @@ function renderH3Territories(){
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Größe</span><span style="font-size:.8rem;font-weight:700">${cells.length} ${cells.length===1?'Zelle':'Zellen'}</span></div>
           </div></div>`)
         .addTo(h3Layer);
+      pl._baseStyle={fillOpacity:pl.options.fillOpacity,weight:pl.options.weight,color:pl.options.color};
+      pl.on('click',()=>highlightOwnerTerr(t.owner));
+      (_ownerPolys[t.owner]=_ownerPolys[t.owner]||[]).push(pl);
     });
   });
 }
