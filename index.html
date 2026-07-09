@@ -1363,6 +1363,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <div class="pv-name" id="pvName">Läufer</div>
         <div class="pv-bio" id="pvBio" onclick="editBio()" title="Beschreibung bearbeiten" style="margin:4px auto 0;max-width:280px;font-size:.8rem;color:var(--muted);cursor:pointer;font-style:italic"></div>
         <div class="pv-rank" id="pvRank" style="display:none;margin:6px auto 0;width:fit-content;font-size:.72rem;font-weight:700;color:var(--primary);background:rgba(var(--primary-rgb),.12);border:1px solid rgba(var(--primary-rgb),.32);border-radius:20px;padding:4px 12px"></div>
+        <div id="pvFollowers" style="display:none;margin:8px auto 0;font-size:.75rem;color:var(--muted)"></div>
         <div class="pv-since" id="pvSince">Noch kein Lauf</div>
         <div style="margin-top:14px;width:100%;max-width:268px;margin-left:auto;margin-right:auto">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
@@ -1835,7 +1836,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v114';
+const APP_VERSION='v115';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3099,6 +3100,7 @@ async function showPublicProfile(p){
         <div style="width:76px;height:76px;border-radius:50%;background:${esc(col)}22;border:3px solid ${esc(col)};display:flex;align-items:center;justify-content:center;font-size:2rem;margin:0 auto;position:relative">${esc(p.user_avatar||'🏃')}<span style="position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);background:var(--primary);color:var(--bg);font-size:.55rem;font-weight:800;padding:2px 9px;border-radius:10px;white-space:nowrap">LV ${lv.lv}</span></div>
         <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:.5px;margin-top:14px">${esc(p.player_name||'Läufer')}</div>
         <div id="ppBio" style="font-size:.8rem;color:var(--muted);font-style:italic;margin-top:3px;min-height:.9rem"></div>
+        <div style="font-size:.8rem;color:var(--muted);margin-top:8px"><b style="color:var(--text)" id="ppFollowers">–</b> Follower &nbsp;·&nbsp; <b style="color:var(--text)" id="ppFollowing">–</b> folgt</div>
       </div>
       <div style="margin:16px 0 4px">
         <div style="display:flex;justify-content:space-between;font-size:.6rem;color:var(--muted);margin-bottom:4px"><span>FORTSCHRITT</span><span>${p.points||0} XP · Lv ${lv.lv}</span></div>
@@ -3136,6 +3138,14 @@ async function showPublicProfile(p){
       const{count:ahead}=await sb.from('profiles').select('id',{count:'exact',head:true}).gt('points',pts);
       const rEl=document.getElementById('ppRank');if(rEl)rEl.textContent='#'+((ahead||0)+1);
     }catch(e){}
+    /* Follower-/Following-Zahlen über die SECURITY-DEFINER-Funktion (RLS-sicher). */
+    try{
+      const{data:fc,error:fe}=await sb.rpc('rc_follow_counts',{uid:p.user_id});
+      const c=Array.isArray(fc)?fc[0]:fc;
+      const f=document.getElementById('ppFollowers'),g=document.getElementById('ppFollowing');
+      if(!fe&&c){if(f)f.textContent=c.followers??0;if(g)g.textContent=c.following??0;}
+      else{if(f)f.textContent='0';if(g)g.textContent='0';}
+    }catch(e){const f=document.getElementById('ppFollowers'),g=document.getElementById('ppFollowing');if(f)f.textContent='0';if(g)g.textContent='0';}
   }
 }
 
@@ -6818,6 +6828,12 @@ async function updateProfileRank(){
     el.textContent=`🌍 Platz #${rank}${total?' von '+total:''} weltweit`;
     el.style.display='';
   }catch(e){el.style.display='none';}
+  /* Eigene Follower-/Following-Zahlen (gleiche RLS-sichere Funktion). */
+  try{
+    const{data:fc}=await sb.rpc('rc_follow_counts',{uid:userId});
+    const c=Array.isArray(fc)?fc[0]:fc;const fe=$('pvFollowers');
+    if(fe&&c){fe.innerHTML='<b style="color:var(--text)">'+(c.followers??0)+'</b> Follower &nbsp;·&nbsp; <b style="color:var(--text)">'+(c.following??0)+'</b> folgt';fe.style.display='';}
+  }catch(e){}
 }
 function updateProfile(){
   if(!starterQuestFlags.profileOpened){starterQuestFlags.profileOpened=true;checkStarterQuests();save();}
