@@ -218,6 +218,16 @@ body.onboarding-active{background:#000}
 .lb-tabs{display:flex;gap:6px;margin:2px 0 12px}
 .lb-tab{flex:1;background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:20px;padding:7px 6px;font-size:.72rem;font-weight:700;font-family:'Poppins',sans-serif;cursor:pointer;transition:background .2s,color .2s,border-color .2s;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .lb-tab.active{background:var(--primary);color:var(--bg);border-color:var(--primary)}
+/* Einstellungen als gruppierte Liste (iOS-Stil) */
+#settingsBody{max-height:72vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.set-hd{font-size:.72rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin:16px 4px 8px}
+.set-group{background:var(--bg2);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:4px}
+.set-row{display:flex;align-items:center;gap:12px;padding:13px 14px;cursor:pointer;border-bottom:1px solid var(--border);touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:background .15s}
+.set-group .set-row:last-child{border-bottom:none}
+.set-row:active{background:rgba(255,255,255,.05)}
+.set-ico{width:38px;height:38px;border-radius:50%;background:rgba(var(--primary-rgb),.12);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.set-title{font-size:.9rem;font-weight:600;color:var(--text)}
+.set-sub{font-size:.68rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px}
 /* ═══ SWIPE ARCHIVE / DELETE ═══ */
 .sw-wrap{position:relative;overflow:hidden;margin-bottom:6px;border-radius:12px}
 .sw-arch{position:absolute;left:0;top:0;height:100%;width:88px;background:linear-gradient(135deg,#10b981,#059669);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:3px;z-index:0;border-radius:12px 0 0 12px}
@@ -1351,6 +1361,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <span class="pv-edit" id="pvEditBtn"><i class="fas fa-pen"></i> Bearbeiten</span>
         <div class="pv-avatar" id="pvAvatar">🏃</div>
         <div class="pv-name" id="pvName">Läufer</div>
+        <div class="pv-bio" id="pvBio" onclick="editBio()" title="Beschreibung bearbeiten" style="margin:4px auto 0;max-width:280px;font-size:.8rem;color:var(--muted);cursor:pointer;font-style:italic"></div>
         <div class="pv-rank" id="pvRank" style="display:none;margin:6px auto 0;width:fit-content;font-size:.72rem;font-weight:700;color:var(--primary);background:rgba(var(--primary-rgb),.12);border:1px solid rgba(var(--primary-rgb),.32);border-radius:20px;padding:4px 12px"></div>
         <div class="pv-since" id="pvSince">Noch kein Lauf</div>
         <div style="margin-top:14px;width:100%;max-width:268px;margin-left:auto;margin-right:auto">
@@ -1552,7 +1563,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <div class="modal-title" style="margin-bottom:0">EINSTELLUNGEN</div>
       <button class="btn" id="closeSettingsBtn" style="width:auto;padding:6px 14px">✕</button>
     </div>
-    <div style="display:flex;gap:4px;margin-bottom:16px;overflow-x:auto;-webkit-overflow-scrolling:touch">
+    <div id="settingsTabs" style="display:flex;gap:4px;margin-bottom:16px;overflow-x:auto;-webkit-overflow-scrolling:touch">
       <button class="stab-btn active" data-stab="profil">Profil</button>
       <button class="stab-btn" data-stab="theme">Theme</button>
       <button class="stab-btn" data-stab="fraktion">Fraktion</button>
@@ -1740,6 +1751,7 @@ let path=[],lastPos=null,lastPosTime=0,gpsJumpWarned=false,dist=0;
 let _persistTick=0;
 let territories=[],points=0,localStateTs=0;
 let userId='user',playerName='',userColor=COLORS[0],userAvatar=AVATARS[0];
+let userBio=''; // Kurzbeschreibung/Zitat (öffentlich sichtbar im Profil)
 let userAvatarImg=null;
 let energy=CFG.ENERGY_MAX,lastEnergyTs=Date.now(),energyWeek='';
 /* Zuletzt bekannter Standort (nur lokal, für die Umkreis-Rangliste). */
@@ -1823,7 +1835,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v113';
+const APP_VERSION='v114';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -1927,7 +1939,7 @@ async function syncProfile(){
       points,total_km:totalKm,total_conquered:totalConquered,streak_days:streakDays,
       total_defended:totalDefended,total_discovered:totalDiscovered,total_raids:totalRaids,
       updated_at:new Date().toISOString(),
-      user_team:userTeam||null,club_code:userClub?.code||null
+      user_team:userTeam||null,club_code:userClub?.code||null,bio:userBio||null
     },{onConflict:'id'});
     if(e1)throw e1;
     // game_data (u.a. GPS-Lauf-Historie) bewusst NICHT auf profiles: die
@@ -2316,7 +2328,7 @@ function applyTheme(name){
 }
 function saveProfile(){
   const theme=getActiveTheme();
-  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,friends,streakUnlocks,equipped}));
+  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,friends,streakUnlocks,equipped,userBio}));
   $('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;
   const hi=$('hdrHi');if(hi)hi.textContent='Hallo, '+(playerName||'Läufer');
   // Update theme-color meta for Android status bar
@@ -2325,7 +2337,7 @@ function saveProfile(){
   syncProfileDebounced();
 }
 function loadProfile(){
-  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';friends=p.friends||[];streakUnlocks=p.streakUnlocks||[];equipped=p.equipped||{};const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
+  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';friends=p.friends||[];streakUnlocks=p.streakUnlocks||[];equipped=p.equipped||{};userBio=p.userBio||'';const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
   return false;
 }
 /* ── STREAK-BELOHNUNGEN (Inventar) ──────────────────────────────────────────
@@ -2384,6 +2396,27 @@ function renderRewards(){
   el.innerHTML=`<div class="section-title"><i class="fas fa-gift"></i> Belohnungen <span style="font-size:.62rem;color:var(--muted);font-weight:400;margin-left:auto">${streakUnlocks.length}/${days.length} frei</span></div>${rows}`;
 }
 window.equipReward=equipReward;window.unequipReward=unequipReward;
+/* Eigene Beschreibung/Zitat bearbeiten (öffentlich sichtbar). */
+function editBio(){
+  document.getElementById('bioEditOv')?.remove();
+  const ov=document.createElement('div');ov.id='bioEditOv';
+  ov.style.cssText='position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.innerHTML=`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:20px;width:100%;max-width:360px">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:1px;margin-bottom:4px">Beschreibung</div>
+    <div style="font-size:.72rem;color:var(--muted);margin-bottom:12px">Schreibe etwas über dich (max. 80 Zeichen).</div>
+    <textarea id="bioInput" maxlength="80" rows="3" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px;color:var(--text);font-family:'Poppins',sans-serif;font-size:.85rem;resize:none;box-sizing:border-box" placeholder="z. B. obsessed with running">${esc(userBio)}</textarea>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button id="bioCancel" style="flex:1;background:none;border:1px solid var(--border);color:var(--muted);border-radius:12px;padding:11px;font-size:.85rem;cursor:pointer">Abbrechen</button>
+      <button id="bioSave" class="btn btn-p" style="flex:1">Speichern</button>
+    </div>
+  </div>`;
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+  document.body.appendChild(ov);
+  document.getElementById('bioInput').focus();
+  document.getElementById('bioCancel').onclick=()=>ov.remove();
+  document.getElementById('bioSave').onclick=()=>{userBio=document.getElementById('bioInput').value.trim().slice(0,80);saveProfile();if(typeof updateProfile==='function')updateProfile();toast('Beschreibung gespeichert');ov.remove();};
+}
+window.editBio=editBio;
 function closeAllModals(){['profileModal','postRunModal','renameModal','settingsModal','adminModal','inboxModal'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
 
 /* ── AVATAR HTML HELPER ── */
@@ -3047,48 +3080,62 @@ async function loadClubMembers(clubCode,container){
 }
 
 /* ── ÖFFENTLICHES PROFIL ── */
-function showPublicProfile(p){
+async function showPublicProfile(p){
   const col=p.user_color||'#e8ff47';
   document.getElementById('pubProfileOverlay')?.remove();
+  const isMe=p.user_id===userId;
+  const st=isMe?null:followStatus(p.user_id);
+  const lv=getLvlProg(p.points||0);
+  const followLabel=st==='accepted'?'✓ Verbunden':st==='pending_out'?'⏳ Angefragt':st==='pending_in'?'👤 Anfrage beantworten':'+ Folgen';
+  const canMsg=!!p.user_id&&!isMe&&st==='accepted';
   const ov=document.createElement('div');
   ov.id='pubProfileOverlay';
   ov.style.cssText='position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center';
-  const canMsg=!!p.user_id&&p.user_id!==userId&&followStatus(p.user_id)==='accepted';
-  ov.innerHTML=`<div style="width:100%;max-width:480px;background:var(--card);border-radius:24px 24px 0 0;padding:0 0 max(env(safe-area-inset-bottom),16px) 0;animation:modalIn .28s var(--ease-out)">
-    <div style="width:38px;height:4px;background:var(--border);border-radius:4px;margin:12px auto 18px"></div>
+  const stat=(v,l)=>`<div style="background:var(--bg2);border-radius:12px;padding:13px 10px;text-align:center"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.45rem;color:var(--primary)">${v}</div><div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">${l}</div></div>`;
+  ov.innerHTML=`<div style="width:100%;max-width:480px;max-height:88vh;overflow-y:auto;background:var(--card);border-radius:24px 24px 0 0;padding:0 0 max(env(safe-area-inset-bottom),16px) 0;animation:modalIn .28s var(--ease-out)">
+    <div style="width:38px;height:4px;background:var(--border);border-radius:4px;margin:12px auto 14px"></div>
     <div style="padding:0 20px 24px">
-      <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
-        <div style="width:58px;height:58px;border-radius:50%;background:${esc(col)}22;border:2.5px solid ${esc(col)};display:flex;align-items:center;justify-content:center;font-size:1.7rem;flex-shrink:0">${esc(p.user_avatar||'🏃')}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.5px;color:var(--text)">${esc(p.player_name||'Läufer')}</div>
-          <div style="font-size:.7rem;color:var(--muted)">${p.streak_days||0} Tage Streak 🔥</div>
-        </div>
+      <div style="text-align:center">
+        <div style="width:76px;height:76px;border-radius:50%;background:${esc(col)}22;border:3px solid ${esc(col)};display:flex;align-items:center;justify-content:center;font-size:2rem;margin:0 auto;position:relative">${esc(p.user_avatar||'🏃')}<span style="position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);background:var(--primary);color:var(--bg);font-size:.55rem;font-weight:800;padding:2px 9px;border-radius:10px;white-space:nowrap">LV ${lv.lv}</span></div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:.5px;margin-top:14px">${esc(p.player_name||'Läufer')}</div>
+        <div id="ppBio" style="font-size:.8rem;color:var(--muted);font-style:italic;margin-top:3px;min-height:.9rem"></div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-        <div style="background:var(--bg2);border-radius:12px;padding:13px 10px;text-align:center">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.45rem;color:var(--primary)">${(p.total_km||0).toFixed(1)}</div>
-          <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">km gesamt</div>
-        </div>
-        <div style="background:var(--bg2);border-radius:12px;padding:13px 10px;text-align:center">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.45rem;color:var(--primary)">${p.total_conquered||0}</div>
-          <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Gebiete</div>
-        </div>
-        <div style="background:var(--bg2);border-radius:12px;padding:13px 10px;text-align:center">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.45rem;color:var(--primary)">${p.points||0}</div>
-          <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Punkte</div>
-        </div>
+      <div style="margin:16px 0 4px">
+        <div style="display:flex;justify-content:space-between;font-size:.6rem;color:var(--muted);margin-bottom:4px"><span>FORTSCHRITT</span><span>${p.points||0} XP · Lv ${lv.lv}</span></div>
+        <div style="height:7px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden"><div style="height:100%;width:${lv.pct}%;background:var(--primary);border-radius:4px"></div></div>
       </div>
-      ${canMsg?`<button class="btn btn-p" id="pubProfMsgBtn" style="width:100%;margin-top:16px"><i class="fas fa-paper-plane"></i> Nachricht schreiben</button>`:''}
+      ${!isMe?`<button class="btn btn-p" id="ppFollowBtn" style="width:100%;margin:14px 0 4px">${followLabel}</button>`:''}
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:12px">
+        ${stat((p.total_km||0).toFixed(1),'km')}
+        ${stat(p.total_conquered||0,'Gebiete')}
+        ${stat(p.points||0,'Punkte')}
+      </div>
+      <div style="background:var(--bg2);border-radius:14px;padding:14px;margin-top:12px;display:flex;align-items:center;gap:12px">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;color:var(--primary)" id="ppRank">#–</div>
+        <div><div style="font-size:.8rem;font-weight:700">Globale Rangliste</div><div style="font-size:.62rem;color:var(--muted)">nach Punkten</div></div>
+        <div style="margin-left:auto;font-size:.8rem;color:var(--muted)">${p.streak_days||0} Tage 🔥</div>
+      </div>
+      ${canMsg?`<button class="btn" id="pubProfMsgBtn" style="width:100%;margin-top:12px"><i class="fas fa-paper-plane"></i> Nachricht schreiben</button>`:''}
     </div>
   </div>`;
   ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
   document.body.appendChild(ov);
-  if(canMsg){
-    document.getElementById('pubProfMsgBtn')?.addEventListener('click',()=>{
-      ov.remove();
-      const im=$('inboxModal');if(im)im.style.display='flex';
-      openDmThread(p.user_id,p.player_name||'Läufer');
-    });
+  document.getElementById('ppFollowBtn')?.addEventListener('click',async()=>{
+    if(st==='accepted'||st==='pending_out'){await cancelOrUnfollow(p.user_id,p.player_name);}
+    else if(st==='pending_in'){ov.remove();setView('community');return;}
+    else{await sendFollowRequest(p.user_id,p.player_name,p.user_avatar);}
+    ov.remove();if(typeof renderLeaderboard==='function')renderLeaderboard();
+  });
+  if(canMsg)document.getElementById('pubProfMsgBtn')?.addEventListener('click',()=>{ov.remove();const im=$('inboxModal');if(im)im.style.display='flex';openDmThread(p.user_id,p.player_name||'Läufer');});
+  /* Bio + globale Platzierung nachladen (profiles ist öffentlich lesbar). */
+  if(sb&&p.user_id){
+    try{
+      const{data:full}=await sb.from('profiles').select('bio,points').eq('user_id',p.user_id).maybeSingle();
+      const bioEl=document.getElementById('ppBio');if(bioEl)bioEl.textContent=full&&full.bio?('„'+full.bio+'“'):'';
+      const pts=(full&&typeof full.points==='number')?full.points:(p.points||0);
+      const{count:ahead}=await sb.from('profiles').select('id',{count:'exact',head:true}).gt('points',pts);
+      const rEl=document.getElementById('ppRank');if(rEl)rEl.textContent='#'+((ahead||0)+1);
+    }catch(e){}
   }
 }
 
@@ -4181,7 +4228,8 @@ function startRun(){
   const pSB=$('panelStartBtn'),pRB=$('panelRunBox');
   if(pSB)pSB.style.display='none';
   if(pRB){pRB.style.display='flex';}
-  openMapPanel();
+  /* Panel NICHT mehr automatisch aufklappen – Stop/Pause laufen über die zwei
+     runden FABs. Wer die Ebenen-Umschalter braucht, öffnet das Panel selbst. */
   const pPB=$('panelPauseBtn2');if(pPB)pPB.innerHTML='<i class="fas fa-pause"></i> Pause';
   if(pathLayer)mapL.removeLayer(pathLayer);
   pathLayer=L.polyline([],{color:userColor,weight:4}).addTo(mapL);
@@ -5592,10 +5640,7 @@ window.rcGoDiscover=function(){
   setView('community');
   setTimeout(()=>{const c=$('playerDiscoveryCard');if(c&&c.style.display!=='none')c.scrollIntoView({behavior:'smooth',block:'center'});else $('friendsList')?.scrollIntoView({behavior:'smooth',block:'center'});},350);
 };
-window.rcGoClub=function(){
-  closeAllModals();$('settingsModal').style.display='flex';renderSettingsTab('club');
-  document.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.stab==='club'));
-};
+window.rcGoClub=function(){openSettingsAt('club');};
 function emptyStateHtml(icon,text,btnLabel,onclick){
   return `<div class="empty-state" style="padding:22px 14px"><i class="fas ${icon}"></i><p>${text}</p>`+
     (btnLabel?`<button class="btn btn-p" style="margin-top:12px;width:auto;padding:8px 18px;font-size:.75rem" onclick="${onclick}">${btnLabel}</button>`:'')+`</div>`;
@@ -6779,6 +6824,7 @@ function updateProfile(){
   syncStreakUnlocks();
   updateProfileRank();
   $('pvAvatar').innerHTML=avatarHTML(54);$('pvName').textContent=playerName;
+  const _bioEl=$('pvBio');if(_bioEl)_bioEl.textContent=userBio?('„'+userBio+'“'):'➕ Beschreibung hinzufügen';
   const banner=$('pvBanner');banner.style.background=`linear-gradient(135deg,${userColor}44,${userColor}11,var(--bg2))`;banner.style.borderColor=userColor+'55';
   /* Angelegte Belohnungen anwenden: Banner + Profilrahmen (Ring am Avatar). */
   const _ban=equipped.banner&&REWARD_BY_ID[equipped.banner];if(_ban){banner.style.background=_ban.value;const m=_ban.value.match(/#[0-9a-f]{6}/i);banner.style.borderColor=(m&&m[0]||userColor)+'88';}
@@ -6985,7 +7031,57 @@ window.addEventListener('resize',moveNavHighlight);
 
 /* Einstellungen-Dropdown (animate-ui DropdownMenu als Vanilla) */
 function moveDDHighlight(item){const hl=document.getElementById('settingsDDHl');if(!hl||!item)return;hl.style.opacity='1';hl.style.transform='translateY('+item.offsetTop+'px)';hl.style.height=item.offsetHeight+'px';}
-function openSettingsAt(tab){closeSettingsDropdown();closeAllModals();const m=document.getElementById('settingsModal');if(m)m.style.display='flex';renderSettingsTab(tab);document.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.stab===tab));}
+/* ── EINSTELLUNGEN als gruppierte Liste (wie „Mein Profil"-Screen) ── */
+function settingsRow(icon,title,sub,action,opts){
+  opts=opts||{};
+  const right=opts.lock?'<span style="color:var(--muted);font-size:1rem">🔒</span>':'<span style="color:var(--muted);font-size:1.15rem">›</span>';
+  return `<div class="set-row" data-action="${action}"><div class="set-ico">${icon}</div><div style="flex:1;min-width:0"><div class="set-title">${title}</div><div class="set-sub">${sub}</div></div>${right}</div>`;
+}
+function renderSettingsHome(){
+  const body=$('settingsBody');if(!body)return;
+  const tabs=document.getElementById('settingsTabs');if(tabs)tabs.style.display='none';
+  const H=t=>`<div class="set-hd">${t}</div>`;
+  body.innerHTML=`
+    ${H('Mein Profil')}
+    <div class="set-group">
+      ${settingsRow('📷','Profilbild &amp; Name','Foto und Anzeigename ändern','profil')}
+      ${settingsRow('🎨','Profil-Farbe &amp; Theme','Akzentfarbe & Erscheinungsbild','theme')}
+      ${settingsRow('✏️','Beschreibung (Bio)',userBio?esc(userBio):'Schreibe etwas über dich','bio')}
+      ${settingsRow('🏳️','Fraktion','Deine Community & Farbe','fraktion')}
+      ${settingsRow('🏰','Club','Gründe oder tritt einem Club bei','club')}
+    </div>
+    ${H('Ziele, Rekorde &amp; Verlauf')}
+    <div class="set-group">
+      ${settingsRow('🏆','Erfolge','Alle Abzeichen ansehen','ach')}
+      ${settingsRow('❤️','Fitness &amp; Wearables','Pulsmesser koppeln, Gesundheit','fitness')}
+      ${settingsRow('📅','Kalender','Deine Lauftage im Überblick','calendar')}
+    </div>
+    ${H('App &amp; Hilfe')}
+    <div class="set-group">
+      ${settingsRow('🎮','Spiel-Einstellungen','Einheiten & Spieloptionen','spiel')}
+      ${settingsRow('❓','Hilfe','Anleitung & FAQ','hilfe')}
+      ${settingsRow('✉️','Support','Kontaktiere uns','support')}
+      ${settingsRow('🔒','Datenschutz &amp; Konto','Daten, Export, Konto löschen','datenschutz')}
+    </div>
+    <button id="setLogoutRow" style="width:100%;margin-top:10px;background:none;border:1px solid #ff4d6d;color:#ff4d6d;border-radius:12px;padding:13px;font-size:.85rem;font-family:'Poppins',sans-serif;cursor:pointer;touch-action:manipulation">🚪 Abmelden</button>
+    <div style="text-align:center;font-size:.62rem;color:var(--muted);margin-top:14px">Runners Conquer · ${APP_VERSION}</div>`;
+  body.querySelectorAll('.set-row').forEach(r=>r.addEventListener('click',()=>{
+    const a=r.dataset.action;
+    if(a==='bio')editBio();
+    else if(a==='ach'||a==='fitness'||a==='calendar'){closeAllModals();openDrawer(a);}
+    else openSettingsDetail(a);
+  }));
+  document.getElementById('setLogoutRow')?.addEventListener('click',()=>{if(typeof logoutUser==='function')logoutUser();});
+  body.classList.remove('slide-in');requestAnimationFrame(()=>body.classList.add('slide-in'));
+}
+function openSettingsDetail(tab){
+  const tabs=document.getElementById('settingsTabs');if(tabs)tabs.style.display='none';
+  renderSettingsTab(tab);
+  const b=$('settingsBody');
+  if(b&&!b.querySelector('.set-back')){const bk=document.createElement('button');bk.className='set-back';bk.textContent='‹ Zurück';bk.style.cssText='margin-bottom:12px;background:none;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:7px 14px;font-size:.8rem;cursor:pointer;touch-action:manipulation';bk.onclick=renderSettingsHome;b.insertBefore(bk,b.firstChild);}
+}
+function openSettingsAt(tab){closeSettingsDropdown();closeAllModals();const m=document.getElementById('settingsModal');if(m)m.style.display='flex';if(!tab||tab==='home')renderSettingsHome();else openSettingsDetail(tab);}
+window.openSettingsAt=openSettingsAt;
 function openSettingsDropdown(){const dd=document.getElementById('settingsDropdown');if(!dd)return;document.getElementById('notifPanel')&&document.getElementById('notifPanel').classList.remove('open');dd.classList.add('open');}
 function closeSettingsDropdown(){const dd=document.getElementById('settingsDropdown');if(dd)dd.classList.remove('open');const hl=document.getElementById('settingsDDHl');if(hl)hl.style.opacity='0';}
 function initSettingsDropdown(){
@@ -7463,8 +7559,8 @@ window.initApp=function(){
     navPauseFab.addEventListener('click',()=>{if(_pTapped){_pTapped=false;return;}if(isRunning){isPaused?resumeRun():pauseRun();}});
   }
   document.querySelectorAll('#drawerTabs .tab-btn').forEach(b=>b.addEventListener('click',function(){const t=this.dataset.tab;if(t===currentTab)return;currentTab=t;renderDrawer();}));
-  $('pvEditBtn').addEventListener('click',()=>{closeAllModals();$('settingsModal').style.display='flex';renderSettingsTab('profil');document.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.stab==='profil'));});
-  $('userBadge').addEventListener('click',()=>{closeAllModals();$('settingsModal').style.display='flex';renderSettingsTab('profil');document.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.stab==='profil'));});
+  $('pvEditBtn').addEventListener('click',()=>openSettingsAt('profil'));
+  $('userBadge').addEventListener('click',()=>openSettingsAt('home'));
   $('saveProfileBtn').addEventListener('click',()=>{playerName=$('editName').value.trim()||playerName;userAvatar=editAvatar;saveProfile();$('profileModal').style.display='none';toast('Profil gespeichert');updateProfile()});
   $('closeProfileBtn').addEventListener('click',()=>$('profileModal').style.display='none');
   $('closePostBtn').addEventListener('click',()=>$('postRunModal').style.display='none');
@@ -7555,7 +7651,7 @@ window.initApp=function(){
       {enableHighAccuracy:true,maximumAge:0,timeout:12000});
   });
   /* Settings modal */
-  $('settingsBtn').addEventListener('click',e=>{e.stopPropagation();const dd=$('settingsDropdown');if(dd&&dd.classList.contains('open'))closeSettingsDropdown();else openSettingsDropdown();});
+  $('settingsBtn').addEventListener('click',e=>{e.stopPropagation();openSettingsAt('home');});
   initSettingsDropdown();
   requestAnimationFrame(moveNavHighlight);setTimeout(moveNavHighlight,150);
   $('closeSettingsBtn').addEventListener('click',()=>$('settingsModal').style.display='none');
