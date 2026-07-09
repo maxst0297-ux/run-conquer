@@ -101,8 +101,14 @@ Deno.serve(async (req) => {
         // Neutrale Nachbarzellen des Anchors beanspruchen -> neues Bot-Gebiet.
         const seed = anchorCells[Math.floor(Math.random() * anchorCells.length)];
         let ring: string[] = [];
-        try { ring = h3.gridDisk(seed, 2); } catch (_) { /*noop*/ }
-        const neutral = ring.filter((c) => !ownedCells.has(c) && !claimedThisTick.has(c)).slice(0, BOT_CLAIM_CELLS);
+        // Zufälliger Radius (1–4) -> Bots beanspruchen mal näher, mal weiter weg,
+        // statt immer dieselben direkten Nachbarzellen.
+        const kRad = 1 + Math.floor(Math.random() * 4);
+        try { ring = h3.gridDisk(seed, kRad); } catch (_) { /*noop*/ }
+        // Frei-Zellen mischen, damit nicht immer dieselben gegriffen werden.
+        const neutral = ring.filter((c) => !ownedCells.has(c) && !claimedThisTick.has(c))
+          .sort(() => Math.random() - 0.5)
+          .slice(0, BOT_CLAIM_CELLS);
         if (neutral.length) {
           const bot = randBot();
           const { data: nt } = await svc.from('h3_territories').insert({

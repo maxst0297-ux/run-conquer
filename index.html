@@ -1851,7 +1851,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v122';
+const APP_VERSION='v123';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3595,6 +3595,36 @@ async function genRivals(lat,lng){
   }
   save();
 }
+/* H3-Bot-Aussaat rund um den Spieler (neues Hexagon-System). Legt mehrere kleine
+   Bot-Reviere an ZUFÄLLIGEN Punkten in 0,3–2,2 km Umkreis an -> immer Bots in der
+   Nähe (auch vor dem ersten eigenen Lauf) und nicht immer dieselben Gebiete.
+   Voraussetzung: SQL-Funktion rc_seed_bot_h3 (supabase_seed_bots_h3.sql). */
+let _botsSeeded=false;
+async function genRivalsH3(lat,lng){
+  if(!sb||!window.h3||!window.h3.latLngToCell)return;
+  const c=(lat!=null)?{lat,lng}:(mapL?mapL.getCenter():null);if(!c)return;
+  // Genug Bots schon in der Nähe? Dann nichts säen.
+  try{
+    const near=(h3Territories||[]).filter(t=>{if(!h3IsBot(t.owner))return false;const cc=_terrCentroidLL(t.cells);if(!cc)return false;return turf.distance(turf.point([c.lng,c.lat]),turf.point([cc[1],cc[0]]),{units:'kilometers'})<=2.5;}).length;
+    if(near>=4){_botsSeeded=true;return;}
+  }catch(e){}
+  if(_botsSeeded)return;_botsSeeded=true;
+  const cosLat=Math.cos(c.lat*Math.PI/180)||1;
+  let made=0;
+  for(let i=0;i<6;i++){
+    const ang=Math.random()*Math.PI*2;
+    const distKm=0.3+Math.random()*1.9;
+    const plat=c.lat+(distKm/111)*Math.sin(ang);
+    const plng=c.lng+(distKm/(111*cosLat))*Math.cos(ang);
+    try{
+      const center=window.h3.latLngToCell(plat,plng,10);
+      const cells=window.h3.gridDisk(center,1+Math.floor(Math.random()*2)); // 7 oder 19 Zellen
+      const{data,error}=await sb.rpc('rc_seed_bot_h3',{p_cells:cells});
+      if(!error&&data)made++;
+    }catch(e){}
+  }
+  if(made&&loadH3Territories)await loadH3Territories();
+}
 function mkCircle(lat,lng,r){return turf.circle([lng,lat],r,{steps:20,units:'meters'}).geometry}
 
 /* ═══ ROAD GRAPH (Straßen-Netz für realistische Bot-Gebiete) ═══ */
@@ -3821,7 +3851,7 @@ function initMap(){
     if(!userMarker)userMarker=L.marker(e.latlng,{icon:mkUserIcon()}).addTo(mapL);
     else userMarker.setLatLng(e.latlng);
     if(territories.filter(t=>t.owner!==userId).length===0){
-      genRivals(e.latlng.lat,e.latlng.lng).then(()=>{updateUI();});
+      genRivalsH3(e.latlng.lat,e.latlng.lng).then(()=>{updateUI();});
     }
     loadLandmarks();
   });
@@ -4306,8 +4336,11 @@ function startRun(){
   const pSB=$('panelStartBtn'),pRB=$('panelRunBox');
   if(pSB)pSB.style.display='none';
   if(pRB){pRB.style.display='flex';}
-  /* Panel NICHT mehr automatisch aufklappen – Stop/Pause laufen über die zwei
-     runden FABs. Wer die Ebenen-Umschalter braucht, öffnet das Panel selbst. */
+  /* Panel NICHT automatisch aufklappen – Stop/Pause laufen über die zwei runden
+     FABs. Zur Sicherheit beim Start explizit schließen (falls es offen war). */
+  const _mp=$('mapPanel');if(_mp)_mp.classList.remove('open');
+  const _mpi=$('mapPanelIcon');if(_mpi)_mpi.className='fas fa-chevron-left';
+  const _mpa=$('mapPanelArrow');if(_mpa)_mpa.style.right='0';
   const pPB=$('panelPauseBtn2');if(pPB)pPB.innerHTML='<i class="fas fa-pause"></i> Pause';
   if(pathLayer)mapL.removeLayer(pathLayer);
   pathLayer=L.polyline([],{color:userColor,weight:4}).addTo(mapL);
@@ -6792,7 +6825,7 @@ async function launchAppFromSession(user){
       await loadFromCloud();
       await loadGlobalTerritories();
       subscribeTerritories();
-      if(territories.filter(t=>t.owner!==userId).length===0){await genRivals();}
+      if((h3Territories||[]).filter(t=>h3IsBot(t.owner)).length===0){await genRivalsH3();}
       updateUI();processSyncQueue();loadFollowState();updateDmBadge();subscribeDMs();updateSettingsBadge();
       setTimeout(checkOrphanedRun,1100);
       if(isAdmin)setTimeout(showInboxIfAdmin,800);
