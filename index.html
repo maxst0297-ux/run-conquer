@@ -832,10 +832,11 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
   box-shadow:0 0 22px rgba(var(--primary-rgb),.45);position:relative;z-index:2;
   transition:transform var(--motion-fast)}
 .hero-start-btn:active{transform:scale(.97)}
-.hero-energy-pill{background:rgba(var(--primary-rgb),.08);border:1px solid rgba(var(--primary-rgb),.2);
+.hero-energy-pill,.hero-shield-pill{background:rgba(var(--primary-rgb),.08);border:1px solid rgba(var(--primary-rgb),.2);
   border-radius:12px;padding:10px 14px;text-align:center;min-width:72px;cursor:pointer;flex-shrink:0;transition:box-shadow .2s,border-color .2s,background .2s}
 .hero-energy-pill.armed,.stat-card.armed{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary),0 0 14px rgba(var(--primary-rgb),.35)}
 .hero-energy-pill.armed{background:rgba(var(--primary-rgb),.16)}
+.hero-shield-pill.has-shield{border-color:#c084fc;box-shadow:0 0 0 1px #c084fc,0 0 14px rgba(192,132,252,.35);background:rgba(192,132,252,.14)}
 .he-v{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;color:var(--primary)}
 .he-l{font-size:.58rem;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-top:1px}
 </style>
@@ -1186,7 +1187,11 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
           </button>
           <div class="hero-energy-pill" onclick="toggleBoost()" title="Energie / Boosts">
             <div class="he-v" id="heroEnergyVal">⚡3</div>
-            <div class="he-l">Energie</div>
+            <div class="he-l" id="heroEnergyLbl">Energie</div>
+          </div>
+          <div class="hero-shield-pill" onclick="showShieldInfo()" title="Streak-Schutz">
+            <div class="he-v" id="heroShieldVal">🛡️0</div>
+            <div class="he-l">Schutz</div>
           </div>
         </div>
       </div>
@@ -1373,6 +1378,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <button class="btn btn-p" onclick="setView('start')" style="max-width:220px;margin:0 auto;display:flex;justify-content:center">Jetzt loslegen →</button>
       </div>
       <div class="section-card" id="pvDailyStreak" style="display:none"></div>
+      <div class="section-card" id="pvRewards"></div>
       <div class="section-card" id="pvBattlePass"></div>
       <div class="section-card">
         <div class="section-title"><i class="fas fa-layer-group"></i> Spielsystem</div>
@@ -1740,6 +1746,9 @@ let energy=CFG.ENERGY_MAX,lastEnergyTs=Date.now(),energyWeek='';
 let lastKnownLoc=(()=>{try{return JSON.parse(localStorage.getItem('rc_lastloc')||'null');}catch(e){return null;}})();
 /* Boost „scharf"? Standard: an (bisheriges Auto-Verhalten). */
 let boostArmed=(()=>{try{const v=localStorage.getItem('rc_boostarmed');return v===null?true:v==='1';}catch(e){return true;}})();
+/* Gebündelte Lauf-Ereignisse (Angriffe/Verteidigungen/Eroberungen) für die
+   Bilanz-Liste im Post-Run-Modal – ersetzt die vielen Einzel-Toasts. */
+let _runEvents=[];
 let history=[],quests=[],achievements=[];
 let totalKm=0,totalConquered=0,totalDefended=0;
 let streakDays=0,stepsToday=0,lastStepTs=0,lastRunDate='';
@@ -1776,6 +1785,8 @@ let prevLevelCache=1;
 let userClub=null;           // {code,name,icon,foundedAt}
 let lastFraktionChangeDate=''; // "YYYY-MM" when fraktion was last changed
 let dailyLoginDate='',dailyLoginStreak=0,streakShields=0,recentQuoteIds=[];
+/* Freigeschaltete Streak-Belohnungen (IDs) + aktuell angelegte Kosmetik. */
+let streakUnlocks=[],equipped={};
 let weeklyChals=[],weekChalKey='';
 let personalRecords={};
 let battlePassClaimed=[];
@@ -1812,7 +1823,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v112';
+const APP_VERSION='v113';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2112,9 +2123,20 @@ function showBoostInfo(){toast('⚡ Boosts verdoppeln deine Punkte für einen La
 function updateBoostUI(){
   const armed=boostArmed&&energy>0;
   const pill=document.querySelector('.hero-energy-pill');
-  if(pill){pill.classList.toggle('armed',armed);pill.title=energy<=0?'Keine Boosts übrig':(armed?'Boost aktiv – tippen zum Deaktivieren':'Boost aus – tippen zum Aktivieren');}
+  if(pill){pill.classList.toggle('armed',armed);pill.title=energy<=0?'Keine Boosts übrig':(armed?'Boost AN – tippen zum Deaktivieren':'Boost AUS – tippen zum Aktivieren');}
+  const lbl=$('heroEnergyLbl');if(lbl)lbl.textContent=energy<=0?'Energie':(armed?'Boost AN':'Boost AUS');
   const stat=$('energyVal');const card=stat&&stat.closest&&stat.closest('.stat-card');if(card)card.classList.toggle('armed',armed);
+  const sv=$('heroShieldVal');if(sv)sv.textContent='🛡️'+(streakShields||0);
+  const sp=document.querySelector('.hero-shield-pill');if(sp)sp.classList.toggle('has-shield',(streakShields||0)>0);
 }
+/* Info zum Streak-Schutz (durch tägliches Login verdient, schützt die Serie). */
+function showShieldInfo(){
+  const n=streakShields||0;
+  toast(n>0
+    ?'🛡️ '+n+' Streak-Schutz'+(n===1?'':'e')+' aktiv – verpasst du einen Tag, bleibt deine Serie erhalten. Mehr gibt es an Login-Tag 14 & 30.'
+    :'🛡️ Noch kein Streak-Schutz. Logg dich regelmäßig ein – an Tag 14 und 30 gibt es welche. Sie retten deine Serie bei einem verpassten Tag.');
+}
+window.showShieldInfo=showShieldInfo;
 function toggleBoost(){
   if(energy<=0){toast('⚡ Keine Boosts übrig – neue gibt es zu Wochenbeginn ('+CFG.ENERGY_MAX+' pro Woche).');return;}
   boostArmed=!boostArmed;
@@ -2294,7 +2316,7 @@ function applyTheme(name){
 }
 function saveProfile(){
   const theme=getActiveTheme();
-  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,friends}));
+  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,friends,streakUnlocks,equipped}));
   $('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;
   const hi=$('hdrHi');if(hi)hi.textContent='Hallo, '+(playerName||'Läufer');
   // Update theme-color meta for Android status bar
@@ -2303,9 +2325,65 @@ function saveProfile(){
   syncProfileDebounced();
 }
 function loadProfile(){
-  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';friends=p.friends||[];const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
+  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';friends=p.friends||[];streakUnlocks=p.streakUnlocks||[];equipped=p.equipped||{};const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
   return false;
 }
+/* ── STREAK-BELOHNUNGEN (Inventar) ──────────────────────────────────────────
+   Login-Meilensteine schalten Kosmetik frei, die WIRKLICH anwendbar ist:
+   Gebietsfarbe (setzt userColor → färbt Hexagone), Titel (Profil-Badge),
+   Banner + Profilrahmen (Profil), Kartenmarker (User-Marker auf der Karte). */
+const STREAK_REWARDS={
+  7:  {id:'color_bronze',      type:'color', name:'Bronze-Gebietsfarbe',    value:'#cd7f32', icon:'🥉'},
+  14: {id:'color_silver',      type:'color', name:'Silber-Gebietsfarbe',    value:'#cbd5e1', icon:'🥈'},
+  30: {id:'frame_gold',        type:'frame', name:'Goldener Profilrahmen',  value:'#ffd700', icon:'🖼️'},
+  50: {id:'title_bestaendig',  type:'title', name:'Titel „Beständig“',      value:'Beständig', icon:'🏅'},
+  75: {id:'banner_exclusive',  type:'banner',name:'Exklusives Banner',      value:'linear-gradient(135deg,#7c3aed,#ec4899,#f59e0b)', icon:'🎏'},
+  100:{id:'title_unaufhaltsam',type:'title', name:'Titel „Unaufhaltsam“',   value:'Unaufhaltsam', icon:'🔥'},
+  180:{id:'marker_gold',       type:'marker',name:'Goldener Kartenmarker',  value:'#ffd700', icon:'📍'},
+  365:{id:'color_legend',      type:'color', name:'Legendäre Gebietsfarbe', value:'#ffd700', icon:'🌟'},
+  730:{id:'title_legende',     type:'title', name:'Titel „Die Legende“',    value:'Die Legende', icon:'👑'}
+};
+const REWARD_BY_ID=Object.fromEntries(Object.values(STREAK_REWARDS).map(r=>[r.id,r]));
+const REWARD_TYPE_LABEL={color:'Gebietsfarbe',frame:'Profilrahmen',title:'Titel',banner:'Banner',marker:'Kartenmarker'};
+/* Alle bis zum aktuellen Streak verdienten Freischaltungen sicherstellen
+   (auch rückwirkend für bestehende Spieler mit langer Serie). */
+function syncStreakUnlocks(){
+  let ch=false;
+  Object.keys(STREAK_REWARDS).forEach(day=>{if(dailyLoginStreak>=+day){const id=STREAK_REWARDS[day].id;if(!streakUnlocks.includes(id)){streakUnlocks.push(id);ch=true;}}});
+  if(ch)saveProfile();
+}
+function equippedTitle(){const r=equipped.title&&REWARD_BY_ID[equipped.title];return r?r.value:null;}
+function equippedMarkerColor(){const r=equipped.marker&&REWARD_BY_ID[equipped.marker];return r?r.value:null;}
+function equipReward(id){
+  const r=REWARD_BY_ID[id];if(!r||!streakUnlocks.includes(id)){toast('🔒 Noch nicht freigeschaltet');return;}
+  if(r.type==='color'){userColor=r.value;}
+  else{equipped[r.type]=id;}
+  saveProfile();applyEquipped();if(typeof updateProfile==='function')updateProfile();if(typeof renderTerr==='function')renderTerr();if(typeof renderH3Territories==='function')renderH3Territories();
+  toast(r.icon+' '+r.name+' angelegt');
+}
+function unequipReward(type){if(type==='color')return;delete equipped[type];saveProfile();applyEquipped();if(typeof updateProfile==='function')updateProfile();}
+/* Marker (und andere globale Effekte) sofort anwenden; Banner/Rahmen/Titel setzt updateProfile. */
+function applyEquipped(){try{if(userMarker&&mapL)userMarker.setIcon(mkUserIcon());}catch(e){}}
+/* Belohnungs-Inventar im Profil rendern. */
+function renderRewards(){
+  const el=document.getElementById('pvRewards');if(!el)return;
+  const days=Object.keys(STREAK_REWARDS).map(Number).sort((a,b)=>a-b);
+  const rows=days.map(day=>{
+    const r=STREAK_REWARDS[day];
+    const unlocked=streakUnlocks.includes(r.id);
+    const active=r.type==='color'?(String(userColor).toLowerCase()===r.value.toLowerCase()):(equipped[r.type]===r.id);
+    let ctrl;
+    if(!unlocked)ctrl=`<span style="font-size:.62rem;color:var(--muted);white-space:nowrap">🔒 ab Tag ${day}</span>`;
+    else if(active)ctrl=`<span style="font-size:.62rem;color:#10b981;font-weight:700;white-space:nowrap">✓ Aktiv</span>`;
+    else ctrl=`<button onclick="window.equipReward('${r.id}')" style="background:var(--primary);color:var(--bg);border:none;border-radius:20px;padding:6px 13px;font-size:.66rem;font-weight:700;cursor:pointer;white-space:nowrap;touch-action:manipulation">Anlegen</button>`;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);opacity:${unlocked?1:.55}">
+      <span style="font-size:1.15rem;width:24px;text-align:center;flex-shrink:0">${r.icon}</span>
+      <div style="flex:1;min-width:0"><div style="font-size:.8rem;font-weight:600">${r.name}</div><div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">${REWARD_TYPE_LABEL[r.type]}</div></div>
+      ${ctrl}</div>`;
+  }).join('');
+  el.innerHTML=`<div class="section-title"><i class="fas fa-gift"></i> Belohnungen <span style="font-size:.62rem;color:var(--muted);font-weight:400;margin-left:auto">${streakUnlocks.length}/${days.length} frei</span></div>${rows}`;
+}
+window.equipReward=equipReward;window.unequipReward=unequipReward;
 function closeAllModals(){['profileModal','postRunModal','renameModal','settingsModal','adminModal','inboxModal'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
 
 /* ── AVATAR HTML HELPER ── */
@@ -2694,6 +2772,7 @@ function checkDailyReward(){
   }
   dailyLoginStreak=dailyLoginStreak+1;
   dailyLoginDate=today;
+  syncStreakUnlocks();
   save();
   showDailyRewardOverlay(shieldUsed);
 }
@@ -3662,7 +3741,7 @@ function setTiles(){
   mapL?.eachLayer(l=>{if(l instanceof L.TileLayer)mapL.removeLayer(l)});
   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap © CARTO'}).addTo(mapL);
 }
-function mkUserIcon(){return L.divIcon({html:`<div style="background:${userColor};width:16px;height:16px;border-radius:50%;border:2px solid white;box-shadow:0 0 12px ${userColor}"></div>`,iconSize:[16,16],className:''})}
+function mkUserIcon(){const mc=(typeof equippedMarkerColor==='function'&&equippedMarkerColor())||userColor;return L.divIcon({html:`<div style="background:${mc};width:16px;height:16px;border-radius:50%;border:2px solid white;box-shadow:0 0 12px ${mc}"></div>`,iconSize:[16,16],className:''})}
 
 async function loadLandmarks(){
   if(!mapL)return;
@@ -4303,6 +4382,7 @@ async function finalizeRun(elapsed){
   const lvBefore=getLevel(prevPts);
   points+=totalPts;
   if(useBoost)toast(`⚡ Energie-Boost aktiv (+10% Angriff) · noch ${energy}/${CFG.ENERGY_MAX} Boosts`);
+  else if(boosted&&energy>0)toast('⚡ Boost war bereit, blieb aber ungenutzt – er wirkt nur beim Angriff auf ein Feindgebiet.');
   else if(streakDays>1)toast(`🔥 Streak ×${streakMul.toFixed(1)} · +${kmXP} km-XP`);
   const kcal=calcKcal(dist,elapsed);
   const rec={id:(crypto.randomUUID?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2))),synced:false,date:Date.now(),distance:dist,area,pts:res.pts,path:path.filter((_,i)=>i%3===0),conquered:res.conquered,defended:res.defended,duration:elapsed,gap,kcal,avgHR:heartRate,splits:[...kmSplits]};
@@ -4390,19 +4470,22 @@ async function processConquest(np,area,d,boosted=false,isImport=false,durationS=
   }
 
   let conquered=false,defended=false;
+  _runEvents=[]; // Bilanz sammeln statt vieler Einzel-Toasts (Anzeige gebündelt im Post-Run-Modal)
   (data.events||[]).forEach(ev=>{
     if(ev.type==='conquered'||ev.type==='cut'){
       conquered=true;totalRaids++; // Sieg über ein Feindgebiet -> zählt für die „Sieg"-Abzeichen
       [660,880,1100].forEach((f,i)=>setTimeout(()=>beep(f,.1),i*80));
-      toast(ev.type==='cut'?'✂️ Gebiet abgeschnitten! (+'+ev.got+' Zellen)':'🔥 GEBIET EROBERT! (+'+ev.cells+' Zellen)');
       vib([100,50,100]);addNotif('🗺️','Neues Gebiet erobert!');
+      _runEvents.push({type:ev.type==='cut'?'cut':'conquered',cells:(ev.type==='cut'?ev.got:ev.cells)||0});
     }else if(ev.type==='neutral_claim'){
       conquered=true;totalDiscovered++;
-      toast('🗺️ Neues Gebiet beansprucht! (+'+ev.cells+' Zellen)');addNotif('🗺️','Neues Gebiet beansprucht');
+      addNotif('🗺️','Neues Gebiet beansprucht');
+      _runEvents.push({type:'neutral_claim',cells:ev.cells||0});
     }else if(ev.type==='defended'){
-      defended=true;toast('🛡️ Gebiet verteidigt! +'+ev.built+' Verteidigung');
+      defended=true;
+      _runEvents.push({type:'defended',built:ev.built||0});
     }else if(ev.type==='attacked'){
-      toast('⚔️ Angriff! −'+ev.damage+' gegnerische Verteidigung');
+      _runEvents.push({type:'attacked',damage:ev.damage||0});
     }
   });
   if(typeof data.energy==='number')energy=data.energy; // Energie ist server-autoritativ
@@ -4464,9 +4547,31 @@ function showPostRun(rec){
   $('postSong').innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--card);border-radius:12px;color:var(--muted);font-size:.82rem"><i class="fas fa-music" style="color:var(--primary)"></i> Song wird analysiert…</div>`;
   setTimeout(()=>{const s=fallbackSong();$('postSong').innerHTML=`<div style="background:var(--card);border-radius:12px;padding:14px"><div style="font-size:.6rem;text-transform:uppercase;letter-spacing:2px;color:var(--primary);margin-bottom:6px">🎵 Dein Lauf-Song</div><div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem">${s.title}</div><div style="color:var(--muted);font-size:.75rem;margin-bottom:6px">${s.artist} · ${s.bpm} BPM</div><div style="font-size:.72rem;color:var(--muted)">${s.reason}</div></div>`;},1200);
   const inflHTML=(sessionNewTerrNames.length||sessionNewLandmarks.length)?`<div style="background:rgba(var(--primary-rgb),.06);border:1px solid rgba(var(--primary-rgb),.2);border-radius:14px;padding:14px;margin-bottom:10px"><div style="font-size:.6rem;font-weight:700;letter-spacing:1.5px;color:var(--primary);margin-bottom:8px">🗺️ DEIN EINFLUSS</div>${sessionNewTerrNames.map(n=>`<div style="display:flex;align-items:center;gap:6px;font-size:.8rem;margin-bottom:4px"><span style="width:8px;height:8px;border-radius:50%;background:${userColor};flex-shrink:0;display:inline-block"></span>${esc(n)}</div>`).join('')}${sessionNewLandmarks.map(n=>`<div style="display:flex;align-items:center;gap:6px;font-size:.8rem;margin-bottom:4px"><span style="color:#ffd700">⭐</span>${esc(n)}</div>`).join('')}</div>`:'';
-  $('postInfluence').innerHTML=inflHTML;
+  $('postInfluence').innerHTML=runEventsSummaryHTML()+inflHTML;
   $('postRunModal').style.display='flex';
   document.getElementById('cardRunBtn')?.addEventListener('click',()=>{showShareCardEditor(rec);},{ once:true });
+}
+/* Gebündelte Lauf-Bilanz: gleiche Ereignistypen zusammengefasst (Anzahl + Summe)
+   statt vieler Einzel-Toasts während des Laufs. */
+function runEventsSummaryHTML(){
+  if(!_runEvents||!_runEvents.length)return '';
+  let conq=0,conqCells=0,claim=0,claimCells=0,def=0,defBuilt=0,atk=0,atkDmg=0;
+  _runEvents.forEach(e=>{
+    if(e.type==='conquered'||e.type==='cut'){conq++;conqCells+=e.cells||0;}
+    else if(e.type==='neutral_claim'){claim++;claimCells+=e.cells||0;}
+    else if(e.type==='defended'){def++;defBuilt+=e.built||0;}
+    else if(e.type==='attacked'){atk++;atkDmg+=e.damage||0;}
+  });
+  const rows=[];
+  if(conq)rows.push(['🔥','Erobert',conq+(conq===1?' Gebiet':' Gebiete'),'+'+conqCells+' Zellen','#ff4d6d']);
+  if(claim)rows.push(['🗺️','Beansprucht',claim+(claim===1?' Gebiet':' Gebiete'),'+'+claimCells+' Zellen','var(--primary)']);
+  if(def)rows.push(['🛡️','Verteidigt',def+'×','+'+defBuilt+' Verteidigung','#10b981']);
+  if(atk)rows.push(['⚔️','Angegriffen',atk+'×','−'+atkDmg+' gegn. Verteidigung','#ff9f1c']);
+  if(!rows.length)return '';
+  return `<div style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px">
+    <div style="font-size:.6rem;font-weight:700;letter-spacing:1.5px;color:var(--primary);margin-bottom:8px">⚔️ LAUF-BILANZ</div>
+    ${rows.map(r=>`<div style="display:flex;align-items:center;gap:8px;font-size:.8rem;margin-bottom:5px"><span style="font-size:1rem;width:20px;text-align:center">${r[0]}</span><span style="font-weight:700;color:${r[4]}">${r[1]}</span><span style="color:var(--muted)">${r[2]}</span><span style="margin-left:auto;font-weight:700;color:${r[4]}">${r[3]}</span></div>`).join('')}
+  </div>`;
 }
 function fallbackSong(){const s=[{title:'Eye of the Tiger',artist:'Survivor',bpm:109,reason:'Dein Lauf hatte diese unnachgiebige Energie.'},{title:'Titanium',artist:'David Guetta ft. Sia',bpm:126,reason:'Nichts konnte dich aufhalten.'},{title:'Blinding Lights',artist:'The Weeknd',bpm:171,reason:'Freier Flow durch deine Straßen.'},{title:'Run the World',artist:'Beyoncé',bpm:130,reason:'Heute gehören die Straßen dir.'},{title:'Harder Better Faster',artist:'Daft Punk',bpm:123,reason:'Deine Pace war wie ein perfekter Rhythmus.'}];return s[Math.floor(Math.random()*s.length)]}
 
@@ -6671,9 +6776,14 @@ async function updateProfileRank(){
 }
 function updateProfile(){
   if(!starterQuestFlags.profileOpened){starterQuestFlags.profileOpened=true;checkStarterQuests();save();}
+  syncStreakUnlocks();
   updateProfileRank();
   $('pvAvatar').innerHTML=avatarHTML(54);$('pvName').textContent=playerName;
   const banner=$('pvBanner');banner.style.background=`linear-gradient(135deg,${userColor}44,${userColor}11,var(--bg2))`;banner.style.borderColor=userColor+'55';
+  /* Angelegte Belohnungen anwenden: Banner + Profilrahmen (Ring am Avatar). */
+  const _ban=equipped.banner&&REWARD_BY_ID[equipped.banner];if(_ban){banner.style.background=_ban.value;const m=_ban.value.match(/#[0-9a-f]{6}/i);banner.style.borderColor=(m&&m[0]||userColor)+'88';}
+  const _frm=equipped.frame&&REWARD_BY_ID[equipped.frame];const _av=$('pvAvatar');if(_av)_av.style.boxShadow=_frm?('0 0 0 3px '+_frm.value+',0 0 16px '+_frm.value+'99'):'';
+  renderRewards();applyEquipped();
   if(history.length){const d=new Date(history[0].date);$('pvSince').textContent='Aktiv seit '+d.toLocaleDateString('de',{month:'long',year:'numeric'});}
   const noRunEl=$('pvNoRunState');if(noRunEl)noRunEl.style.display=history.length===0?'':'none';
   const lvD=getLvlProg(points);
@@ -6689,6 +6799,7 @@ function updateProfile(){
     const oldBadges=sinceEl.parentNode.querySelector('.pv-extra-badges');if(oldBadges)oldBadges.remove();
     const badgeDiv=document.createElement('div');badgeDiv.className='pv-extra-badges';badgeDiv.style.cssText='text-align:center;margin-top:6px;display:flex;flex-wrap:wrap;justify-content:center;gap:5px';
     badgeDiv.innerHTML=`<span class="ruler-badge">👑 ${title}</span>`;
+    const _st=equippedTitle();if(_st)badgeDiv.innerHTML+=`<span class="team-badge" style="background:rgba(var(--primary-rgb),.15);color:var(--primary);border:1px solid rgba(var(--primary-rgb),.4)">⭐ ${esc(_st)}</span>`;
     if(userTeam){const tm=TEAMS.find(t=>t.id===userTeam);if(tm)badgeDiv.innerHTML+=`<span class="team-badge" style="background:${tm.color}22;color:${tm.color};border:1px solid ${tm.color}44">${tm.icon} ${tm.name}</span>`;}
     if(userClub)badgeDiv.innerHTML+=`<span class="club-badge">${esc(userClub.icon)} ${esc(userClub.name)}</span>`;
     sinceEl.insertAdjacentElement('afterend',badgeDiv);
@@ -6705,8 +6816,17 @@ function updateProfile(){
       const endDay=dr.nextMs||dailyLoginStreak+1;
       const pct=endDay>prevMs?Math.round((dailyLoginStreak-prevMs)/(endDay-prevMs)*100):100;
       dsEl.style.display='';
+      /* Flammen-Grid: eine Flamme pro Tag des aktuellen Monats, aufeinander-
+         folgende Login-Tage füllen sie auf (Gesamt-Streak läuft separat weiter). */
+      const _now=new Date();
+      const daysInMonth=new Date(_now.getFullYear(),_now.getMonth()+1,0).getDate();
+      const litCount=Math.min(dailyLoginStreak,daysInMonth);
+      const monthName=_now.toLocaleString('de',{month:'long'});
+      const flameGrid=Array.from({length:daysInMonth},(_,i)=>{const lit=i<litCount;return `<span style="font-size:1rem;line-height:1.4;${lit?'filter:drop-shadow(0 0 4px rgba(255,120,40,.7))':'filter:grayscale(1);opacity:.25'}">🔥</span>`;}).join('');
       dsEl.innerHTML=`<div class="section-title"><i class="fas fa-fire"></i> Tägliche Serie</div>
         <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--primary)">${dailyLoginStreak} Tage 🔥</div>
+        <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:6px 0 5px">${monthName} · ${litCount}/${daysInMonth} Flammen</div>
+        <div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:12px">${flameGrid}</div>
         ${dr.nextMs?`<div style="font-size:.72rem;color:var(--muted);margin-bottom:6px">Nächste Belohnung: <b style="color:var(--primary)">${dr.nextMsName}</b> · Noch ${dr.daysLeft} ${dr.daysLeft===1?'Tag':'Tage'}</div>
         <div style="height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;margin-bottom:10px"><div style="height:100%;width:${pct}%;background:var(--primary);border-radius:3px"></div></div>`:'<div style="font-size:.72rem;color:var(--muted);margin-bottom:10px">Alle Meilensteine erreicht! 🏆</div>'}
         ${streakShields>0?`<div style="font-size:.72rem;color:#c084fc;margin-bottom:10px">🛡️ Streak-Schutz: ${streakShields}/3</div>`:''}
