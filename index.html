@@ -1847,7 +1847,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v118';
+const APP_VERSION='v119';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -5720,6 +5720,57 @@ function renderSocialFeed(){
 }
 
 /* ── SETTINGS MODAL ── */
+/* ── HILFE-BEREICH (Akkordeon-Regelwerk, Design-Handoff „Hilfe") ──────────────
+   12 Kategorien, immer max. eine offen, erste beim Öffnen aufgeklappt. Copy 1:1. */
+const _HELP_RULER=[['Neuling','#5A8A6E'],['Besitzer','#00D4FF'],['Baron','#9B5DE5'],['Herzog','#FF9F1C'],['König','#E6FF55'],['Imperator','#FFD700']];
+const _HELP_RARITY=[['Gewöhnlich','#5A8A6E'],['Selten','#00D4FF'],['Episch','#9B5DE5'],['Legendär','#FFD700']];
+function helpChip(label,color){return `<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:40px;font-family:'Bebas Neue',sans-serif;font-size:.78rem;letter-spacing:1px;color:${color};border:1px solid ${color}55;background:${color}1a">${label}</span>`;}
+const HELP_SECTIONS=[
+  {icon:'fa-route',title:'Laufen & Gebiete erobern',intro:'Das Grundprinzip von Runners Conquer: Jeder echte Lauf, den du draußen absolvierst, wird zu Eroberung auf der Karte. Du startest einen Lauf in der App, dein GPS zeichnet deine Strecke live auf, und sobald sich dein Weg zu einer geschlossenen Schleife formt, verwandelt sich die eingeschlossene Fläche in dein Gebiet.',bullets:['Der Lauf selbst zählt: Tempo oder Distanz sind zweitrangig, entscheidend ist, dass du eine Fläche vollständig umrundest.','Je größer die Schleife, desto größer das Gebiet, das am Ende dir gehört.','Ist eine Fläche noch neutral (niemandem zugeordnet), reicht ein einmaliges Umrunden, um sie dir zu sichern.','Gehört sie bereits einer anderen Person, musst du sie ihr streitig machen, indem du dieselbe Fläche ebenfalls selbst abläufst – wer sie zuletzt umrundet hat, hält sie.','Mehrere kleine Schleifen hintereinander lassen sich zu einem größeren, zusammenhängenden Revier verbinden.','Jedes neu eroberte Gebiet bringt dir sofort Punkte und zählt dauerhaft auf deine Gesamt-Herrschaft ein, solange du es hältst.','Auf der Karte siehst du jederzeit, welche Flächen dir, deinem Team oder anderen Läufer:innen gehören.']},
+  {icon:'fa-bolt',title:'Energie',intro:'Energie ist deine Ausdauer-Ressource für alles, was mit Eroberung zu tun hat. Sie ist eine Art Akku, der begrenzt, wie viel du am Stück beanspruchen kannst, und der dich zwingt, dir deine Läufe klug einzuteilen statt alles auf einmal zu versuchen.',bullets:['Energie wird verbraucht, während du aktiv Fläche eroberst oder dein Revier hältst.','Mit der Zeit füllt sie sich von ganz allein wieder auf – auch ohne dass du läufst.','Ein voller Energie-Vorrat erlaubt dir größere oder mehrere Eroberungen am Stück.','Ist deine Energie aufgebraucht, lohnt sich eine Pause: Sobald sie sich erholt hat, kannst du weiter erobern.','Ein regelmäßiger Rhythmus aus Läufen und Pausen ist effizienter, als deine Energie in einem einzigen Marathon-Lauf zu verbrauchen.','Dein Streak (aufeinanderfolgende aktive Tage) und dein Wochenziel helfen dir dabei, dauerhaft mit voller Energie zu spielen.']},
+  {icon:'fa-shield-halved',title:'Verteidigen',intro:'Ein erobertes Gebiet gehört dir nicht für immer automatisch weiter – andere Läufer:innen können es dir streitig machen, indem sie dieselbe Fläche selbst ablaufen und dadurch übernehmen.',bullets:['Um ein Gebiet zu behalten, musst du es von Zeit zu Zeit erneut selbst ablaufen – das zählt als Verteidigung.','Ist dein Revier bedroht, siehst du das in der Gebiets-Ansicht: Dort werden dir Läufer:innen angezeigt, die in der Nähe aktiv sind und dir das Gebiet abjagen könnten.','Je länger du ein Gebiet ununterbrochen hältst und verteidigst, desto mehr Ansehen und Punkte bringt es dir dauerhaft ein.','Regelmäßiges Verteidigen ist genauso wichtig wie das Erobern neuer Flächen – ein großes Revier, das du vernachlässigst, geht mit der Zeit an aktivere Läufer:innen verloren.','Besonders zentrale oder seltene Gebiete werden öfter angelaufen und brauchen darum mehr Aufmerksamkeit.']},
+  {icon:'fa-crown',title:'Ruler-Rangstufen',intro:'Je mehr Fläche du dauerhaft beherrschst und je konsequenter du sie verteidigst, desto höher steigst du in der Rangordnung der Herrscher (Ruler) auf. Dein aktueller Titel wird überall dort angezeigt, wo dein Name erscheint – auf der Karte, in der Rangliste und in deinem Profil.',chips:_HELP_RULER,note:'Der Aufstieg verläuft in dieser Reihenfolge von Neuling bis Imperator. Ein höherer Titel ist reines Prestige und Sichtbarkeit – er zeigt anderen Läufer:innen auf einen Blick, wie ernst du es mit deinem Revier meinst.'},
+  {icon:'fa-gem',title:'Seltenheit von Straßen & Wahrzeichen',intro:'Nicht jedes Stück Stadt ist gleich viel wert. Straßen, Plätze und Wahrzeichen haben jeweils eine Seltenheitsstufe, die zeigt, wie begehrt und wertvoll sie sind.',chips:_HELP_RARITY,note:'Gewöhnliche Straßen bilden das Grundgerüst deines Reviers. Seltene, epische und vor allem legendäre Wahrzeichen sind deutlich schwerer zu bekommen, bringen dafür aber überdurchschnittlich viele Punkte und Prestige – und ziehen entsprechend mehr Konkurrenz an, die versucht, sie dir abzunehmen.'},
+  {icon:'fa-bullseye',title:'Quests & Punkte',intro:'Quests sind klare, kleine Ziele, die dir Orientierung geben, was als Nächstes sinnvoll ist – zum Beispiel eine bestimmte Distanz laufen, mehrere Gebiete erobern oder dein Revier verteidigen.',bullets:['Es gibt zwei Arten von Quests: tägliche und wöchentliche.','Tägliche Quests wechseln jeden Tag neu – sie sind meist kleiner und schnell zu schaffen.','Wöchentliche Quests laufen über die ganze Woche und wechseln erst danach – sie sind größer angelegt und lohnen sich entsprechend mehr.','Jede abgeschlossene Quest belohnt dich direkt mit Punkten, unabhängig davon, ob sie täglich oder wöchentlich war.','Zusätzlich sammelst du Punkte durchs Erobern neuer Gebiete, durchs Verteidigen bestehender Gebiete und durch einen aktiven Streak.','Dein Gesamt-Punktestand ist die Grundlage für deinen Platz auf der Rangliste und deinen Ruler-Titel.','Ein offener Quest-Fortschritt bleibt sichtbar, damit du jederzeit siehst, wie nah du am Abschluss bist – und wie viel Zeit noch bleibt, bevor sie wechselt.']},
+  {icon:'fa-trophy',title:'Saison & Rangliste',intro:'Runners Conquer ist in Saisons unterteilt. Innerhalb einer Saison sammelst du Punkte und Gebiete, die dich auf der Rangliste gegen andere Läufer:innen in deiner Nähe positionieren.',bullets:['Die Rangliste zeigt für jede Person Rang, Ruler-Titel, gehaltene Gebietsfläche und Streak.','Dein eigener Platz und Abstand zu den Rängen darüber wird dir immer separat angezeigt, auch wenn du nicht ganz vorne stehst.','Am Ende einer Saison wird die Bestenliste final ausgewertet, bevor eine neue Saison mit einem frischen Rennen um Gebiete beginnt.','Bleib aktiv: Wer über längere Zeit pausiert, verliert Rang und ungenutzte Gebiete an aktivere Rivalen.']},
+  {icon:'fa-people-group',title:'Clubs',intro:'Du kannst dich einem Club anschließen und gemeinsam mit anderen Läufer:innen in einer gemeinsamen Farbe antreten, statt nur für dich allein zu laufen.',bullets:['Dein Club ist an eurer gemeinsamen Farbe auf der Karte erkennbar, überall dort, wo Club-Mitglieder Gebiete halten.','Club-Erfolge zählen zusätzlich zu deinem persönlichen Fortschritt – ihr profitiert gemeinsam von der Fläche, die euer Club insgesamt hält.','Ein starker Club kann größere, zusammenhängende Reviere aufbauen und leichter verteidigen als Einzelspieler:innen.','Die Club-Wahl kannst du jederzeit in den Einstellungen ändern, falls du den Club wechseln möchtest.']},
+  {icon:'fa-palette',title:'Erscheinungsbild',intro:'Runners Conquer lässt dich das Design der App selbst wählen – such dir das Erscheinungsbild aus, das dir am besten gefällt.',bullets:['Unter Einstellungen → Erscheinungsbild stehen dir mehrere fertige Designs zur Auswahl.','Citrus ist der markante Signature-Look: tiefes Waldgrün mit leuchtendem Limetten-Akzent.','Daneben gibt es hellere und ruhigere Varianten für alle, die einen anderen Stil bevorzugen.','Das gewählte Design ändert nur die Optik – deine Gebiete, Punkte und dein Fortschritt bleiben davon unberührt.','Du kannst das Design jederzeit wieder wechseln, ganz ohne Einfluss auf dein Spiel.']},
+  {icon:'fa-tower-broadcast',title:'Nachrichten & Benachrichtigungen',intro:'Damit dir nichts Wichtiges entgeht, hält dich Runners Conquer über einen Nachrichten- und Benachrichtigungsbereich auf dem Laufenden.',bullets:['Ein Aktivitäts-Feed zeigt dir laufend, was in deiner Umgebung passiert – etwa wenn jemand ein Gebiet in deiner Nähe erobert oder du selbst befördert wurdest.','Wird dein eigenes Revier bedroht, bekommst du das direkt als eigene Nachricht angezeigt, damit du rechtzeitig reagieren kannst.','Push-Benachrichtigungen holen dich auch dann ab, wenn die App gerade nicht offen ist – etwa bei einer Bedrohung deines Reviers.','Welche Benachrichtigungen du bekommen möchtest, stellst du einzeln unter Einstellungen → Benachrichtigungen ein.']},
+  {icon:'fa-user-shield',title:'Konto, Datenschutz & Support',intro:'Dein Profil, deine Laufdaten und dein gesamter Fortschritt sind an dein Konto gebunden und werden sicher gespeichert, damit du auf jedem Gerät weiterspielen kannst.',bullets:['Profil, Avatar, Name und Club lassen sich jederzeit in den Einstellungen anpassen.','Standort- und Laufdaten werden ausschließlich zum Betrieb des Spiels genutzt – du entscheidest, was davon sichtbar für andere ist.','Push-Benachrichtigungen (z. B. wenn dein Revier bedroht ist) lassen sich einzeln in den Einstellungen an- und ausschalten.','Bei Fragen, Problemen oder zum Löschen deines Kontos erreichst du den Support direkt über Einstellungen → Support.']},
+  {icon:'fa-circle-question',title:'Häufig gestellte Fragen',intro:'Die wichtigsten Antworten auf einen Blick.',faq:[['Was passiert, wenn mir jemand mein Gebiet streitig macht?','Du wirst darauf aufmerksam gemacht, dass dein Revier bedroht ist, und kannst es zurückerobern, indem du die Fläche einfach erneut selbst abläufst.'],['Verliere ich Punkte, wenn ich ein Gebiet verliere?','Dein bereits gesammelter Punktestand bleibt dir erhalten – nur die laufende Fläche und ihr weiterer Ertrag gehen an die Person über, die sie neu erobert hat.'],['Wie steige ich schneller im Ruler-Rang auf?','Regelmäßig laufen, neue Gebiete erobern und dein bestehendes Revier konsequent verteidigen bringt dich am schnellsten voran.'],['Kann ich meinen Club später wechseln?','Ja, jederzeit über Einstellungen → Dein Club.'],['Wo sehe ich, wenn mein Revier bedroht wird?','Dafür gibt es den Nachrichten- und Benachrichtigungsbereich – dort und per Push wirst du direkt informiert.'],['Was ist der Unterschied zwischen Gebiet und Wahrzeichen?','Ein Gebiet ist die Fläche, die du durch Laufen umschließt. Ein Wahrzeichen ist ein besonderer, seltenerer Ort darin, der zusätzliches Prestige und mehr Punkte bringt.'],['Läuft eine Saison irgendwann ab?','Ja, jede Saison endet nach einer festgelegten Zeit, die Rangliste wird final ausgewertet und danach beginnt die nächste Saison neu.'],['Was bringt mir Energie eigentlich konkret?','Ohne Energie kannst du keine neue Fläche erobern – sie begrenzt, wie viel du am Stück schaffst, und füllt sich mit der Zeit von selbst wieder auf.']]}
+];
+function _helpInner(sec){
+  let h=`<p style="margin:0 0 10px;opacity:.92">${sec.intro}</p>`;
+  if(sec.bullets&&sec.bullets.length)h+=`<ul style="margin:0 0 4px;padding-left:18px;display:flex;flex-direction:column;gap:7px">${sec.bullets.map(b=>`<li style="opacity:.9">${b}</li>`).join('')}</ul>`;
+  if(sec.chips&&sec.chips.length)h+=`<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">${sec.chips.map(c=>helpChip(c[0],c[1])).join('')}</div>`;
+  if(sec.note)h+=`<p style="margin:10px 0 0;opacity:.9">${sec.note}</p>`;
+  if(sec.faq&&sec.faq.length)h+=`<div style="display:flex;flex-direction:column;gap:14px;margin-top:4px">${sec.faq.map(qa=>`<div><div style="font-weight:700;color:var(--primary);margin-bottom:4px">${qa[0]}</div><div style="opacity:.88">${qa[1]}</div></div>`).join('')}</div>`;
+  return h;
+}
+function renderHelpInto(body){
+  body.innerHTML=`
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:16px">
+      <div><div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:1px;line-height:1.05">Alles zum Spiel</div>
+      <div style="font-size:.82rem;color:var(--muted);margin-top:4px;line-height:1.5">Tippe eine Kategorie an, um sie aufzuklappen. Hier findest du jederzeit alle Regeln zu Runners Conquer noch einmal zum Nachlesen.</div></div>
+      <button id="promoPlayBtn" style="flex-shrink:0;display:flex;align-items:center;gap:6px;background:var(--primary);color:var(--bg);border:none;border-radius:20px;padding:6px 12px;font-size:.66rem;font-weight:700;letter-spacing:1px;cursor:pointer;font-family:'Poppins',sans-serif"><i class="fas fa-play" style="font-size:.55rem"></i> PROMO</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      ${HELP_SECTIONS.map((sec,i)=>`<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden">
+        <div class="help-head" data-idx="${i}" style="display:flex;align-items:center;gap:12px;padding:15px 16px;cursor:pointer;touch-action:manipulation">
+          <span style="width:34px;height:34px;border-radius:10px;background:rgba(var(--primary-rgb),.12);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fas ${sec.icon}" style="color:var(--primary);font-size:.95rem"></i></span>
+          <span style="flex:1;font-family:'Bebas Neue',sans-serif;font-size:1.02rem;letter-spacing:1px;color:var(--text)">${sec.title}</span>
+          <i class="fas fa-chevron-down help-chev" style="color:var(--muted);font-size:.8rem;transition:transform .3s var(--ease-out)"></i>
+        </div>
+        <div class="help-row" style="display:grid;grid-template-rows:0fr;transition:grid-template-rows .35s var(--ease-out)"><div style="overflow:hidden;min-height:0"><div style="padding:0 16px 18px 62px;font-size:.86rem;line-height:1.6;color:var(--text)">${_helpInner(sec)}</div></div></div>
+      </div>`).join('')}
+    </div>
+    <div style="text-align:center;font-size:.68rem;color:var(--muted);letter-spacing:.5px;margin-top:22px">Runners Conquer · Hilfe &amp; Spielregeln</div>`;
+  const heads=[...body.querySelectorAll('.help-head')];
+  const setOpen=idx=>heads.forEach(h=>{const on=(+h.dataset.idx===idx);h.parentElement.querySelector('.help-row').style.gridTemplateRows=on?'1fr':'0fr';h.querySelector('.help-chev').style.transform=on?'rotate(180deg)':'rotate(0deg)';});
+  let cur=0;
+  heads.forEach(h=>h.addEventListener('click',()=>{const i=+h.dataset.idx;cur=(cur===i)?-1:i;setOpen(cur);}));
+  requestAnimationFrame(()=>setOpen(0)); // erste Kategorie offen
+}
 function renderSettingsTab(tab){
   const body=$('settingsBody');
   /* Slide-in beim Tab-Wechsel (Inhalt wird synchron gesetzt, Klasse per rAF). */
@@ -5945,96 +5996,7 @@ function renderSettingsTab(tab){
     body.innerHTML=`<div style="font-size:.88rem;font-weight:600;margin-bottom:5px">🛠️ Support &amp; Feedback</div><div style="font-size:.75rem;color:var(--muted);margin-bottom:14px">Probleme oder Ideen? Wir antworten schnell!</div><div style="font-size:.72rem;color:var(--primary);background:var(--primary)11;border:1px solid var(--primary)33;border-radius:8px;padding:6px 10px;margin-bottom:12px">📨 An: Admin</div><div class="field"><label>Betreff</label><input type="text" id="suppSubject" class="modal-input" placeholder="z.B. Bug, Feedback, Idee…"></div><div class="field"><label>Nachricht</label><textarea id="suppMsg" class="modal-input" style="resize:none;height:90px;font-family:'Poppins',sans-serif;font-size:.85rem;padding:12px" placeholder="Beschreibe dein Anliegen…"></textarea></div><button class="btn btn-p" id="sendSuppBtn" style="width:100%"><i class="fas fa-paper-plane"></i> Absenden</button><div id="suppStatus" style="text-align:center;margin-top:8px;font-size:.78rem"></div>`;
     document.getElementById('sendSuppBtn')?.addEventListener('click',sendSupportMessage);
   } else if(tab==='hilfe'){
-    body.innerHTML=`
-<div style="display:flex;flex-direction:column;gap:10px;font-size:.82rem">
-
-  <div style="display:flex;align-items:center;justify-content:space-between">
-    <div style="font-weight:700;font-size:1rem;color:var(--primary)">📖 Spielanleitung</div>
-    <button id="promoPlayBtn" style="display:flex;align-items:center;gap:6px;background:#e8ff47;color:#09090f;border:none;border-radius:20px;padding:5px 13px;font-size:.7rem;font-weight:700;letter-spacing:1px;cursor:pointer;font-family:'Poppins',sans-serif"><i class="fas fa-play" style="font-size:.6rem"></i> PROMO</button>
-  </div>
-
-  <details open style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
-    <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">🗺️ Gebiete erobern</summary>
-    <div style="margin-top:8px;color:var(--muted);line-height:1.6">
-      Starte einen Lauf. Die Zellen, die du durchläufst — und bei einer geschlossenen Runde auch die eingeschlossene Fläche — werden zu deinem Gebiet (ein feines Hexagon-Raster). Auch die außerhalb gelaufene Strecke wird beansprucht. Läufst du durch ein <b>fremdes</b> Gebiet, greifst du es an — wie stark, hängt von deinem <b>Tempo</b> ab (schneller = mehr Schaden). Übersteigt dein Angriff den Verteidigungswert, wird das Gebiet deins.
-    </div>
-  </details>
-
-  <details style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
-    <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">🛡️ Stärke &amp; Verfall</summary>
-    <div style="margin-top:8px;color:var(--muted);line-height:1.6">
-      Jedes Gebiet hat einen <b>Verteidigungswert von 1 bis 300</b>. Läufst du durch dein <b>eigenes</b> Gebiet, steigt der Wert anteilig zur tatsächlich abgelaufenen Fläche (max. +100 pro Tag). Unverteidigte Gebiete <b>verfallen mit der Zeit</b>: der Wert sinkt langsam bis auf <b>1</b> — das Gebiet bleibt bestehen, wird aber immer leichter angreifbar.
-      <div style="margin-top:8px">Tippe ein Gebiet an, um Details zu sehen: <b>Fraktion</b>, <b>Besitzer</b>, aktueller <b>Verteidigungswert</b>, <b>Dauer bis 1</b> und die <b>Größe</b> (Anzahl Zellen). Oben steht deine Beziehung zum Gebiet: <span style="color:#5eead4">🤝 Verbündet</span> (gleiche Fraktion), <span style="color:#ff6666">⚔️ Feindlich</span> oder <span style="color:var(--text)">🔵 dein Gebiet</span>. Ein <span style="color:#c084fc">🤖 Bot</span> kennzeichnet computergesteuerte Gegner.</div>
-      <div style="margin-top:8px">Der <b>farbige Rand</b> des Popups ist eine dezente Erober-Ampel: <span style="color:#22c55e;font-weight:700">grün</span> = leicht angreifbar, <span style="color:#eab308;font-weight:700">gelb</span> = machbar mit gutem Tempo, <span style="color:#ef4444;font-weight:700">rot</span> = stark befestigt. Bei deinen eigenen Gebieten hat der Rand deine Fraktionsfarbe.</div>
-    </div>
-  </details>
-
-  <details style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
-    <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">⚡ Energie</summary>
-    <div style="margin-top:8px;color:var(--muted);line-height:1.6">
-      Energie gibt dir einen <b>Angriffs-Boost von +10 %</b> für einen Lauf. Du hast <b>3 Boosts pro Woche</b>, die zu Wochenbeginn automatisch zurückgesetzt werden. Ein Boost wird automatisch eingesetzt, sobald du noch welche übrig hast — so triffst du Feindgebiete härter.
-    </div>
-  </details>
-
-  <details style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
-    <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">🎖️ Level &amp; XP</summary>
-    <div style="margin-top:8px;color:var(--muted);line-height:1.6">
-      Du erhältst XP für jeden Lauf, jedes Gebiet und jede Entdeckung. Mit steigendem Level schaltest du neue Titel frei. Pro Kilometer erhältst du <b>${CFG.XP_PER_KM} XP</b>, für ein neues Gebiet bis zu <b>${CFG.XP_CONQUER_MAX} XP</b>.
-    </div>
-  </details>
-
-  <details style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
-    <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">🏅 Seltenheit</summary>
-    <div style="margin-top:8px;color:var(--muted);line-height:1.6">
-      Jedes Gebiet bekommt beim Erstellen eine zufällige Seltenheitsstufe:<br>
-      <span style="color:#ccc">⬜ Gewöhnlich</span> — 60 %<br>
-      <span style="color:#00d4ff">🔵 Selten</span> — 25 % (blaue Umrandung)<br>
-      <span style="color:#9b5de5">🟣 Episch</span> — 12 % (lila Umrandung)<br>
-      <span style="color:#ffd700">🟡 Legendär</span> — 3 % (goldgestrichelte Umrandung)<br>
-      Gebiete in der Nähe von Wahrzeichen haben eine höhere Chance auf bessere Seltenheit.
-    </div>
-  </details>
-
-  <details style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
-    <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">⭐ Wahrzeichen</summary>
-    <div style="margin-top:8px;color:var(--muted);line-height:1.6">
-      Auf der Karte sind besondere Orte (Parks, Denkmäler, Plätze) als ⭐ markiert. Läufst du einem Wahrzeichen auf <b>50 m</b> nahe, wird es als ✅ erfasst und du erhältst <b>${CFG.LANDMARK_PTS} Punkte</b>. Jedes Wahrzeichen kann nur einmal eingefangen werden.
-    </div>
-  </details>
-
-  <details style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
-    <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">👑 Herrschertitel</summary>
-    <div style="margin-top:8px;color:var(--muted);line-height:1.6">
-      Dein Titel richtet sich nach der Anzahl deiner Gebiete:<br>
-      ${RULER_TIERS.map(t=>`<span>• ${t.name} ab ${t.min} Gebiet${t.min!==1?'e':''}</span>`).join('<br>')}
-    </div>
-  </details>
-
-  <details style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
-    <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">⚔️ Fraktionen &amp; Clubs</summary>
-    <div style="margin-top:8px;color:var(--muted);line-height:1.6">
-      <b style="color:var(--text)">Fraktion:</b> Wähle unter Einstellungen → Fraktion eine von 4 Fraktionen:<br>
-      ${TEAMS.map(t=>`<span style="color:${t.color}">${t.icon} ${t.name}</span>`).join('  ')}<br>
-      <span style="font-size:.72rem">⚠️ Fraktionswechsel nur an Tag 1–3 jedes Monats (einmal pro Monat)</span><br><br>
-      <b style="color:var(--text)">Club:</b> Gründe oder tritt einem Club bei (Einstellungen → Club). Teile deinen Club-Code mit Freunden. Clubs erscheinen in der Community-Übersicht.<br><br>
-      Deine Fraktion beeinflusst die Randfarbe deiner Gebiete und deine Position in der Fraktion-Rangliste.
-    </div>
-  </details>
-
-  <details style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
-    <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">🏆 Saison</summary>
-    <div style="margin-top:8px;color:var(--muted);line-height:1.6">
-      Jeden Monat beginnt eine neue Saison. Am Monatsende wird dein aktueller Rang, deine Punkte und Gebiete archiviert. In deinem Profil findest du die letzten 6 Saisons. Am Beginn einer neuen Saison erhältst du eine Benachrichtigung.
-    </div>
-  </details>
-
-  <details style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
-    <summary style="font-weight:700;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;touch-action:manipulation">📲 Lauf teilen</summary>
-    <div style="margin-top:8px;color:var(--muted);line-height:1.6">
-      Nach jedem Lauf kannst du eine automatisch generierte Lauf-Karte teilen. Tippe im Abschlussdialog auf <b>Teilen</b>. Auf unterstützten Geräten öffnet sich das Share-Sheet, andernfalls wird das Bild als PNG heruntergeladen.
-    </div>
-  </details>
-</div>`;
+    renderHelpInto(body);
     if(userId){localStorage.setItem('rc_hilfe_seen_'+userId,'1');updateSettingsBadge();}
     document.getElementById('promoPlayBtn')?.addEventListener('click',()=>{
       const ov=document.createElement('div');
