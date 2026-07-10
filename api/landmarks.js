@@ -59,15 +59,17 @@ async function cachePut(tileKey, data) {
 async function fetchOverpassCell(ti, tj) {
   const s = ti * CELL, w = tj * CELL, n = s + CELL, e = w + CELL;
   const bb = `${s},${w},${n},${e}`;
+  // nwr = node|way|relation: Kirchen & viele Wahrzeichen sind als WEG (Gebäude-
+  // umriss) oder Relation gemappt, NICHT als Node — deshalb reichte die reine
+  // node-Abfrage nicht (in kirchenreichen Gegenden erschien nichts).
   const q = `[out:json][timeout:25];(`
-    + `node["tourism"~"attraction|museum|viewpoint|artwork|theme_park|zoo|aquarium|gallery"]["name"](${bb});`
-    + `node["historic"~"monument|memorial|castle|ruins|archaeological_site|church|fort"]["name"](${bb});`
-    + `node["leisure"~"stadium|nature_reserve"]["name"](${bb});`
-    + `node["amenity"~"place_of_worship|fountain|theatre"]["name"](${bb});`
-    + `node["natural"~"peak|waterfall|cave_entrance"]["name"](${bb});`
-    + `way["tourism"~"attraction|museum|viewpoint|theme_park|zoo"]["name"](${bb});`
-    + `way["historic"~"monument|memorial|castle|ruins"]["name"](${bb});`
-    + `);out center qt;`;
+    + `nwr["tourism"~"attraction|museum|viewpoint|artwork|theme_park|zoo|aquarium|gallery"]["name"](${bb});`
+    + `nwr["historic"~"monument|memorial|castle|ruins|archaeological_site|church|fort|building"]["name"](${bb});`
+    + `nwr["leisure"~"stadium|nature_reserve|park"]["name"](${bb});`
+    + `nwr["amenity"~"place_of_worship|fountain|theatre|townhall|arts_centre"]["name"](${bb});`
+    + `nwr["building"~"church|cathedral|chapel|mosque|temple|synagogue"]["name"](${bb});`
+    + `nwr["natural"~"peak|waterfall|cave_entrance"]["name"](${bb});`
+    + `);out center qt 200;`;
   const r = await fetch(OVERPASS, { method: 'POST', body: 'data=' + encodeURIComponent(q) });
   if (!r.ok) throw new Error('overpass ' + r.status);
   const d = await r.json();
@@ -76,16 +78,24 @@ async function fetchOverpassCell(ti, tj) {
     const lng = el.lon ?? el.center?.lon;
     if (lat == null || lng == null) return null;
     return {
-      id: el.id,
+      // type-präfixierte ID: node/way/relation können dieselbe Nummer haben.
+      id: (el.type ? el.type[0] : 'n') + el.id,
       lat, lng,
       name: el.tags?.name || 'Wahrzeichen',
       type: el.tags?.tourism || el.tags?.historic || el.tags?.leisure
-        || el.tags?.amenity || el.tags?.natural || ''
+        || el.tags?.amenity || el.tags?.natural || el.tags?.building || ''
     };
   }).filter(Boolean);
 }
 
 export default async function handler(req, res) {
+  // CORS: die native App (Origin capacitor://localhost) ruft diesen Endpunkt
+  // cross-origin auf — ohne diese Header blockt WKWebView die Antwort und die
+  // Wahrzeichen kamen nie an.
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'content-type');
+  if (req.method === 'OPTIONS') return res.status(204).end();
   try {
     const bbox = req.query.bbox;
     if (!bbox) return res.status(400).json({ error: 'bbox required' });
