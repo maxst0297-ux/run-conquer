@@ -1854,7 +1854,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v124';
+const APP_VERSION='v125';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2416,20 +2416,25 @@ function applyEquipped(){try{if(userMarker&&mapL)userMarker.setIcon(mkUserIcon()
 function renderRewards(){
   const el=document.getElementById('pvRewards');if(!el)return;
   const days=Object.keys(STREAK_REWARDS).map(Number).sort((a,b)=>a-b);
-  const rows=days.map(day=>{
+  const cards=days.map(day=>{
     const r=STREAK_REWARDS[day];
     const unlocked=streakUnlocks.includes(r.id);
     const active=r.type==='color'?(String(userColor).toLowerCase()===r.value.toLowerCase()):(equipped[r.type]===r.id);
     let ctrl;
-    if(!unlocked)ctrl=`<span style="font-size:.62rem;color:var(--muted);white-space:nowrap">🔒 ab Tag ${day}</span>`;
-    else if(active)ctrl=`<span style="font-size:.62rem;color:#10b981;font-weight:700;white-space:nowrap">✓ Aktiv</span>`;
-    else ctrl=`<button onclick="window.equipReward('${r.id}')" style="background:var(--primary);color:var(--bg);border:none;border-radius:20px;padding:6px 13px;font-size:.66rem;font-weight:700;cursor:pointer;white-space:nowrap;touch-action:manipulation">Anlegen</button>`;
-    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);opacity:${unlocked?1:.55}">
-      <span style="font-size:1.15rem;width:24px;text-align:center;flex-shrink:0">${r.icon}</span>
-      <div style="flex:1;min-width:0"><div style="font-size:.8rem;font-weight:600">${r.name}</div><div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">${REWARD_TYPE_LABEL[r.type]}</div></div>
-      ${ctrl}</div>`;
+    if(!unlocked)ctrl=`<div style="font-size:.6rem;color:var(--muted);white-space:nowrap;margin-top:8px">🔒 ab Tag ${day}</div>`;
+    else if(active)ctrl=`<div style="font-size:.62rem;color:#10b981;font-weight:700;white-space:nowrap;margin-top:8px">✓ Aktiv</div>`;
+    else ctrl=`<button onclick="window.equipReward('${r.id}')" style="margin-top:8px;background:var(--primary);color:var(--bg);border:none;border-radius:20px;padding:6px 14px;font-size:.66rem;font-weight:700;cursor:pointer;white-space:nowrap;touch-action:manipulation">Anlegen</button>`;
+    const preview=r.type==='color'
+      ? `<div style="width:46px;height:46px;border-radius:50%;background:${r.value};margin:0 auto;box-shadow:0 0 0 2px var(--border)${active?',0 0 12px '+r.value:''}"></div>`
+      : `<div style="font-size:2rem;height:46px;line-height:46px">${r.icon}</div>`;
+    return `<div style="flex:0 0 auto;width:124px;text-align:center;background:var(--bg2);border:1px solid ${active?'var(--primary)':'var(--border)'};border-radius:16px;padding:14px 10px;opacity:${unlocked?1:.6};scroll-snap-align:start">
+      ${preview}
+      <div style="font-size:.74rem;font-weight:700;margin-top:8px;line-height:1.2">${r.name}</div>
+      <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px">${REWARD_TYPE_LABEL[r.type]}</div>
+      ${ctrl}
+    </div>`;
   }).join('');
-  el.innerHTML=`<div class="section-title"><i class="fas fa-gift"></i> Belohnungen <span style="font-size:.62rem;color:var(--muted);font-weight:400;margin-left:auto">${streakUnlocks.length}/${days.length} frei</span></div>${rows}`;
+  el.innerHTML=`<div class="section-title"><i class="fas fa-gift"></i> Belohnungen <span style="font-size:.62rem;color:var(--muted);font-weight:400;margin-left:auto">${streakUnlocks.length}/${days.length} frei</span></div><div style="display:flex;gap:12px;overflow-x:auto;padding:4px 2px 8px;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity">${cards}</div>`;
 }
 window.equipReward=equipReward;window.unequipReward=unequipReward;
 /* ── FRAKTIONSSIEGER-MEDAILLON (Design-Handoff „champion-icon") ──────────────
@@ -7206,10 +7211,25 @@ function drawCalendar(){
   const y=calDate.getFullYear(),m=calDate.getMonth(),first=new Date(y,m,1),last=new Date(y,m+1,0),sdow=(first.getDay()+6)%7,today=new Date(),maxD=Math.max(1,...history.map(r=>r.distance));
   let h=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><button class="tab-btn" id="calPrev"><i class="fas fa-chevron-left"></i></button><span style="font-weight:600">${first.toLocaleString('de',{month:'long',year:'numeric'})}</span><button class="tab-btn" id="calNext"><i class="fas fa-chevron-right"></i></button></div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:.65rem;text-align:center;color:var(--muted);margin-bottom:4px">${['Mo','Di','Mi','Do','Fr','Sa','So'].map(d=>`<div>${d}</div>`).join('')}</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">`;
   for(let i=0;i<sdow;i++)h+=`<div></div>`;
-  for(let d=1;d<=last.getDate();d++){const dt=new Date(y,m,d),ds=dt.toDateString(),runs=history.filter(r=>new Date(r.date).toDateString()===ds),km=runs.reduce((s,r)=>s+r.distance/1000,0),it=Math.min(1,km/maxD*8),isTdy=dt.toDateString()===today.toDateString(),bg=km>0?`hsl(${80-it*80},80%,${55-it*10}%)`:'';h+=`<div style="aspect-ratio:1;border-radius:8px;background:${bg||'var(--card)'};border:${isTdy?'2px solid var(--primary)':'1px solid var(--border)'};display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:${km>0?700:400};color:${km>0?'#000':'var(--text)'}">${d}</div>`;}
-  h+='</div>';el.innerHTML=h;
+  for(let d=1;d<=last.getDate();d++){const dt=new Date(y,m,d),ds=dt.toDateString(),runs=history.filter(r=>new Date(r.date).toDateString()===ds),km=runs.reduce((s,r)=>s+r.distance/1000,0),it=Math.min(1,km/maxD*8),isTdy=dt.toDateString()===today.toDateString(),bg=km>0?`hsl(${80-it*80},80%,${55-it*10}%)`:'',active=km>0;h+=`<div ${active?`class="cal-day-active" data-day="${ds}"`:''} title="${active?runs.length+' Lauf'+(runs.length===1?'':'e')+' · '+km.toFixed(1)+' km – antippen':''}" style="aspect-ratio:1;border-radius:8px;background:${bg||'var(--card)'};border:${isTdy?'2px solid var(--primary)':'1px solid var(--border)'};display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:${active?700:400};color:${active?'#000':'var(--text)'};${active?'cursor:pointer;touch-action:manipulation':''}">${d}</div>`;}
+  h+='</div><div style="font-size:.62rem;color:var(--muted);text-align:center;margin-top:8px">Aktive Tage sind farbig – tippe einen an, um deine Läufe zu sehen.</div>';el.innerHTML=h;
   document.getElementById('calPrev')?.addEventListener('click',()=>{calDate.setMonth(calDate.getMonth()-1);drawCalendar()});
   document.getElementById('calNext')?.addEventListener('click',()=>{calDate.setMonth(calDate.getMonth()+1);drawCalendar()});
+  el.querySelectorAll('.cal-day-active').forEach(c=>c.addEventListener('click',()=>showDayRuns(c.dataset.day)));
+}
+/* Läufe eines angetippten Kalendertags anzeigen (mit Zurück zum Kalender). */
+function showDayRuns(ds){
+  const el=document.getElementById('calDiv');if(!el)return;
+  const runs=history.filter(r=>new Date(r.date).toDateString()===ds).sort((a,b)=>b.date-a.date);
+  let dLabel=ds;try{dLabel=new Date(ds).toLocaleDateString('de',{weekday:'long',day:'numeric',month:'long',year:'numeric'});}catch(e){}
+  const list=runs.length?runs.map(r=>`<div style="display:flex;align-items:center;gap:10px;padding:11px 12px;background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:8px">
+      <span style="font-size:1.2rem">${r.conquered?'⚔️':r.defended?'🛡️':'🏃'}</span>
+      <div style="flex:1;min-width:0"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.05rem;color:var(--primary)">${fmtDist(r.distance)}</div><div style="font-size:.66rem;color:var(--muted)">${new Date(r.date).toLocaleTimeString('de',{hour:'2-digit',minute:'2-digit'})} Uhr · ${fmtTime(r.duration)} · ${fmtPace(r.distance,r.duration)}/km${r.kcal?' · '+r.kcal+' kcal':''}</div></div>
+      <span style="font-family:'Bebas Neue',sans-serif;color:var(--primary)">+${r.pts}</span>
+    </div>`).join(''):'<div class="muted" style="padding:16px;text-align:center">Keine gespeicherten Läufe an diesem Tag.</div>';
+  el.innerHTML=`<button id="calBack" class="tab-btn" style="margin-bottom:12px"><i class="fas fa-chevron-left"></i> Kalender</button>
+    <div style="font-weight:700;margin-bottom:10px">${dLabel}</div>${list}`;
+  document.getElementById('calBack')?.addEventListener('click',drawCalendar);
 }
 
 /* Scroll-Fortschritt: Breite des Balkens = Scroll-Position der aktiven Ansicht. */
