@@ -1854,7 +1854,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v125';
+const APP_VERSION='v126';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -1952,7 +1952,13 @@ async function syncProfile(){
     // territories NICHT mehr hier -- das ist jetzt globaler Server-Zustand
     // (siehe rc_claim()/rc_list_territories() in supabase_territories.sql),
     // kein privater Spielstand mehr.
-    const gameSnap=JSON.stringify({points,energy,totalKm,totalConquered,totalDefended,totalDiscovered,streakDays,lastRunDate,history:history.slice(-50),capturedLandmarks,raids});
+    /* KOMPLETTER Cloud-Snapshot: die beiden lokalen Blobs (Spielstand rc_v4_ +
+       Profil/Einstellungen rc_profile_). Damit liegt ALLES – Läufe, Punkte,
+       Erfolge, Belohnungen, Einstellungen, Ziele, Fraktionssiege usw. – in
+       Supabase und übersteht Neuinstallation/Gerätewechsel. */
+    const _g=(()=>{try{return JSON.parse(localStorage.getItem('rc_v4_'+userId)||'{}');}catch(e){return {};}})();
+    const _p=(()=>{try{return JSON.parse(localStorage.getItem('rc_profile_'+userId)||'{}');}catch(e){return {};}})();
+    const gameSnap=JSON.stringify({v:2,game:_g,profile:_p});
     const{error:e1}=await sb.from('profiles').upsert({
       id:sbUserId,user_id:userId,player_name:playerName,user_avatar:userAvatar,user_color:userColor,
       points,total_km:totalKm,total_conquered:totalConquered,streak_days:streakDays,
@@ -1977,30 +1983,30 @@ async function loadFromCloud(){
   try{
     const{data}=await sb.from('profile_private').select('game_data,updated_at').eq('id',sbUserId).single();
     if(!data?.game_data)return false;
-    const d=JSON.parse(data.game_data);
-    // Cloud gewinnt nur, wenn ihr updated_at neuer ist als der letzte lokale
-    // save() -- ersetzt die alte Heuristik "Cloud hat mehr Gebiete", die
-    // brach, sobald offline Gebiete verloren wurden oder die Anzahl gleich
-    // blieb, Punkte/Energie aber abwichen.
+    const raw=JSON.parse(data.game_data);
     const cloudTs=data.updated_at?new Date(data.updated_at).getTime():0;
     const cloudIsNewer=cloudTs>localStateTs;
-    // History wird unabhängig vom Sieger immer gemerged (nie ersetzt) --
-    // sonst gehen lokal gelaufene, noch nicht hochgesyncte Strecken verloren.
-    // Dedupe per id (neue Runs) bzw. date (alte Einträge ohne id) als Key.
-    if(d.history?.length){
-      const merged=new Map([...history,...d.history].map(r=>[r.id??r.date,r]));
-      history=[...merged.values()].sort((a,b)=>(a.date||0)-(b.date||0)).slice(-50);
+    /* Neues Format {v>=2, game, profile} (kompletter Snapshot) ODER altes flaches
+       game-Objekt (Abwärtskompatibilität). */
+    const cg=(raw&&raw.v>=2)?(raw.game||{}):(raw||{});
+    const cp=(raw&&raw.v>=2)?(raw.profile||null):null;
+    /* History IMMER mergen, damit lokal gelaufene, noch nicht hochgesyncte
+       Strecken nicht verloren gehen (Dedupe per id bzw. date). */
+    const cloudHist=(cg&&cg.history)||[];
+    let mergedHist=history;
+    if(cloudHist.length){
+      const m=new Map([...history,...cloudHist].map(r=>[r.id??r.date,r]));
+      mergedHist=[...m.values()].sort((a,b)=>(a.date||0)-(b.date||0)).slice(-500);
     }
     if(cloudIsNewer){
-      // ?? statt || -- 0 ist bei energy/totalConquered/etc. ein gültiger
-      // Wert und darf nicht fälschlich auf den alten lokalen Stand zurückfallen.
-      points=d.points??points;energy=d.energy??energy;
-      totalKm=d.totalKm??totalKm;totalConquered=d.totalConquered??totalConquered;
-      totalDefended=d.totalDefended??totalDefended;streakDays=d.streakDays??streakDays;lastRunDate=d.lastRunDate??lastRunDate;
-      totalDiscovered=d.totalDiscovered??totalDiscovered;
-      capturedLandmarks=d.capturedLandmarks??capturedLandmarks;
-      raids=d.raids??raids;
+      // Cloud ist die Quelle der Wahrheit: beide lokalen Blobs überschreiben und
+      // ALLE Variablen (Spielstand + Profil/Einstellungen) daraus neu laden.
+      try{localStorage.setItem('rc_v4_'+userId,JSON.stringify(cg));}catch(e){}
+      if(cp){try{localStorage.setItem('rc_profile_'+userId,JSON.stringify(cp));}catch(e){}}
+      load();
+      if(typeof loadProfile==='function')loadProfile();
     }
+    history=mergedHist; // gemergte History gewinnt (load() hätte sie überschrieben)
     save();
     return cloudIsNewer;
   }catch(e){logError('cloud_load',e);}
@@ -2300,7 +2306,7 @@ function debounce(fn,w){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn
 const syncProfileDebounced=debounce(syncProfile,1000);
 
 /* PERSIST */
-function save(){localStateTs=Date.now();localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,energyWeek,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,lastRunDate,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered,registeredAt,starterQuestsDone,starterQuestFlags,heatPersonalOnly,dailyChallenges,dailyChalDate,chalStreak,lastChalDoneDate,dailyLoginDate,dailyLoginStreak,streakShields,recentQuoteIds,weeklyChals,weekChalKey,personalRecords,battlePassClaimed,totalRaids,totalBoosts,weeklyAchsDone,seasonXp,localStateTs}))}
+function save(){localStateTs=Date.now();localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,energyWeek,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,lastRunDate,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered,registeredAt,starterQuestsDone,starterQuestFlags,heatPersonalOnly,dailyChallenges,dailyChalDate,chalStreak,lastChalDoneDate,dailyLoginDate,dailyLoginStreak,streakShields,recentQuoteIds,weeklyChals,weekChalKey,personalRecords,battlePassClaimed,totalRaids,totalBoosts,weeklyAchsDone,seasonXp,localStateTs}));if(typeof syncProfileDebounced==='function')syncProfileDebounced();}
 /* Crash-resiliente Lauf-Persistenz: Pfad liegt sonst nur im RAM und ginge bei
    App-Kill/Crash mitten im Lauf komplett verloren. Wird alle ~12s gespiegelt,
    beim nächsten Boot per checkOrphanedRun() angeboten. */
@@ -4597,7 +4603,7 @@ async function finalizeRun(elapsed){
   if(streakDays>1)runNote(`🔥 Streak ×${streakMul.toFixed(1)} · +${kmXP} km-XP`);
   const kcal=calcKcal(dist,elapsed);
   const rec={id:(crypto.randomUUID?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2))),synced:false,date:Date.now(),distance:dist,area,pts:res.pts,path:path.filter((_,i)=>i%3===0),conquered:res.conquered,defended:res.defended,duration:elapsed,gap,kcal,avgHR:heartRate,splits:[...kmSplits]};
-  history.push(rec);if(history.length>30)history.shift();
+  history.push(rec);if(history.length>500)history.shift();
   totalKm+=dist/1000;if(res.conquered)totalConquered++;if(res.defended)totalDefended++;
   updateQuests(rec);updateAch();updateDailyChallenges(rec);updateWeeklyChallenges(rec);trackPersonalRecords(rec,totalPts,area);
   if(boosted)totalBoosts++;seasonXp+=totalPts;
@@ -5080,7 +5086,7 @@ async function importActivity(distM,durSecs,dateMs,path,source,avgHR){
     duration:durSecs,gap,kcal,avgHR:avgHR||0,splits:[],
     imported:true,importSource:source||'manuell'
   };
-  history.push(rec);if(history.length>30)history.shift();
+  history.push(rec);if(history.length>500)history.shift();
   totalKm+=distM/1000;if(conquered)totalConquered++;if(defended)totalDefended++;
   const lvBefore=getLevel(points);
   points+=totalPts;seasonXp+=totalPts;
@@ -5282,7 +5288,7 @@ function importGarminActivity(distM,durSecs,dateMs,path,extId){
     path:path?path.filter((_,i)=>i%3===0):[],conquered:false,defended:false,
     duration:durSecs,gap:0,kcal,avgHR:0,splits:[],
     imported:true,importSource:'garmin',extId:extId||null};
-  history.push(rec);if(history.length>30)history.shift();
+  history.push(rec);if(history.length>500)history.shift();
   if(extId){try{const k='rc_garmin_ids_'+userId;const s=new Set(JSON.parse(localStorage.getItem(k)||'[]'));s.add(extId);localStorage.setItem(k,JSON.stringify([...s].slice(-500)));}catch(e){}}
   totalKm+=distM/1000;points+=kmXP;
   checkStarterQuests();save();
