@@ -1401,6 +1401,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <button class="btn btn-p" onclick="setView('start')" style="max-width:220px;margin:0 auto;display:flex;justify-content:center">Jetzt loslegen →</button>
       </div>
       <div class="section-card" id="pvDailyStreak" style="display:none"></div>
+      <div class="section-card" id="pvFactionWins" style="display:none"></div>
       <div class="section-card" id="pvRewards"></div>
       <div class="section-card" id="pvBattlePass"></div>
       <div class="section-card">
@@ -1815,6 +1816,8 @@ let lastNameChangeDate=''; // "YYYY-MM" – Name nur 1×/Monat änderbar
 let dailyLoginDate='',dailyLoginStreak=0,streakShields=0,recentQuoteIds=[];
 /* Freigeschaltete Streak-Belohnungen (IDs) + aktuell angelegte Kosmetik. */
 let streakUnlocks=[],equipped={};
+/* Monate, in denen die eigene Fraktion die meisten Punkte hatte ("YYYY-MM"). */
+let factionWins=[];
 let weeklyChals=[],weekChalKey='';
 let personalRecords={};
 let battlePassClaimed=[];
@@ -1851,7 +1854,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v123';
+const APP_VERSION='v124';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2361,7 +2364,7 @@ function applyTheme(name){
 }
 function saveProfile(){
   const theme=getActiveTheme();
-  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,friends,streakUnlocks,equipped,userBio,profilePublic,pushEnabled,lastNameChangeDate,WEEKLY_GOAL,DAILY_GOAL_KM}));
+  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,friends,streakUnlocks,equipped,userBio,profilePublic,pushEnabled,lastNameChangeDate,WEEKLY_GOAL,DAILY_GOAL_KM,factionWins}));
   $('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;
   const hi=$('hdrHi');if(hi)hi.textContent='Hallo, '+(playerName||'Läufer');
   // Update theme-color meta for Android status bar
@@ -2370,7 +2373,7 @@ function saveProfile(){
   syncProfileDebounced();
 }
 function loadProfile(){
-  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';friends=p.friends||[];streakUnlocks=p.streakUnlocks||[];equipped=p.equipped||{};userBio=p.userBio||'';profilePublic=p.profilePublic!==false;pushEnabled=!!p.pushEnabled;lastNameChangeDate=p.lastNameChangeDate||'';if(p.WEEKLY_GOAL>0)WEEKLY_GOAL=p.WEEKLY_GOAL;if(p.DAILY_GOAL_KM>0)DAILY_GOAL_KM=p.DAILY_GOAL_KM;const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
+  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';friends=p.friends||[];streakUnlocks=p.streakUnlocks||[];equipped=p.equipped||{};userBio=p.userBio||'';factionWins=p.factionWins||[];profilePublic=p.profilePublic!==false;pushEnabled=!!p.pushEnabled;lastNameChangeDate=p.lastNameChangeDate||'';if(p.WEEKLY_GOAL>0)WEEKLY_GOAL=p.WEEKLY_GOAL;if(p.DAILY_GOAL_KM>0)DAILY_GOAL_KM=p.DAILY_GOAL_KM;const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
   return false;
 }
 /* ── STREAK-BELOHNUNGEN (Inventar) ──────────────────────────────────────────
@@ -2429,6 +2432,50 @@ function renderRewards(){
   el.innerHTML=`<div class="section-title"><i class="fas fa-gift"></i> Belohnungen <span style="font-size:.62rem;color:var(--muted);font-weight:400;margin-left:auto">${streakUnlocks.length}/${days.length} frei</span></div>${rows}`;
 }
 window.equipReward=equipReward;window.unequipReward=unequipReward;
+/* ── FRAKTIONSSIEGER-MEDAILLON (Design-Handoff „champion-icon") ──────────────
+   Ein besonderes Medaillon (Sonnenkranz, Lorbeer, Doppelring, Diamanten,
+   Trophäe, Krone) für den monatlichen Fraktionssieg. Der Monat steht als
+   Bildunterschrift darunter, nicht im Icon. */
+const MONTH_NAMES_DE=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+let _champUid=0;
+function buildChampionSvg(){
+  const GOLD='#FFD700',GOLD_DEEP='#8a6a00',BRIGHT='#FFF6D2',CUP_DARK='#3a2800';
+  const cx=50,cy=48,uid='champ'+(++_champUid);
+  const defs=`<defs><radialGradient id="cg${uid}" cx="50%" cy="32%" r="75%"><stop offset="0%" stop-color="${BRIGHT}" stop-opacity="1"/><stop offset="55%" stop-color="${GOLD}" stop-opacity="1"/><stop offset="100%" stop-color="${GOLD_DEEP}" stop-opacity="1"/></radialGradient><filter id="cf${uid}" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter><clipPath id="cc${uid}"><circle cx="${cx}" cy="${cy}" r="37"/></clipPath></defs>`;
+  let rays='';const n=40;
+  for(let i=0;i<n;i++){const a=(i/n)*Math.PI*2;const long=i%4===0;const r1=41,r2=long?49:45;rays+=`<line x1="${(cx+Math.cos(a)*r1).toFixed(1)}" y1="${(cy+Math.sin(a)*r1).toFixed(1)}" x2="${(cx+Math.cos(a)*r2).toFixed(1)}" y2="${(cy+Math.sin(a)*r2).toFixed(1)}" stroke="${GOLD}" stroke-width="${long?'2':'1'}" stroke-linecap="round" opacity="${long?'.85':'.45'}" filter="url(#cf${uid})"/>`;}
+  const leaf=(ax,ay,rot,scale)=>`<g transform="translate(${ax.toFixed(1)} ${ay.toFixed(1)}) rotate(${rot.toFixed(1)}) scale(${scale.toFixed(2)})"><ellipse cx="0" cy="0" rx="3.2" ry="1.5" fill="${GOLD}" opacity=".85"/></g>`;
+  let wreath='';const wn=7;
+  for(let i=0;i<wn;i++){const t=i/(wn-1);const aL=(100+t*95)*Math.PI/180,rL=44+(i%2?1.5:0);wreath+=leaf(cx+Math.cos(aL)*rL,cy+Math.sin(aL)*rL,(aL*180/Math.PI)+90,0.85+t*0.3);const aR=(80-t*95)*Math.PI/180;wreath+=leaf(cx+Math.cos(aR)*rL,cy+Math.sin(aR)*rL,(aR*180/Math.PI)-90,0.85+t*0.3);}
+  wreath+=`<g transform="translate(${cx} ${cy+44})"><path d="M-7 -3 L0 0 L-7 5 Z" fill="${GOLD}"/><path d="M7 -3 L0 0 L7 5 Z" fill="${GOLD}"/><circle cx="0" cy="0" r="2.4" fill="${GOLD}"/></g>`;
+  const rings=`<circle cx="${cx}" cy="${cy}" r="40" fill="none" stroke="${GOLD}" stroke-width="3.5"/><circle cx="${cx}" cy="${cy}" r="34.5" fill="none" stroke="${BRIGHT}" stroke-width="1.2" opacity=".6"/>`;
+  let gems='';[-45,-135,0,180,45,135].forEach(dg=>{const a=dg*Math.PI/180,gx=cx+Math.cos(a)*40,gy=cy+Math.sin(a)*40;gems+=`<g transform="translate(${gx.toFixed(1)} ${gy.toFixed(1)}) rotate(45)"><rect x="-2.2" y="-2.2" width="4.4" height="4.4" fill="${BRIGHT}" stroke="${GOLD}" stroke-width="0.8"/></g>`;});
+  const plate=`<circle cx="${cx}" cy="${cy}" r="34" fill="url(#cg${uid})" filter="url(#cf${uid})"/>`;
+  let cup=`<g transform="translate(50 49) scale(1.15) translate(-50 -49)">`;
+  cup+=`<path d="M27 46 C27 39 33 37 38 38 L38 43 C34 43 32 44 32 47 C32 51 35 53 39 54 L37 58 C30 57 27 52 27 46 Z" fill="${CUP_DARK}"/>`;
+  cup+=`<path d="M73 46 C73 39 67 37 62 38 L62 43 C66 43 68 44 68 47 C68 51 65 53 61 54 L63 58 C70 57 73 52 73 46 Z" fill="${CUP_DARK}"/>`;
+  cup+=`<path d="M36 32 L64 32 L62 49 Q 60 57 50 59 Q 40 57 38 49 Z" fill="${CUP_DARK}"/>`;
+  cup+=`<rect x="47" y="59" width="6" height="8" fill="${CUP_DARK}"/>`;
+  cup+=`<path d="M41 67 L59 67 L59 71 L61 71 L61 75 L39 75 L39 71 L41 71 Z" fill="${CUP_DARK}"/></g>`;
+  const centerGroup=`<g clip-path="url(#cc${uid})">${cup}</g>`;
+  const crown=`<g transform="translate(50 10)"><path d="M -14 8 L -14 2 L -7 6 L 0 -6 L 7 6 L 14 2 L 14 8 Z" fill="${GOLD}" stroke="${BRIGHT}" stroke-width="0.8" stroke-linejoin="round"/><rect x="-14" y="8" width="28" height="4" rx="1.5" fill="${GOLD}" stroke="${BRIGHT}" stroke-width="0.8"/><circle cx="0" cy="-4" r="2.4" fill="${BRIGHT}"/><circle cx="-8" cy="6" r="1.4" fill="${BRIGHT}"/><circle cx="8" cy="6" r="1.4" fill="${BRIGHT}"/></g>`;
+  return `<svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">${defs}${rays}${wreath}${rings}${gems}${plate}${centerGroup}${crown}</svg>`;
+}
+/* Hall of Fame der Fraktionssiege (ein Medaillon je gewonnenem Monat). */
+function renderFactionWins(){
+  const el=document.getElementById('pvFactionWins');if(!el)return;
+  if(!factionWins||!factionWins.length){el.style.display='none';return;}
+  el.style.display='';
+  const cards=[...factionWins].sort().reverse().map(mk=>{
+    const p=mk.split('-'),y=p[0],mi=Math.max(0,Math.min(11,parseInt(p[1],10)-1));
+    return `<div style="flex:0 0 auto;width:132px;text-align:center">
+      <div style="width:108px;height:108px;margin:0 auto">${buildChampionSvg()}</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:2px;color:#FFD700;margin-top:4px">${(MONTH_NAMES_DE[mi]||'').toUpperCase()}</div>
+      <div style="font-size:.6rem;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">Fraktionssieger ${y}</div>
+    </div>`;
+  }).join('');
+  el.innerHTML=`<div class="section-title"><i class="fas fa-trophy"></i> Fraktionssiege</div><div style="display:flex;gap:14px;overflow-x:auto;padding:4px 2px 8px;-webkit-overflow-scrolling:touch">${cards}</div>`;
+}
 /* Eigene Beschreibung/Zitat bearbeiten (öffentlich sichtbar). */
 function editBio(){
   document.getElementById('bioEditOv')?.remove();
@@ -5651,6 +5698,12 @@ async function renderFactionWar(){
   const leader=stats[0];
   /* Führende Fraktion global merken -> Mitglieder bekommen ein Extra-Icon im Profil. */
   window._factionLeaderId=(leader&&leader.total>0)?leader.id:null;
+  /* Führt die eigene Fraktion diesen Monat -> Fraktionssieg für den aktuellen
+     Monat gutschreiben (einmal pro Monat, bleibt als Trophäe erhalten). */
+  if(window._factionLeaderId&&window._factionLeaderId===userTeam){
+    const _mk=new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0');
+    if(!factionWins.includes(_mk)){factionWins.push(_mk);saveProfile();if(typeof renderFactionWins==='function')renderFactionWins();}
+  }
   el.innerHTML=(isLive?'':'<div style="font-size:.62rem;color:var(--muted);margin-bottom:6px">📡 Offline – lokale Schätzung</div>')
     +stats.map((tm,i)=>{
       const share=Math.round((tm.total/grand)*100);
@@ -6982,7 +7035,7 @@ function updateProfile(){
   /* Angelegte Belohnungen anwenden: Banner + Profilrahmen (Ring am Avatar). */
   const _ban=equipped.banner&&REWARD_BY_ID[equipped.banner];if(_ban){banner.style.background=_ban.value;const m=_ban.value.match(/#[0-9a-f]{6}/i);banner.style.borderColor=(m&&m[0]||userColor)+'88';}
   const _frm=equipped.frame&&REWARD_BY_ID[equipped.frame];const _av=$('pvAvatar');if(_av)_av.style.boxShadow=_frm?('0 0 0 3px '+_frm.value+',0 0 16px '+_frm.value+'99'):'';
-  renderRewards();applyEquipped();
+  renderRewards();renderFactionWins();applyEquipped();
   if(history.length){const d=new Date(history[0].date);$('pvSince').textContent='Aktiv seit '+d.toLocaleDateString('de',{month:'long',year:'numeric'});}
   const noRunEl=$('pvNoRunState');if(noRunEl)noRunEl.style.display=history.length===0?'':'none';
   const lvD=getLvlProg(points);
