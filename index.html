@@ -333,8 +333,9 @@ body.onboarding-active{background:#000}
 .goal-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 .goal-label{font-size:.7rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted)}
 .goal-val{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:var(--primary)}
-.goal-bar-bg{height:6px;background:rgba(255,255,255,.06);border-radius:6px;overflow:hidden}
-.goal-bar{height:100%;background:var(--primary);border-radius:6px;transition:width .8s ease}
+.goal-bar-bg{height:20px;background:rgba(255,255,255,.06);border-radius:10px;overflow:hidden;position:relative}
+.goal-bar{height:100%;background:var(--primary);border-radius:10px;transition:width .8s ease;display:flex;align-items:center;justify-content:flex-end;min-width:2px}
+.goal-bar-txt{font-size:.62rem;font-weight:700;color:#06060e;padding:0 8px;white-space:nowrap;font-family:'Bebas Neue',sans-serif;letter-spacing:.5px}
 .goal-days{display:flex;justify-content:space-between;margin-top:10px}
 .goal-day{text-align:center;flex:1}
 .goal-day-bar{height:32px;background:rgba(255,255,255,.06);border-radius:4px;margin:0 2px;display:flex;align-items:flex-end;overflow:hidden}
@@ -1190,6 +1191,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <button class="map-panel-btn active" id="panelLmBtn"><i class="fas fa-star"></i> Wahrzeichen</button>
         <button class="map-panel-btn" id="panelFraktBtn"><i class="fas fa-flag"></i> Fraktionskarte</button>
         <button class="map-panel-btn" id="panelOwnTerrBtn"><i class="fas fa-map-marker-alt"></i> Eigene Gebiete</button>
+        <button class="map-panel-btn" id="panelFollowBtn"><i class="fas fa-user-friends"></i> Follower</button>
       </div>
     </div>
 
@@ -1216,16 +1218,22 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         </div>
       </div>
 
-      <!-- Weekly goal -->
-      <div class="sec-hd"><i class="fas fa-chart-simple"></i> Diese Woche</div>
+      <!-- Ziele: Wochenziel (km/Woche) + Monatsziel (Läufe/Monat) -->
+      <div class="sec-hd"><i class="fas fa-chart-simple"></i> Ziele<button onclick="editGoals()" style="margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;padding:2px 4px;touch-action:manipulation" title="Ziele bearbeiten">✏️</button></div>
       <div class="goal-card">
+        <!-- Wochenziel: Kilometer pro Woche -->
         <div class="goal-top">
           <span class="goal-label"><i class="fas fa-bullseye" style="margin-right:4px"></i>Wochenziel</span>
-          <span style="display:flex;align-items:center;gap:8px"><span class="goal-val" id="goalVal">0 / 30 km</span><button onclick="editGoals()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.82rem;padding:2px 4px;touch-action:manipulation" title="Ziele bearbeiten">✏️</button></span>
+          <span class="goal-val" id="goalVal">0 / 10 km</span>
         </div>
-        <div class="goal-bar-bg"><div class="goal-bar" id="goalBar" style="width:0%"></div></div>
-        <div class="goal-days" id="goalDays"></div>
-        <div id="dailyGoalLine" style="font-size:.7rem;color:var(--muted);margin-top:8px"></div>
+        <div class="goal-bar-bg"><div class="goal-bar" id="goalBar" style="width:0%"><span class="goal-bar-txt" id="goalBarTxt"></span></div></div>
+        <!-- Monatsziel: Anzahl Läufe pro Monat -->
+        <div class="goal-top" style="margin-top:14px">
+          <span class="goal-label"><i class="fas fa-calendar-check" style="margin-right:4px"></i>Monatsziel</span>
+          <span class="goal-val" id="monthGoalVal">0 / 12 Läufe</span>
+        </div>
+        <div class="goal-bar-bg"><div class="goal-bar" id="monthGoalBar" style="width:0%;background:linear-gradient(90deg,#7c3aed,#ec4899)"><span class="goal-bar-txt" id="monthGoalBarTxt"></span></div></div>
+        <div id="dailyGoalLine" style="font-size:.7rem;color:var(--muted);margin-top:10px"></div>
       </div>
 
       <!-- Stat grid: total km · territories · streak -->
@@ -1269,17 +1277,17 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <div id="dailyChalDiv" style="margin-bottom:20px"></div>
       </div>
 
-      <!-- Quests -->
-      <div class="sec-hd"><i class="fas fa-gift"></i> Heute zu tun</div>
-      <div id="questsDiv" style="margin-bottom:20px"></div>
+      <!-- (Sektion "Heute zu tun" entfernt – die täglichen Aufgaben stehen bereits
+           unter "Tägliche Challenges", das war doppelt.) -->
+      <div id="questsDiv" style="display:none"></div>
+
+      <!-- Week chart (Wochenübersicht: km pro Tag – VOR den letzten Läufen) -->
+      <div class="sec-hd"><i class="fas fa-chart-bar"></i> Wochenübersicht</div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px"><canvas id="weekChart" height="130"></canvas></div>
 
       <!-- Recent runs -->
-      <div class="sec-hd"><i class="fas fa-clock-rotate-left"></i> Letzte Läufe<button id="importActivityBtn" style="margin-left:auto;background:none;border:1px solid var(--border);color:var(--primary);border-radius:7px;padding:2px 10px;font-size:.85rem;cursor:pointer;line-height:1.4">＋</button></div>
+      <div class="sec-hd" style="margin-top:8px"><i class="fas fa-clock-rotate-left"></i> Letzte Läufe<button id="importActivityBtn" style="margin-left:auto;background:none;border:1px solid var(--border);color:var(--primary);border-radius:7px;padding:2px 10px;font-size:.85rem;cursor:pointer;line-height:1.4">＋</button></div>
       <div id="activityList"></div>
-
-      <!-- Week chart -->
-      <div class="sec-hd" style="margin-top:8px"><i class="fas fa-chart-bar"></i> Wochenübersicht</div>
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px"><canvas id="weekChart" height="110"></canvas></div>
 
     </div>
 
@@ -1719,6 +1727,12 @@ const BOTS=[
 const BOT_UUIDS={bot_speed:'00000000-0000-0000-0000-0000000000b1',bot_mtn:'00000000-0000-0000-0000-0000000000b2',bot_night:'00000000-0000-0000-0000-0000000000b3',bot_city:'00000000-0000-0000-0000-0000000000b4',bot_ultra:'00000000-0000-0000-0000-0000000000b5'};
 let WEEKLY_GOAL=10;   // Wochenziel in km (vom Nutzer einstellbar)
 let DAILY_GOAL_KM=3;  // Tagesziel in km (vom Nutzer einstellbar)
+let MONTHLY_GOAL=12;  // Monatsziel: Anzahl Läufe pro Monat (vom Nutzer einstellbar)
+let myPlayerNumber=null; // individuelle Spieler-Nummer (aus profiles.player_number)
+/* Deterministische 8-stellige Fallback-Nummer aus der User-ID – wird angezeigt,
+   solange die SQL-Migration player_number noch nicht gelaufen ist. */
+function pnFallback(uid){let h=2166136261>>>0;const s=String(uid||'');for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)>>>0;}return 10000000+(h%90000000);}
+function playerNumberDisplay(){return myPlayerNumber||pnFallback(userId);}
 /* ↓ Strava Developer App Client ID — einmalig auf developers.strava.com registrieren (kostenlos) */
 const STRAVA_CLIENT_ID='';
 const TEAMS=[
@@ -1854,7 +1868,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v126';
+const APP_VERSION='v127';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2370,7 +2384,7 @@ function applyTheme(name){
 }
 function saveProfile(){
   const theme=getActiveTheme();
-  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,friends,streakUnlocks,equipped,userBio,profilePublic,pushEnabled,lastNameChangeDate,WEEKLY_GOAL,DAILY_GOAL_KM,factionWins}));
+  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,friends,streakUnlocks,equipped,userBio,profilePublic,pushEnabled,lastNameChangeDate,WEEKLY_GOAL,DAILY_GOAL_KM,MONTHLY_GOAL,factionWins}));
   $('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;
   const hi=$('hdrHi');if(hi)hi.textContent='Hallo, '+(playerName||'Läufer');
   // Update theme-color meta for Android status bar
@@ -2379,7 +2393,7 @@ function saveProfile(){
   syncProfileDebounced();
 }
 function loadProfile(){
-  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';friends=p.friends||[];streakUnlocks=p.streakUnlocks||[];equipped=p.equipped||{};userBio=p.userBio||'';factionWins=p.factionWins||[];profilePublic=p.profilePublic!==false;pushEnabled=!!p.pushEnabled;lastNameChangeDate=p.lastNameChangeDate||'';if(p.WEEKLY_GOAL>0)WEEKLY_GOAL=p.WEEKLY_GOAL;if(p.DAILY_GOAL_KM>0)DAILY_GOAL_KM=p.DAILY_GOAL_KM;const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
+  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';friends=p.friends||[];streakUnlocks=p.streakUnlocks||[];equipped=p.equipped||{};userBio=p.userBio||'';factionWins=p.factionWins||[];profilePublic=p.profilePublic!==false;pushEnabled=!!p.pushEnabled;lastNameChangeDate=p.lastNameChangeDate||'';if(p.WEEKLY_GOAL>0)WEEKLY_GOAL=p.WEEKLY_GOAL;if(p.DAILY_GOAL_KM>0)DAILY_GOAL_KM=p.DAILY_GOAL_KM;if(p.MONTHLY_GOAL>0)MONTHLY_GOAL=p.MONTHLY_GOAL;const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
   return false;
 }
 /* ── STREAK-BELOHNUNGEN (Inventar) ──────────────────────────────────────────
@@ -2656,7 +2670,7 @@ function renderDailyChallenges(){
   el.innerHTML=dailyChallenges.map(c=>{
     const p=Math.min(100,Math.round((c.progress||0)/c.target*100));
     const valLbl=c.key==='distance'?((c.progress||0).toFixed(1)+'/'+c.target+' km'):c.key==='duration'?Math.floor((c.progress||0)/60)+'/'+Math.floor(c.target/60)+' min':(Math.floor(c.progress||0)+'/'+c.target);
-    return`<div class="chal-card ${c.done?'done':''}"><span class="chal-icon">${c.done?'✅':c.icon}</span><div class="chal-info"><div class="chal-desc">${c.desc}</div><div style="font-size:.65rem;color:var(--muted);margin-bottom:4px">${valLbl}</div><div class="chal-bar"><div class="chal-fill" style="width:${p}%"></div></div></div><span class="chal-reward">${c.done?'✓':'+'+c.reward}</span></div>`;
+    return`<div class="chal-card ${c.done?'done':''}"><span class="chal-icon">${c.done?'✅':c.icon}</span><div class="chal-info"><div class="chal-desc">${c.desc}</div><div style="font-size:.65rem;color:var(--muted);margin-bottom:4px">${valLbl}</div><div class="chal-bar"><div class="chal-fill" style="width:${p}%"></div></div></div><span class="chal-reward">${c.done?'✓':'+'+c.reward+' XP'}</span></div>`;
   }).join('');
 }
 
@@ -3952,28 +3966,43 @@ async function loadLandmarks(){
       }
     }
   }catch(_){/* Proxy nicht erreichbar -> Fallback unten */}
-  // 2) Fallback: direkt gegen Overpass (alte Variante), falls der Proxy
-  //    fehlt (z.B. lokal ohne Serverless) oder gerade nicht antwortet.
+  // 2) Fallback: direkt gegen Overpass, falls der Proxy fehlt (z.B. lokal ohne
+  //    Serverless) oder gerade nicht antwortet. Overpass hat immer wieder Ausfälle
+  //    / Rate-Limits — daher MEHRERE Spiegel nacheinander probieren, damit
+  //    Wahrzeichen zuverlässig erscheinen.
   const q=`[out:json][timeout:25];(`
     +`node["tourism"~"attraction|museum|viewpoint|artwork|theme_park|zoo|aquarium|gallery"]["name"](${bb});`
-    +`node["historic"~"monument|memorial|castle|ruins|archaeological_site|church|fort"]["name"](${bb});`
-    +`node["leisure"~"stadium|nature_reserve"]["name"](${bb});`
-    +`node["amenity"~"place_of_worship|fountain|theatre"]["name"](${bb});`
+    +`node["historic"~"monument|memorial|castle|ruins|archaeological_site|church|fort|building"]["name"](${bb});`
+    +`node["leisure"~"stadium|nature_reserve|park"]["name"](${bb});`
+    +`node["amenity"~"place_of_worship|fountain|theatre|townhall|arts_centre"]["name"](${bb});`
     +`node["natural"~"peak|waterfall|cave_entrance"]["name"](${bb});`
     +`way["tourism"~"attraction|museum|viewpoint|theme_park|zoo"]["name"](${bb});`
     +`way["historic"~"monument|memorial|castle|ruins"]["name"](${bb});`
-    +`);out center qt;`;
-  try{
-    const r=await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
-    const d=await r.json();
-    landmarks=d.elements.map(el=>{
-      const lat=el.lat??el.center?.lat;
-      const lng=el.lon??el.center?.lon;
-      if(!lat||!lng)return null;
-      return{id:el.id,lat,lng,name:el.tags?.name||'Wahrzeichen',type:el.tags?.tourism||el.tags?.historic||el.tags?.leisure||el.tags?.amenity||el.tags?.natural||''};
-    }).filter(Boolean);
-    renderLandmarks();
-  }catch(e){logError('landmarks',e);}
+    +`way["amenity"~"place_of_worship|townhall"]["name"](${bb});`
+    +`);out center qt 120;`;
+  const mirrors=[
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
+    'https://maps.mail.ru/osm/tools/overpass/api/interpreter'
+  ];
+  for(const base of mirrors){
+    try{
+      const r=await fetch(`${base}?data=${encodeURIComponent(q)}`);
+      if(!r.ok)continue;
+      const d=await r.json();
+      if(!d||!Array.isArray(d.elements))continue;
+      const parsed=d.elements.map(el=>{
+        const lat=el.lat??el.center?.lat;
+        const lng=el.lon??el.center?.lon;
+        if(!lat||!lng)return null;
+        return{id:el.id,lat,lng,name:el.tags?.name||'Wahrzeichen',type:el.tags?.tourism||el.tags?.historic||el.tags?.leisure||el.tags?.amenity||el.tags?.natural||''};
+      }).filter(Boolean);
+      landmarks=parsed;
+      renderLandmarks();
+      return; // erster Spiegel, der antwortet, gewinnt
+    }catch(e){/* nächster Spiegel */}
+  }
+  logError&&logError('landmarks',new Error('alle Overpass-Spiegel nicht erreichbar'));
 }
 /* Wahrzeichen-Marker: animate-ui „Star" als Inline-SVG (gefüllt), mit sanftem
    Puls-Scale (wie das animierte Original). */
@@ -4168,6 +4197,8 @@ function renderH3Territories(){
     if(!cells.length)return;
     const own=t.owner===userId;
     if(window._showOwnOnly&&!own)return; // Panel-Filter „Eigene Gebiete": Fremde ausblenden
+    // Panel-Filter „Follower": nur Gebiete der Spieler zeigen, denen ich folge.
+    if(window._showFollowOnly&&!(typeof followedUsers!=='undefined'&&followedUsers.some(u=>u.uid===t.owner)))return;
     const def=h3Decayed(t.defense,t.updated_at); // wirksame (verfallene) Verteidigung
     const strPct=Math.min(1,def/300);
     let fillColor=own?userColor:'#ff3333';
@@ -4607,6 +4638,14 @@ async function finalizeRun(elapsed){
   totalKm+=dist/1000;if(res.conquered)totalConquered++;if(res.defended)totalDefended++;
   updateQuests(rec);updateAch();updateDailyChallenges(rec);updateWeeklyChallenges(rec);trackPersonalRecords(rec,totalPts,area);
   if(boosted)totalBoosts++;seasonXp+=totalPts;
+  /* Angezeigte "Punkte verdient" = ALLES, was dieser Lauf eingebracht hat:
+     Server-Eroberungspunkte (res.pts) + km-XP (+ Streak) + Quest-/Challenge-/
+     Erfolgs-XP, die updateQuests/updateAch/updateDaily/Weekly gerade vergeben
+     haben. Bisher stand hier nur res.pts – bei einem Lauf ohne neue Eroberung
+     (z.B. Tageslimit erreicht oder nur eigenes Gebiet) wurde fälschlich "+0"
+     gezeigt, obwohl km-XP verdient wurde. Delta aus dem globalen points-Zähler. */
+  rec.pts=Math.round(points-prevPts);
+  if(!(rec.pts>0))rec.pts=totalPts>0?totalPts:Math.max(1,kmXP); // Fallback: nie 0 bei gültigem Lauf
   if(!localStorage.getItem('rc_notif_asked_'+userId)){localStorage.setItem('rc_notif_asked_'+userId,'1');requestNotificationPermission();}
   if(pathLayer)mapL.removeLayer(pathLayer);path=[];dist=0;sessionConquests=0;
   /* Tages-Streak fortschreiben: der erste gewertete Lauf eines Tages zählt.
@@ -4862,7 +4901,9 @@ function editGoals(){
     <label style="font-size:.72rem;color:var(--muted)">Wochenziel (km)</label>
     <input id="wGoalInput" type="number" min="1" max="1000" value="${WEEKLY_GOAL}" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px;color:var(--text);font-size:1rem;margin:4px 0 12px;box-sizing:border-box">
     <label style="font-size:.72rem;color:var(--muted)">Tagesziel (km)</label>
-    <input id="dGoalInput" type="number" min="0.5" max="200" step="0.5" value="${DAILY_GOAL_KM}" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px;color:var(--text);font-size:1rem;margin:4px 0 16px;box-sizing:border-box">
+    <input id="dGoalInput" type="number" min="0.5" max="200" step="0.5" value="${DAILY_GOAL_KM}" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px;color:var(--text);font-size:1rem;margin:4px 0 12px;box-sizing:border-box">
+    <label style="font-size:.72rem;color:var(--muted)">Monatsziel (Läufe pro Monat)</label>
+    <input id="mGoalInput" type="number" min="1" max="200" step="1" value="${MONTHLY_GOAL}" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px;color:var(--text);font-size:1rem;margin:4px 0 16px;box-sizing:border-box">
     <div style="display:flex;gap:8px">
       <button id="gCancel" style="flex:1;background:none;border:1px solid var(--border);color:var(--muted);border-radius:12px;padding:11px;cursor:pointer">Abbrechen</button>
       <button id="gSave" class="btn btn-p" style="flex:1">Speichern</button>
@@ -4871,23 +4912,29 @@ function editGoals(){
   document.body.appendChild(ov);
   document.getElementById('gCancel').onclick=()=>ov.remove();
   document.getElementById('gSave').onclick=()=>{
-    const w=parseFloat(document.getElementById('wGoalInput').value),d=parseFloat(document.getElementById('dGoalInput').value);
+    const w=parseFloat(document.getElementById('wGoalInput').value),d=parseFloat(document.getElementById('dGoalInput').value),m=parseInt(document.getElementById('mGoalInput').value,10);
     if(w>0)WEEKLY_GOAL=Math.min(1000,w);
     if(d>0)DAILY_GOAL_KM=Math.min(200,d);
+    if(m>0)MONTHLY_GOAL=Math.min(200,m);
     saveProfile();renderGoal();toast('🎯 Ziele gespeichert');ov.remove();
   };
 }
 window.editGoals=editGoals;
+function getMonthlyRuns(){const now=new Date(),y=now.getFullYear(),m=now.getMonth();return history.filter(r=>{const d=new Date(r.date);return d.getFullYear()===y&&d.getMonth()===m;}).length;}
 function renderGoal(){
+  // Wochenziel: Kilometer diese Woche / Ziel
   const wkm=getWeeklyKm(),pct=Math.min(100,(wkm/WEEKLY_GOAL)*100);
-  const rem=(WEEKLY_GOAL-wkm).toFixed(1);
-  $('goalVal').textContent=wkm===0?`Noch ${WEEKLY_GOAL} km bis Wochenziel`:wkm>=WEEKLY_GOAL?`🎉 Wochenziel! ${wkm.toFixed(1)} km`:`Noch ${rem} km bis Wochenziel`;
-  $('goalBar').style.width=pct+'%';
+  const gv=$('goalVal');if(gv)gv.textContent=`${wkm.toFixed(1)} / ${WEEKLY_GOAL} km`+(wkm>=WEEKLY_GOAL?' 🎉':'');
+  const gb=$('goalBar');if(gb)gb.style.width=pct+'%';
+  const gbt=$('goalBarTxt');if(gbt)gbt.textContent=wkm>0?wkm.toFixed(1)+' km':'';
+  // Monatsziel: Anzahl Läufe diesen Monat / Ziel
+  const mruns=getMonthlyRuns(),mpct=Math.min(100,(mruns/MONTHLY_GOAL)*100);
+  const mv=$('monthGoalVal');if(mv)mv.textContent=`${mruns} / ${MONTHLY_GOAL} Läufe`+(mruns>=MONTHLY_GOAL?' 🎉':'');
+  const mb=$('monthGoalBar');if(mb)mb.style.width=mpct+'%';
+  const mbt=$('monthGoalBarTxt');if(mbt)mbt.textContent=mruns>0?mruns+(mruns===1?' Lauf':' Läufe'):'';
+  // Tagesziel-Zeile
   const _ts=new Date().toDateString();const _todayKm=history.filter(r=>new Date(r.date).toDateString()===_ts).reduce((s,r)=>s+r.distance/1000,0);
   const _dg=$('dailyGoalLine');if(_dg)_dg.textContent=`🎯 Tagesziel: ${_todayKm.toFixed(1)} / ${DAILY_GOAL_KM} km`+(_todayKm>=DAILY_GOAL_KM?' ✅':'');
-  const days=['Mo','Di','Mi','Do','Fr','Sa','So'],today=(new Date().getDay()+6)%7;
-  const maxD=Math.max(1,...days.map((_,i)=>{const d=new Date();d.setDate(d.getDate()-today+i);d.setHours(0,0,0,0);return history.filter(r=>new Date(r.date).toDateString()===d.toDateString()).reduce((s,r)=>s+r.distance/1000,0)}));
-  $('goalDays').innerHTML=days.map((_,i)=>{const d=new Date();d.setDate(d.getDate()-today+i);d.setHours(0,0,0,0);const km=history.filter(r=>new Date(r.date).toDateString()===d.toDateString()).reduce((s,r)=>s+r.distance/1000,0),h=Math.round((km/maxD)*100)||0,act=i===today;return`<div class="goal-day"><div class="goal-day-bar" style="border:${act?'1px solid var(--primary)':'none'}"><div class="goal-day-fill" style="height:${h}%;opacity:${act?1:.5}"></div></div><div class="goal-day-lbl" style="color:${act?'var(--primary)':'var(--muted)'}">${days[i]}</div></div>`}).join('');
 }
 function renderQuestsDiv(){$('questsDiv').innerHTML=quests.slice(0,3).map(q=>{const p=Math.min(100,Math.round(q.progress/q.target*100));return`<div class="quest-item"><div class="quest-row"><span>${q.icon} ${q.desc}</span><span class="quest-pts" style="color:${q.claimed?'#10b981':'var(--primary)'}">${q.claimed?'✓':q.reward+' pts'}</span></div><div class="q-bar"><div class="q-fill" style="width:${p}%"></div></div></div>`}).join('')+renderStarterQuests();}
 function renderActivityCards(){
@@ -4907,7 +4954,10 @@ function renderWeekChart(){
   const data=labels.map((_,i)=>{const d=new Date();d.setDate(d.getDate()-today+i);d.setHours(0,0,0,0);return history.filter(r=>new Date(r.date).toDateString()===d.toDateString()).reduce((s,r)=>s+r.distance/1000,0)});
   if(weekChart)weekChart.destroy();
   const acc=getComputedStyle(document.body).getPropertyValue('--primary').trim();
-  weekChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{data,backgroundColor:acc+'88',borderColor:acc,borderWidth:1,borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{display:false},x:{ticks:{color:'#6b6b82',font:{size:10}},grid:{display:false}}}}});
+  const txtCol=getComputedStyle(document.body).getPropertyValue('--text').trim()||'#fff';
+  /* Plugin: km-Wert über jedem Balken anzeigen (Wochenübersicht "mit km im Balken"). */
+  const kmLabels={id:'kmLabels',afterDatasetsDraw(c){const{ctx:cx}=c;const meta=c.getDatasetMeta(0);cx.save();cx.font="700 10px 'Poppins',sans-serif";cx.fillStyle=txtCol;cx.textAlign='center';meta.data.forEach((bar,i)=>{const v=data[i];if(v>0)cx.fillText(v.toFixed(1)+' km',bar.x,bar.y-4);});cx.restore();}};
+  weekChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{data,backgroundColor:acc+'88',borderColor:acc,borderWidth:1,borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:16}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y.toFixed(2)+' km'}}},scales:{y:{display:false,beginAtZero:true},x:{ticks:{color:'#6b6b82',font:{size:10}},grid:{display:false}}}},plugins:[kmLabels]});
 }
 
 /* ── AKTIVITÄT IMPORTIEREN ── */
@@ -5371,21 +5421,57 @@ async function renderClubWars(){
   }catch(e){el.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:6px">Club Wars nicht verfügbar</div>';}
 }
 /* PLAYER DISCOVERY */
+/* Sucht Spieler per Name ODER per individueller Spieler-Nummer (nur Ziffern ->
+   Nummernsuche). Die Nummer findet man unter Einstellungen → Profil. */
+async function discoverySearch(){
+  const raw=(document.getElementById('discSearchInput')?.value||'').trim();
+  const dl=document.getElementById('discList');
+  if(raw.length<2){if(dl)dl.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:8px">Mind. 2 Zeichen oder eine Spieler-Nummer eingeben.</div>';return;}
+  if(dl)dl.innerHTML='<div style="padding:8px;text-align:center;color:var(--muted);font-size:.75rem">⏳ Suche…</div>';
+  const isNum=/^\d{3,}$/.test(raw);
+  try{
+    let q=sb.from('profiles').select('id,user_id,player_name,user_avatar,user_color,points,total_km,user_team,player_number');
+    if(isNum)q=q.eq('player_number',parseInt(raw,10));
+    else q=q.ilike('player_name','%'+raw+'%');
+    const{data,error}=await q.limit(10);
+    if(error)throw error;
+    if(isNum&&(data||[]).length){ // exakte Nummer -> direkt Profil öffnen
+      const p=data[0];openPlayerCard(p.user_id||p.id,p.player_name);
+    }
+    renderDiscoveryList(data||[]);
+  }catch(e){if(dl)dl.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:8px">Suche fehlgeschlagen (Nummernsuche benötigt die SQL-Migration player_number).</div>';}
+}
 async function renderPlayerDiscovery(){
   const el=$('playerDiscoveryList');if(!el)return;
-  el.innerHTML=`<div style="display:flex;gap:8px;margin-bottom:10px"><input type="text" id="discSearchInput" class="modal-input" placeholder="Spieler suchen…" style="flex:1;font-size:.8rem"><button class="btn btn-p" id="discSearchBtn" style="padding:6px 14px;flex-shrink:0"><i class="fas fa-search"></i></button></div><div id="discList"><div style="padding:10px;text-align:center;color:var(--muted);font-size:.78rem">⏳ Lade…</div></div>`;
-  document.getElementById('discSearchBtn')?.addEventListener('click',async()=>{
-    const name=(document.getElementById('discSearchInput')?.value||'').trim();if(name.length<2)return;
-    const dl=document.getElementById('discList');if(dl)dl.innerHTML='<div style="padding:8px;text-align:center;color:var(--muted);font-size:.75rem">⏳ Suche…</div>';
-    try{const{data}=await sb.from('profiles').select('user_id,player_name,user_avatar,user_color,points,total_km,user_team').ilike('player_name','%'+name+'%').limit(10);renderDiscoveryList(data||[]);}
-    catch(e){const dl=document.getElementById('discList');if(dl)dl.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:8px">Suche fehlgeschlagen</div>';}
-  });
-  try{const{data}=await sb.from('profiles').select('user_id,player_name,user_avatar,user_color,points,total_km,user_team').order('points',{ascending:false}).limit(20);renderDiscoveryList((data||[]).filter(r=>r.user_id!==userId));}
-  catch(e){const dl=document.getElementById('discList');if(dl)dl.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:8px">Keine Spieler verfügbar</div>';}
+  el.innerHTML=`<div style="display:flex;gap:8px;margin-bottom:10px"><input type="text" id="discSearchInput" class="modal-input" placeholder="Name oder Spieler-Nummer…" style="flex:1;font-size:.8rem"><button class="btn btn-p" id="discSearchBtn" style="padding:6px 14px;flex-shrink:0"><i class="fas fa-search"></i></button></div><div style="font-size:.62rem;color:var(--muted);margin:-4px 0 8px">👥 Bis zu 10 Spieler in deiner Nähe · oder oben per Nummer suchen</div><div id="discList"><div style="padding:10px;text-align:center;color:var(--muted);font-size:.78rem">⏳ Lade…</div></div>`;
+  document.getElementById('discSearchBtn')?.addEventListener('click',discoverySearch);
+  document.getElementById('discSearchInput')?.addEventListener('keydown',e=>{if(e.key==='Enter')discoverySearch();});
+  // Initialliste: bis zu 10 Spieler in der Nähe (nach Gebiets-Entfernung zum
+  // eigenen Standort). Kein Standort/keine Gebiete -> Fallback: Top 10 weltweit.
+  try{
+    const loc=(typeof leaderboardLoc==='function')?await leaderboardLoc():null;
+    let list=[];
+    if(loc&&(h3Territories&&h3Territories.length||true)){
+      if((!h3Territories||!h3Territories.length)&&typeof loadH3Territories==='function'){try{await loadH3Territories();}catch(e){}}
+      const ownerDist=new Map();
+      for(const t of (h3Territories||[])){
+        if(!t.owner)continue;const c=_terrCentroidLL(t.cells);if(!c)continue;
+        let dKm;try{dKm=turf.distance(turf.point([loc.lng,loc.lat]),turf.point([c[1],c[0]]),{units:'kilometers'});}catch(e){continue;}
+        const cur=ownerDist.get(t.owner);if(cur==null||dKm<cur)ownerDist.set(t.owner,dKm);
+      }
+      const{data}=await sb.from('profiles').select('id,user_id,player_name,user_avatar,user_color,points,total_km,user_team').order('points',{ascending:false}).limit(500);
+      list=(data||[]).map(r=>{const d=ownerDist.has(r.user_id)?ownerDist.get(r.user_id):(ownerDist.has(r.id)?ownerDist.get(r.id):null);return(d==null||d>20)?null:{...r,_distKm:d};}).filter(Boolean).sort((a,b)=>a._distKm-b._distKm).slice(0,10);
+    }
+    if(!list.length){ // Fallback ohne Standort/Nähe
+      const{data}=await sb.from('profiles').select('id,user_id,player_name,user_avatar,user_color,points,total_km,user_team').order('points',{ascending:false}).limit(11);
+      list=(data||[]).filter(r=>r.user_id!==userId).slice(0,10);
+    }
+    renderDiscoveryList(list);
+  }catch(e){const dl=document.getElementById('discList');if(dl)dl.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:8px">Keine Spieler verfügbar</div>';}
 }
 function renderDiscoveryList(players){
   const dl=document.getElementById('discList');if(!dl)return;
-  const list=players.filter(r=>r.user_id!==userId).slice(0,15);
+  const list=players.filter(r=>r.user_id!==userId).slice(0,10);
   if(!list.length){dl.innerHTML=emptyStateHtml('fa-compass','Noch keine Spieler in deiner Nähe.<br>Lade Freunde mit deinem Club-Code ein.','🛡️ Club teilen','rcGoClub()');return;}
   dl.innerHTML=list.map(r=>{
     const st=followStatus(r.user_id);
@@ -5397,7 +5483,7 @@ function renderDiscoveryList(players){
         <div style="width:36px;height:36px;border-radius:50%;background:${col}22;border:2px solid ${col}55;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0">${esc(r.user_avatar||'🏃')}</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:.82rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.player_name||'Läufer')}</div>
-          <div style="font-size:.63rem;color:var(--muted)">${tm?tm.icon+' '+tm.name+' · ':''}${(r.total_km||0).toFixed(1)} km</div>
+          <div style="font-size:.63rem;color:var(--muted)">${r._distKm!=null?(r._distKm<1?Math.round(r._distKm*1000)+' m':r._distKm.toFixed(1)+' km')+' · ':''}${tm?tm.icon+' '+tm.name+' · ':''}${(r.total_km||0).toFixed(1)} km</div>
         </div>
       </div>
       <span style="font-family:'Bebas Neue',sans-serif;color:var(--primary);font-size:.9rem;flex-shrink:0">${r.points||0}</span>
@@ -5436,7 +5522,44 @@ async function openPlayerCard(uid,name){
   document.body.appendChild(ov);
   try{
     const{data:prof}=await sb.from('profiles').select('*').or(`user_id.eq.${uid},id.eq.${uid}`).limit(1).maybeSingle();
-    if(!prof){$('pcBody')&&(document.getElementById('pcBody').innerHTML='<div style="text-align:center;color:var(--muted);padding:30px">Profil nicht gefunden.</div>');return;}
+    if(!prof){$('pcBody')&&(document.getElementById('pcBody').innerHTML='<div style="text-align:center;color:var(--muted):padding:30px">Profil nicht gefunden.</div>');return;}
+    const _puid=prof.user_id||uid;
+    const isMe=_puid===userId;
+    const isPublic=prof.profile_public!==false; // Standard: öffentlich
+    const amFollower=(typeof followStatus==='function')&&followStatus(_puid)==='accepted';
+    /* Follower sehen das GANZE Profil des Gefolgten. Ist ein Profil privat und man
+       folgt (noch) nicht, werden nur Basisdaten gezeigt (Name, Follower, Fraktion,
+       Club, Läufe, Gebiete) – analog zur Regel im großen Profil. */
+    const canSeeAll=isMe||isPublic||amFollower;
+    // Follower-Zahl (für private Kurzansicht) via RPC, robust bei Fehler.
+    let followerCount=null;
+    try{const{data:fc}=await sb.rpc('rc_follow_counts',{uid:_puid});const c=Array.isArray(fc)?fc[0]:fc;if(c)followerCount=c.followers??0;}catch(e){}
+    const tm0=TEAMS.find(t=>t.id===prof.user_team);
+    const col0=esc(prof.user_color||'#e8ff47');
+    if(!canSeeAll){
+      const st0=followStatus(_puid);
+      const btnLabel0=st0==='pending_out'?'⏳ Angefragt':st0==='pending_in'?'👤 Antworten':'+ Folgen';
+      document.getElementById('pcBody').innerHTML=`
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <div style="width:52px;height:52px;border-radius:50%;background:${col0}22;border:2px solid ${col0}66;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0">${esc(prof.user_avatar||'🏃')}</div>
+          <div style="flex:1;min-width:0"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:1px">${esc(prof.player_name||name||'Läufer')}</div>
+          <div style="font-size:.7rem;color:var(--muted)">🔒 Privates Profil</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px">
+          <div style="background:rgba(255,255,255,.05);border-radius:10px;padding:8px;text-align:center"><div style="font-size:.95rem;font-weight:700">${followerCount!=null?followerCount:'—'}</div><div style="font-size:.55rem;color:var(--muted)">Follower</div></div>
+          <div style="background:rgba(255,255,255,.05);border-radius:10px;padding:8px;text-align:center"><div style="font-size:.95rem;font-weight:700">${prof.total_runs||0}</div><div style="font-size:.55rem;color:var(--muted)">Läufe</div></div>
+          <div style="background:rgba(255,255,255,.05);border-radius:10px;padding:8px;text-align:center"><div style="font-size:.95rem;font-weight:700">${prof.total_conquered||0}</div><div style="font-size:.55rem;color:var(--muted)">Gebiete</div></div>
+        </div>
+        <div style="font-size:.75rem;color:var(--muted);margin-bottom:14px">${tm0?tm0.icon+' '+tm0.name:'Keine Fraktion'}${prof.club_code?' · 🛡️ '+esc(prof.club_code):''}</div>
+        <button class="follow-btn" id="pcFollowBtn" style="width:100%;padding:10px">${btnLabel0}</button>
+        <div style="font-size:.62rem;color:var(--muted);text-align:center;margin-top:8px">Folge ${esc(prof.player_name||'diesem Spieler')}, um das ganze Profil zu sehen.</div>`;
+      document.getElementById('pcFollowBtn')?.addEventListener('click',async()=>{
+        if(st0==='pending_out'){await cancelOrUnfollow(_puid,prof.player_name);}
+        else if(st0==='none'){await sendFollowRequest(_puid,prof.player_name,prof.user_avatar||'🏃');}
+        ov.remove();
+      });
+      return;
+    }
     const{data:runs}=await sb.from('public_runs').select('*').eq('user_id',prof.id).order('created_at',{ascending:false}).limit(8);
     const achs=earnedFromStats(prof).filter(a=>a.earned);
     const tm=TEAMS.find(t=>t.id===prof.user_team);
@@ -5962,7 +6085,20 @@ function renderSettingsTab(tab){
   /* Slide-in beim Tab-Wechsel (Inhalt wird synchron gesetzt, Klasse per rAF). */
   if(body){body.classList.remove('slide-in');requestAnimationFrame(()=>body.classList.add('slide-in'));}
   if(tab==='profil'){
-    body.innerHTML=`<div class="field"><label>Name</label><input type="text" id="setName" class="modal-input" value="${esc(playerName||'')}"></div><div class="field"><label>Avatar</label><div class="avatar-row" id="setAvatarRow"></div></div><button class="btn btn-p" id="saveSetProfil" style="width:100%">Speichern</button><button id="logoutBtn" style="width:100%;margin-top:8px;background:none;border:1px solid #ff4d6d;color:#ff4d6d;border-radius:12px;padding:12px;font-size:.85rem;font-family:'Poppins',sans-serif;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent">🚪 Abmelden</button>`;
+    const pnum=playerNumberDisplay();
+    body.innerHTML=`<div class="field"><label>Name</label><input type="text" id="setName" class="modal-input" value="${esc(playerName||'')}"></div>
+    <div class="field"><label>Deine Spieler-Nummer</label>
+      <div style="display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px">
+        <i class="fas fa-id-badge" style="color:var(--primary)"></i>
+        <span id="setPlayerNum" style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;flex:1">${pnum}</span>
+        <button id="copyPlayerNum" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:.72rem;cursor:pointer">Kopieren</button>
+      </div>
+      <div style="font-size:.65rem;color:var(--muted);margin-top:5px">Teile diese Nummer – andere finden dich damit unter „Spieler entdecken".</div>
+    </div>
+    <div class="field"><label>Avatar</label><div class="avatar-row" id="setAvatarRow"></div></div><button class="btn btn-p" id="saveSetProfil" style="width:100%">Speichern</button><button id="logoutBtn" style="width:100%;margin-top:8px;background:none;border:1px solid #ff4d6d;color:#ff4d6d;border-radius:12px;padding:12px;font-size:.85rem;font-family:'Poppins',sans-serif;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent">🚪 Abmelden</button>`;
+    document.getElementById('copyPlayerNum')?.addEventListener('click',()=>{try{navigator.clipboard.writeText(String(playerNumberDisplay()));toast('📋 Nummer kopiert');}catch(e){toast('Nummer: '+playerNumberDisplay());}});
+    // Echte Nummer aus der DB nachladen (falls Migration vorhanden) und ersetzen.
+    if(sb&&userId&&myPlayerNumber==null){sb.from('profiles').select('player_number').or(`user_id.eq.${userId},id.eq.${userId}`).limit(1).maybeSingle().then(({data})=>{if(data&&data.player_number){myPlayerNumber=data.player_number;const e2=document.getElementById('setPlayerNum');if(e2)e2.textContent=myPlayerNumber;}}).catch(()=>{});}
     const setAvatarRow=$('setAvatarRow');
     setAvatarRow.innerHTML=`<div style="display:flex;align-items:center;gap:12px">
   <div id="setAvatarPreview" style="width:54px;height:54px;border-radius:50%;background:var(--bg2);border:2px solid var(--border);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center">${avatarHTML(54)}</div>
@@ -7988,6 +8124,20 @@ window.initApp=function(){
     renderH3Territories();
     if(typeof renderTerr==='function')renderTerr();
     toast(window._fraktMapMode?'🏳️ Fraktionskarte aktiv (Farbe = Fraktion)':'Normale Kartenansicht');
+  });
+  $('panelFollowBtn')?.addEventListener('click',async function(){
+    this.classList.toggle('active');
+    window._showFollowOnly=this.classList.contains('active');
+    if(window._showFollowOnly&&typeof loadFollowState==='function'){try{await loadFollowState();}catch(e){}}
+    renderH3Territories();
+    if(window._showFollowOnly){
+      const fset=new Set((typeof followedUsers!=='undefined'?followedUsers:[]).map(u=>u.uid));
+      const mine=h3Territories.filter(t=>fset.has(t.owner));
+      const pts=[];
+      mine.forEach(t=>(t.cells||[]).forEach(c=>{try{const ll=h3.cellToLatLng(c);pts.push([ll[0],ll[1]]);}catch(e){}}));
+      if(pts.length&&mapL)mapL.fitBounds(pts,{padding:[40,40]});
+      toast(mine.length?('👥 Gebiete deiner Follower · '+mine.length):'👥 Noch keine Gebiete von Gefolgten in der Nähe');
+    }else{toast('Alle Gebiete sichtbar');}
   });
   $('panelLmBtn')?.addEventListener('click',function(){
     this.classList.toggle('active');
