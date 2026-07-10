@@ -1868,7 +1868,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v127';
+const APP_VERSION='v128';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3970,16 +3970,16 @@ async function loadLandmarks(){
   //    Serverless) oder gerade nicht antwortet. Overpass hat immer wieder Ausfälle
   //    / Rate-Limits — daher MEHRERE Spiegel nacheinander probieren, damit
   //    Wahrzeichen zuverlässig erscheinen.
+  // nwr = node|way|relation: Kirchen & viele Wahrzeichen sind als WEG/Relation
+  // (Gebäudeumriss) gemappt, nicht als Node -> reine node-Abfrage fand sie nicht.
   const q=`[out:json][timeout:25];(`
-    +`node["tourism"~"attraction|museum|viewpoint|artwork|theme_park|zoo|aquarium|gallery"]["name"](${bb});`
-    +`node["historic"~"monument|memorial|castle|ruins|archaeological_site|church|fort|building"]["name"](${bb});`
-    +`node["leisure"~"stadium|nature_reserve|park"]["name"](${bb});`
-    +`node["amenity"~"place_of_worship|fountain|theatre|townhall|arts_centre"]["name"](${bb});`
-    +`node["natural"~"peak|waterfall|cave_entrance"]["name"](${bb});`
-    +`way["tourism"~"attraction|museum|viewpoint|theme_park|zoo"]["name"](${bb});`
-    +`way["historic"~"monument|memorial|castle|ruins"]["name"](${bb});`
-    +`way["amenity"~"place_of_worship|townhall"]["name"](${bb});`
-    +`);out center qt 120;`;
+    +`nwr["tourism"~"attraction|museum|viewpoint|artwork|theme_park|zoo|aquarium|gallery"]["name"](${bb});`
+    +`nwr["historic"~"monument|memorial|castle|ruins|archaeological_site|church|fort|building"]["name"](${bb});`
+    +`nwr["leisure"~"stadium|nature_reserve|park"]["name"](${bb});`
+    +`nwr["amenity"~"place_of_worship|fountain|theatre|townhall|arts_centre"]["name"](${bb});`
+    +`nwr["building"~"church|cathedral|chapel|mosque|temple|synagogue"]["name"](${bb});`
+    +`nwr["natural"~"peak|waterfall|cave_entrance"]["name"](${bb});`
+    +`);out center qt 200;`;
   const mirrors=[
     'https://overpass-api.de/api/interpreter',
     'https://overpass.kumi.systems/api/interpreter',
@@ -3995,7 +3995,7 @@ async function loadLandmarks(){
         const lat=el.lat??el.center?.lat;
         const lng=el.lon??el.center?.lon;
         if(!lat||!lng)return null;
-        return{id:el.id,lat,lng,name:el.tags?.name||'Wahrzeichen',type:el.tags?.tourism||el.tags?.historic||el.tags?.leisure||el.tags?.amenity||el.tags?.natural||''};
+        return{id:(el.type?el.type[0]:'n')+el.id,lat,lng,name:el.tags?.name||'Wahrzeichen',type:el.tags?.tourism||el.tags?.historic||el.tags?.leisure||el.tags?.amenity||el.tags?.natural||el.tags?.building||''};
       }).filter(Boolean);
       landmarks=parsed;
       renderLandmarks();
