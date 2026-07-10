@@ -117,7 +117,10 @@ export default async function handler(req, res) {
     const out = [];
     const seen = new Set();
     for (const [ti, tj] of cells) {
-      const key = `c${CELL}:${ti}:${tj}`;
+      // Query-Version im Key: die alte node-only-Abfrage hat Kacheln teils als
+      // LEER gecacht (24 h). Mit der nwr-Abfrage (v2) neue Cache-Einträge erzwingen,
+      // sonst würden veraltete leere Ergebnisse weiter ausgeliefert.
+      const key = `c${CELL}v2:${ti}:${tj}`;
       let data = await cacheGet(key);
       if (!data) {
         data = await fetchOverpassCell(ti, tj);  // wirft -> unten 200 mit Teilergebnis
