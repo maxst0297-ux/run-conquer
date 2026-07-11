@@ -93,16 +93,16 @@ export const ENERGY_PER_WEEK = 3;
 // <= maxDef), die noch keinem Bot gehören, begrenzt auf `limit`.
 export const BOT_TAKE_DEF_MAX = 5;   // ab hier gilt ein Gebiet als vernachlässigt
 export const BOT_TAKE_LIMIT = 2;     // max. Übernahmen pro Tick
-export const BOT_NEW_DEFENSE = 35;   // Startverteidigung eines Bot-Gebiets (~mittel)
-// Aktive Bots: pro Tick mehrere Aktionen rund um Spielergebiete, unabhängig vom
-// Verteidigungswert. "Durchschnittlich stark": Angriff zufällig im mittleren
-// Bereich — schwache/mittlere Gebiete fallen, gut verteidigte werden nur
-// geschwächt.
-export const BOT_ACTIONS_PER_TICK = 5;
-export const BOT_ATK_MIN = 15;
-export const BOT_ATK_MAX = 40;       // Ø ~27: schwächt Spielergebiete eher, statt sie zu übernehmen
-export const BOT_CLAIM_CELLS = 7;    // Größe eines neu beanspruchten Bot-Gebiets
-export const BOT_ATTACK_CHANCE = 0.28; // Anteil der Aktionen, die ein Spielergebiet angreifen (Rest: neutrale Zellen)
+export const BOT_NEW_DEFENSE = 22;   // Startverteidigung eines Bot-Gebiets (schwächer -> leichter zurückzuerobern)
+// Aktive Bots: pro Tick wenige Aktionen rund um Spielergebiete. Bewusst SCHWACH
+// gehalten — Angriffe im unteren Bereich, sodass gut/mittel verteidigte Gebiete
+// standhalten und nur vernachlässigte fallen. Bots sollen die Welt beleben,
+// nicht den Spieler überrennen.
+export const BOT_ACTIONS_PER_TICK = 3;
+export const BOT_ATK_MIN = 6;
+export const BOT_ATK_MAX = 18;       // Ø ~12: schwächt höchstens, übernimmt selten
+export const BOT_CLAIM_CELLS = 6;    // Größe eines neu beanspruchten Bot-Gebiets
+export const BOT_ATTACK_CHANCE = 0.15; // seltener Angriff auf Spielergebiete (Rest: neutrale Zellen beanspruchen)
 
 /* Ein Bot-Angriff der Stärke `strength` auf ein Gebiet mit `defense`.
    strength >= defense -> übernommen (Startverteidigung BOT_NEW_DEFENSE), sonst

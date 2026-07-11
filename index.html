@@ -1531,7 +1531,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 
 <div id="postRunModal" class="modal" style="display:none">
   <div class="modal-card">
-    <div class="modal-title">LAUF BEENDET 🎉</div>
+    <div class="modal-title" id="postRunTitle">LAUF BEENDET 🎉</div>
     <div id="postStats" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px"></div>
     <div style="text-align:center;background:var(--card);border-radius:14px;padding:16px;margin-bottom:14px">
       <div style="font-family:'Bebas Neue',sans-serif;font-size:2.4rem;color:var(--primary)" id="postPts">+0</div>
@@ -1907,7 +1907,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v140';
+const APP_VERSION='v141';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -5588,7 +5588,8 @@ function countUp(el,to,opts){
   clearTimeout(el._cuT);el._cuT=setTimeout(function(){requestAnimationFrame(step);},delay);
 }
 /* POST RUN */
-function showPostRun(rec){
+function showPostRun(rec,detail){
+  const _tt=$('postRunTitle');if(_tt&&!detail)_tt.textContent='LAUF BEENDET 🎉';
   countUp($('postPts'),rec.pts,{prefix:'+',duration:1000,delay:200,reduce:window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches});
   $('postStats').innerHTML=`<div class="stat-card"><div class="sv">${fmtDist(rec.distance)}</div><div class="sl">Distanz</div></div><div class="stat-card"><div class="sv">${fmtTime(rec.duration)}</div><div class="sl">Zeit</div></div><div class="stat-card"><div class="sv">${fmtPace(rec.distance,rec.duration)}</div><div class="sl">Pace</div></div><div class="stat-card"><div class="sv">${rec.kcal}</div><div class="sl">kcal</div></div>`;
   $('postSplits').innerHTML=rec.splits?.length?`<div class="splits-table"><div class="split-hdr"><span>KM</span><span>Pace</span><span>Zeit</span></div>${rec.splits.map(s=>`<div class="split-row"><span>${s.km}</span><span>${s.pace}</span><span>${fmtTime(s.splitSecs)}</span></div>`).join('')}</div>`:'';
@@ -5599,6 +5600,18 @@ function showPostRun(rec){
   $('postRunModal').style.display='flex';
   document.getElementById('cardRunBtn')?.addEventListener('click',()=>{showShareCardEditor(rec);},{ once:true });
 }
+/* Vergangenen Lauf im gleichen Modal wie nach dem Lauf anzeigen (alle Werte +
+   Punkte + Splits). Session-Bilanz/Hinweise werden neutralisiert, damit keine
+   Werte des letzten Live-Laufs hineinrutschen; Titel zeigt das Lauf-Datum. */
+function showRunDetail(rec){
+  if(!rec)return;
+  const t=$('postRunTitle');
+  if(t){const d=new Date(rec.date);t.textContent='LAUF · '+d.toLocaleDateString('de-DE',{weekday:'short',day:'numeric',month:'short',year:'numeric'});}
+  const _e=_runEvents,_n=_postRunNotes,_tn=sessionNewTerrNames,_lm=sessionNewLandmarks;
+  _runEvents=[];_postRunNotes=[];sessionNewTerrNames=[];sessionNewLandmarks=[];
+  try{showPostRun(rec,true);}finally{_runEvents=_e;_postRunNotes=_n;sessionNewTerrNames=_tn;sessionNewLandmarks=_lm;}
+}
+window.showRunDetail=showRunDetail;
 /* Gebündelte Lauf-Bilanz: gleiche Ereignistypen zusammengefasst (Anzahl + Summe)
    statt vieler Einzel-Toasts während des Laufs. */
 /* Gesammelte Lauf-Hinweise (Quests, Boost, Streak, …) gebündelt statt Einzel-Toasts. */
@@ -5734,6 +5747,9 @@ function renderActivityCards(){
     return`<div class="activity-card"><div class="ac-hdr"><span class="ac-date"><i class="fas fa-clock"></i> ${ds}</span><span class="ac-badge" style="color:${b.c};border-color:${b.c}">${b.t}</span></div><div class="ac-body"><canvas class="ac-canvas" id="ac-${i}" width="80" height="80"></canvas><div class="ac-info"><div class="ac-stats-row"><div class="ac-stat"><div class="ac-val">${(r.distance/1000).toFixed(2)}</div><div class="ac-lbl">km</div></div><div class="ac-stat"><div class="ac-val">${fmtTime(r.duration)}</div><div class="ac-lbl">Zeit</div></div><div class="ac-stat"><div class="ac-val">${fmtPace(r.distance,r.duration)}</div><div class="ac-lbl">Pace</div></div></div><div class="ac-foot"><span><i class="fas fa-fire-alt"></i> ${r.kcal||0} kcal</span><span class="ac-pts">+${r.pts} Pts</span></div></div></div></div>`;
   }).join('');
   rec.forEach((r,i)=>{const c=document.getElementById('ac-'+i);if(c&&r.path?.length>=2)drawMiniMap(c,r.path)});
+  /* Tippen auf einen vergangenen Lauf -> gleiche Detailansicht wie nach dem Lauf. */
+  const cards=el.querySelectorAll('.activity-card');
+  rec.forEach((r,i)=>{const card=cards[i];if(card){card.style.cursor='pointer';card.addEventListener('click',()=>showRunDetail(r));}});
 }
 function renderWeekChart(){
   const ctx=$('weekChart').getContext('2d'),labels=['Mo','Di','Mi','Do','Fr','Sa','So'],today=(new Date().getDay()+6)%7;
