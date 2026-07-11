@@ -1837,6 +1837,13 @@ let personalRecords={};
 let battlePassClaimed=[];
 let friends=[];
 let totalRaids=0,totalBoosts=0,weeklyAchsDone=0,seasonXp=0;
+/* Echtes Tracking für Erfolge, die bisher genähert waren:
+   totalElevation = summierte Höhenmeter (GPS-Höhe, nur Anstiege),
+   totalCuts = erfolgreich abgetrennte (geteilte) Gegner-Gebiete,
+   bestRank = beste je erreichte globale Ranglisten-Platzierung,
+   natureVisited = IDs entdeckter Wahrzeichen in Natur (Naturschutz/Park/Gipfel…). */
+let totalElevation=0,totalCuts=0,bestRank=null,natureVisited=[];
+let runElevGain=0,lastRunAlt=null; // je Lauf, nicht persistiert
 
 /* ═══ SUPABASE ═══ */
 const SB_URL='https://mlkpryhacihbqnmtgkcg.supabase.co';
@@ -1868,7 +1875,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v130';
+const APP_VERSION='v131';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2320,7 +2327,7 @@ function debounce(fn,w){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn
 const syncProfileDebounced=debounce(syncProfile,1000);
 
 /* PERSIST */
-function save(){localStateTs=Date.now();localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,energyWeek,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,lastRunDate,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered,registeredAt,starterQuestsDone,starterQuestFlags,heatPersonalOnly,dailyChallenges,dailyChalDate,chalStreak,lastChalDoneDate,dailyLoginDate,dailyLoginStreak,streakShields,recentQuoteIds,weeklyChals,weekChalKey,personalRecords,battlePassClaimed,totalRaids,totalBoosts,weeklyAchsDone,seasonXp,localStateTs}));if(typeof syncProfileDebounced==='function')syncProfileDebounced();}
+function save(){localStateTs=Date.now();localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,energyWeek,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,lastRunDate,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered,registeredAt,starterQuestsDone,starterQuestFlags,heatPersonalOnly,dailyChallenges,dailyChalDate,chalStreak,lastChalDoneDate,dailyLoginDate,dailyLoginStreak,streakShields,recentQuoteIds,weeklyChals,weekChalKey,personalRecords,battlePassClaimed,totalRaids,totalBoosts,weeklyAchsDone,seasonXp,totalElevation,totalCuts,bestRank,natureVisited,localStateTs}));if(typeof syncProfileDebounced==='function')syncProfileDebounced();}
 /* Crash-resiliente Lauf-Persistenz: Pfad liegt sonst nur im RAM und ginge bei
    App-Kill/Crash mitten im Lauf komplett verloren. Wird alle ~12s gespiegelt,
    beim nächsten Boot per checkOrphanedRun() angeboten. */
@@ -2357,7 +2364,7 @@ function checkOrphanedRun(){
 function load(){
   try{
     const d=JSON.parse(localStorage.getItem('rc_v4_'+userId));
-    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;lastRunDate=d.lastRunDate||'';stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;registeredAt=d.registeredAt||Date.now();starterQuestsDone=d.starterQuestsDone||[];starterQuestFlags=d.starterQuestFlags||{profileOpened:false};heatPersonalOnly=d.heatPersonalOnly||false;dailyChallenges=d.dailyChallenges||[];dailyChalDate=d.dailyChalDate||'';chalStreak=d.chalStreak||0;lastChalDoneDate=d.lastChalDoneDate||'';dailyLoginDate=d.dailyLoginDate||'';dailyLoginStreak=d.dailyLoginStreak||0;streakShields=d.streakShields||0;recentQuoteIds=d.recentQuoteIds||[];weeklyChals=d.weeklyChals||[];weekChalKey=d.weekChalKey||'';personalRecords=d.personalRecords||{};battlePassClaimed=d.battlePassClaimed||[];totalRaids=d.totalRaids||0;totalBoosts=d.totalBoosts||0;weeklyAchsDone=d.weeklyAchsDone||0;seasonXp=d.seasonXp||0;localStateTs=d.localStateTs||0;/* invasions: serverseitig (rc_sync_breaches), nicht mehr aus localStorage */}
+    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;lastRunDate=d.lastRunDate||'';stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;registeredAt=d.registeredAt||Date.now();starterQuestsDone=d.starterQuestsDone||[];starterQuestFlags=d.starterQuestFlags||{profileOpened:false};heatPersonalOnly=d.heatPersonalOnly||false;dailyChallenges=d.dailyChallenges||[];dailyChalDate=d.dailyChalDate||'';chalStreak=d.chalStreak||0;lastChalDoneDate=d.lastChalDoneDate||'';dailyLoginDate=d.dailyLoginDate||'';dailyLoginStreak=d.dailyLoginStreak||0;streakShields=d.streakShields||0;recentQuoteIds=d.recentQuoteIds||[];weeklyChals=d.weeklyChals||[];weekChalKey=d.weekChalKey||'';personalRecords=d.personalRecords||{};battlePassClaimed=d.battlePassClaimed||[];totalRaids=d.totalRaids||0;totalBoosts=d.totalBoosts||0;weeklyAchsDone=d.weeklyAchsDone||0;seasonXp=d.seasonXp||0;totalElevation=d.totalElevation||0;totalCuts=d.totalCuts||0;bestRank=(d.bestRank!=null?d.bestRank:null);natureVisited=d.natureVisited||[];localStateTs=d.localStateTs||0;/* invasions: serverseitig (rc_sync_breaches), nicht mehr aus localStorage */}
   }catch(e){logError('state_load',e);/* korrupter Blob -> Defaults; Cloud-Sync stellt wieder her */}
   // Rival territories werden nach erstem GPS-Fix generiert (locationfound)
   if(!quests.length)genQuests();
@@ -4455,6 +4462,10 @@ function _rcStats(){
     follows:(typeof followedUsers!=='undefined'?followedUsers.length:0),
     holdDays:mine.reduce((m,t)=>{const ts=Date.parse(t.last_captured_at||t.created_at||0);return ts?Math.max(m,(Date.now()-ts)/86400000):m;},0),
     level:(typeof getLevel==='function'?getLevel(points):1),
+    elevation:totalElevation,
+    cuts:totalCuts,
+    nature:natureVisited.length,
+    rank1:(window._myRank===1)||(bestRank===1),
   };
 }
 const RC_NAMED=[
@@ -4466,7 +4477,7 @@ const RC_NAMED=[
   {badge:'b6', name:'König der Läufer',  req:'50 Gebiete erobert',            chk:s=>totalConquered>=50},
   {badge:'b7', name:'Tempojäger',        req:'Lauf mit 16+ km/h',             chk:s=>s.maxSpeed>=16},
   {badge:'b8', name:'Dauerbrenner',      req:'60 Minuten am Stück gelaufen',  chk:s=>s.longest>=3600},
-  {badge:'b9', name:'Höhenstürmer',      req:'150 km gesamt (≈ Höhenmeter)',  chk:s=>totalKm>=150},
+  {badge:'b9', name:'Höhenstürmer',      req:'1.000 Höhenmeter gesammelt',    chk:s=>s.elevation>=1000},
   {badge:'b10',name:'Unaufhaltsam',      req:'7 Tage in Folge gelaufen',      chk:s=>streakDays>=7},
   {badge:'b11',name:'Verteidiger',       req:'Gebiet verteidigt',             chk:s=>totalDefended>=1},
   {badge:'b12',name:'Belagerer',         req:'Gebiet stark angegriffen',      chk:s=>totalRaids>=1},
@@ -4474,11 +4485,11 @@ const RC_NAMED=[
   {badge:'b14',name:'Allrounder',        req:'5 Stufen-Erfolge freigeschaltet',chk:s=>s.tierEarned>=5},
   {badge:'b15',name:'Weltenbummler',     req:'100 km Gesamtstrecke',          chk:s=>totalKm>=100},
   {badge:'b16',name:'Festungsbauer',     req:'Verteidigung auf 300',          chk:s=>s.ownMaxDef>=300},
-  {badge:'b17',name:'Grenzierer',        req:'10 Gebiete erobert',            chk:s=>totalConquered>=10},
-  {badge:'b18',name:'Champion',          req:'Platz 1 der Rangliste',         chk:s=>window._myRank===1},
+  {badge:'b17',name:'Grenzierer',        req:'Gebiet erfolgreich geteilt',    chk:s=>s.cuts>=1},
+  {badge:'b18',name:'Champion',          req:'Platz 1 der Rangliste',         chk:s=>s.rank1},
   {badge:'b19',name:'Geist des Laufens', req:'An 100 Tagen aktiv',            chk:s=>s.activeDays>=100},
   {badge:'b20',name:'Nachtläufer',       req:'10 Läufe zwischen 22–5 Uhr',    chk:s=>s.nights>=10},
-  {badge:'b21',name:'Naturliebhaber',    req:'20 Gebiete besucht',            chk:s=>totalDiscovered>=20},
+  {badge:'b21',name:'Naturliebhaber',    req:'10 Wahrzeichen in der Natur',   chk:s=>s.nature>=10},
   {badge:'b22',name:'Legendär',          req:'Alle Stufen-Erfolge',           chk:s=>s.allTiers},
   {badge:'b23',name:'Conqueror',         req:'Gebiet 30 Tage besitzen',       chk:s=>s.holdDays>=30},
   {badge:'b24',name:'Unsterblich',       req:'Level 15 erreicht',             chk:s=>s.level>=15},
@@ -4643,6 +4654,12 @@ function renderLandmarks(){
       L.circle([lm.lat,lm.lng],{radius:50,color:'#ffd700',fillColor:'#ffd700',fillOpacity:.04,weight:1,opacity:.25,dashArray:'4 4'}).addTo(landmarkLayer);
     }
   });
+}
+/* „Naturliebhaber": zählt entdeckte Wahrzeichen in der Natur (Naturschutzgebiet,
+   Park, Gipfel, Wasserfall, Höhle) – eindeutig je Wahrzeichen. */
+const RC_NATURE_TYPES=new Set(['nature_reserve','park','peak','waterfall','cave_entrance','natural']);
+function trackNatureLandmark(lm){
+  try{if(lm&&RC_NATURE_TYPES.has(lm.type)&&!natureVisited.includes(lm.id)){natureVisited.push(lm.id);}}catch(e){}
 }
 function lmsInPoly(poly){if(!poly)return[];return landmarks.filter(lm=>{try{return turf.booleanPointInPolygon(turf.point([lm.lng,lm.lat]),turf.feature(poly));}catch(e){return false}}).map(l=>l.id)}
 
@@ -5033,7 +5050,7 @@ function startRun(){
   isRunning=true;isPaused=false;beep(440);
   runStart=Date.now();runSecs=0;path=[];lastPos=null;lastPosTime=0;gpsJumpWarned=false;dist=0;kmSplits=[];lastSplitKm=0;lastSplitSecs=0;_persistTick=0;
   sessionNewTerrNames=[];sessionNewLandmarks=[];window._lastPrevAt=0;
-  gpsSpeed=null;gpsAlt=null;cadence=0;
+  gpsSpeed=null;gpsAlt=null;cadence=0;runElevGain=0;lastRunAlt=null;
   statusTxt.textContent=energy>0?`⚡ Boost aktiv (${energy}/${CFG.ENERGY_MAX})`:'Läuft…';
   statusDot.style.background=energy>0?'var(--primary)':'var(--green)';statusBar.classList.add('running');
   startBtn.disabled=true;pauseBtn.disabled=false;pauseBtn.innerHTML='<i class="fas fa-pause"></i> PAUSE';stopBtn.disabled=false;
@@ -5094,7 +5111,15 @@ function onGPS(pos){
   mapL.setView(pt,mapL.getZoom());
   if(acc>150)return; /* skip path recording for very inaccurate fixes */
   if(pos.coords.speed!=null&&pos.coords.speed>=0)gpsSpeed=pos.coords.speed;
-  if(pos.coords.altitude!=null)gpsAlt=Math.round(pos.coords.altitude);
+  if(pos.coords.altitude!=null){
+    gpsAlt=Math.round(pos.coords.altitude);
+    /* Höhenmeter summieren: nur echte Anstiege, ab 3 m Zuwachs (GPS-Höhe rauscht
+       stark) und höchstens 30 m pro Schritt (Sprung/Ausreißer ignorieren). */
+    if(isRunning&&!isPaused&&(pos.coords.altitudeAccuracy==null||pos.coords.altitudeAccuracy<=25)){
+      if(lastRunAlt!=null){const dAlt=gpsAlt-lastRunAlt;if(dAlt>=3&&dAlt<=30)runElevGain+=dAlt;}
+      lastRunAlt=gpsAlt;
+    }
+  }
   const now=Date.now();
   if(lastPos&&acc<=100){
     const d=turf.distance(turf.point([lastPos[1],lastPos[0]]),turf.point([lng,lat]),{units:'meters'});
@@ -5121,6 +5146,7 @@ function onGPS(pos){
     if(dist2<=50){
       capturedLandmarks.push(lm.id);
       sessionNewLandmarks.push(lm.name);
+      trackNatureLandmark(lm);
       points+=CFG.LANDMARK_PTS;
       save();renderLandmarks();
       toast('⭐ Wahrzeichen entdeckt: '+lm.name+' +'+CFG.LANDMARK_PTS+' Pts!');beep(880,.1);vib(120);
@@ -5250,9 +5276,11 @@ async function finalizeRun(elapsed){
   if(boosted)runNote('⚡ Boost eingesetzt (+10 % Angriff)');
   if(streakDays>1)runNote(`🔥 Streak ×${streakMul.toFixed(1)} · +${kmXP} km-XP`);
   const kcal=calcKcal(dist,elapsed);
-  const rec={id:(crypto.randomUUID?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2))),synced:false,date:Date.now(),distance:dist,area,pts:res.pts,path:path.filter((_,i)=>i%3===0),conquered:res.conquered,defended:res.defended,duration:elapsed,gap,kcal,avgHR:heartRate,splits:[...kmSplits]};
+  const elevGain=Math.round(runElevGain);
+  const rec={id:(crypto.randomUUID?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2))),synced:false,date:Date.now(),distance:dist,area,pts:res.pts,path:path.filter((_,i)=>i%3===0),conquered:res.conquered,defended:res.defended,duration:elapsed,gap,kcal,avgHR:heartRate,splits:[...kmSplits],elevation:elevGain};
   history.push(rec);if(history.length>500)history.shift();
   totalKm+=dist/1000;if(res.conquered)totalConquered++;if(res.defended)totalDefended++;
+  totalElevation+=elevGain; // Höhenmeter für „Höhenstürmer"
   updateQuests(rec);updateAch();updateDailyChallenges(rec);updateWeeklyChallenges(rec);trackPersonalRecords(rec,totalPts,area);
   if(boosted)totalBoosts++;seasonXp+=totalPts;
   /* Angezeigte "Punkte verdient" = ALLES, was dieser Lauf eingebracht hat:
@@ -5350,6 +5378,7 @@ async function processConquest(np,area,d,boosted=false,isImport=false,durationS=
   (data.events||[]).forEach(ev=>{
     if(ev.type==='conquered'||ev.type==='cut'){
       conquered=true;totalRaids++; // Sieg über ein Feindgebiet -> zählt für die „Sieg"-Abzeichen
+      if(ev.type==='cut')totalCuts++; // „Grenzierer": erfolgreich abgetrenntes Gebiet
       [660,880,1100].forEach((f,i)=>setTimeout(()=>beep(f,.1),i*80));
       vib([100,50,100]);addNotif('🗺️','Neues Gebiet erobert!');
       _runEvents.push({type:ev.type==='cut'?'cut':'conquered',cells:(ev.type==='cut'?ev.got:ev.cells)||0});
@@ -5738,7 +5767,7 @@ async function importActivity(distM,durSecs,dateMs,path,source,avgHR){
             landmarks.forEach(lm=>{
               if(capturedLandmarks.includes(lm.id))return;
               const d2=turf.distance(turf.point([lng,lat]),turf.point([lm.lng,lm.lat]),{units:'meters'});
-              if(d2<=50){capturedLandmarks.push(lm.id);sessionNewLandmarks.push(lm.name);terrPts+=CFG.LANDMARK_PTS;toast('⭐ Wahrzeichen entdeckt: '+lm.name+' +'+CFG.LANDMARK_PTS+' Pts!');}
+              if(d2<=50){capturedLandmarks.push(lm.id);sessionNewLandmarks.push(lm.name);trackNatureLandmark(lm);terrPts+=CFG.LANDMARK_PTS;toast('⭐ Wahrzeichen entdeckt: '+lm.name+' +'+CFG.LANDMARK_PTS+' Pts!');}
             });
           }
           renderLandmarks();
@@ -7783,6 +7812,9 @@ async function updateProfileRank(){
     const rank=(ahead||0)+1;
     el.textContent=`🌍 Platz #${rank}${total?' von '+total:''} weltweit`;
     el.style.display='';
+    /* Beste je erreichte Platzierung für den „Champion"-Erfolg (Platz 1) merken. */
+    window._myRank=rank;
+    if(bestRank==null||rank<bestRank){bestRank=rank;save();}
   }catch(e){el.style.display='none';}
   /* Eigene Follower-/Following-Zahlen (gleiche RLS-sichere Funktion). */
   try{
