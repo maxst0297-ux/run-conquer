@@ -62,13 +62,10 @@ async function fetchOverpassCell(ti, tj) {
   // nwr = node|way|relation: Kirchen & viele Wahrzeichen sind als WEG (Gebäude-
   // umriss) oder Relation gemappt, NICHT als Node — deshalb reichte die reine
   // node-Abfrage nicht (in kirchenreichen Gegenden erschien nichts).
+  // Vorerst NUR Kirchen (christliche Kultstätten + als Kirche gemappte Gebäude).
   const q = `[out:json][timeout:25];(`
-    + `nwr["tourism"~"attraction|museum|viewpoint|artwork|theme_park|zoo|aquarium|gallery"]["name"](${bb});`
-    + `nwr["historic"~"monument|memorial|castle|ruins|archaeological_site|church|fort|building"]["name"](${bb});`
-    + `nwr["leisure"~"stadium|nature_reserve|park"]["name"](${bb});`
-    + `nwr["amenity"~"place_of_worship|fountain|theatre|townhall|arts_centre"]["name"](${bb});`
-    + `nwr["building"~"church|cathedral|chapel|mosque|temple|synagogue"]["name"](${bb});`
-    + `nwr["natural"~"peak|waterfall|cave_entrance"]["name"](${bb});`
+    + `nwr["building"~"church|cathedral|chapel"]["name"](${bb});`
+    + `nwr["amenity"="place_of_worship"]["religion"="christian"]["name"](${bb});`
     + `);out center qt 200;`;
   const r = await fetch(OVERPASS, { method: 'POST', body: 'data=' + encodeURIComponent(q) });
   if (!r.ok) throw new Error('overpass ' + r.status);
@@ -117,10 +114,9 @@ export default async function handler(req, res) {
     const out = [];
     const seen = new Set();
     for (const [ti, tj] of cells) {
-      // Query-Version im Key: die alte node-only-Abfrage hat Kacheln teils als
-      // LEER gecacht (24 h). Mit der nwr-Abfrage (v2) neue Cache-Einträge erzwingen,
-      // sonst würden veraltete leere Ergebnisse weiter ausgeliefert.
-      const key = `c${CELL}v2:${ti}:${tj}`;
+      // Query-Version im Key: v3 = nur Kirchen. Erzwingt frische Cache-Einträge,
+      // damit nicht die alten (zu vielen) Ergebnisse aus v2 ausgeliefert werden.
+      const key = `c${CELL}v3:${ti}:${tj}`;
       let data = await cacheGet(key);
       if (!data) {
         data = await fetchOverpassCell(ti, tj);  // wirft -> unten 200 mit Teilergebnis
