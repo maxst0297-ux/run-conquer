@@ -1884,7 +1884,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v134';
+const APP_VERSION='v135';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3840,6 +3840,9 @@ function rcEnsureBadgeDefs(){
     +'<filter id="rcShadow" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="1.6" stdDeviation="1.4" flood-color="#000000" flood-opacity="0.6"/></filter>'
     +'<filter id="rcGlow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="1.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'
     +'<filter id="rcGlow2" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="3.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'
+    // Dunkle Medaillon-Platte hinter jedem Badge -> auf hellen wie dunklen
+    // Hintergründen (helle Themes, Popup-Karte) gleich gut sichtbar.
+    +'<radialGradient id="rcPlate" cx="50%" cy="40%" r="65%"><stop offset="0%" stop-color="#0e4231"/><stop offset="70%" stop-color="#06271c"/><stop offset="100%" stop-color="#03150e"/></radialGradient>'
     +'</defs></svg>';
   document.body.appendChild(div);
   _rcbDefsInjected=true;
@@ -3862,7 +3865,7 @@ const RCB={
   ag(u,c,o=.6){return `<radialGradient id="A${u}" cx="50%" cy="50%" r="50%"><stop offset="30%" stop-color="${c}" stop-opacity="${(o*.42).toFixed(2)}"/><stop offset="65%" stop-color="${c}" stop-opacity="${(o*.18).toFixed(2)}"/><stop offset="100%" stop-color="${c}" stop-opacity="0"/></radialGradient>`;},
   auraC(u,r=54){return `<circle cx="60" cy="57" r="${r}" fill="url(#A${u})"/>`;},
   bev(b){return `<g filter="url(#rcShadow)"><g filter="url(#rcBevel)">${b}</g></g>`;},
-  wrap(d,b){return `<svg viewBox="0 0 120 120" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">${d?`<defs>${d}</defs>`:''}${b}</svg>`;},
+  wrap(d,b){const plate='<circle cx="60" cy="58" r="56" fill="url(#rcPlate)"/><circle cx="60" cy="58" r="56" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="1"/>';return `<svg viewBox="0 0 120 120" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">${d?`<defs>${d}</defs>`:''}${plate}${b}</svg>`;},
   sp4(x,y,s,o=.9,c='#ffffff'){return `<g transform="translate(${x} ${y}) scale(${s})"><path d="M0 -4 L1 -1 L4 0 L1 1 L0 4 L-1 1 L-4 0 L-1 -1 Z" fill="${c}" opacity="${o}"/></g>`;},
   spks(u,pts,c='#ffffff'){let s='';pts.forEach(p=>{s+=this.sp4(p[0],p[1],p[2],p[3]??.85,c);});return s;},
   st5(cx,cy,r,f,o=1){let p='';for(let i=0;i<10;i++){const rr=i%2?r*.42:r;const a=-Math.PI/2+i*Math.PI/5;p+=`${(cx+Math.cos(a)*rr).toFixed(1)},${(cy+Math.sin(a)*rr).toFixed(1)} `;}return `<polygon points="${p.trim()}" fill="${f}" opacity="${o}"/>`;},
