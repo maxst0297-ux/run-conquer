@@ -539,8 +539,13 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
    Drawer): sonst verschwindet die unterste Zeile – z.B. die letzte Kalenderwoche
    – hinter der Leiste. */
 .drawer-body{padding:14px 14px calc(var(--nav-total) + 24px);min-height:0;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch}
-.drawer-body.anim{animation:drawerContentIn .24s cubic-bezier(.16,1,.3,1)}
-@keyframes drawerContentIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.drawer-body.anim{animation:drawerContentIn .28s cubic-bezier(.22,1,.36,1)}
+@keyframes drawerContentIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+/* Sanftes Ausblenden des alten Reiter-Inhalts vor dem Wechsel (Crossfade,
+   verhindert das harte Umspringen zwischen Quests/Läufe/… ). */
+.drawer-body.leaving{animation:drawerContentOut .13s ease forwards}
+@keyframes drawerContentOut{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-6px)}}
+@media (prefers-reduced-motion:reduce){.drawer-body.anim,.drawer-body.leaving{animation:none}}
 
 /* ═══ MODALS ═══ */
 .modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;z-index:1200;padding:20px 20px calc(20px + var(--sab))}
@@ -1188,7 +1193,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         </div>
         <div class="map-panel-sep"></div>
         <button class="map-panel-btn active" id="panelTerrBtn"><i class="fas fa-map"></i> Gebiete</button>
-        <button class="map-panel-btn" id="panelLmBtn"><i class="fas fa-star"></i> Wahrzeichen</button>
+        <button class="map-panel-btn active" id="panelLmBtn"><i class="fas fa-church"></i> Kirchen</button>
         <button class="map-panel-btn" id="panelFraktBtn"><i class="fas fa-flag"></i> Fraktionskarte</button>
         <button class="map-panel-btn" id="panelOwnTerrBtn"><i class="fas fa-map-marker-alt"></i> Eigene Gebiete</button>
         <button class="map-panel-btn" id="panelFollowBtn"><i class="fas fa-user-friends"></i> Follower</button>
@@ -1875,7 +1880,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v132';
+const APP_VERSION='v133';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -4535,7 +4540,7 @@ function initMap(){
   setTiles();
   terrLayer=L.layerGroup().addTo(mapL);
   h3Layer=L.layerGroup().addTo(mapL);
-  landmarkLayer=L.layerGroup(); // Wahrzeichen standardmäßig AUS (waren zu viele) – erst per Panel-Knopf einblenden
+  landmarkLayer=L.layerGroup().addTo(mapL);window._lmEnabled=true; // Kirchen standardmäßig sichtbar
   invasionLayer=L.layerGroup().addTo(mapL);
   renderInvasions();
   /* Neues H3-System: additiv rendern (leer bis zum Cutover), bei Zoomwechsel
@@ -4545,8 +4550,9 @@ function initMap(){
   /* Bots beiläufig anstoßen: nimmt (server-gelockt, meist No-Op) vernachlässigte
      Gebiete ein; danach die Karte mit dem neuen Stand aktualisieren. */
   setTimeout(triggerBotTick,2500);
-  /* Wahrzeichen NICHT automatisch laden – nur wenn der Nutzer sie über den
-     „Wahrzeichen"-Knopf einblendet (window._lmEnabled). */
+  /* Kirchen im aktuellen Ausschnitt laden; beim Verschieben werden die umliegenden
+     automatisch nachgeladen (mapL.on('moveend'…) weiter unten). */
+  setTimeout(loadLandmarks,800);
   mapL.locate({setView:true,maxZoom:16,enableHighAccuracy:true});
   mapL.on('locationfound',e=>{
     if(!userMarker)userMarker=L.marker(e.latlng,{icon:mkUserIcon()}).addTo(mapL);
@@ -4598,13 +4604,10 @@ async function loadLandmarks(){
   //    Wahrzeichen zuverlässig erscheinen.
   // nwr = node|way|relation: Kirchen & viele Wahrzeichen sind als WEG/Relation
   // (Gebäudeumriss) gemappt, nicht als Node -> reine node-Abfrage fand sie nicht.
+  // Vorerst NUR Kirchen (christliche Kultstätten + als Kirche gemappte Gebäude).
   const q=`[out:json][timeout:25];(`
-    +`nwr["tourism"~"attraction|museum|viewpoint|artwork|theme_park|zoo|aquarium|gallery"]["name"](${bb});`
-    +`nwr["historic"~"monument|memorial|castle|ruins|archaeological_site|church|fort|building"]["name"](${bb});`
-    +`nwr["leisure"~"stadium|nature_reserve|park"]["name"](${bb});`
-    +`nwr["amenity"~"place_of_worship|fountain|theatre|townhall|arts_centre"]["name"](${bb});`
-    +`nwr["building"~"church|cathedral|chapel|mosque|temple|synagogue"]["name"](${bb});`
-    +`nwr["natural"~"peak|waterfall|cave_entrance"]["name"](${bb});`
+    +`nwr["building"~"church|cathedral|chapel"]["name"](${bb});`
+    +`nwr["amenity"="place_of_worship"]["religion"="christian"]["name"](${bb});`
     +`);out center qt 200;`;
   const mirrors=[
     'https://overpass-api.de/api/interpreter',
@@ -7996,8 +7999,19 @@ function renderDrawer(){
     calendar:()=>{setTimeout(drawCalendar,0);return'<div id="calDiv"></div>'}
   };
   document.querySelectorAll('#drawerTabs .tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===currentTab));
-  const _build=()=>{try{drawerBody.innerHTML=tabs[currentTab]?tabs[currentTab]():'';}catch(err){drawerBody.innerHTML=`<div style="color:#ef4444;padding:16px;font-size:.8rem">Fehler: ${err.message}</div>`;console.error('renderDrawer error:',err);}drawerBody.scrollTop=0;drawerBody.classList.remove('anim');void drawerBody.offsetWidth;drawerBody.classList.add('anim');};
-  requestAnimationFrame(_build);
+  const _build=()=>{try{drawerBody.innerHTML=tabs[currentTab]?tabs[currentTab]():'';}catch(err){drawerBody.innerHTML=`<div style="color:#ef4444;padding:16px;font-size:.8rem">Fehler: ${err.message}</div>`;console.error('renderDrawer error:',err);}drawerBody.scrollTop=0;drawerBody.classList.remove('leaving');drawerBody.classList.remove('anim');void drawerBody.offsetWidth;drawerBody.classList.add('anim');};
+  /* Reiterwechsel = weicher Crossfade: erst den alten Inhalt kurz ausblenden,
+     dann tauschen und neu einblenden. Beim ersten Öffnen (leerer Body) sofort
+     aufbauen, damit nichts verzögert wirkt. */
+  const hasContent=drawerBody.innerHTML.trim().length>0;
+  const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches;
+  if(hasContent&&!reduce&&drawer.classList.contains('open')){
+    drawerBody.classList.remove('anim');
+    drawerBody.classList.add('leaving');
+    setTimeout(_build,120);
+  }else{
+    requestAnimationFrame(_build);
+  }
 }
 function drawCalendar(){
   const el=document.getElementById('calDiv');if(!el)return;
@@ -8797,11 +8811,11 @@ window.initApp=function(){
     if(on){
       landmarkLayer&&mapL.addLayer(landmarkLayer);
       if(typeof loadLandmarks==='function')loadLandmarks(); // erst jetzt laden
-      toast('⭐ Wahrzeichen werden geladen…');
+      toast('⛪ Kirchen werden geladen…');
     }else{
       landmarkLayer&&mapL.removeLayer(landmarkLayer);
       landmarkLayer&&landmarkLayer.clearLayers(); // Karte sauber halten
-      toast('Wahrzeichen ausgeblendet');
+      toast('Kirchen ausgeblendet');
     }
   });
   /* Panel-Lauf-Buttons */
