@@ -1868,7 +1868,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v129';
+const APP_VERSION='v130';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3979,7 +3979,345 @@ const RCB={
     if(t>=3){let g='';for(let i=0;i<7;i++){const a=Math.PI*(1+i/6);g+=`<line x1="${(60+Math.cos(a)*30).toFixed(1)}" y1="${(56+Math.sin(a)*30).toFixed(1)}" x2="${(60+Math.cos(a)*34).toFixed(1)}" y2="${(56+Math.sin(a)*34).toFixed(1)}" stroke="${M.m}" stroke-width="1.2" opacity=".5"/>`;}s+=g;}
     if(t>=6) s+=this.st5(88,36,3.4,M.l,.95);
     return s;
-  }
+  },
+  /* ---- weitere Helfer für die 24 Einzel- + 8 Meisterklasse-Badges ---- */
+  glo(b){return `<g filter="url(#rcGlow)">${b}</g>`;},
+  glo2(b){return `<g filter="url(#rcGlow2)">${b}</g>`;},
+  rg(u,x,c1,c2){return `<radialGradient id="R${u}${x}" cx="42%" cy="32%" r="75%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></radialGradient>`;},
+  shield(u,M,panel,o={}){
+    const cx=o.cx??60,cy=o.cy??57,w=o.w??58,h=o.h??64;
+    let s=`<path d="${this.shPath(cx,cy,w,h)}" fill="url(#M${u})" stroke="${M.k}" stroke-width="1.3"/>`;
+    s+=`<path d="${this.shPath(cx,cy+.5,w-10.5,h-11)}" fill="${panel}" stroke="rgba(0,0,0,.55)" stroke-width="1"/>`;
+    s+=`<line x1="${cx-w/2+6}" y1="${cy-h*.46+2.6}" x2="${cx+w/2-6}" y2="${cy-h*.46+2.6}" stroke="#ffffff" stroke-width="1.3" opacity=".3"/>`;
+    const rv=[[cx-w/2+4.6,cy-h*.46+4.6],[cx+w/2-4.6,cy-h*.46+4.6],[cx-w/2+4.4,cy+h*.02],[cx+w/2-4.4,cy+h*.02],[cx,cy+h*.49]];
+    rv.forEach(p=>{s+=`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="1.4" fill="${M.l}" opacity=".9"/>`;});
+    return s;
+  },
+  cryShield(u,M,o={}){
+    const cx=o.cx??60,cy=o.cy??57,w=o.w??58,h=o.h??66;
+    const x0=cx-w/2,x1=cx+w/2,yt=cy-h*.48,ys=cy+h*.06,yb=cy+h*.52;
+    const P=`M ${cx} ${yt} L ${x1-5} ${yt+7} L ${x1} ${ys} L ${cx} ${yb} L ${x0} ${ys} L ${x0+5} ${yt+7} Z`;
+    let s=`<path d="${P}" fill="${M.m}" opacity=".22"/>`;
+    s+=`<path d="${P}" fill="none" stroke="url(#M${u})" stroke-width="3.4" stroke-linejoin="round"/>`;
+    s+=`<path d="M ${cx} ${yt+7} L ${x1-8} ${yt+11} L ${x1-5} ${ys} L ${cx} ${yb-7} L ${x0+5} ${ys} L ${x0+8} ${yt+11} Z" fill="none" stroke="${M.l}" stroke-width=".8" opacity=".5"/>`;
+    [[cx,yt+7,cx,yb-7],[x0+8,yt+11,x1-8,yt+11],[x0+5,ys,x1-5,ys]].forEach(l=>{s+=`<line x1="${l[0]}" y1="${l[1]}" x2="${l[2]}" y2="${l[3]}" stroke="${M.l}" stroke-width=".6" opacity=".35"/>`;});
+    return s;
+  },
+  /* ---- 24 Einzel-Erfolge ---- */
+  b1(u){const G=this.MAT.gold;const d=this.mg(u,G)+this.vg(u,G)+this.ag(u,'#FFD700',.75);
+    let b=this.auraC(u)+this.bev(this.wreath(u,G))+this.st5(60,13.5,4.6,G.l)+this.bev(this.shoe(u,G,{cy:59,sc:.92}));
+    b+=this.spks(u,[[24,26,1],[95,32,.8],[30,86,.7],[92,80,.9],[60,4,.6]]);
+    return this.wrap(d,b);},
+  b2(u){const S=this.MAT.silver,B=this.MAT.blue;const d=this.mg(u,S)+this.vg(u,S)+this.vg(u,B,'B')+this.ag(u,'#CBD5DA',.55);
+    let b=this.auraC(u)+this.bev(this.shield(u,S,'#12303f'));
+    b+=this.bev(`<g transform="translate(60 61) rotate(-5)"><rect x="-15" y="-9" width="30" height="20" rx="1.5" fill="#DCE7EC" stroke="#6d777c" stroke-width="1"/><line x1="-5" y1="-9" x2="-5" y2="11" stroke="#9FB2BD" stroke-width=".8"/><line x1="5" y1="-9" x2="5" y2="11" stroke="#9FB2BD" stroke-width=".8"/><path d="M -12 3 L -8 -2 L -2 4 L 3 -3 L 8 2 L 12 -2" fill="none" stroke="#6d777c" stroke-width=".9" opacity=".8"/></g>`);
+    b+=this.bev(`<g transform="translate(60 50)"><path d="M0 -10 C 5.5 -10 9 -6 9 -1.5 C 9 4 0 12 0 12 C 0 12 -9 4 -9 -1.5 C -9 -6 -5.5 -10 0 -10 Z" fill="url(#V${u}B)" stroke="${B.k}" stroke-width="1"/><circle cx="0" cy="-1.5" r="3" fill="#EAF9FF"/></g>`);
+    b+=this.spks(u,[[28,30,.8],[92,34,.7],[88,84,.8]]);
+    return this.wrap(d,b);},
+  b3(u){const Z=this.MAT.bronze,R=this.MAT.red;const d=this.mg(u,Z)+this.vg(u,Z)+this.ag(u,'#C0824A',.6);
+    let c=`<g transform="translate(60 60)">`;
+    c+=`<rect x="-19" y="-12" width="8" height="25" fill="url(#V${u})" stroke="${Z.k}" stroke-width="1"/><rect x="11" y="-12" width="8" height="25" fill="url(#V${u})" stroke="${Z.k}" stroke-width="1"/>`;
+    c+=`<rect x="-20.5" y="-15" width="4" height="4" fill="url(#V${u})"/><rect x="-14.5" y="-15" width="4" height="4" fill="url(#V${u})"/><rect x="10.5" y="-15" width="4" height="4" fill="url(#V${u})"/><rect x="16.5" y="-15" width="4" height="4" fill="url(#V${u})"/>`;
+    c+=`<rect x="-12" y="-2" width="24" height="15" fill="url(#V${u})" stroke="${Z.k}" stroke-width="1"/>`;
+    c+=`<rect x="-6.5" y="-20" width="13" height="19" fill="url(#V${u})" stroke="${Z.k}" stroke-width="1"/><rect x="-7.5" y="-23" width="4" height="4" fill="url(#V${u})"/><rect x="-2" y="-23" width="4" height="4" fill="url(#V${u})"/><rect x="3.5" y="-23" width="4" height="4" fill="url(#V${u})"/>`;
+    c+=`<path d="M -4 13 L -4 5 Q 0 1 4 5 L 4 13 Z" fill="#190d04"/>`;
+    c+=`<rect x="-16.5" y="-8" width="3" height="5" fill="#190d04"/><rect x="13.5" y="-8" width="3" height="5" fill="#190d04"/><rect x="-1.5" y="-16" width="3" height="5" fill="#190d04"/>`;
+    c+=`<line x1="0" y1="-30" x2="0" y2="-23" stroke="${Z.k}" stroke-width="1.2"/><path d="M 0 -30 L 8 -28 L 0 -25.5 Z" fill="${R.m}"/>`;
+    c+=`</g>`;
+    const b=this.auraC(u)+this.bev(this.shield(u,Z,'#2b1a0b',{h:68}))+this.bev(c)+this.spks(u,[[26,28,.7],[94,30,.8],[90,86,.7]]);
+    return this.wrap(d,b);},
+  b4(u){const B=this.MAT.blue,S=this.MAT.silver;const d=this.mg(u,B)+this.vg(u,B)+this.mg(u,S,'S')+this.ag(u,'#00D4FF',.8);
+    let b=this.auraC(u)+this.bev(this.cryShield(u,B));
+    b+=this.bev(`<line x1="53" y1="38" x2="53" y2="76" stroke="url(#M${u}S)" stroke-width="2.2"/><circle cx="53" cy="77.5" r="2" fill="url(#M${u}S)"/>`);
+    b+=this.glo(`<path d="M 53 40 C 63 35 67 45 79 40 L 77 53 C 67 57 63 48 53 52 Z" fill="url(#V${u})" opacity=".95"/><path d="M 56 43 C 63 40 66 46 74 43" fill="none" stroke="#EAF9FF" stroke-width="1.2" opacity=".7"/>`);
+    b+=this.spks(u,[[30,30,.9],[92,26,.8],[88,84,.9],[26,78,.7]],'#D6F8FF');
+    return this.wrap(d,b);},
+  b5(u){const P=this.MAT.purple,G=this.MAT.gold;const d=this.mg(u,P)+this.vg(u,P)+this.mg(u,G,'G')+this.ag(u,'#9B5DE5',.8);
+    let b=this.auraC(u)+this.bev(this.wreath(u,P,{r:43,n:8}))+this.bev(this.shield(u,P,'#1e0d38',{w:50,h:58}))
+      +this.crn(60,25,.82,`url(#M${u}G)`,G.l)
+      +this.glo(`<circle cx="60" cy="48" r="4.2" fill="${P.l}" opacity=".55"/><path d="M 60 53 L 66.5 61 L 64 76 L 56 76 L 53.5 61 Z" fill="${P.l}" opacity=".45"/>`);
+    b+=this.spks(u,[[24,32,.8],[96,36,.9],[60,6,.6]],'#E6D6FF');
+    return this.wrap(d,b);},
+  b6(u){const G=this.MAT.gold,R=this.MAT.red;const d=this.mg(u,G)+this.vg(u,G)+this.vg(u,R,'R')+this.ag(u,'#FFD700',.85);
+    let spikes='';[[60,10,60,-4],[110,57,124,57],[60,104,60,118],[10,57,-4,57]].forEach(p=>{spikes+=`<polygon points="${p[0]-3},${p[1]} ${p[2]},${p[3]} ${p[0]+3},${p[1]}" fill="url(#M${u})" opacity=".85"/>`;});
+    let b=this.auraC(u)+this.bev(spikes)+this.bev(this.wreath(u,G,{r:41,n:8}))
+      +this.bev(this.shield(u,G,`url(#V${u}R)`,{w:46,h:54}))
+      +this.bev(`<path d="M 53 50 Q 58 44 64 48 Q 69 51 66 57 Q 68 61 62 62 Q 57 66 53 61 Q 49 56 53 50 Z" fill="url(#V${u})" stroke="${G.k}" stroke-width=".8"/>`)
+      +this.crn(60,22,.9,`url(#M${u})`,G.l);
+    b+=this.spks(u,[[22,24,1],[98,28,.9],[28,90,.8],[92,88,1]]);
+    return this.wrap(d,b);},
+  b7(u){const N=this.MAT.green,L=this.MAT.lime;const d=this.mg(u,N)+this.vg(u,N)+this.ag(u,'#10B981',.75);
+    let burst='';for(let i=0;i<20;i++){const a=i/20*Math.PI*2;const r1=i%2?45:38,r2=i%2?38:45;burst+=`${(60+Math.cos(a)*r1).toFixed(1)},${(57+Math.sin(a)*r1).toFixed(1)} `;}
+    let b=this.auraC(u)+this.bev(`<polygon points="${burst.trim()}" fill="none" stroke="url(#M${u})" stroke-width="2.6" stroke-linejoin="round"/>`)
+      +`<circle cx="60" cy="57" r="33" fill="#062b1d" opacity=".8"/>`
+      +this.glo(`<line x1="26" y1="50" x2="40" y2="50" stroke="${L.m}" stroke-width="2" stroke-linecap="round" opacity=".8"/><line x1="22" y1="58" x2="38" y2="58" stroke="${L.m}" stroke-width="2" stroke-linecap="round" opacity=".6"/><line x1="27" y1="66" x2="41" y2="66" stroke="${L.m}" stroke-width="2" stroke-linecap="round" opacity=".7"/>`)
+      +this.bev(this.shoe(u,N,{cx:62,cy:58,sc:.88}));
+    b+=this.spks(u,[[88,28,.8],[94,74,.7],[30,86,.7]],L.l);
+    return this.wrap(d,b);},
+  b8(u){const G=this.MAT.gold;const d=this.mg(u,G)+this.vg(u,G)+this.ag(u,'#FFD700',.7);
+    const wing=(s)=>`<g transform="translate(${60+s*14} 56) scale(${s} 1)">
+      <path d="M0 -6 Q 16 -16 34 -12 Q 22 -8 16 -3 Q 26 -4 32 0 Q 20 2 14 4 Q 22 6 26 10 Q 12 10 4 7 Z" fill="url(#V${u})" stroke="${G.k}" stroke-width=".9"/>
+      <path d="M 4 -4 Q 14 -9 26 -9" fill="none" stroke="${G.l}" stroke-width=".9" opacity=".7"/></g>`;
+    let w=`<g transform="translate(60 57)">
+      <rect x="-2" y="-24" width="4" height="5" fill="url(#M${u})"/><circle cx="0" cy="-25.5" r="2" fill="url(#M${u})" stroke="${G.k}" stroke-width=".6"/>
+      <g transform="rotate(40)"><rect x="-1.6" y="-21.5" width="3.2" height="4" rx="1" fill="url(#M${u})"/></g><g transform="rotate(-40)"><rect x="-1.6" y="-21.5" width="3.2" height="4" rx="1" fill="url(#M${u})"/></g>
+      <circle cx="0" cy="0" r="16.5" fill="url(#M${u})" stroke="${G.k}" stroke-width="1.2"/>
+      <circle cx="0" cy="0" r="12.5" fill="#170f03"/>
+      </g>`;
+    let ticks='';for(let i=0;i<12;i++){const a=i/12*Math.PI*2;ticks+=`<line x1="${(60+Math.cos(a)*10).toFixed(1)}" y1="${(57+Math.sin(a)*10).toFixed(1)}" x2="${(60+Math.cos(a)*11.8).toFixed(1)}" y2="${(57+Math.sin(a)*11.8).toFixed(1)}" stroke="${G.m}" stroke-width="${i%3?0.8:1.4}" opacity=".85"/>`;}
+    const hands=`<line x1="60" y1="57" x2="60" y2="48.5" stroke="${G.l}" stroke-width="2" stroke-linecap="round"/><line x1="60" y1="57" x2="66" y2="59" stroke="${G.l}" stroke-width="1.5" stroke-linecap="round"/><circle cx="60" cy="57" r="1.5" fill="${G.l}"/>`;
+    const b=this.auraC(u)+this.bev(wing(1)+wing(-1))+this.bev(w)+ticks+hands+this.spks(u,[[26,30,.8],[94,30,.8],[60,92,.7]]);
+    return this.wrap(d,b);},
+  b9(u){const S=this.MAT.silver,B=this.MAT.blue;const d=this.mg(u,S)+this.vg(u,S)+this.ag(u,'#CBD5DA',.6);
+    let b=this.auraC(u)+`<circle cx="60" cy="57" r="34" fill="#0e2230"/>`
+      +this.bev(this.wreath(u,S,{r:42,n:9}))+this.st5(60,12.5,4.4,S.l)
+      +this.bev(`<path d="M 38 72 L 52 46 L 63 72 Z" fill="url(#V${u})" opacity=".8" stroke="${S.k}" stroke-width=".8"/>
+        <path d="M 48 72 L 66 40 L 84 72 Z" fill="url(#V${u})" stroke="${S.k}" stroke-width="1"/>
+        <path d="M 66 40 L 71.5 50 L 66 48 L 61.5 51 L 60.5 49.6 Z" fill="#F4FAFD"/>
+        <path d="M 52 46 L 55.5 52.5 L 51 51 L 48.5 53.5 Z" fill="#E6EFF4" opacity=".9"/>`)
+      +`<path d="M 47 36 q 2.5 -2.5 5 0 M 56 31 q 2.5 -2.5 5 0" fill="none" stroke="${S.m}" stroke-width="1" opacity=".8"/>`;
+    b+=this.spks(u,[[28,80,.7],[92,82,.7]]);
+    return this.wrap(d,b);},
+  b10(u){const F=this.MAT.flame;const d=this.mg(u,F)+this.vg(u,F)+this.ag(u,'#FF7A3C',.95);
+    const fl=(s,f,o=1)=>`<path transform="translate(60 76) scale(${s})" d="M0 0 C -13 -7 -11 -23 -2 -37 C 0 -28 4.5 -27 5.5 -19 C 6.5 -13 13 -11 12 -2 C 11 6 5 5 0 0 Z" fill="${f}" opacity="${o}"/>`;
+    const wf=(s)=>`<g transform="translate(${60+s*10} 66) scale(${s} 1) rotate(18)">
+      <path d="M0 0 Q 10 -12 26 -14 Q 18 -6 16 0 Q 24 -4 32 -2 Q 22 4 14 6 Q 8 8 2 6 Z" fill="url(#V${u})" opacity=".9"/></g>`;
+    let b=this.auraC(u,56)+this.glo2(wf(1)+wf(-1))
+      +this.glo(fl(1.08,`url(#V${u})`)+fl(.74,'#FFB53C')+fl(.46,'#FFF3B0'))
+      +this.glo(`<circle cx="44" cy="42" r="1.4" fill="#FFD27A"/><circle cx="76" cy="38" r="1.1" fill="#FFB53C"/><circle cx="70" cy="26" r="1.5" fill="#FFE9A8"/><circle cx="50" cy="24" r="1" fill="#FFB53C"/>`);
+    b+=this.spks(u,[[30,70,.7],[90,68,.7]],'#FFE9A8');
+    return this.wrap(d,b);},
+  b11(u){const B=this.MAT.blue;const d=this.mg(u,B)+this.vg(u,B)+this.ag(u,'#00D4FF',.9);
+    let b=this.auraC(u,56)+this.bev(this.cryShield(u,B,{w:60,h:68}))
+      +this.glo2(`<circle cx="60" cy="44" r="4.6" fill="#D6F8FF" opacity=".85"/><path d="M 60 50 L 68 58 L 65 78 L 55 78 L 52 58 Z" fill="#A8F0FF" opacity=".6"/><path d="M 52 56 L 44 64 M 68 56 L 76 64" stroke="#A8F0FF" stroke-width="2.4" stroke-linecap="round" opacity=".5"/>`)
+      +this.bev(`<polygon points="30,84 33,88 30,92 27,88" fill="url(#M${u})" opacity=".9"/><polygon points="92,80 94.5,83.5 92,87 89.5,83.5" fill="url(#M${u})" opacity=".8"/>`);
+    b+=this.spks(u,[[26,28,.9],[94,30,.9],[60,8,.7]],'#D6F8FF');
+    return this.wrap(d,b);},
+  b12(u){const P=this.MAT.purple,S=this.MAT.silver;const d=this.mg(u,P)+this.vg(u,P)+this.mg(u,S,'S')+this.ag(u,'#9B5DE5',.8);
+    const arrow=(x1,y1,x2,y2)=>{const dx=x2-x1,dy=y2-y1,L=Math.hypot(dx,dy),ux=dx/L,uy=dy/L,px=-uy,py=ux;
+      return `<line x1="${x1}" y1="${y1}" x2="${x2-ux*6}" y2="${y2-uy*6}" stroke="#1a0d2e" stroke-width="2.6"/><line x1="${x1}" y1="${y1}" x2="${x2-ux*6}" y2="${y2-uy*6}" stroke="url(#M${u}S)" stroke-width="1.2"/>
+      <polygon points="${x2},${y2} ${(x2-ux*8+px*3.6).toFixed(1)},${(y2-uy*8+py*3.6).toFixed(1)} ${(x2-ux*8-px*3.6).toFixed(1)},${(y2-uy*8-py*3.6).toFixed(1)}" fill="url(#M${u}S)"/>
+      <polygon points="${(x1+px*3).toFixed(1)},${(y1+py*3).toFixed(1)} ${(x1+ux*7).toFixed(1)},${(y1+uy*7).toFixed(1)} ${(x1-px*3).toFixed(1)},${(y1-py*3).toFixed(1)} ${(x1-ux*2).toFixed(1)},${(y1-uy*2).toFixed(1)}" fill="${P.l}" opacity=".9"/>`;};
+    let b=this.auraC(u)+this.bev(this.shield(u,P,'#170a2c'))
+      +`<path d="M 48 36 L 55 48 L 50 56 L 57 66 M 72 40 L 66 52 L 71 60" fill="none" stroke="#E6D6FF" stroke-width="1" opacity=".4"/>`
+      +this.bev(arrow(26,26,80,74)+arrow(94,22,52,70)+arrow(22,64,74,42));
+    b+=this.spks(u,[[92,88,.8],[28,90,.7]],'#E6D6FF');
+    return this.wrap(d,b);},
+  b13(u){const Z=this.MAT.bronze;const d=this.mg(u,Z)+this.vg(u,Z)+this.ag(u,'#C0824A',.65);
+    let b=this.auraC(u)+`<circle cx="60" cy="57" r="33" fill="#241205" opacity=".9"/>`
+      +this.bev(this.ring(u,Z,41))
+      +`<circle cx="60" cy="57" r="37.4" fill="none" stroke="${Z.k}" stroke-width="1.4" stroke-dasharray="4 3.4" opacity=".8"/>`
+      +this.bev(`<g transform="translate(60 58)">
+        <path d="M -32 -4 L -14 -1 L -14 8 L -32 4 Z" fill="url(#V${u})" stroke="${Z.k}" stroke-width="1"/><rect x="-34" y="-6" width="5" height="12" fill="${Z.d}" stroke="${Z.k}" stroke-width=".8"/>
+        <path d="M 32 -4 L 14 -1 L 14 8 L 32 4 Z" fill="url(#V${u})" stroke="${Z.k}" stroke-width="1"/><rect x="29" y="-6" width="5" height="12" fill="${Z.d}" stroke="${Z.k}" stroke-width=".8"/>
+        <path d="M -16 -2 Q -8 -7 -1 -3 L 8 2 Q 12 5 8 8 Q 3 11 -3 8 L -13 5 Q -18 2 -16 -2 Z" fill="url(#V${u})" stroke="${Z.k}" stroke-width="1.1"/>
+        <path d="M 16 -2 Q 8 -6 2 -3.5" fill="none" stroke="${Z.k}" stroke-width="1.1"/>
+        <path d="M -6 -4 Q 0 -6 5 -3" fill="none" stroke="${Z.l}" stroke-width="1" opacity=".7"/>
+        <path d="M -3 8 Q 1 9.5 5 8 M -8 6.5 Q -4 8.5 0 7.5" fill="none" stroke="${Z.k}" stroke-width=".8" opacity=".8"/>
+      </g>`);
+    b+=this.spks(u,[[27,29,.7],[93,31,.7]]);
+    return this.wrap(d,b);},
+  b14(u){const G=this.MAT.gold;const d=this.mg(u,G)+this.vg(u,G)+this.ag(u,'#FFD700',.85);
+    let rays='';for(let i=0;i<10;i++){const a=i/10*Math.PI*2-Math.PI/2;rays+=`<line x1="${(60+Math.cos(a)*20).toFixed(1)}" y1="${(56+Math.sin(a)*20).toFixed(1)}" x2="${(60+Math.cos(a)*34).toFixed(1)}" y2="${(56+Math.sin(a)*34).toFixed(1)}" stroke="${G.m}" stroke-width="1" opacity=".4"/>`;}
+    let b=this.auraC(u,56)+rays
+      +this.bev(this.st5(34,42,7.5,`url(#M${u})`)+this.st5(87,44,7,`url(#M${u})`)+this.st5(40,80,6.6,`url(#M${u})`)+this.st5(81,80,6.9,`url(#M${u})`))
+      +this.bev(this.st5(60,54,18,`url(#M${u})`))
+      +this.glo(this.st5(60,54,9.5,G.l,.95))
+      +this.st5(60,54,4,'#FFFDF0');
+    b+=this.spks(u,[[22,24,.9],[98,22,.9],[60,96,.8],[24,66,.6],[96,66,.6]]);
+    return this.wrap(d,b);},
+  b15(u){const B=this.MAT.blue,S=this.MAT.silver,N=this.MAT.green;const d=this.mg(u,S,'S')+this.vg(u,B)+this.rg(u,'G','#A8F0FF','#065a72')+this.ag(u,'#00D4FF',.7);
+    let comp=`<polygon points="60,16 64,50 60,57 56,50" fill="url(#M${u}S)" opacity=".9"/><polygon points="60,98 64,64 60,57 56,64" fill="url(#M${u}S)" opacity=".9"/><polygon points="19,57 53,53 60,57 53,61" fill="url(#M${u}S)" opacity=".9"/><polygon points="101,57 67,53 60,57 67,61" fill="url(#M${u}S)" opacity=".9"/>`;
+    let b=this.auraC(u)+this.bev(comp)
+      +`<ellipse cx="60" cy="57" rx="27" ry="8.5" transform="rotate(-16 60 57)" fill="none" stroke="${S.d}" stroke-width="2" opacity=".7"/>`
+      +this.bev(`<circle cx="60" cy="57" r="17.5" fill="url(#R${u}G)" stroke="${B.d}" stroke-width="1.2"/>`)
+      +`<path d="M 49 48 Q 55 44 60 48 Q 64 51 61 55 Q 55 56 51 53 Z" fill="${N.m}" opacity=".85"/><path d="M 64 60 Q 70 58 73 62 Q 71 67 65 67 Q 62 64 64 60 Z" fill="${N.m}" opacity=".8"/><path d="M 51 62 Q 55 61 56 65 Q 53 68 50 66 Z" fill="${N.m}" opacity=".75"/>
+      <ellipse cx="60" cy="57" rx="7" ry="17.5" fill="none" stroke="#EAF9FF" stroke-width=".7" opacity=".4"/><ellipse cx="60" cy="57" rx="17.5" ry="6" fill="none" stroke="#EAF9FF" stroke-width=".7" opacity=".35"/>
+      <ellipse cx="43" cy="26" rx="2" ry="2" fill="#FFD700"/>`
+      +`<path d="M 33 64 A 27 8.5 -16 0 0 87 50" fill="none" stroke="url(#M${u}S)" stroke-width="2.2"/>`;
+    b+=this.spks(u,[[28,32,.8],[92,28,.8],[90,86,.7]],'#D6F8FF');
+    return this.wrap(d,b);},
+  b16(u){const I=this.MAT.iron,G=this.MAT.gold;const d=this.mg(u,I)+this.vg(u,I)+this.mg(u,G,'G')+this.ag(u,'#8fa3b0',.5);
+    const chain=(x1,y1,x2,y2)=>{const L=Math.hypot(x2-x1,y2-y1),n=Math.floor(L/7),ux=(x2-x1)/L,uy=(y2-y1)/L,ang=Math.atan2(uy,ux)*180/Math.PI;let s='';
+      for(let i=0;i<=n;i++){const x=x1+ux*i*7,y=y1+uy*i*7;s+=`<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="${i%2?4.2:2.6}" ry="${i%2?2.6:2.2}" transform="rotate(${ang.toFixed(0)} ${x.toFixed(1)} ${y.toFixed(1)})" fill="none" stroke="url(#M${u})" stroke-width="1.8"/>`;}return s;};
+    let b=this.auraC(u)+this.bev(this.shield(u,I,'#101418',{h:68}))
+      +this.bev(`<g transform="translate(60 57)"><rect x="-9" y="-12" width="18" height="20" fill="#1c2227" stroke="${I.d}" stroke-width="1"/><rect x="-11" y="-15" width="5" height="4" fill="#1c2227"/><rect x="-2.5" y="-15" width="5" height="4" fill="#1c2227"/><rect x="6" y="-15" width="5" height="4" fill="#1c2227"/><path d="M -3 8 L -3 1 Q 0 -2 3 1 L 3 8 Z" fill="#05070a"/><rect x="-9" y="-12" width="18" height="3" fill="${I.m}" opacity=".3"/></g>`)
+      +this.bev(chain(28,34,92,78)+chain(92,34,28,78))
+      +this.bev(`<g transform="translate(60 56)"><rect x="-6" y="-2" width="12" height="10" rx="2" fill="url(#M${u}G)" stroke="${G.k}" stroke-width=".8"/><path d="M -3.6 -2 v-3 a3.6 3.6 0 0 1 7.2 0 v3" fill="none" stroke="url(#M${u}G)" stroke-width="2.2"/><circle cx="0" cy="2.6" r="1.6" fill="#241503"/></g>`);
+    b+=this.spks(u,[[26,26,.6],[94,88,.6]]);
+    return this.wrap(d,b);},
+  b17(u){const N=this.MAT.green,S=this.MAT.silver,R=this.MAT.red;const d=this.mg(u,N)+this.vg(u,N)+this.mg(u,S,'S')+this.ag(u,'#10B981',.7);
+    const P=this.shPath(60,57,58,64);
+    let b=this.auraC(u)+this.bev(`<path d="${P}" fill="url(#M${u})" stroke="${N.k}" stroke-width="1.3"/>`)
+      +`<path d="${this.shPath(60,57.5,47.5,53)}" fill="#173226" stroke="rgba(0,0,0,.5)" stroke-width="1"/>`
+      +`<clipPath id="H${u}"><path d="${this.shPath(60,57.5,47.5,53)}"/></clipPath>`
+      +`<g clip-path="url(#H${u})"><path d="M 60 28 L 56 40 L 62 50 L 55 62 L 61 74 L 57 88 L 90 88 L 90 28 Z" fill="${N.m}" opacity=".3"/><path d="M 62 50 Q 70 46 74 52 Q 78 60 70 64 Q 63 66 61 59 Q 60 53 62 50 Z" fill="url(#V${u})" opacity=".9"/><line x1="68" y1="50" x2="66" y2="62" stroke="${N.k}" stroke-width="1"/><path d="M 38 40 L 46 46 M 34 56 L 44 60 M 40 72 L 48 70" stroke="#9FB2BD" stroke-width="1" opacity=".5"/></g>`
+      +`<path d="M 60 28 L 56 40 L 62 50 L 55 62 L 61 74 L 57 88" fill="none" stroke="#EAF9FF" stroke-width="1.2" stroke-dasharray="3 2.4" opacity=".8"/>`
+      +this.bev(`<g transform="translate(60 57) rotate(-18)"><polygon points="-20,-8 16,6 12,10 -22,-3" fill="url(#M${u}S)"/><polygon points="-20,8 16,-6 12,-10 -22,3" fill="url(#M${u}S)"/><circle cx="-2" cy="0" r="2" fill="url(#M${u}S)" stroke="#3a4206" stroke-width=".6"/><circle cx="20" cy="9" r="4.4" fill="none" stroke="${R.m}" stroke-width="2.6"/><circle cx="20" cy="-9" r="4.4" fill="none" stroke="${R.m}" stroke-width="2.6"/></g>`);
+    b+=this.spks(u,[[28,28,.7],[92,30,.7]]);
+    return this.wrap(d,b);},
+  b18(u){const G=this.MAT.gold,S=this.MAT.silver,R=this.MAT.red;const d=this.mg(u,G)+this.vg(u,G)+this.mg(u,S,'S')+this.vg(u,R,'R')+this.ag(u,'#FFD700',.9);
+    const swd=(rot)=>`<g transform="rotate(${rot} 60 60)"><polygon points="60,24 62.3,28 62.3,74 60,78 57.7,74 57.7,28" fill="url(#M${u}S)" stroke="#232b30" stroke-width=".5"/><line x1="60" y1="29" x2="60" y2="72" stroke="#8b969d" stroke-width=".7" opacity=".8"/><rect x="52.8" y="73" width="14.4" height="3.2" rx="1.3" fill="url(#M${u})"/><rect x="58.4" y="76" width="3.2" height="8" fill="#2a1a05"/><circle cx="60" cy="86" r="2.4" fill="url(#M${u})"/></g>`;
+    let b=this.auraC(u,56)+this.bev(this.wreath(u,G,{r:43,n:8}))
+      +this.bev(swd(35)+swd(-35))
+      +this.bev(this.shield(u,G,`url(#V${u}R)`,{w:34,h:40,cy:58}))
+      +this.st5(60,57,6.5,G.l)
+      +this.crn(60,20,1,`url(#M${u})`,G.l);
+    b+=this.spks(u,[[22,30,1],[98,32,1],[26,88,.8],[94,86,.8],[60,4,.7]]);
+    return this.wrap(d,b);},
+  b19(u){const B=this.MAT.blue;const d=this.mg(u,B)+this.ag(u,'#00D4FF',.95);
+    const pose=`<circle cx="67" cy="33" r="4.8"/><path d="M 64 40 L 55 57" /><path d="M 62 44 L 73 50 L 81 43"/><path d="M 61 47 L 49 51 L 43 43"/><path d="M 55 57 L 67 64 L 74 78"/><path d="M 55 57 L 45 67 L 35 61"/>`;
+    let b=this.auraC(u,58)
+      +`<circle cx="60" cy="57" r="40" fill="none" stroke="${B.m}" stroke-width="1.6" stroke-dasharray="18 9" opacity=".35"/>`
+      +this.glo2(`<g fill="rgba(0,212,255,.55)" stroke="rgba(0,212,255,.55)" stroke-width="8.5" stroke-linecap="round" fill-rule="evenodd">${pose}</g>`)
+      +this.glo(`<g fill="#D6F8FF" stroke="#D6F8FF" stroke-width="3.4" stroke-linecap="round">${pose}</g>`)
+      +this.glo(`<path d="M 20 46 Q 32 44 42 46 M 14 57 Q 28 55 38 57 M 21 68 Q 32 66 41 67" fill="none" stroke="${B.m}" stroke-width="1.8" stroke-linecap="round" opacity=".5"/>`)
+      +`<circle cx="30" cy="36" r="1.2" fill="#A8F0FF" opacity=".9"/><circle cx="88" cy="66" r="1.4" fill="#A8F0FF" opacity=".8"/><circle cx="82" cy="24" r="1" fill="#A8F0FF" opacity=".7"/><circle cx="42" cy="84" r="1.2" fill="#A8F0FF" opacity=".8"/>`;
+    b+=this.spks(u,[[24,24,.9],[94,84,.8],[92,40,.7]],'#D6F8FF');
+    return this.wrap(d,b);},
+  b20(u){const P=this.MAT.purple;const d=this.mg(u,P)+this.vg(u,P)+this.ag(u,'#9B5DE5',.85);
+    let b=this.auraC(u,56)+`<circle cx="60" cy="57" r="33" fill="#150826" opacity=".92"/>`
+      +this.bev(this.wreath(u,P,{r:42,n:8}))
+      +`<path d="M 79 26 a 7.5 7.5 0 1 0 5 12.8 a 6 6 0 1 1 -5 -12.8 Z" fill="#E6D6FF" opacity=".95"/>`
+      +`<circle cx="46" cy="32" r="1.1" fill="#E6D6FF"/><circle cx="68" cy="40" r=".9" fill="#E6D6FF" opacity=".8"/><circle cx="38" cy="44" r=".8" fill="#E6D6FF" opacity=".7"/>`
+      +this.glo2(`<path d="M 30 66 Q 46 58 60 62 M 26 72 Q 44 64 58 68 M 34 78 Q 48 71 60 73" fill="none" stroke="${P.m}" stroke-width="2.4" stroke-linecap="round" opacity=".55"/>`)
+      +this.bev(this.shoe(u,P,{cx:63,cy:60,sc:.8}));
+    b+=this.spks(u,[[88,80,.8],[30,86,.7]],'#E6D6FF');
+    return this.wrap(d,b);},
+  b21(u){const N=this.MAT.green,G=this.MAT.gold;const d=this.mg(u,N)+this.vg(u,N)+this.mg(u,G,'G')+this.ag(u,'#10B981',.7);
+    let b=this.auraC(u)+`<circle cx="60" cy="57" r="33.5" fill="#0b2a1a"/>`
+      +this.bev(this.ring(u,N,41))
+      +`<circle cx="60" cy="57" r="36.8" fill="none" stroke="url(#M${u}G)" stroke-width="1.2" opacity=".8"/>`
+      +this.bev(`<g transform="translate(60 60)">
+        <path d="M -2.8 18 L -2 2 L 2 2 L 2.8 18 Z" fill="#5c3a1a" stroke="#2c1a07" stroke-width=".8"/>
+        <path d="M -2.4 6 Q -7 8 -9 12 M 2.4 6 Q 7 8 9 12" fill="none" stroke="#5c3a1a" stroke-width="1.6"/>
+        <circle cx="-9" cy="-6" r="10.5" fill="url(#V${u})" stroke="${N.k}" stroke-width=".9"/>
+        <circle cx="9" cy="-5" r="9.5" fill="url(#V${u})" stroke="${N.k}" stroke-width=".9"/>
+        <circle cx="0" cy="-14" r="11.5" fill="url(#V${u})" stroke="${N.k}" stroke-width=".9"/>
+        <circle cx="-4" cy="-17" r="1.1" fill="${N.l}"/><circle cx="5" cy="-12" r="1" fill="${N.l}"/><circle cx="-11" cy="-9" r="1" fill="${N.l}"/><circle cx="11" cy="-7" r=".9" fill="${N.l}"/><circle cx="1" cy="-8" r=".9" fill="${N.l}" opacity=".8"/>
+        <path d="M -14 16 Q 0 13 14 16" fill="none" stroke="${N.m}" stroke-width="1.6" stroke-linecap="round" opacity=".7"/>
+      </g>`)
+      +`<path d="M 82 44 q 3 -1.5 4 1.5 q -3 1.5 -4 -1.5 Z" fill="${N.m}" opacity=".85"/>`;
+    b+=this.spks(u,[[30,30,.6],[90,84,.6]],N.l);
+    return this.wrap(d,b);},
+  b22(u){const G=this.MAT.gold;const d=this.mg(u,G)+this.vg(u,G)+this.ag(u,'#FFD700',1);
+    let rays='';for(let i=0;i<12;i++){const a=i/12*Math.PI*2;rays+=`<line x1="${(60+Math.cos(a)*24).toFixed(1)}" y1="${(56+Math.sin(a)*24).toFixed(1)}" x2="${(60+Math.cos(a)*36).toFixed(1)}" y2="${(56+Math.sin(a)*36).toFixed(1)}" stroke="${G.m}" stroke-width="1.2" opacity=".45"/>`;}
+    const l=G.l,k='#5e4300',g=`url(#V${u})`;
+    const cup=`<g transform="translate(60 56)">
+      <path d="M-13 -13 Q -21.5 -13 -21.5 -7 Q -21.5 -1 -14 0" fill="none" stroke="${g}" stroke-width="2.8"/>
+      <path d="M13 -13 Q 21.5 -13 21.5 -7 Q 21.5 -1 14 0" fill="none" stroke="${g}" stroke-width="2.8"/>
+      <path d="M -12.5 -17.5 L 12.5 -17.5 L 11 -3 Q 9.5 7 0 9 Q -9.5 7 -11 -3 Z" fill="${g}" stroke="${k}" stroke-width="1"/>
+      <ellipse cx="0" cy="-17.5" rx="12.5" ry="2.7" fill="${l}" stroke="${k}" stroke-width=".8"/>
+      <path d="M -8.5 -15 Q -9.5 -5 -5 1" stroke="${l}" stroke-width="1.5" fill="none" opacity=".65"/>
+      ${this.st5(0,-6,4.8,l)}
+      <rect x="-2.7" y="9" width="5.4" height="6" fill="${g}" stroke="${k}" stroke-width=".8"/>
+      <path d="M -8 15 L 8 15 L 8 18 L 10.5 18 L 10.5 22.5 L -10.5 22.5 L -10.5 18 L -8 18 Z" fill="${g}" stroke="${k}" stroke-width=".8"/>
+    </g>`;
+    let b=this.auraC(u,57)+rays+this.bev(this.wreath(u,G,{r:43,n:9}))+this.st5(60,11.5,4.6,G.l)+this.bev(cup);
+    b+=this.spks(u,[[22,26,1],[98,24,1],[26,88,.9],[94,88,.9],[60,98,.7]]);
+    return this.wrap(d,b);},
+  b23(u){const I=this.MAT.iron,R=this.MAT.red;const d=this.mg(u,I)+this.vg(u,I)+this.ag(u,'#FF4D6D',.9);
+    let b=this.auraC(u,57)
+      +this.glo(`<circle cx="40" cy="86" r="1.3" fill="#FF7A8E"/><circle cx="82" cy="82" r="1.1" fill="#FF4D6D"/><circle cx="88" cy="38" r="1.2" fill="#FF7A8E"/>`)
+      +this.bev(`<g transform="translate(60 58)">
+        <path d="M -14 -20 C -28 -28 -32 -44 -22 -54 C -24 -40 -18 -30 -8 -25 Z" fill="url(#M${u})" stroke="${I.k}" stroke-width="1"/>
+        <path d="M 14 -20 C 28 -28 32 -44 22 -54 C 24 -40 18 -30 8 -25 Z" fill="url(#M${u})" stroke="${I.k}" stroke-width="1"/>
+        <path d="M -17 -24 L 17 -24 L 22 -8 L 13 -1 L -13 -1 L -22 -8 Z" fill="url(#V${u})" stroke="${I.k}" stroke-width="1.2"/>
+        <path d="M -22 -8 L -28 -2 L -16 2 Z" fill="url(#V${u})" stroke="${I.k}" stroke-width=".9"/>
+        <path d="M 22 -8 L 28 -2 L 16 2 Z" fill="url(#V${u})" stroke="${I.k}" stroke-width=".9"/>
+        <path d="M -9 -1 L 9 -1 L 6 8 L -6 8 Z" fill="url(#V${u})" stroke="${I.k}" stroke-width="1"/>
+        <path d="M -10 10 L 10 10 L 6 20 L -6 20 Z" fill="#171b1f" stroke="${I.k}" stroke-width="1"/>
+        <polygon points="-6,8 -3.6,13.5 -1.6,8" fill="#DCE7EC"/><polygon points="0,8 2,13.5 4,8" fill="#DCE7EC"/><polygon points="-4.4,10 6.4,10 6,8 -5,8" fill="none"/>
+        <polygon points="-4,17 -2,12.5 0,17" fill="#c9d4da"/><polygon points="2,17 4,12.5 6,17" fill="#c9d4da"/>
+        <path d="M -2 4 L 0 6 L 2 4" fill="none" stroke="${I.k}" stroke-width=".9"/>
+        <path d="M -1.5 -24 L 0 -31 L 1.5 -24 Z" fill="url(#M${u})"/>
+      </g>`)
+      +this.glo2(`<path d="M 46 50 L 55 46 L 53 52 Z" fill="#FF4D6D"/><path d="M 74 50 L 65 46 L 67 52 Z" fill="#FF4D6D"/>`)
+      +`<circle cx="52.5" cy="49.4" r=".9" fill="#FFD9DF"/><circle cx="67.5" cy="49.4" r=".9" fill="#FFD9DF"/>`;
+    b+=this.spks(u,[[26,30,.6],[94,64,.6]],'#FFC2CE');
+    return this.wrap(d,b);},
+  b24(u){const P=this.MAT.purple,B=this.MAT.blue;const d=this.vg(u,P)+this.vg(u,B,'B')+this.rg(u,'C','#F1E8FF','#5b2fa8')+this.ag(u,'#9B5DE5',1);
+    let shards='';
+    for(let i=0;i<8;i++){const long=i%2===0,L=long?31:21,W=long?6.4:4.6,rot=i*45;
+      shards+=`<g transform="rotate(${rot} 60 56)"><polygon points="60,${56-L} ${60+W},${56-L*.32} 60,${56+L*.14} ${60-W},${56-L*.32}" fill="url(#V${u}${long?'':'B'})" stroke="#F1E8FF" stroke-width=".7" stroke-opacity=".55"/><line x1="60" y1="${56-L}" x2="60" y2="${56+L*.1}" stroke="#F1E8FF" stroke-width=".5" opacity=".5"/></g>`;}
+    let core=`<polygon points="60,45 69.5,50.5 69.5,61.5 60,67 50.5,61.5 50.5,50.5" fill="url(#R${u}C)" stroke="#E6D6FF" stroke-width="1"/>`;
+    for(let i=0;i<6;i++){const a1=-Math.PI/2+i*Math.PI/3,a2=-Math.PI/2+(i+1)*Math.PI/3;
+      core+=`<polygon points="60,56 ${(60+Math.cos(a1)*10.4).toFixed(1)},${(56+Math.sin(a1)*10.4).toFixed(1)} ${(60+Math.cos(a2)*10.4).toFixed(1)},${(56+Math.sin(a2)*10.4).toFixed(1)}" fill="${i%2?'#B9F2FF':'#E6D6FF'}" opacity="${i%2?'.28':'.16'}"/>`;}
+    core+=`<circle cx="56.5" cy="51.5" r="1.5" fill="#ffffff" opacity=".95"/>`;
+    let b=this.auraC(u,58)+this.bev(shards)+this.glo(core);
+    b+=this.spks(u,[[24,26,1],[96,28,.9],[28,88,.9],[92,86,1],[60,6,.8],[14,57,.6],[106,57,.6]],'#E6D6FF');
+    return this.wrap(d,b);},
+  /* ---- 8 Meisterklasse-Abzeichen ---- */
+  b25(u){const G=this.MAT.gold;const d=this.mg(u,G)+this.vg(u,G)+this.ag(u,'#FFD700',.95);
+    let rays='';for(let i=0;i<12;i++){const a=i/12*Math.PI*2;rays+=`<line x1="${(60+Math.cos(a)*38).toFixed(1)}" y1="${(57+Math.sin(a)*38).toFixed(1)}" x2="${(60+Math.cos(a)*46).toFixed(1)}" y2="${(57+Math.sin(a)*46).toFixed(1)}" stroke="${G.m}" stroke-width="1.4" opacity=".5"/>`;}
+    let b=this.auraC(u,57)+rays+this.bev(this.wreath(u,G,{r:42,n:9}))
+      +this.bev(this.tWing(`url(#V${u})`,1,.85,60,52)+this.tWing(`url(#V${u})`,-1,.85,60,52))
+      +this.bev(this.shoe(u,G,{cy:61,sc:.8}))
+      +this.crn(60,13,.8,`url(#M${u})`,G.l);
+    b+=this.spks(u,[[22,26,1],[98,24,1],[26,88,.9],[94,88,.9],[60,98,.8]]);
+    return this.wrap(d,b);},
+  b26(u){const P=this.MAT.purple,G=this.MAT.gold;const d=this.mg(u,P)+this.vg(u,P)+this.mg(u,G,'G')+this.ag(u,'#9B5DE5',.9);
+    let gems='';[[92,25],[92,89],[28,89],[28,25]].forEach(p=>{gems+=`<g transform="translate(${p[0]} ${p[1]}) rotate(45)"><rect x="-2.6" y="-2.6" width="5.2" height="5.2" fill="url(#M${u}G)" stroke="${G.k}" stroke-width=".6"/></g>`;});
+    let b=this.auraC(u,56)+this.bev(this.ring(u,P,42))+this.bev(gems)
+      +this.bev(this.tWing(`url(#V${u})`,1,1.05,60,52)+this.tWing(`url(#V${u})`,-1,1.05,60,52))
+      +this.bev(this.shoe(u,P,{cy:61,sc:.84}))
+      +this.st5(60,13,4.4,P.l);
+    b+=this.spks(u,[[24,30,.9],[96,32,.9],[60,100,.8]],'#E6D6FF');
+    return this.wrap(d,b);},
+  b27(u){const B=this.MAT.blue,G=this.MAT.gold,N=this.MAT.green;const d=this.mg(u,G)+this.vg(u,B)+this.rg(u,'G','#A8F0FF','#065a72')+this.ag(u,'#00D4FF',.85);
+    let b=this.auraC(u,56)+this.bev(this.wreath(u,G,{r:42,n:9}))
+      +this.bev(`<circle cx="60" cy="57" r="20" fill="url(#R${u}G)" stroke="${B.d}" stroke-width="1.4"/>`)
+      +`<path d="M 48 47 Q 56 42 62 47 Q 67 51 63 56 Q 56 58 51 54 Z" fill="${N.m}" opacity=".85"/><path d="M 64 62 Q 71 60 74 65 Q 71 70 65 69 Z" fill="${N.m}" opacity=".8"/>`
+      +`<ellipse cx="60" cy="57" rx="8" ry="20" fill="none" stroke="#EAF9FF" stroke-width=".8" opacity=".45"/><ellipse cx="60" cy="57" rx="20" ry="7" fill="none" stroke="#EAF9FF" stroke-width=".8" opacity=".4"/>`
+      +`<ellipse cx="60" cy="57" rx="27" ry="9" transform="rotate(-18 60 57)" fill="none" stroke="url(#M${u})" stroke-width="2.4"/>`
+      +this.crn(60,12,.8,`url(#M${u})`,G.l);
+    b+=this.spks(u,[[24,28,.9],[96,26,.9],[28,88,.8],[92,86,.9]],'#D6F8FF');
+    return this.wrap(d,b);},
+  b28(u){const F=this.MAT.flame,G=this.MAT.gold;const d=this.mg(u,G)+this.vg(u,F)+this.ag(u,'#FFB53C',1);
+    const fl=(s,f,o=1)=>`<path transform="translate(60 72) scale(${s})" d="M0 0 C -13 -7 -11 -23 -2 -37 C 0 -28 4.5 -27 5.5 -19 C 6.5 -13 13 -11 12 -2 C 11 6 5 5 0 0 Z" fill="${f}" opacity="${o}"/>`;
+    let b=this.auraC(u,58)+this.bev(this.wreath(u,G,{r:43,n:9}))
+      +this.glo2(fl(1.05,`url(#V${u})`)+fl(.72,'#FFB53C')+fl(.44,'#FFF3B0'))
+      +this.glo(`<circle cx="46" cy="42" r="1.4" fill="#FFD27A"/><circle cx="74" cy="38" r="1.2" fill="#FFB53C"/><circle cx="68" cy="27" r="1.5" fill="#FFE9A8"/>`)
+      +this.crn(60,12,.8,`url(#M${u})`,G.l);
+    b+=this.spks(u,[[24,28,1],[96,26,1],[28,88,.8],[92,88,.9]],'#FFE9A8');
+    return this.wrap(d,b);},
+  b29(u){const P=this.MAT.purple,G=this.MAT.gold;const d=this.mg(u,G)+this.mg(u,P,'P')+this.ag(u,'#FFD700',1);
+    let rays='';for(let i=0;i<16;i++){const a=i/16*Math.PI*2;const lng=i%2===0;rays+=`<line x1="${(60+Math.cos(a)*40).toFixed(1)}" y1="${(57+Math.sin(a)*40).toFixed(1)}" x2="${(60+Math.cos(a)*(lng?49:44)).toFixed(1)}" y2="${(57+Math.sin(a)*(lng?49:44)).toFixed(1)}" stroke="${G.m}" stroke-width="${lng?1.6:1}" opacity="${lng?.7:.4}"/>`;}
+    let b=this.auraC(u,58)+rays+this.bev(this.tSword(`url(#M${u})`,G.k,35)+this.tSword(`url(#M${u})`,G.k,-35))
+      +this.bev(this.shield(u,G,`url(#M${u}P)`,{w:46,h:52}))
+      +this.st5(60,58,7,G.l)
+      +this.crn(60,17,1.05,`url(#M${u})`,G.l);
+    b+=this.spks(u,[[20,24,1],[100,26,1],[24,90,.9],[96,88,1]]);
+    return this.wrap(d,b);},
+  b30(u){const I=this.MAT.iron,G=this.MAT.gold;const d=this.mg(u,I)+this.vg(u,I)+this.mg(u,G,'G')+this.ag(u,'#FFD700',.65);
+    let chain='';const n=20;for(let i=0;i<n;i++){const a=i/n*Math.PI*2;const x=60+Math.cos(a)*42,y=57+Math.sin(a)*42;chain+=`<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="${i%2?4.4:2.8}" ry="${i%2?2.8:2.2}" transform="rotate(${(a*180/Math.PI).toFixed(0)} ${x.toFixed(1)} ${y.toFixed(1)})" fill="none" stroke="url(#M${u}G)" stroke-width="1.8"/>`;}
+    const c=`<g transform="translate(60 61)">
+      <rect x="-20" y="-10" width="9" height="24" fill="url(#V${u})" stroke="${I.k}" stroke-width="1"/><rect x="11" y="-10" width="9" height="24" fill="url(#V${u})" stroke="${I.k}" stroke-width="1"/>
+      <rect x="-21.5" y="-13.5" width="4.4" height="4.4" fill="url(#V${u})"/><rect x="-15" y="-13.5" width="4.4" height="4.4" fill="url(#V${u})"/><rect x="10.5" y="-13.5" width="4.4" height="4.4" fill="url(#V${u})"/><rect x="17" y="-13.5" width="4.4" height="4.4" fill="url(#V${u})"/>
+      <rect x="-12" y="0" width="24" height="14" fill="url(#V${u})" stroke="${I.k}" stroke-width="1"/>
+      <rect x="-7" y="-19" width="14" height="20" fill="url(#V${u})" stroke="${I.k}" stroke-width="1"/><rect x="-8" y="-22.5" width="4.4" height="4.4" fill="url(#V${u})"/><rect x="-2.2" y="-22.5" width="4.4" height="4.4" fill="url(#V${u})"/><rect x="3.6" y="-22.5" width="4.4" height="4.4" fill="url(#V${u})"/>
+      <path d="M -4 14 L -4 6 Q 0 2 4 6 L 4 14 Z" fill="#05070a"/>
+      <line x1="0" y1="-29" x2="0" y2="-22.5" stroke="${G.d}" stroke-width="1.2"/><path d="M 0 -29 L 9 -26.5 L 0 -24 Z" fill="url(#M${u}G)"/>
+    </g>`;
+    let b=this.auraC(u)+this.bev(chain)+this.bev(c);
+    b+=this.spks(u,[[26,26,.7],[94,88,.7]]);
+    return this.wrap(d,b);},
+  b31(u){const B=this.MAT.blue;const d=this.mg(u,B)+this.vg(u,B)+this.ag(u,'#00D4FF',1);
+    let b=this.auraC(u,58)
+      +this.glo(`<path d="M 22 40 Q 34 38 44 41 M 16 54 Q 30 52 40 54 M 22 68 Q 33 66 42 67" fill="none" stroke="${B.m}" stroke-width="1.8" stroke-linecap="round" opacity=".55"/>`)
+      +this.bev(this.tWing(`url(#V${u})`,1,1.15,62,50)+this.tWing(`url(#V${u})`,-1,1.15,62,50))
+      +this.glo2(`<path d="M 67 26 L 46 62 L 57 62 L 51 90 L 76 50 L 64 50 Z" fill="url(#V${u})" stroke="#D6F8FF" stroke-width="1" stroke-linejoin="round"/>`)
+      +this.st5(60,12,4,'#D6F8FF');
+    b+=this.spks(u,[[24,28,1],[96,30,.9],[30,92,.8],[92,88,.9]],'#D6F8FF');
+    return this.wrap(d,b);},
+  b32(u){const G=this.MAT.gold,S=this.MAT.silver;const d=this.mg(u,G)+this.vg(u,G)+this.mg(u,S,'S')+this.ag(u,'#FFD700',1);
+    let b=this.auraC(u,58)+this.bev(this.wreath(u,G,{r:43,n:9}))
+      +this.bev(this.tSword(`url(#M${u}S)`,'#232b30',32)+this.tSword(`url(#M${u}S)`,'#232b30',-32))
+      +this.bev(this.cryShield(u,G,{w:46,h:54}))
+      +this.st5(60,57,8,G.l)
+      +this.crn(60,14,.85,`url(#M${u})`,G.l);
+    b+=this.spks(u,[[22,26,1],[98,24,1],[26,90,.9],[94,88,1],[60,4,.8]]);
+    return this.wrap(d,b);}
 };
 /* ═══ (veraltet) Erfolg-Icons v1 — flacher Stil, nicht mehr verdrahtet ═══ */
 const RC_TIERS=[
@@ -4093,6 +4431,89 @@ function getAchTiers(cat){
     if(done){state='done';}else if(first){state='next';first=false;}else{state='locked';}
     return{...a,done,state,remaining:Math.max(0,a.target-a.progress),pct:Math.min(100,(a.progress/a.target)*100)};
   });
+}
+
+/* ═══ Einzel-Erfolge (b1–b24) + Meisterklasse (b25–b32) aus dem v2-Set ═══
+   Anzeige-Erfolge: earned wird live aus den vorhandenen Statistiken berechnet
+   (kein separater Punkte-/Popup-Fluss). Unter jedem Icon steht die Anforderung.
+   Wo eine Bedingung mangels Daten nicht exakt messbar ist, wird der nächst-
+   liegende vorhandene Wert als Näherung genutzt (im req-Text ehrlich benannt). */
+function _rcStats(){
+  const H=(typeof history!=='undefined'?history:[])||[];
+  const spd=r=>(r.duration>0?(r.distance/1000)/(r.duration/3600):0);
+  const mine=(typeof h3Territories!=='undefined'?h3Territories:[]).filter(t=>t.owner===userId);
+  return {
+    runs:H.length,
+    maxSpeed:H.reduce((m,r)=>Math.max(m,spd(r)),0),
+    longest:H.reduce((m,r)=>Math.max(m,r.duration||0),0),
+    maxDist:H.reduce((m,r)=>Math.max(m,r.distance||0),0),
+    nights:H.filter(r=>{const h=new Date(r.date).getHours();return h>=22||h<5;}).length,
+    activeDays:new Set(H.map(r=>new Date(r.date).toDateString())).size,
+    ownMaxDef:mine.reduce((m,t)=>Math.max(m,t.defense||0),0),
+    tierEarned:achievements.filter(a=>a.earned).length,
+    allTiers:achievements.length>0&&achievements.every(a=>a.earned),
+    follows:(typeof followedUsers!=='undefined'?followedUsers.length:0),
+    holdDays:mine.reduce((m,t)=>{const ts=Date.parse(t.last_captured_at||t.created_at||0);return ts?Math.max(m,(Date.now()-ts)/86400000):m;},0),
+    level:(typeof getLevel==='function'?getLevel(points):1),
+  };
+}
+const RC_NAMED=[
+  {badge:'b1', name:'Erster Schritt',    req:'Dein erster Lauf',              chk:s=>s.runs>=1},
+  {badge:'b2', name:'Entdecker',         req:'10 Gebiete besucht',            chk:s=>totalDiscovered>=10},
+  {badge:'b3', name:'Eroberer',          req:'Erstes Gebiet erobert',         chk:s=>totalConquered>=1},
+  {badge:'b4', name:'Grenzpionier',      req:'5 Gebiete erobert',             chk:s=>totalConquered>=5},
+  {badge:'b5', name:'Territoriumsheld',  req:'20 Gebiete erobert',            chk:s=>totalConquered>=20},
+  {badge:'b6', name:'König der Läufer',  req:'50 Gebiete erobert',            chk:s=>totalConquered>=50},
+  {badge:'b7', name:'Tempojäger',        req:'Lauf mit 16+ km/h',             chk:s=>s.maxSpeed>=16},
+  {badge:'b8', name:'Dauerbrenner',      req:'60 Minuten am Stück gelaufen',  chk:s=>s.longest>=3600},
+  {badge:'b9', name:'Höhenstürmer',      req:'150 km gesamt (≈ Höhenmeter)',  chk:s=>totalKm>=150},
+  {badge:'b10',name:'Unaufhaltsam',      req:'7 Tage in Folge gelaufen',      chk:s=>streakDays>=7},
+  {badge:'b11',name:'Verteidiger',       req:'Gebiet verteidigt',             chk:s=>totalDefended>=1},
+  {badge:'b12',name:'Belagerer',         req:'Gebiet stark angegriffen',      chk:s=>totalRaids>=1},
+  {badge:'b13',name:'Teamplayer',        req:'5 Läufern folgen',              chk:s=>s.follows>=5},
+  {badge:'b14',name:'Allrounder',        req:'5 Stufen-Erfolge freigeschaltet',chk:s=>s.tierEarned>=5},
+  {badge:'b15',name:'Weltenbummler',     req:'100 km Gesamtstrecke',          chk:s=>totalKm>=100},
+  {badge:'b16',name:'Festungsbauer',     req:'Verteidigung auf 300',          chk:s=>s.ownMaxDef>=300},
+  {badge:'b17',name:'Grenzierer',        req:'10 Gebiete erobert',            chk:s=>totalConquered>=10},
+  {badge:'b18',name:'Champion',          req:'Platz 1 der Rangliste',         chk:s=>window._myRank===1},
+  {badge:'b19',name:'Geist des Laufens', req:'An 100 Tagen aktiv',            chk:s=>s.activeDays>=100},
+  {badge:'b20',name:'Nachtläufer',       req:'10 Läufe zwischen 22–5 Uhr',    chk:s=>s.nights>=10},
+  {badge:'b21',name:'Naturliebhaber',    req:'20 Gebiete besucht',            chk:s=>totalDiscovered>=20},
+  {badge:'b22',name:'Legendär',          req:'Alle Stufen-Erfolge',           chk:s=>s.allTiers},
+  {badge:'b23',name:'Conqueror',         req:'Gebiet 30 Tage besitzen',       chk:s=>s.holdDays>=30},
+  {badge:'b24',name:'Unsterblich',       req:'Level 15 erreicht',             chk:s=>s.level>=15},
+];
+const RC_MASTER=[
+  {badge:'b25',name:'Marathon-Finisher', req:'42,2 km in einem Lauf',         chk:s=>s.maxDist>=42200},
+  {badge:'b26',name:'Ultra-Läufer',      req:'100 km in einem Lauf',          chk:s=>s.maxDist>=100000},
+  {badge:'b27',name:'Weltumrunder',      req:'5.000 km Gesamtstrecke',        chk:s=>totalKm>=5000},
+  {badge:'b28',name:'Ewige Flamme',      req:'365 Tage in Folge',             chk:s=>streakDays>=365},
+  {badge:'b29',name:'Groß-Imperator',    req:'500 Gebiete erobert',           chk:s=>totalConquered>=500},
+  {badge:'b30',name:'Eiserne Festung',   req:'Gebiet 100 Tage gehalten',      chk:s=>s.holdDays>=100},
+  {badge:'b31',name:'Schallmauer',       req:'Pace unter 3:00 /km',           chk:s=>s.maxSpeed>=20},
+  {badge:'b32',name:'Unbesiegbar',       req:'100 Verteidigungen',            chk:s=>totalDefended>=100},
+];
+/* Ein einzelnes b*-Abzeichen als HTML (earned = farbig, sonst entsättigt+Schloss). */
+function getBadgeTileSvg(badge,earned,size){
+  rcEnsureBadgeDefs();
+  const uid='n'+badge+(++_rcUid);
+  const svg=(RCB[badge]?RCB[badge](uid):'');
+  if(earned)return `<div style="width:${size}px;height:${size}px;margin:0 auto">${svg}</div>`;
+  const lk=Math.round(size*0.32);
+  return `<div style="position:relative;width:${size}px;height:${size}px;margin:0 auto">`
+    +`<div style="width:100%;height:100%;filter:grayscale(.9) brightness(.5);opacity:.5">${svg}</div>`
+    +`<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">`
+    +`<svg viewBox="0 0 24 24" width="${lk}" height="${lk}"><rect x="5" y="10.5" width="14" height="10" rx="2" fill="#0a2c20" stroke="#9fb4aa" stroke-width="1.6"/><path d="M8 10.5 V7.5 a4 4 0 0 1 8 0 V10.5" fill="none" stroke="#9fb4aa" stroke-width="1.6"/><circle cx="12" cy="15.2" r="1.5" fill="#9fb4aa"/></svg>`
+    +`</div></div>`;
+}
+/* Abschnitt (Einzel-Erfolge / Meisterklasse) als Kachel-Grid mit Anforderung. */
+function renderBadgeSection(list,title){
+  const stats=_rcStats();
+  const done=list.filter(x=>!!x.chk(stats)).length;
+  const tiles=list.map(x=>{const earned=!!x.chk(stats);
+    return `<div style="text-align:center">${getBadgeTileSvg(x.badge,earned,74)}<div style="font-size:.66rem;font-weight:700;margin-top:5px;color:${earned?'var(--text)':'var(--muted)'}">${x.name}</div><div style="font-size:.56rem;color:var(--muted);line-height:1.3;margin-top:1px">${x.req}</div></div>`;
+  }).join('');
+  return `<div style="margin-top:28px"><div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border)"><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px">${title}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary)">${done}/${list.length}</span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px 8px">${tiles}</div></div>`;
 }
 
 /* MAP */
@@ -7497,7 +7918,7 @@ function renderAchHexGrid(){
   return `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary);letter-spacing:2px">ERFOLGE</span><span style="font-size:.72rem;color:var(--muted);background:var(--card);padding:3px 10px;border-radius:20px;border:1px solid var(--border)">${totalEarned}/${achievements.length}</span></div>`+
     Object.keys(CAT_NAMES).map(cat=>{
       const tiers=getAchTiers(cat);const doneN=tiers.filter(t=>t.done).length;
-      return `<div style="margin-bottom:24px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span style="font-size:.72rem;font-weight:700;color:var(--text)">${CAT_NAMES[cat]}</span><span style="font-size:.58rem;color:var(--muted)">${doneN}/6</span></div><div class="ach-sheet-grid">${tiers.map(t=>`<div class="ach-sg ${t.done?'done':t.state==='next'?'next locked':'locked'}"><div class="ach-ic">${getAchSvg(t,62)}</div><div class="ach-n">${t.name}</div><div class="ach-c">${t.done?'✓':t.remaining}</div></div>`).join('')}</div></div>`;
+      return `<div style="margin-bottom:24px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span style="font-size:.72rem;font-weight:700;color:var(--text)">${CAT_NAMES[cat]}</span><span style="font-size:.58rem;color:var(--muted)">${doneN}/6</span></div><div class="ach-sheet-grid">${tiers.map(t=>`<div class="ach-sg ${t.done?'done':t.state==='next'?'next locked':'locked'}"><div class="ach-ic">${getAchSvg(t,62)}</div><div class="ach-n">${t.name}</div><div class="ach-c">${t.done?'✓ '+t.target.toLocaleString('de-DE'):t.target.toLocaleString('de-DE')} ${CAT_UNITS[cat]||''}</div></div>`).join('')}</div></div>`;
     }).join('');
 }
 function openDrawer(tab){$('drawerOverlay').classList.add('open');drawer.style.display='flex';setTimeout(()=>drawer.classList.add('open'),10);if(tab)currentTab=tab;renderDrawer();}
@@ -7534,11 +7955,13 @@ function renderDrawer(){
         const u=CAT_UNITS[cat]||'';
         const tiles=tiers.map(t=>{
           const cls='tier'+(t.done?' done':t.state==='next'?' next locked':' locked');
-          return `<div class="${cls}" onclick="showAchDetail('${t.id}')"><div class="ic">${getAchSvg(t,46)}</div></div>`;
+          // Unter jedem Icon: die Anforderung (wie viel gebraucht wird).
+          const reqTxt=`${t.done?'✓ ':''}${t.target.toLocaleString('de-DE')} ${u}`;
+          return `<div class="${cls}" onclick="showAchDetail('${t.id}')"><div class="ic">${getAchSvg(t,46)}</div><div style="font-size:.54rem;color:${t.done?'#10b981':'var(--muted)'};margin-top:3px;text-align:center;line-height:1.2">${reqTxt}</div></div>`;
         }).join('');
         return `<div style="margin-top:28px"><div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border)"><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px">${CAT_NAMES[cat]}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary)">${doneN}/6</span></div><div class="tier-row">${tiles}</div></div>`;
       }).join('');
-      return summary+groups;
+      return summary+groups+renderBadgeSection(RC_NAMED,'⭐ EINZEL-ERFOLGE')+renderBadgeSection(RC_MASTER,'👑 MEISTERKLASSE');
     },
     calendar:()=>{setTimeout(drawCalendar,0);return'<div id="calDiv"></div>'}
   };
