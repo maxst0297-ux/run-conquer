@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
@@ -70,7 +70,10 @@ body.theme-petrol {
   --red:#C03355; --green:#2D7A5E; --cyan:#2277AA;
   --muted:#685E50; --text:#1A2832;
 }
-html{height:-webkit-fill-available;background:var(--bg)}
+html{height:-webkit-fill-available;background:var(--bg);overflow:hidden;overscroll-behavior:none}
+/* Gegen versehentliches Verrutschen der App (Zoom-Pan / horizontales Wegschieben):
+   nichts darf breiter als der Bildschirm sein, kein Seitwärts-Scrollen. */
+html,body{overflow-x:hidden;max-width:100vw}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{
   font-family:'Poppins',sans-serif;background:var(--bg);color:var(--text);
@@ -1888,7 +1891,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v137';
+const APP_VERSION='v138';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2172,6 +2175,11 @@ async function sendSupportMessage(){
 
 /* DOM */
 const $=id=>document.getElementById(id);
+/* Sicherheitsnetz gegen „App verschiebt sich": alles Scrollen passiert in den
+   inneren Containern (Views/Drawer/Karte), NIE auf Dokumentebene. Falls das
+   Dokument (z.B. durch iOS-Tastatur/Zoom) doch mal verrutscht, sofort
+   zurücksetzen. */
+window.addEventListener('scroll',()=>{if(window.scrollX||window.scrollY)window.scrollTo(0,0);},{passive:true});
 const toastEl=$('toast'),statusBar=$('statusBar'),statusDot=$('statusDot'),statusTxt=$('statusTxt');
 const distLive=$('distLive'),startBtn=$('startRunBtn'),pauseBtn=$('pauseRunBtn'),stopBtn=$('stopRunBtn');
 const runDock=$('runDock'),dockToggle=$('dockToggle'),liveRun=$('liveRun'),idleStats=$('idleStats');
