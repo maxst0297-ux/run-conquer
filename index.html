@@ -1188,7 +1188,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         </div>
         <div class="map-panel-sep"></div>
         <button class="map-panel-btn active" id="panelTerrBtn"><i class="fas fa-map"></i> Gebiete</button>
-        <button class="map-panel-btn active" id="panelLmBtn"><i class="fas fa-star"></i> Wahrzeichen</button>
+        <button class="map-panel-btn" id="panelLmBtn"><i class="fas fa-star"></i> Wahrzeichen</button>
         <button class="map-panel-btn" id="panelFraktBtn"><i class="fas fa-flag"></i> Fraktionskarte</button>
         <button class="map-panel-btn" id="panelOwnTerrBtn"><i class="fas fa-map-marker-alt"></i> Eigene Gebiete</button>
         <button class="map-panel-btn" id="panelFollowBtn"><i class="fas fa-user-friends"></i> Follower</button>
@@ -1875,7 +1875,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v131';
+const APP_VERSION='v132';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -4535,7 +4535,7 @@ function initMap(){
   setTiles();
   terrLayer=L.layerGroup().addTo(mapL);
   h3Layer=L.layerGroup().addTo(mapL);
-  landmarkLayer=L.layerGroup().addTo(mapL);
+  landmarkLayer=L.layerGroup(); // Wahrzeichen standardmäßig AUS (waren zu viele) – erst per Panel-Knopf einblenden
   invasionLayer=L.layerGroup().addTo(mapL);
   renderInvasions();
   /* Neues H3-System: additiv rendern (leer bis zum Cutover), bei Zoomwechsel
@@ -4545,7 +4545,8 @@ function initMap(){
   /* Bots beiläufig anstoßen: nimmt (server-gelockt, meist No-Op) vernachlässigte
      Gebiete ein; danach die Karte mit dem neuen Stand aktualisieren. */
   setTimeout(triggerBotTick,2500);
-  setTimeout(loadLandmarks,800);
+  /* Wahrzeichen NICHT automatisch laden – nur wenn der Nutzer sie über den
+     „Wahrzeichen"-Knopf einblendet (window._lmEnabled). */
   mapL.locate({setView:true,maxZoom:16,enableHighAccuracy:true});
   mapL.on('locationfound',e=>{
     if(!userMarker)userMarker=L.marker(e.latlng,{icon:mkUserIcon()}).addTo(mapL);
@@ -4553,19 +4554,16 @@ function initMap(){
     if(territories.filter(t=>t.owner!==userId).length===0){
       genRivalsH3(e.latlng.lat,e.latlng.lng).then(()=>{updateUI();});
     }
-    loadLandmarks();
+    if(window._lmEnabled)loadLandmarks();
   });
   /* Durchgehende Standortmessung ab Karten-Öffnung (Vordergrund-Watch auf allen
      Plattformen). Nur wenn GPS-Einwilligung vorliegt — sonst startet sie, sobald
      der Nutzer im Consent-Dialog zustimmt bzw. einen Lauf startet. */
   if(localStorage.getItem('rc_gps_consent')==='1')ensurePersistentGpsWatch();
-  mapL.on('moveend',debounce(loadLandmarks,1500));
   mapL.on('click',()=>{closeDrawer();clearOwnerHighlight();});
   mapL.on('popupclose',clearOwnerHighlight); // Revier-Hervorhebung endet beim Verlassen der Gebiets-Ansicht
-  /* Wahrzeichen beim Verschieben/Zoomen neu laden (vorher nur einmal beim Start
-     -> in neu betrachteten Gebieten fehlten sie). Entprellt, damit Overpass/der
-     Cache nicht bei jedem Pixel-Move getroffen wird. */
-  mapL.on('moveend',()=>{clearTimeout(window._lmMoveTimer);window._lmMoveTimer=setTimeout(loadLandmarks,900);});
+  /* Wahrzeichen beim Verschieben nur neu laden, WENN sie eingeblendet sind. */
+  mapL.on('moveend',()=>{if(!window._lmEnabled)return;clearTimeout(window._lmMoveTimer);window._lmMoveTimer=setTimeout(loadLandmarks,900);});
 }
 function isLightTheme(){const t=getActiveTheme();return t==='theme-stone'||t==='theme-petrol';}
 function setTiles(){
@@ -8795,9 +8793,16 @@ window.initApp=function(){
   $('panelLmBtn')?.addEventListener('click',function(){
     this.classList.toggle('active');
     const on=this.classList.contains('active');
-    if(on)landmarkLayer&&mapL.addLayer(landmarkLayer);else landmarkLayer&&mapL.removeLayer(landmarkLayer);
-    const n=(landmarkLayer&&landmarkLayer.getLayers)?landmarkLayer.getLayers().length:0;
-    toast(on?(n?'⭐ Wahrzeichen eingeblendet':'⭐ Wahrzeichen an – noch keine in der Nähe'):'Wahrzeichen ausgeblendet');
+    window._lmEnabled=on; // steuert das (Nach-)Laden beim Verschieben
+    if(on){
+      landmarkLayer&&mapL.addLayer(landmarkLayer);
+      if(typeof loadLandmarks==='function')loadLandmarks(); // erst jetzt laden
+      toast('⭐ Wahrzeichen werden geladen…');
+    }else{
+      landmarkLayer&&mapL.removeLayer(landmarkLayer);
+      landmarkLayer&&landmarkLayer.clearLayers(); // Karte sauber halten
+      toast('Wahrzeichen ausgeblendet');
+    }
   });
   /* Panel-Lauf-Buttons */
   $('panelStartBtn')?.addEventListener('click',()=>{startRun();});
