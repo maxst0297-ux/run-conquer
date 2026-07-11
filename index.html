@@ -1907,7 +1907,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v141';
+const APP_VERSION='v142';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){

@@ -8,31 +8,9 @@
 <link rel="stylesheet" href="styles/colors_and_type.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 <link rel="stylesheet" href="styles/promo.css" />
-<style>
-/* CSS-gebaute Phone-Szenen für Panels ohne App-Screenshot (Breach, Wahrzeichen) */
-.scene{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
-  background:radial-gradient(120% 80% at 50% 0%,#123528,#0a1f16),#0a1f16;overflow:hidden}
-.scene::before{content:"";position:absolute;inset:0;opacity:.5;
-  background:repeating-linear-gradient(0deg,rgba(255,255,255,.045) 0 1px,transparent 1px 34px),
-             repeating-linear-gradient(90deg,rgba(255,255,255,.045) 0 1px,transparent 1px 34px)}
-.scene>*{position:relative}
-.scene-terr{width:62%;max-width:190px;filter:drop-shadow(0 0 14px rgba(230,255,85,.25))}
-.scene-badge{width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;
-  background:rgba(255,40,60,.16);border:2px solid #ff283c;box-shadow:0 0 0 0 rgba(255,40,60,.5);animation:scenePulse 1.6s ease-out infinite}
-@keyframes scenePulse{0%{box-shadow:0 0 0 0 rgba(255,40,60,.5)}100%{box-shadow:0 0 0 22px rgba(255,40,60,0)}}
-.scene-star{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:30px;
-  background:rgba(255,215,0,.14);border:2px solid #FFD700;box-shadow:0 0 26px rgba(255,215,0,.45)}
-.scene-chip{font:600 12px/1 'Poppins',system-ui,sans-serif;letter-spacing:.4px;color:#FFD700;
-  background:rgba(0,0,0,.65);border:1px solid rgba(255,215,0,.4);border-radius:8px;padding:6px 12px}
-.scene-chip--red{color:#ff8095;border-color:rgba(255,40,60,.45)}
-.scene-bar{width:64%;max-width:190px}
-.scene-bar b{display:block;font:700 10px/1 'Poppins',sans-serif;letter-spacing:1.4px;color:#9db8a8;margin-bottom:6px;text-transform:uppercase;text-align:left}
-.scene-bar span{display:block;height:8px;border-radius:5px;background:rgba(255,255,255,.12);overflow:hidden}
-.scene-bar span i{display:block;height:100%;width:34%;border-radius:5px;background:linear-gradient(90deg,#ff4d6d,#ff8a3c)}
-@media (prefers-reduced-motion:reduce){.scene-badge{animation:none}}
-</style>
+
 </head>
-<body style="background-color: rgb(88, 36, 16)">
+<body>
 
 <!-- ================= FIXED CHROME ================= -->
 <header class="topbar on-dark" id="topbar">
@@ -68,12 +46,12 @@
   <section class="panel" data-label="Fraktion" data-screen-label="02 · Wähle deine Seite">
     <div class="split">
       <div class="col-media" data-reveal style="--i:1">
-        <div class="phone"><div class="phone__screen"><img src="assets/shots/07-fraktion.jpg" alt="Fraktion wählen" loading="lazy" /></div></div>
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/v2-01-fraktion.png" alt="Fraktion wählen — Feuer, Eis, Sturm oder Schatten" loading="lazy" /></div></div>
       </div>
       <div class="col-text">
         <p class="kicker" data-reveal style="--i:0"><span class="idx">01</span>&nbsp;Fraktion</p>
         <h2 class="title" data-reveal style="--i:1">Wähle<br /><span class="accent">deine Seite</span></h2>
-        <p class="lead" data-reveal style="--i:2">Feuer, Eis, Sturm oder Schatten. Deine Fraktion bestimmt Farben, Stil und Community — mit wem eroberst du die Stadt?</p>
+        <p class="lead" data-reveal style="--i:2">Feuer, Eis, Sturm oder Schatten — deine Fraktion bestimmt deine Farben, deinen Stil und deine Community. Mit wem ziehst du in den Krieg?</p>
       </div>
     </div>
   </section>
@@ -82,94 +60,54 @@
   <section class="panel panel--alt" data-label="Karte" data-screen-label="03 · Die Stadt ist die Arena">
     <div class="split split--rev">
       <div class="col-media" data-reveal style="--i:1">
-        <div class="phone"><div class="phone__screen"><img src="assets/shots/08-karte.jpg" alt="Karte mit Revieren" loading="lazy" /></div></div>
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/v2-02-karte.png" alt="Live-Karte mit eroberten Gebieten" loading="lazy" /></div></div>
       </div>
       <div class="col-text">
         <p class="kicker" data-reveal style="--i:0"><span class="idx">02</span>&nbsp;Spielfeld</p>
         <h2 class="title" data-reveal style="--i:1">Die Stadt<br /><span class="accent">ist die Arena</span></h2>
-        <p class="lead" data-reveal style="--i:2">Echte Straßen, echte Reviere. Ein Tipp auf Starten und dein Lauf verwandelt sich in eroberbares Territorium.</p>
+        <p class="lead" data-reveal style="--i:2">Echte Straßen, echte Reviere. Auf der Live-Karte siehst du jedes eroberte Gebiet, jede Fraktionsfarbe — und wo noch Platz für dich ist.</p>
       </div>
     </div>
   </section>
 
-  <!-- WAHRZEICHEN (neu) -->
-  <section class="panel" data-label="Wahrzeichen" data-screen-label="Wahrzeichen · Besetze reale Orte">
+  <!-- 04 — TRACKING / ZIELE -->
+  <section class="panel" data-label="Ziele" data-screen-label="04 · Jeder Kilometer zählt">
     <div class="split">
       <div class="col-media" data-reveal style="--i:1">
-        <div class="phone"><div class="phone__screen">
-          <div class="scene">
-            <div class="scene-star">⭐</div>
-            <div class="scene-chip">Stadtpark-Denkmal</div>
-            <div class="scene-chip" style="color:#cdd9d2;border-color:rgba(255,255,255,.18)">Nähern: 50&nbsp;m</div>
-          </div>
-        </div></div>
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/v2-03-aktivitaet.png" alt="Dashboard mit Wochenziel, Monatsziel und Statistiken" loading="lazy" /></div></div>
       </div>
       <div class="col-text">
-        <p class="kicker" data-reveal style="--i:0"><span class="idx">03</span>&nbsp;Wahrzeichen</p>
-        <h2 class="title" data-reveal style="--i:1">Besetze<br /><span class="gold">reale Orte</span></h2>
-        <p class="lead" data-reveal style="--i:2">Denkmäler, Parks, Aussichtspunkte: Lauf echte Wahrzeichen deiner Stadt an und sammle sie als Trophäen in deinem Revier.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- 04 — TRACKING -->
-  <section class="panel" data-label="Tracking" data-screen-label="04 · Jeder Kilometer zählt">
-    <div class="split">
-      <div class="col-media" data-reveal style="--i:1">
-        <div class="phone"><div class="phone__screen"><img src="assets/shots/15-aktivitaet.jpg" alt="Aktivität & Tracking" loading="lazy" /></div></div>
-      </div>
-      <div class="col-text">
-        <p class="kicker" data-reveal style="--i:0"><span class="idx">03</span>&nbsp;Tracking</p>
+        <p class="kicker" data-reveal style="--i:0"><span class="idx">03</span>&nbsp;Ziele</p>
         <h2 class="title" data-reveal style="--i:1">Jeder<br /><span class="accent">Kilometer zählt</span></h2>
-        <p class="lead" data-reveal style="--i:2">Distanz, Zeit, Pace und Wochenziel — live getrackt und direkt in Punkte verwandelt. Und du läufst mit dem, was du liebst: <strong>Garmin-</strong> und <strong>Strava-Import</strong> inklusive.</p>
+        <p class="lead" data-reveal style="--i:2">Wochenziel, Monatsziel, Pace und Streak — dein Dashboard trackt jeden Lauf live und macht aus Bewegung sichtbaren Fortschritt.</p>
       </div>
     </div>
   </section>
 
-  <!-- 05 — REVIER / RAID -->
-  <section class="panel panel--alt" data-label="Erobern" data-screen-label="05 · Erobere & raide Reviere">
+  <!-- 05 — STREAK -->
+  <section class="panel panel--alt" data-label="Streak" data-screen-label="05 · Deine Serie wird belohnt">
     <div class="split split--rev">
       <div class="col-media" data-reveal style="--i:1">
-        <div class="phone"><div class="phone__screen"><img src="assets/shots/10-revier.jpg" alt="Revier-Detail & Raid" loading="lazy" /></div></div>
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/v2-04-streak.png" alt="Tages-Streak mit Tagesbelohnung" loading="lazy" /></div></div>
       </div>
       <div class="col-text">
-        <p class="kicker" data-reveal style="--i:0"><span class="idx">04</span>&nbsp;Erobern</p>
-        <h2 class="title" data-reveal style="--i:1">Erobere<br /><span class="accent">&amp; raide Reviere</span></h2>
-        <p class="lead" data-reveal style="--i:2">Schnapp dir fremde Gebiete, starte Raids und verteidige, was dir gehört. Am Ende entscheidet deine Stärke.</p>
+        <p class="kicker" data-reveal style="--i:0"><span class="idx">04</span>&nbsp;Streak</p>
+        <h2 class="title" data-reveal style="--i:1">Deine Serie<br /><span class="accent">wird belohnt</span></h2>
+        <p class="lead" data-reveal style="--i:2">Jeder Tag in Folge bringt XP, Punkte und Kisten — und ein Zitat, das dich aus der Tür schiebt. Bleib dran bis zum nächsten Meilenstein.</p>
       </div>
     </div>
   </section>
 
-  <!-- THE BREACH (neu) -->
-  <section class="panel panel--alt" data-label="Breach" data-screen-label="The Breach · Verteidige dein Revier">
-    <div class="split split--rev">
-      <div class="col-media" data-reveal style="--i:1">
-        <div class="phone"><div class="phone__screen">
-          <div class="scene">
-            <div class="scene-badge">⚔️</div>
-            <div class="scene-chip scene-chip--red">Invasion · 68&nbsp;%</div>
-            <div class="scene-bar"><b>Verteidigung</b><span><i></i></span></div>
-          </div>
-        </div></div>
-      </div>
-      <div class="col-text">
-        <p class="kicker" data-reveal style="--i:0"><span class="idx">05</span>&nbsp;The&nbsp;Breach</p>
-        <h2 class="title" data-reveal style="--i:1">Die Invasion<br /><span class="accent">kommt</span></h2>
-        <p class="lead" data-reveal style="--i:2">Vernachlässigte Reviere werden angegriffen. Lauf physisch hin, wehr die Invasion ab und rette dein Gebiet — bevor es überrannt wird.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- 06 — COMMUNITY -->
-  <section class="panel" data-label="Community" data-screen-label="06 · Die ganze Stadt spielt mit">
+  <!-- 06 — EVENTS -->
+  <section class="panel" data-label="Events" data-screen-label="06 · Events & Turniere">
     <div class="split">
       <div class="col-media" data-reveal style="--i:1">
-        <div class="phone"><div class="phone__screen"><img src="assets/shots/09-community.jpg" alt="Community-News" loading="lazy" /></div></div>
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/v2-05-events.png" alt="Community-News, Events und Turniere" loading="lazy" /></div></div>
       </div>
       <div class="col-text">
-        <p class="kicker" data-reveal style="--i:0"><span class="idx">05</span>&nbsp;Live</p>
-        <h2 class="title" data-reveal style="--i:1">Die ganze<br /><span class="accent">Stadt spielt mit</span></h2>
-        <p class="lead" data-reveal style="--i:2">Wer verteidigt, wer läuft, wer einen Rekord bricht — im News-Feed siehst du jeden Zug deiner Rivalen in Echtzeit.</p>
+        <p class="kicker" data-reveal style="--i:0"><span class="idx">05</span>&nbsp;Events</p>
+        <h2 class="title" data-reveal style="--i:1">Events<br /><span class="accent">&amp; Turniere</span></h2>
+        <p class="lead" data-reveal style="--i:2">Stadtmarathon-Challenge, Gebietskrieg im Norden, News aus deiner Community — in der Stadt ist immer ein Wettkampf im Gange.</p>
       </div>
     </div>
   </section>
@@ -178,92 +116,78 @@
   <section class="panel panel--alt" data-label="Rangliste" data-screen-label="07 · Klettere an die Spitze">
     <div class="split split--rev">
       <div class="col-media" data-reveal style="--i:1">
-        <div class="phone"><div class="phone__screen"><img src="assets/shots/11-rangliste.jpg" alt="Rangliste" loading="lazy" /></div></div>
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/v2-06-rangliste.png" alt="Rekorde und Rangliste im Umkreis" loading="lazy" /></div></div>
       </div>
       <div class="col-text">
         <p class="kicker" data-reveal style="--i:0"><span class="idx">06</span>&nbsp;Rangliste</p>
         <h2 class="title" data-reveal style="--i:1">Klettere<br /><span class="accent">an die Spitze</span></h2>
-        <p class="lead" data-reveal style="--i:2">Gebiete, Kilometer, wöchentliche Power-Rankings. Miss dich mit den Besten und kämpf dich Platz für Platz nach oben.</p>
+        <p class="lead" data-reveal style="--i:2">Deine Rekorde, die Live-Aktivität deiner Follower und Ranglisten im 20-km-Umkreis oder weltweit — miss dich mit Läufern direkt vor deiner Haustür.</p>
       </div>
     </div>
   </section>
 
-  <!-- 08 — QUESTS -->
-  <section class="panel" data-label="Quests" data-screen-label="08 · Ziele, die dich antreiben">
+  <!-- 08 — FRAKTIONS-KRIEG -->
+  <section class="panel" data-label="Fraktions-Krieg" data-screen-label="08 · Kämpf für deine Farbe">
     <div class="split">
       <div class="col-media" data-reveal style="--i:1">
-        <div class="phone"><div class="phone__screen"><img src="assets/shots/16-quests.jpg" alt="Quests & Challenges" loading="lazy" /></div></div>
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/v2-07-fraktionskrieg.png" alt="Fraktions-Krieg mit Kontrolle und Club Wars" loading="lazy" /></div></div>
       </div>
       <div class="col-text">
-        <p class="kicker" data-reveal style="--i:0"><span class="idx">07</span>&nbsp;Quests</p>
-        <h2 class="title" data-reveal style="--i:1">Ziele, die<br /><span class="accent">dich antreiben</span></h2>
-        <p class="lead" data-reveal style="--i:2">Wochen-Challenges und Starter-Quests geben dir jeden Tag einen guten Grund, die Schuhe zu schnüren.</p>
+        <p class="kicker" data-reveal style="--i:0"><span class="idx">07</span>&nbsp;Fraktions-Krieg</p>
+        <h2 class="title" data-reveal style="--i:1">Kämpf für<br /><span class="accent">deine Farbe</span></h2>
+        <p class="lead" data-reveal style="--i:2">Vier Fraktionen, eine Stadt: Jeder Lauf bringt deiner Seite Punkte, Gebiete und Kontrolle. Und in den Club Wars zählt jedes Mitglied.</p>
       </div>
     </div>
   </section>
 
-  <!-- 09 — ERFOLGE -->
-  <section class="panel panel--alt" data-label="Erfolge" data-screen-label="09 · Sammle Trophäen">
+  <!-- 09 — PROFIL -->
+  <section class="panel panel--alt" data-label="Profil" data-screen-label="09 · Dein Aufstieg in Zahlen">
     <div class="split split--rev">
       <div class="col-media" data-reveal style="--i:1">
-        <div class="phone"><div class="phone__screen"><img src="assets/shots/18-erfolge.jpg" alt="Erfolge & Trophäen" loading="lazy" /></div></div>
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/v2-08-profil.png" alt="Profil mit Level, Titel und täglicher Serie" loading="lazy" /></div></div>
       </div>
       <div class="col-text">
-        <p class="kicker" data-reveal style="--i:0"><span class="idx">08</span>&nbsp;Erfolge</p>
-        <h2 class="title" data-reveal style="--i:1">Sammle<br /><span class="gold">Trophäen</span></h2>
-        <p class="lead" data-reveal style="--i:2">Von der ersten Straße bis zum Imperator — jeder Meilenstein wird mit einem Erfolg in deiner Vitrine belohnt.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- 10 — PROFIL -->
-  <section class="panel" data-label="Profil" data-screen-label="10 · Dein Aufstieg in Zahlen">
-    <div class="split">
-      <div class="col-media" data-reveal style="--i:1">
-        <div class="phone"><div class="phone__screen"><img src="assets/shots/14-profil.jpg" alt="Profil" loading="lazy" /></div></div>
-      </div>
-      <div class="col-text">
-        <p class="kicker" data-reveal style="--i:0"><span class="idx">09</span>&nbsp;Profil</p>
+        <p class="kicker" data-reveal style="--i:0"><span class="idx">08</span>&nbsp;Profil</p>
         <h2 class="title" data-reveal style="--i:1">Dein Aufstieg<br /><span class="accent">in Zahlen</span></h2>
-        <p class="lead" data-reveal style="--i:2">Level, Titel, Streak und Statistiken. Dein Profil zeigt auf einen Blick, wie weit du es schon gebracht hast.</p>
+        <p class="lead" data-reveal style="--i:2">Level, Titel, Weltrang, Streak-Kalender — dein Profil zeigt auf einen Blick, wie weit du es vom Neuling schon gebracht hast.</p>
       </div>
     </div>
   </section>
 
-  <!-- 11 — CLUB / WAPPEN -->
-  <section class="panel panel--alt" data-label="Club" data-screen-label="11 · Gründe deinen Club">
-    <div class="split split--rev">
-      <div class="col-media" data-reveal style="--i:1">
-        <div class="phone"><div class="phone__screen"><img src="assets/shots/12-wappen.jpg" alt="Wappen-Baukasten" loading="lazy" /></div></div>
-      </div>
-      <div class="col-text">
-        <p class="kicker" data-reveal style="--i:0"><span class="idx">10</span>&nbsp;Club</p>
-        <h2 class="title" data-reveal style="--i:1">Gründe<br /><span class="gold">deinen Club</span></h2>
-        <p class="lead" data-reveal style="--i:2">Baue dein eigenes Wappen, gib ihm einen Namen und erobere die Stadt nicht allein, sondern im Team.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- 12 — ANLEITUNG -->
-  <section class="panel" data-label="Anleitung" data-screen-label="12 · Alles, was du wissen musst">
+  <!-- 10 — SAISON-PASS -->
+  <section class="panel" data-label="Saison-Pass" data-screen-label="10 · Jede Saison neue Belohnungen">
     <div class="split">
       <div class="col-media" data-reveal style="--i:1">
-        <div class="phone"><div class="phone__screen"><img src="assets/shots/13-anleitung.jpg" alt="Spielanleitung" loading="lazy" /></div></div>
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/v2-09-saisonpass.png" alt="Belohnungen und Saison-Pass" loading="lazy" /></div></div>
       </div>
       <div class="col-text">
-        <p class="kicker" data-reveal style="--i:0"><span class="idx">11</span>&nbsp;Anleitung</p>
-        <h2 class="title" data-reveal style="--i:1">Alles, was du<br /><span class="accent">wissen musst</span></h2>
-        <p class="lead" data-reveal style="--i:2">Gebiete, Stärke, Energie, Raids, Titel — die Spielanleitung erklärt dir jede Mechanik in Sekunden.</p>
+        <p class="kicker" data-reveal style="--i:0"><span class="idx">09</span>&nbsp;Saison</p>
+        <h2 class="title" data-reveal style="--i:1">Jede Saison<br /><span class="gold">neue Belohnungen</span></h2>
+        <p class="lead" data-reveal style="--i:2">20 Level Saison-Pass: Bonus-XP, Streak-Schutz, exklusive Gebietsfarben. Jeder Lauf schaltet das nächste Extra frei.</p>
       </div>
     </div>
   </section>
 
-  <!-- 13 — CTA -->
-  <section class="panel cta" id="play" data-label="Start" data-screen-label="CTA · Beanspruche dein Revier">
+  <!-- 11 — ERFOLGE -->
+  <section class="panel panel--alt" data-label="Erfolge" data-screen-label="11 · Rekorde, die bleiben">
+    <div class="split split--rev">
+      <div class="col-media" data-reveal style="--i:1">
+        <div class="phone"><div class="phone__screen"><img src="assets/shots/v2-10-erfolge.png" alt="Persönliche Bestleistungen und Erfolge" loading="lazy" /></div></div>
+      </div>
+      <div class="col-text">
+        <p class="kicker" data-reveal style="--i:0"><span class="idx">10</span>&nbsp;Erfolge</p>
+        <h2 class="title" data-reveal style="--i:1">Rekorde,<br /><span class="gold">die bleiben</span></h2>
+        <p class="lead" data-reveal style="--i:2">Schnellster Kilometer, längster Lauf, größtes Gebiet — plus 36 Erfolge, die zeigen, was dir noch fehlt. Vom Eroberer bis zum Kämpfer.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12 — CTA -->
+  <section class="panel cta" id="play" data-label="Start" data-screen-label="12 · Bereit zu erobern?">
     <div class="hero__inner">
       <p class="kicker kicker--center" data-reveal style="--i:0">Saison läuft</p>
-      <h2 class="title" data-reveal style="--i:1">Beanspruche<br /><span class="accent">dein Revier</span></h2>
-      <p class="sub" data-reveal style="--i:2" id="ctaSub">Schnür die Schuhe, starte deinen ersten Lauf und nimm dir deine erste Straße. Die Stadt wartet darauf, erobert zu werden.</p>
+      <h2 class="title" data-reveal style="--i:1">Bereit zu<br /><span class="accent">erobern?</span></h2>
+      <p class="sub" data-reveal style="--i:2">Schnür die Schuhe, wähl deine Fraktion und nimm dir deine erste Straße. Die Stadt wartet darauf, erobert zu werden.</p>
       <div class="cta-actions" data-reveal style="--i:3">
         <a class="btn btn--primary" href="#"><i class="fa-solid fa-play"></i>&nbsp;Jetzt spielen</a>
         <a class="btn btn--ghost" href="#" id="toTop"><i class="fa-solid fa-arrow-up"></i>&nbsp;Nochmal ansehen</a>
@@ -277,55 +201,11 @@
 <script>
 (function () {
   const deck = document.getElementById('deck');
-  const params = new URLSearchParams(location.search);
-
-  /* ── Kurzmodus (?mode=short): Onboarding zeigt nur die emotionalen
-     Kern-Panels in Story-Reihenfolge (Hook → Konflikt → Stolz → Ease →
-     Aufstieg → CTA). Die Langversion bleibt über Hilfe→PROMO erreichbar. ── */
-  if (params.get('mode') === 'short') {
-    const order = ['Hero', 'Breach', 'Wahrzeichen', 'Tracking', 'Rangliste', 'Start'];
-    const byLabel = {};
-    deck.querySelectorAll('.panel').forEach(p => { byLabel[p.dataset.label] = p; });
-    deck.querySelectorAll('.panel').forEach(p => { if (!order.includes(p.dataset.label)) p.remove(); });
-    order.forEach(l => { if (byLabel[l]) deck.appendChild(byLabel[l]); });
-  }
-  /* Hintergrund-/Seiten-Wechsel und Kicker-Nummern nach evtl. Umbau neu
-     verteilen, damit beide Modi sauber alternieren und durchnummeriert sind. */
-  (function normalize() {
-    let k = 0, n = 0;
-    deck.querySelectorAll('.panel').forEach(p => {
-      const idx = p.querySelector('.kicker .idx');
-      if (idx) { n++; idx.textContent = String(n).padStart(2, '0'); }
-      if (p.classList.contains('hero') || p.classList.contains('cta')) return;
-      const alt = k % 2 === 1;
-      p.classList.toggle('panel--alt', alt);
-      const sp = p.querySelector('.split'); if (sp) sp.classList.toggle('split--rev', alt);
-      k++;
-    });
-  })();
-
-  /* ── Stadt-Personalisierung (?city=Berlin): "Berlin wartet auf dich" ── */
-  const city = (params.get('city') || '').trim().slice(0, 40);
-  if (city) {
-    const heroSub = document.querySelector('.hero .sub');
-    if (heroSub) heroSub.textContent = city + ' wartet auf dich. ' + heroSub.textContent;
-    const ctaSub = document.getElementById('ctaSub');
-    if (ctaSub) ctaSub.textContent = 'Schnür die Schuhe, starte deinen ersten Lauf und nimm dir deine erste Straße. ' + city + ' wartet darauf, erobert zu werden.';
-  }
-
   const panels = Array.from(deck.querySelectorAll('.panel'));
   const topbar = document.getElementById('topbar');
   const dotsWrap = document.getElementById('dots');
   const playBtn = document.getElementById('playBtn');
   const autofill = document.getElementById('autofill');
-
-  // ---- signal completion to a parent app (onboarding auto-advance) ----
-  let _promoDone = false;
-  function sendPromoDone() {
-    if (_promoDone) return;
-    _promoDone = true;
-    try { window.parent.postMessage('promo:done', '*'); } catch (e) {}
-  }
 
   // ---- dot nav ----
   panels.forEach((p, i) => {
@@ -351,16 +231,9 @@
     curIdx = activeIdx;
     dots.forEach((d, di) => d.classList.toggle('active', di === activeIdx));
     const ap = panels[activeIdx];
-    /* Haptik beim Breach-Panel (einmalig): verstärkt die Bedrohung.
-       iOS/WKWebView kennt navigator.vibrate nicht -> dort stiller No-Op. */
-    if (ap.dataset.label === 'Breach' && !window._breachBuzzed) {
-      window._breachBuzzed = true;
-      try { navigator.vibrate?.([40, 70, 40]); } catch (e) {}
-    }
     const dark = ap.classList.contains('hero') || ap.classList.contains('cta');
     topbar.classList.toggle('on-dark', dark);
     topbar.classList.toggle('solid', !dark);
-    if (activeIdx === panels.length - 1) sendPromoDone();
   }
   window.addEventListener('scroll', update, { passive: true });
   window.addEventListener('resize', update);
@@ -387,7 +260,7 @@
 
   function tick() {
     let next = curIdx + 1;
-    if (next >= panels.length) { sendPromoDone(); next = 0; }   // loop back to start
+    if (next >= panels.length) next = 0;   // loop back to start
     goTo(next);
     startFill();
   }
@@ -415,15 +288,6 @@
   if (toTop) toTop.addEventListener('click', (e) => { e.preventDefault(); pause(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
   const navCta = document.getElementById('navCta');
   if (navCta) navCta.addEventListener('click', (e) => { e.preventDefault(); pause(); goTo(panels.length - 1); });
-  const ctaPrimary = document.querySelector('.cta .btn--primary');
-  /* Expliziter „Jetzt spielen"-Klick sendet ein EIGENES Signal (promo:play),
-     damit ein Standalone-Viewer nur beim echten Klick schließt — nicht schon,
-     wenn das Auto-Play passiv das letzte Panel erreicht (das bleibt promo:done
-     fürs Onboarding-Auto-Weiter). */
-  if (ctaPrimary) ctaPrimary.addEventListener('click', (e) => {
-    e.preventDefault();
-    try { window.parent.postMessage('promo:play', '*'); } catch (err) {}
-  });
 
   // expose for tweaks
   window.__promo = {
@@ -431,19 +295,17 @@
     setSecs(v) { secs = v; if (playing) play(); },
     isPlaying() { return playing; }
   };
+  // ---- App-Integration: „Jetzt spielen" -> Host-App benachrichtigen ----
+  var inApp = window.parent && window.parent !== window;
+  function playNow(e){ if(e){e.preventDefault();} if(inApp){ try{ window.parent.postMessage("promo:done","*"); }catch(_){} } else { pause(); goTo(panels.length - 1); } }
+  var primaryCta = document.querySelector(".cta .btn--primary");
+  if (primaryCta) primaryCta.addEventListener("click", playNow);
+  if (inApp && navCta) navCta.addEventListener("click", playNow);
 
   // start the reel
   play();
 })();
 </script>
-
-<template id="__bundler_thumbnail">
-  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-    <rect width="100" height="100" fill="#11241B"/>
-    <path d="M35 28 l8-10 4 7 4-7 4 7 4-7 8 10z" fill="#C8A227"/>
-    <text x="50" y="64" font-family="Oswald, sans-serif" font-size="30" font-weight="700" fill="#36A372" text-anchor="middle">RC</text>
-  </svg>
-</template>
 
 </body>
 </html>
