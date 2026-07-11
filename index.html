@@ -184,6 +184,19 @@ body.onboarding-active{background:#000}
   box-shadow:0 1px 0 rgba(255,255,255,.05),0 4px 24px rgba(0,0,0,.15);
 }
 .hdr-logo{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.06em;color:var(--primary)}
+/* Gebiets-Infoleiste: erscheint beim Tippen auf ein Gebiet direkt UNTER der
+   festen Kopfleiste (statt als schwebende Karten-Sprechblase). */
+#terrBar{position:fixed;top:var(--hdr-total);left:0;right:0;z-index:590;background:var(--bg2);border-bottom:1px solid var(--border);padding:9px calc(12px + var(--sal)) 10px calc(12px + var(--sar));box-shadow:0 10px 26px rgba(0,0,0,.3);transform:translateY(-120%);opacity:0;pointer-events:none;transition:transform .3s cubic-bezier(.16,1,.3,1),opacity .24s;-webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%)}
+#terrBar.open{transform:translateY(0);opacity:1;pointer-events:auto}
+#terrBar .tb-top{display:flex;align-items:center;gap:8px}
+#terrBar .tb-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;box-shadow:0 0 8px currentColor}
+#terrBar .tb-name{font-family:'Bebas Neue',sans-serif;font-size:1.05rem;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52vw}
+#terrBar .tb-rel{font-size:.62rem;color:var(--muted);white-space:nowrap;flex-shrink:0}
+#terrBar .tb-close{margin-left:auto;background:var(--card);border:1px solid var(--border);color:var(--muted);width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:.82rem;touch-action:manipulation}
+#terrBar .tb-chips{display:flex;gap:7px;overflow-x:auto;margin-top:8px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+#terrBar .tb-chips::-webkit-scrollbar{display:none}
+#terrBar .tb-chip{flex:0 0 auto;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:4px 11px;font-size:.66rem;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:5px}
+#terrBar .tb-chip .l{opacity:.7;font-weight:500}
 .hdr-badge{margin-left:auto;background:var(--card);border:1px solid var(--border);border-radius:40px;padding:5px 14px;font-size:.75rem;font-weight:600;display:flex;align-items:center;gap:6px;cursor:pointer}
 .hdr-actions{display:flex;gap:6px}
 .icon-btn{background:var(--card);border:1px solid var(--border);color:var(--primary);width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;transition:transform var(--motion-fast);-webkit-user-select:none;user-select:none}
@@ -1139,6 +1152,9 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
     </div>
   </div>
 
+  <!-- Gebiets-Infoleiste (unter der Kopfleiste) -->
+  <div id="terrBar" aria-live="polite"></div>
+
   <div id="screens">
     <div id="scrollProgress"></div>
 
@@ -1891,7 +1907,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v138';
+const APP_VERSION='v139';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -4669,7 +4685,7 @@ function initMap(){
      Plattformen). Nur wenn GPS-Einwilligung vorliegt — sonst startet sie, sobald
      der Nutzer im Consent-Dialog zustimmt bzw. einen Lauf startet. */
   if(localStorage.getItem('rc_gps_consent')==='1')ensurePersistentGpsWatch();
-  mapL.on('click',()=>{closeDrawer();clearOwnerHighlight();});
+  mapL.on('click',()=>{closeDrawer();clearOwnerHighlight();hideTerrBar();});
   mapL.on('popupclose',clearOwnerHighlight); // Revier-Hervorhebung endet beim Verlassen der Gebiets-Ansicht
   /* Wahrzeichen beim Verschieben nur neu laden, WENN sie eingeblendet sind. */
   mapL.on('moveend',()=>{if(!window._lmEnabled)return;clearTimeout(window._lmMoveTimer);window._lmMoveTimer=setTimeout(loadLandmarks,900);});
@@ -4924,6 +4940,29 @@ function highlightOwnerTerr(owner){
     }catch(e){}
   });
 }
+/* Gebiets-Infoleiste unter der Kopfleiste füllen + einblenden (ersetzt die
+   frühere schwebende Karten-Sprechblase). */
+function showTerrBar(info){
+  const el=$('terrBar');if(!el||!info)return;
+  const rar=info.rar;
+  el.innerHTML=`<div class="tb-top">
+      <span class="tb-dot" style="color:${info.borderCol};background:${info.borderCol}"></span>
+      <span class="tb-name">${esc(info.name||'Gebiet')}</span>
+      <span class="tb-rel">· ${esc(info.relText)}</span>
+      <button class="tb-close" onclick="hideTerrBar()" aria-label="Schließen">✕</button>
+    </div>
+    <div class="tb-chips">
+      ${info.team?`<span class="tb-chip" style="border-color:${info.team.color}66"><span>${info.team.icon}</span> ${esc(info.team.name)}</span>`:'<span class="tb-chip"><span class="l">Fraktion</span> Keine</span>'}
+      <span class="tb-chip"><span class="l">👤</span> ${esc(info.ownerName||'Läufer')}${info.own?' (Du)':''}</span>
+      <span class="tb-chip"><span class="l">🛡️</span> ${Math.round(info.def)}/300</span>
+      <span class="tb-chip"><span class="l">⏳</span> ${fmtDecay(info.tteMin)}</span>
+      <span class="tb-chip"><span class="l">⬡</span> ${info.size} ${info.size===1?'Zelle':'Zellen'}</span>
+      <span class="tb-chip" style="color:${RARITY_COLORS[rar]||'var(--text)'}">${RARITY_LABELS[rar]||''}</span>
+    </div>`;
+  el.classList.add('open');
+}
+function hideTerrBar(){const el=$('terrBar');if(el)el.classList.remove('open');}
+window.hideTerrBar=hideTerrBar;
 function renderH3Territories(){
   if(!h3Layer||!h3Ready())return;
   h3Layer.clearLayers();
@@ -4966,23 +5005,15 @@ function renderH3Territories(){
     }
     let mp;
     try{mp=h3.cellsToMultiPolygon(renderCells,false);}catch(e){return;}
+    // Infos für die Gebiets-Leiste (statt Karten-Sprechblase) einmal pro Gebiet bündeln.
+    const terrInfo={name:territoryName(t),relText:(own?'Dein Gebiet':(ally?'Verbündet':'Feindlich')+(isBot?' · Bot':'')),team,own,ownerName:t.owner_name,def,tteMin,size:cells.length,rar,borderCol};
     mp.forEach(poly=>{
       const pl=L.polygon(poly,{color:borderCol,weight:rstyle.weight,dashArray:rstyle.dash||undefined,fillColor,
         fillOpacity:window._fraktMapMode?0.55:(own?Math.max(.18,strPct*.4):Math.max(.1,strPct*.28)),
         opacity:window._fraktMapMode?0.95:Math.max(.7,strPct*.9)})
-        .bindPopup(`<div style="min-width:194px;border:2px solid ${borderCol};border-radius:10px;padding:9px 11px">
-          <div style="font-size:.72rem;font-weight:700;margin-bottom:7px">${relLine}</div>
-          <div style="display:flex;flex-direction:column;gap:5px">
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Fraktion</span>${team?`<span style="background:${team.color}22;color:${team.color};border-radius:6px;padding:1px 8px;font-size:.66rem;font-weight:700">${team.icon} ${team.name}</span>`:'<span style="font-size:.72rem;color:var(--muted)">Keine</span>'}</div>
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Besitzer</span><span style="font-size:.8rem;font-weight:700;color:var(--text)">${esc(t.owner_name||'Läufer')}${own?' (Du)':''}</span></div>
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Verteidigung</span><span style="font-size:.8rem;font-weight:700">${Math.round(def)} / 300</span></div>
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Dauer bis 1</span><span style="font-size:.8rem;font-weight:700">${fmtDecay(tteMin)}</span></div>
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Größe</span><span style="font-size:.8rem;font-weight:700">${cells.length} ${cells.length===1?'Zelle':'Zellen'}</span></div>
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Seltenheit</span><span style="font-size:.8rem;font-weight:700;color:${RARITY_COLORS[rar]||'var(--text)'}">${RARITY_LABELS[rar]}</span></div>
-          </div></div>`)
         .addTo(h3Layer);
       pl._baseStyle={fillOpacity:pl.options.fillOpacity,weight:pl.options.weight,color:pl.options.color};
-      pl.on('click',()=>highlightOwnerTerr(t.owner));
+      pl.on('click',()=>{highlightOwnerTerr(t.owner);showTerrBar(terrInfo);});
       (_ownerPolys[t.owner]=_ownerPolys[t.owner]||[]).push(pl);
     });
   });
@@ -8277,6 +8308,7 @@ function initSettingsDropdown(){
 /* NAV */
 function setView(view){
   closeAllModals();
+  if(typeof hideTerrBar==='function')hideTerrBar(); // Gebiets-Leiste beim Ansichtswechsel schließen
   if(drawer&&drawer.classList.contains('open'))closeDrawer();
   const map2={map:'mapView',start:'dashView',dash:'dashView',community:'communityView',profile:'profileView'};
   const leaving=document.querySelector('.view.active');
