@@ -1907,7 +1907,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v142';
+const APP_VERSION='v143';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2558,7 +2558,7 @@ function buildSeasonSvg(){
     +`<filter id="S${u}" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="1.6" stdDeviation="1.4" flood-color="#000000" flood-opacity="0.6"/></filter>`
     +`<filter id="G${u}" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="1.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`
     +`</defs>`;
-  const bev=(b)=>`<g filter="url(#S${u})"><g filter="url(#B${u})">${b}</g></g>`;
+  const bev=(b)=>`<g filter="url(#S${u})">${b}</g>`; // ohne feSpecularLighting (auf iOS unscharf)
   const aura=`<circle cx="60" cy="57" r="59" fill="url(#A${u})"/>`;
   let rays='';for(let i=0;i<36;i++){const a=i/36*Math.PI*2,lng=i%3===0;rays+=`<line x1="${(60+Math.cos(a)*43).toFixed(1)}" y1="${(57+Math.sin(a)*43).toFixed(1)}" x2="${(60+Math.cos(a)*(lng?52:47.5)).toFixed(1)}" y2="${(57+Math.sin(a)*(lng?52:47.5)).toFixed(1)}" stroke="${G.m}" stroke-width="${lng?'1.8':'1'}" stroke-linecap="round" opacity="${lng?'.8':'.45'}"/>`;}
   let gems='';[[60,101],[16,57],[104,57]].forEach(p=>{gems+=`<g transform="translate(${p[0]} ${p[1]}) rotate(45)"><rect x="-2.6" y="-2.6" width="5.2" height="5.2" fill="#FFF6D2" stroke="${G.d}" stroke-width=".7"/></g>`;});
@@ -3946,7 +3946,10 @@ const RCB={
   vg(u,M,x=''){return `<linearGradient id="V${u}${x}" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="${M.l}"/><stop offset="48%" stop-color="${M.m}"/><stop offset="100%" stop-color="${M.d}"/></linearGradient>`;},
   ag(u,c,o=.6){return `<radialGradient id="A${u}" cx="50%" cy="50%" r="50%"><stop offset="30%" stop-color="${c}" stop-opacity="${(o*.42).toFixed(2)}"/><stop offset="65%" stop-color="${c}" stop-opacity="${(o*.18).toFixed(2)}"/><stop offset="100%" stop-color="${c}" stop-opacity="0"/></radialGradient>`;},
   auraC(u,r=54){return `<circle cx="60" cy="57" r="${r}" fill="url(#A${u})"/>`;},
-  bev(b){return `<g filter="url(#rcShadow)"><g filter="url(#rcBevel)">${b}</g></g>`;},
+  /* Nur Schlagschatten — die feSpecularLighting-Prägung (#rcBevel) rendert auf
+     iOS/WKWebView als Unschärfe (Badge wurde zum verwaschenen Klecks). Ohne sie
+     bleiben die Formen scharf; die Metall-Verläufe geben den Glanz. */
+  bev(b){return `<g filter="url(#rcShadow)">${b}</g>`;},
   wrap(d,b){const plate='<circle cx="60" cy="58" r="56" fill="url(#rcPlate)"/><circle cx="60" cy="58" r="56" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="1"/>';return `<svg viewBox="0 0 120 120" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">${d?`<defs>${d}</defs>`:''}${plate}${b}</svg>`;},
   sp4(x,y,s,o=.9,c='#ffffff'){return `<g transform="translate(${x} ${y}) scale(${s})"><path d="M0 -4 L1 -1 L4 0 L1 1 L0 4 L-1 1 L-4 0 L-1 -1 Z" fill="${c}" opacity="${o}"/></g>`;},
   spks(u,pts,c='#ffffff'){let s='';pts.forEach(p=>{s+=this.sp4(p[0],p[1],p[2],p[3]??.85,c);});return s;},
@@ -5503,10 +5506,20 @@ async function processConquest(np,area,d,boosted=false,isImport=false,durationS=
 
   if(error||!data||data.error){
     const code=(data&&data.error)||(error&&error.message)||'other';
-    if(String(code).includes('speed_hardcap')){toast('⚠️ Unrealistisches Tempo – Lauf nicht gewertet');return{pts:0,conquered:false,defended:false,error:'other'};}
-    if(String(code).includes('too_short'))return{pts:0,conquered:false,defended:false,error:'other'};
+    const cs=String(code).toLowerCase();
+    if(cs.includes('speed_hardcap')){toast('⚠️ Unrealistisches Tempo – Lauf nicht gewertet');return{pts:0,conquered:false,defended:false,error:'other'};}
+    if(cs.includes('too_short'))return{pts:0,conquered:false,defended:false,error:'other'};
     logError&&logError('conquer',error||new Error(String(code)),{code:String(code)});
-    toast('⚠️ Eroberung konnte nicht synchronisiert werden');
+    console.warn('[conquer] fehlgeschlagen:',code);
+    /* Server-Setup nicht vollständig? -> klare Ansage statt vager Meldung. Häufig:
+       Edge Function 'conquer' nicht deployt (404/not found) oder H3-Tabellen/View
+       fehlen (relation ... does not exist / 42P01). */
+    if(cs.includes('not found')||cs.includes('404')||cs.includes('failed to fetch')||cs.includes('function'))
+      toast('⚠️ Eroberung: Server-Function fehlt – „conquer" deployen');
+    else if(cs.includes('relation')||cs.includes('42p01')||cs.includes('does not exist')||cs.includes('h3_'))
+      toast('⚠️ Eroberung: Datenbank-Tabellen fehlen – SQL vollständig ausführen');
+    else
+      toast('⚠️ Eroberung konnte nicht gespeichert werden');
     return{pts:0,conquered:false,defended:false,error:'other'};
   }
 
