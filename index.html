@@ -535,6 +535,10 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .tab-btn{padding:0 20px;min-height:44px;display:inline-flex;align-items:center;border-radius:40px;border:none;background:var(--card);color:var(--muted);font-weight:600;font-size:.86rem;cursor:pointer;white-space:nowrap;transition:background var(--motion-base),color var(--motion-base),transform var(--motion-fast);-webkit-tap-highlight-color:transparent;touch-action:manipulation;flex-shrink:0}
 .tab-btn:active{transform:scale(.93)}
 .tab-btn.active{background:var(--primary);color:var(--bg)}
+/* Support: einfache Idee/Fehler-Auswahl (segmentierte Buttons) */
+.supp-seg{padding:14px 10px;border-radius:14px;border:1px solid var(--border);background:var(--card);color:var(--muted);font-weight:700;font-size:.9rem;cursor:pointer;transition:background .15s,color .15s,border-color .15s,transform .1s;font-family:'Poppins',sans-serif;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.supp-seg:active{transform:scale(.97)}
+.supp-seg.active{background:var(--primary);color:var(--bg);border-color:var(--primary)}
 /* Bottom-Padding ≥ Höhe der Navigationsleiste (liegt mit z-index 710 ÜBER dem
    Drawer): sonst verschwindet die unterste Zeile – z.B. die letzte Kalenderwoche
    – hinter der Leiste. */
@@ -1880,7 +1884,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v133';
+const APP_VERSION='v134';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2130,10 +2134,18 @@ async function processSyncQueue(notify){
   }finally{window._syncingQueue=false;}
 }
 async function sendSupportMessage(){
-  const subject=(document.getElementById('suppSubject')?.value||'').trim()||'Kein Betreff';
-  const msg=(document.getElementById('suppMsg')?.value||'').trim();
+  const typeBtn=document.querySelector('#suppType .supp-seg.active');
+  const type=typeBtn?typeBtn.dataset.type:'idee';
+  const subject=type==='fehler'?'🐞 Fehler':'💡 Idee';
+  const msgRaw=(document.getElementById('suppMsg')?.value||'').trim();
   const statusEl=document.getElementById('suppStatus');
-  if(!msg){if(statusEl)statusEl.innerHTML='<span style="color:var(--red)">❌ Bitte Nachricht eingeben</span>';return;}
+  if(!msgRaw){if(statusEl)statusEl.innerHTML='<span style="color:var(--red)">❌ Bitte kurz beschreiben</span>';return;}
+  /* Bei Fehlern automatisch technische Eckdaten anhängen – hilft beim Nachstellen. */
+  let message=msgRaw;
+  if(type==='fehler'){
+    const plat=(window.Capacitor&&Capacitor.getPlatform)?Capacitor.getPlatform():'web';
+    message=msgRaw+`\n\n— ${APP_VERSION} · ${plat} · ${(navigator.userAgent||'').slice(0,90)}`;
+  }
   if(statusEl)statusEl.textContent='⏳ Wird gesendet…';
   try{
     if(!sb)throw new Error('Keine Verbindung');
@@ -2142,13 +2154,12 @@ async function sendSupportMessage(){
       user_id:sbUserId||null,
       player_name:playerName||'Unbekannt',
       subject,
-      message:msg
+      message
     });
     if(error)throw error;
-    if(statusEl)statusEl.innerHTML='<span style="color:var(--green)">✅ Gesendet! Wir melden uns bald.</span>';
-    if(document.getElementById('suppSubject'))document.getElementById('suppSubject').value='';
-    if(document.getElementById('suppMsg'))document.getElementById('suppMsg').value='';
-    toast('📨 Nachricht gesendet');
+    if(statusEl)statusEl.innerHTML='<span style="color:var(--green)">✅ Danke! Deine '+(type==='fehler'?'Fehlermeldung':'Idee')+' ist angekommen.</span>';
+    const mEl=document.getElementById('suppMsg');if(mEl)mEl.value='';
+    toast(type==='fehler'?'🐞 Fehler gemeldet – danke!':'💡 Idee gesendet – danke!');
   }catch(e){
     console.warn('Support message error:',e);
     if(statusEl)statusEl.innerHTML='<span style="color:var(--red)">❌ '+(e.message||'Fehler beim Senden')+'</span>';
@@ -6964,7 +6975,24 @@ function renderSettingsTab(tab){
     let vTaps=0;
     $('setVersionTap').addEventListener('click',()=>{vTaps++;if(vTaps>=5){vTaps=0;$('settingsModal').style.display='none';openAdminPanel();}});
   } else if(tab==='support'){
-    body.innerHTML=`<div style="font-size:.88rem;font-weight:600;margin-bottom:5px">🛠️ Support &amp; Feedback</div><div style="font-size:.75rem;color:var(--muted);margin-bottom:14px">Probleme oder Ideen? Wir antworten schnell!</div><div style="font-size:.72rem;color:var(--primary);background:var(--primary)11;border:1px solid var(--primary)33;border-radius:8px;padding:6px 10px;margin-bottom:12px">📨 An: Admin</div><div class="field"><label>Betreff</label><input type="text" id="suppSubject" class="modal-input" placeholder="z.B. Bug, Feedback, Idee…"></div><div class="field"><label>Nachricht</label><textarea id="suppMsg" class="modal-input" style="resize:none;height:90px;font-family:'Poppins',sans-serif;font-size:.85rem;padding:12px" placeholder="Beschreibe dein Anliegen…"></textarea></div><button class="btn btn-p" id="sendSuppBtn" style="width:100%"><i class="fas fa-paper-plane"></i> Absenden</button><div id="suppStatus" style="text-align:center;margin-top:8px;font-size:.78rem"></div>`;
+    body.innerHTML=`<div style="font-size:1rem;font-weight:700;margin-bottom:4px">💬 Idee oder Fehler melden</div>
+      <div style="font-size:.75rem;color:var(--muted);margin-bottom:16px;line-height:1.5">Ganz einfach: Art wählen, kurz beschreiben, absenden. Wir lesen jede Nachricht.</div>
+      <div id="suppType" style="display:flex;gap:10px;margin-bottom:16px">
+        <button type="button" class="supp-seg active" data-type="idee" style="flex:1">💡 Idee</button>
+        <button type="button" class="supp-seg" data-type="fehler" style="flex:1">🐞 Fehler</button>
+      </div>
+      <div class="field"><textarea id="suppMsg" class="modal-input" style="resize:none;height:130px;font-family:'Poppins',sans-serif;font-size:.9rem;padding:14px;line-height:1.5" placeholder="Deine Idee: Was würdest du dir wünschen?"></textarea></div>
+      <button class="btn btn-p" id="sendSuppBtn" style="width:100%;padding:14px;font-size:.95rem"><i class="fas fa-paper-plane"></i>&nbsp; Absenden</button>
+      <div id="suppStatus" style="text-align:center;margin-top:10px;font-size:.8rem;min-height:1.1em"></div>
+      <div style="font-size:.66rem;color:var(--muted);text-align:center;margin-top:10px;line-height:1.5">Bei einem Fehler hängen wir automatisch App-Version & Gerät an — das hilft uns beim Nachstellen.</div>`;
+    const segs=body.querySelectorAll('#suppType .supp-seg');
+    const msgEl=document.getElementById('suppMsg');
+    segs.forEach(b=>b.addEventListener('click',()=>{
+      segs.forEach(x=>x.classList.remove('active'));b.classList.add('active');
+      if(msgEl)msgEl.placeholder=b.dataset.type==='fehler'
+        ?'Was ist passiert? Was hattest du erwartet? Wann tritt es auf?'
+        :'Deine Idee: Was würdest du dir wünschen?';
+    }));
     document.getElementById('sendSuppBtn')?.addEventListener('click',sendSupportMessage);
   } else if(tab==='hilfe'){
     renderHelpInto(body);
