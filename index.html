@@ -1907,7 +1907,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v139';
+const APP_VERSION='v140';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -5013,7 +5013,9 @@ function renderH3Territories(){
         opacity:window._fraktMapMode?0.95:Math.max(.7,strPct*.9)})
         .addTo(h3Layer);
       pl._baseStyle={fillOpacity:pl.options.fillOpacity,weight:pl.options.weight,color:pl.options.color};
-      pl.on('click',()=>{highlightOwnerTerr(t.owner);showTerrBar(terrInfo);});
+      /* stopPropagation: sonst feuert direkt danach der Karten-Click (mapL 'click'),
+         der die Leiste sofort wieder schließt -> es käme „gar nichts". */
+      pl.on('click',(e)=>{try{L.DomEvent.stopPropagation(e);}catch(_){}highlightOwnerTerr(t.owner);showTerrBar(terrInfo);});
       (_ownerPolys[t.owner]=_ownerPolys[t.owner]||[]).push(pl);
     });
   });
