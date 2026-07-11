@@ -539,6 +539,10 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .supp-seg{padding:14px 10px;border-radius:14px;border:1px solid var(--border);background:var(--card);color:var(--muted);font-weight:700;font-size:.9rem;cursor:pointer;transition:background .15s,color .15s,border-color .15s,transform .1s;font-family:'Poppins',sans-serif;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .supp-seg:active{transform:scale(.97)}
 .supp-seg.active{background:var(--primary);color:var(--bg);border-color:var(--primary)}
+/* Erfolgs-Icons: antippen -> kurz größer (Feedback) + Zoom-Overlay */
+.badge-tap{cursor:pointer;transition:transform .12s cubic-bezier(.2,1,.3,1);will-change:transform}
+.badge-tap:active{transform:scale(1.14)}
+@keyframes badgeZoomIn{from{opacity:0;transform:scale(.82)}to{opacity:1;transform:scale(1)}}
 /* Bottom-Padding ≥ Höhe der Navigationsleiste (liegt mit z-index 710 ÜBER dem
    Drawer): sonst verschwindet die unterste Zeile – z.B. die letzte Kalenderwoche
    – hinter der Leiste. */
@@ -1884,7 +1888,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v135';
+const APP_VERSION='v136';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -4470,7 +4474,7 @@ function _rcStats(){
   const mine=(typeof h3Territories!=='undefined'?h3Territories:[]).filter(t=>t.owner===userId);
   return {
     runs:H.length,
-    maxSpeed:H.reduce((m,r)=>Math.max(m,spd(r)),0),
+    maxSpeed:H.reduce((m,r)=>((r.distance||0)>=1000?Math.max(m,spd(r)):m),0), // Pace-/Tempo-Abzeichen nur ab 1 km
     longest:H.reduce((m,r)=>Math.max(m,r.duration||0),0),
     maxDist:H.reduce((m,r)=>Math.max(m,r.distance||0),0),
     nights:H.filter(r=>{const h=new Date(r.date).getHours();return h>=22||h<5;}).length,
@@ -4541,9 +4545,32 @@ function renderBadgeSection(list,title){
   const stats=_rcStats();
   const done=list.filter(x=>!!x.chk(stats)).length;
   const tiles=list.map(x=>{const earned=!!x.chk(stats);
-    return `<div style="text-align:center">${getBadgeTileSvg(x.badge,earned,74)}<div style="font-size:.66rem;font-weight:700;margin-top:5px;color:${earned?'var(--text)':'var(--muted)'}">${x.name}</div><div style="font-size:.56rem;color:var(--muted);line-height:1.3;margin-top:1px">${x.req}</div></div>`;
+    return `<div style="text-align:center"><div class="badge-tap" onclick="rcZoomBadge('${x.badge}')">${getBadgeTileSvg(x.badge,earned,74)}</div><div style="font-size:.66rem;font-weight:700;margin-top:5px;color:${earned?'var(--text)':'var(--muted)'}">${x.name}</div><div style="font-size:.56rem;color:var(--muted);line-height:1.3;margin-top:1px">${x.req}</div></div>`;
   }).join('');
   return `<div style="margin-top:28px"><div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border)"><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px">${title}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary)">${done}/${list.length}</span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px 8px">${tiles}</div></div>`;
+}
+/* Antippen eines Einzel-/Meisterklasse-Abzeichens -> groß anzeigen. */
+window.rcZoomBadge=function(badge){
+  const def=RC_NAMED.concat(RC_MASTER).find(x=>x.badge===badge);
+  if(!def)return;
+  const earned=!!def.chk(_rcStats());
+  showBadgeZoom(def.badge,def.name,def.req,earned);
+};
+function showBadgeZoom(badge,name,req,earned){
+  document.getElementById('badgeZoomOv')?.remove();
+  const ov=document.createElement('div');ov.id='badgeZoomOv';
+  ov.style.cssText='position:fixed;inset:0;z-index:9700;background:rgba(0,0,0,.74);display:flex;align-items:center;justify-content:center;padding:24px';
+  ov.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:22px;padding:26px 22px calc(22px + env(safe-area-inset-bottom,0px));max-width:300px;width:100%;text-align:center;animation:badgeZoomIn .28s cubic-bezier(.2,1,.3,1)">
+    <div style="width:190px;height:190px;margin:0 auto 14px">${getBadgeTileSvg(badge,earned,190)}</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:1px">${esc(name)}</div>
+    <div style="font-size:.78rem;color:var(--muted);margin-top:4px">${esc(req)}</div>
+    <div style="font-size:.74rem;margin-top:12px;font-weight:700;color:${earned?'#10b981':'var(--muted)'}">${earned?'✓ Freigeschaltet':'🔒 Noch nicht freigeschaltet'}</div>
+    <button id="badgeZoomClose" style="margin-top:16px;background:none;border:1px solid var(--border);border-radius:10px;color:var(--muted);padding:8px 24px;font-size:.8rem;cursor:pointer;font-family:'Poppins',sans-serif">Schließen</button>
+  </div>`;
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+  document.body.appendChild(ov);
+  document.getElementById('badgeZoomClose').onclick=()=>ov.remove();
+  try{vib(20);}catch(e){}
 }
 
 /* MAP */
@@ -5392,7 +5419,8 @@ async function processConquest(np,area,d,boosted=false,isImport=false,durationS=
   _runEvents=[]; // Bilanz sammeln statt vieler Einzel-Toasts (Anzeige gebündelt im Post-Run-Modal)
   (data.events||[]).forEach(ev=>{
     if(ev.type==='conquered'||ev.type==='cut'){
-      conquered=true;totalRaids++; // Sieg über ein Feindgebiet -> zählt für die „Sieg"-Abzeichen
+      conquered=true; // Gebiet gehört jetzt dir -> zählt für die Eroberungs-Abzeichen
+      if(d>=1000)totalRaids++; // Angriffs-Abzeichen zählen erst ab 1 km Laufstrecke
       if(ev.type==='cut')totalCuts++; // „Grenzierer": erfolgreich abgetrenntes Gebiet
       [660,880,1100].forEach((f,i)=>setTimeout(()=>beep(f,.1),i*80));
       vib([100,50,100]);addNotif('🗺️','Neues Gebiet erobert!');
@@ -8021,7 +8049,7 @@ function renderDrawer(){
           const cls='tier'+(t.done?' done':t.state==='next'?' next locked':' locked');
           // Unter jedem Icon: die Anforderung (wie viel gebraucht wird).
           const reqTxt=`${t.done?'✓ ':''}${t.target.toLocaleString('de-DE')} ${u}`;
-          return `<div class="${cls}" onclick="showAchDetail('${t.id}')"><div class="ic">${getAchSvg(t,46)}</div><div style="font-size:.54rem;color:${t.done?'#10b981':'var(--muted)'};margin-top:3px;text-align:center;line-height:1.2">${reqTxt}</div></div>`;
+          return `<div class="${cls}" onclick="showAchDetail('${t.id}')"><div class="ic badge-tap">${getAchSvg(t,46)}</div><div style="font-size:.54rem;color:${t.done?'#10b981':'var(--muted)'};margin-top:3px;text-align:center;line-height:1.2">${reqTxt}</div></div>`;
         }).join('');
         return `<div style="margin-top:28px"><div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border)"><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px">${CAT_NAMES[cat]}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary)">${doneN}/6</span></div><div class="tier-row">${tiles}</div></div>`;
       }).join('');
