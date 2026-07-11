@@ -1868,7 +1868,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v128';
+const APP_VERSION='v129';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3799,7 +3799,189 @@ function mkNaturalPoly(lat,lng,radiusM){
   }catch(e){return mkCircle(lat,lng,radiusM);}
 }
 function genQuests(){quests=[{id:'q1',icon:'🏃',desc:'Laufe 2 km',target:2000,progress:0,reward:100,type:'distance',claimed:false},{id:'q2',icon:'⚔️',desc:'Erobere 1 Gebiet',target:1,progress:0,reward:150,type:'conquer',claimed:false},{id:'q3',icon:'🛡️',desc:'Verteidige 2 Gebiete',target:2,progress:0,reward:100,type:'defend',claimed:false},{id:'q4',icon:'🗺️',desc:'Laufe 5 km',target:5000,progress:0,reward:250,type:'distance',claimed:false}]}
-/* ═══ Erfolg-Icons — prozedurale SVG-Badges (Port aus design_handoff_erfolg_icons/achievements.js) ═══ */
+/* ═══ Erfolg-Abzeichen v2 — ornamentaler Medaillen-Stil ══════════════════════
+   Port aus design_handoff_v2/ („Erfolg-Icons v2.dc.html", <script data-dc-script>).
+   Prozedurales Inline-SVG: Material-Paletten (MAT), Helfer und die 6 Kategorie-
+   Stufen (def/atk/conq/km/terr/pace × 6 Stufen). Ersetzt die früheren Icons.
+   Die geteilten Filter (#rcBevel/#rcShadow/#rcGlow/#rcGlow2) müssen einmal im DOM
+   liegen -> rcEnsureBadgeDefs(). Jedes Badge bekommt eine eindeutige uid, sonst
+   kollidieren die <defs> mehrerer Badges auf einer Seite. */
+let _rcbDefsInjected=false;
+function rcEnsureBadgeDefs(){
+  if(_rcbDefsInjected||document.getElementById('rcBadgeDefs'))return;
+  const div=document.createElement('div');
+  div.id='rcBadgeDefs';div.setAttribute('aria-hidden','true');
+  div.style.cssText='position:absolute;width:0;height:0;overflow:hidden';
+  div.innerHTML='<svg width="0" height="0" xmlns="http://www.w3.org/2000/svg" focusable="false"><defs>'
+    +'<filter id="rcBevel" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur in="SourceAlpha" stdDeviation="0.8" result="b"/><feSpecularLighting in="b" surfaceScale="1.8" specularConstant="0.85" specularExponent="12" lighting-color="#ffffff" result="s"><feDistantLight azimuth="225" elevation="55"/></feSpecularLighting><feComposite in="s" in2="SourceAlpha" operator="in" result="si"/><feComposite in="SourceGraphic" in2="si" operator="arithmetic" k1="0" k2="1" k3="1" k4="0"/></filter>'
+    +'<filter id="rcShadow" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="1.6" stdDeviation="1.4" flood-color="#000000" flood-opacity="0.6"/></filter>'
+    +'<filter id="rcGlow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="1.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'
+    +'<filter id="rcGlow2" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="3.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'
+    +'</defs></svg>';
+  document.body.appendChild(div);
+  _rcbDefsInjected=true;
+}
+const RCB={
+  MAT:{
+    gold:{l:'#FFF6D2',m:'#FFD700',d:'#8a6a00',k:'#3a2800'},
+    silver:{l:'#FFFFFF',m:'#CBD5DA',d:'#6d777c',k:'#232b30'},
+    bronze:{l:'#F0C08E',m:'#C0824A',d:'#6f4318',k:'#2c1a07'},
+    blue:{l:'#D6F8FF',m:'#00D4FF',d:'#086f8c',k:'#032b38'},
+    purple:{l:'#E6D6FF',m:'#9B5DE5',d:'#4e2590',k:'#1e0d38'},
+    green:{l:'#C9F7A8',m:'#10B981',d:'#0a5c40',k:'#03301f'},
+    lime:{l:'#F7FFB0',m:'#E6FF55',d:'#8a9c15',k:'#333d04'},
+    red:{l:'#FFC2CE',m:'#FF4D6D',d:'#8c1a30',k:'#38000c'},
+    iron:{l:'#C4CDD4',m:'#5A6670',d:'#23292e',k:'#080b0d'},
+    flame:{l:'#FFF3B0',m:'#FFB53C',d:'#E2492F',k:'#4e0e07'},
+  },
+  mg(u,M,x=''){return `<linearGradient id="M${u}${x}" x1="8%" y1="0%" x2="92%" y2="100%"><stop offset="0%" stop-color="${M.l}"/><stop offset="22%" stop-color="${M.m}"/><stop offset="46%" stop-color="${M.d}"/><stop offset="64%" stop-color="${M.m}"/><stop offset="84%" stop-color="${M.l}"/><stop offset="100%" stop-color="${M.d}"/></linearGradient>`;},
+  vg(u,M,x=''){return `<linearGradient id="V${u}${x}" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="${M.l}"/><stop offset="48%" stop-color="${M.m}"/><stop offset="100%" stop-color="${M.d}"/></linearGradient>`;},
+  ag(u,c,o=.6){return `<radialGradient id="A${u}" cx="50%" cy="50%" r="50%"><stop offset="30%" stop-color="${c}" stop-opacity="${(o*.42).toFixed(2)}"/><stop offset="65%" stop-color="${c}" stop-opacity="${(o*.18).toFixed(2)}"/><stop offset="100%" stop-color="${c}" stop-opacity="0"/></radialGradient>`;},
+  auraC(u,r=54){return `<circle cx="60" cy="57" r="${r}" fill="url(#A${u})"/>`;},
+  bev(b){return `<g filter="url(#rcShadow)"><g filter="url(#rcBevel)">${b}</g></g>`;},
+  wrap(d,b){return `<svg viewBox="0 0 120 120" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">${d?`<defs>${d}</defs>`:''}${b}</svg>`;},
+  sp4(x,y,s,o=.9,c='#ffffff'){return `<g transform="translate(${x} ${y}) scale(${s})"><path d="M0 -4 L1 -1 L4 0 L1 1 L0 4 L-1 1 L-4 0 L-1 -1 Z" fill="${c}" opacity="${o}"/></g>`;},
+  spks(u,pts,c='#ffffff'){let s='';pts.forEach(p=>{s+=this.sp4(p[0],p[1],p[2],p[3]??.85,c);});return s;},
+  st5(cx,cy,r,f,o=1){let p='';for(let i=0;i<10;i++){const rr=i%2?r*.42:r;const a=-Math.PI/2+i*Math.PI/5;p+=`${(cx+Math.cos(a)*rr).toFixed(1)},${(cy+Math.sin(a)*rr).toFixed(1)} `;}return `<polygon points="${p.trim()}" fill="${f}" opacity="${o}"/>`;},
+  crn(x,y,s,fill,lite){return `<g transform="translate(${x} ${y}) scale(${s})"><path d="M -12 6 L -12 0 L -6 3 L 0 -7 L 6 3 L 12 0 L 12 6 Z" fill="${fill}" stroke="${lite}" stroke-width=".7"/><rect x="-12" y="6" width="24" height="3.6" rx="1.2" fill="${fill}" stroke="${lite}" stroke-width=".7"/><circle cx="0" cy="-7" r="1.7" fill="${lite}"/><circle cx="-12" cy="0" r="1.3" fill="${lite}"/><circle cx="12" cy="0" r="1.3" fill="${lite}"/></g>`;},
+  wreath(u,M,o={}){
+    const cx=o.cx??60,cy=o.cy??58,r=o.r??42,n=o.n??9;
+    let s=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${M.d}" stroke-width="1.8" opacity=".75"/>`;
+    const leaf=(deg,tilt,sc,rr)=>{
+      const a=deg*Math.PI/180,x=cx+Math.cos(a)*rr,y=cy+Math.sin(a)*rr;
+      return `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${(deg+90+tilt).toFixed(1)}) scale(${sc.toFixed(2)})"><path d="M0 -5.4 Q 3.1 -1.4 0 4.4 Q -3.1 -1.4 0 -5.4 Z" fill="url(#M${u})" stroke="${M.k}" stroke-width=".5"/><line x1="0" y1="-4" x2="0" y2="3" stroke="${M.k}" stroke-width=".4" opacity=".6"/></g>`;
+    };
+    for(let i=0;i<n;i++){const t=i/(n-1),sc=1.14-.36*t;
+      s+=leaf(78-t*148, (i%2? 15:-13), sc, r+(i%2?1.8:-.6));
+      s+=leaf(102+t*148, (i%2?-15:13), sc, r+(i%2?1.8:-.6));
+    }
+    s+=`<g transform="translate(${cx} ${cy+r})"><path d="M-6.5 -2.5 L0 0 L-6.5 4 Z" fill="url(#M${u})"/><path d="M6.5 -2.5 L0 0 L6.5 4 Z" fill="url(#M${u})"/><circle cx="0" cy="0" r="2.2" fill="${M.l}"/></g>`;
+    return s;
+  },
+  ring(u,M,r=42){return `<circle cx="60" cy="57" r="${r+3.2}" fill="none" stroke="${M.k}" stroke-width="1.2" opacity=".85"/><circle cx="60" cy="57" r="${r}" fill="none" stroke="url(#M${u})" stroke-width="5.4"/><circle cx="60" cy="57" r="${r-3.4}" fill="none" stroke="${M.l}" stroke-width=".9" opacity=".4"/>`;},
+  shPath(cx,cy,w,h){const x0=cx-w/2,x1=cx+w/2,yt=cy-h*.46,ys=cy+h*.04;return `M ${x0} ${yt} L ${x1} ${yt} L ${x1} ${ys} Q ${x1} ${ys+h*.3} ${cx} ${cy+h*.54} Q ${x0} ${ys+h*.3} ${x0} ${ys} Z`;},
+  shoe(u,M,o={}){
+    const cx=o.cx??60,cy=o.cy??60,sc=o.sc??1;
+    return `<g transform="translate(${cx} ${cy}) scale(${sc})">
+      <path d="M -26 8 Q 0 16 26 6 L 27.5 12 Q 0 20.5 -27.5 14 Z" fill="url(#V${u})" stroke="${M.k}" stroke-width="1.1"/>
+      <line x1="-20" y1="14.5" x2="-14" y2="15.6" stroke="${M.k}" stroke-width="1" opacity=".6"/><line x1="-8" y1="16.4" x2="-2" y2="17" stroke="${M.k}" stroke-width="1" opacity=".6"/><line x1="6" y1="16.6" x2="12" y2="16" stroke="${M.k}" stroke-width="1" opacity=".6"/>
+      <path d="M -25 6 Q -22.5 -12 -8 -14.5 Q 0.5 -15.5 4.5 -9 Q 12 0.5 24 2.4 L 26 6 Q 0 14.5 -25 6 Z" fill="url(#V${u})" stroke="${M.k}" stroke-width="1.2"/>
+      <path d="M -21 -7.5 Q -14 -12.5 -7.5 -12" fill="none" stroke="${M.l}" stroke-width="1.5" opacity=".7"/>
+      <path d="M -17 3 Q -2 8.5 20 4" fill="none" stroke="${M.l}" stroke-width="1.4" opacity=".5"/>
+      <line x1="-6" y1="-9" x2="2.5" y2="-4.5" stroke="${M.k}" stroke-width="1.6"/><line x1="-9.5" y1="-5" x2="-0.5" y2="-0.5" stroke="${M.k}" stroke-width="1.6"/><line x1="-13" y1="-1" x2="-3.5" y2="2.8" stroke="${M.k}" stroke-width="1.6"/>
+      <circle cx="-6" cy="-9" r="1" fill="${M.l}"/><circle cx="-9.5" cy="-5" r="1" fill="${M.l}"/><circle cx="-13" cy="-1" r="1" fill="${M.l}"/>
+    </g>`;
+  },
+  tSword(fill,k,rot,cx=60,cy=58,len=27){
+    return `<g transform="rotate(${rot} ${cx} ${cy})"><polygon points="${cx},${cy-len} ${cx+2.4},${cy-len+4.5} ${cx+2.4},${cy+len-10} ${cx},${cy+len-6} ${cx-2.4},${cy+len-10} ${cx-2.4},${cy-len+4.5}" fill="${fill}" stroke="${k}" stroke-width=".5"/><line x1="${cx}" y1="${cy-len+5}" x2="${cx}" y2="${cy+len-11}" stroke="#ffffff" stroke-width=".6" opacity=".5"/><rect x="${cx-7}" y="${cy+len-11}" width="14" height="3.2" rx="1.3" fill="${fill}"/><rect x="${cx-1.5}" y="${cy+len-8}" width="3" height="7" fill="${k}"/><circle cx="${cx}" cy="${cy+len}" r="2.2" fill="${fill}"/></g>`;
+  },
+  tWing(fill,s,sc=1,cx=60,cy=55){
+    return `<g transform="translate(${cx+s*12} ${cy}) scale(${s} 1) scale(${sc})"><path d="M0 -5 Q 15 -15 32 -12 Q 21 -7 16 -3 Q 25 -4 30 0 Q 19 2 13 4 Q 6 6 1 4 Z" fill="${fill}"/><path d="M 3 -4 Q 13 -9 25 -9" fill="none" stroke="#ffffff" stroke-width=".8" opacity=".5"/></g>`;
+  },
+  hexP(cx,cy,r){let p='';for(let i=0;i<6;i++){const a=-Math.PI/2+i*Math.PI/3;p+=`${(cx+Math.cos(a)*r).toFixed(1)},${(cy+Math.sin(a)*r).toFixed(1)} `;}return p.trim();},
+  TIER_M(){return [this.MAT.bronze,this.MAT.silver,this.MAT.lime,this.MAT.blue,this.MAT.purple,this.MAT.gold];},
+  tierFrame(u,M,t){
+    let s='';
+    if(t===1) s+=`<circle cx="60" cy="57" r="42" fill="none" stroke="url(#M${u})" stroke-width="2.6"/>`;
+    if(t===2) s+=this.ring(u,M,42);
+    if(t>=3) s+=this.wreath(u,M,{r:42,n:t>=5?9:8});
+    if(t>=4) s+=`<circle cx="60" cy="57" r="33.5" fill="none" stroke="${M.l}" stroke-width=".9" stroke-dasharray="2 4" opacity=".5"/>`;
+    if(t>=6){let rays='';for(let i=0;i<14;i++){const a=i/14*Math.PI*2;rays+=`<line x1="${(60+Math.cos(a)*45).toFixed(1)}" y1="${(57+Math.sin(a)*45).toFixed(1)}" x2="${(60+Math.cos(a)*51).toFixed(1)}" y2="${(57+Math.sin(a)*51).toFixed(1)}" stroke="${M.m}" stroke-width="1.3" opacity=".55"/>`;}s=rays+s;
+      s+=`<g transform="translate(111 57) rotate(45)"><rect x="-2.4" y="-2.4" width="4.8" height="4.8" fill="url(#M${u})"/></g><g transform="translate(9 57) rotate(45)"><rect x="-2.4" y="-2.4" width="4.8" height="4.8" fill="url(#M${u})"/></g>`;}
+    if(t>=5) s+=this.crn(60,9.5,.72,`url(#M${u})`,M.l);
+    return s;
+  },
+  tierIcon(u,key,t){
+    const M=this.TIER_M()[t-1];
+    const d=this.mg(u,M)+this.vg(u,M)+this.ag(u,M.m,(.35+t*.11));
+    let b=this.auraC(u)+this.bev(this.tierFrame(u,M,t))+this.bev(this.tierMotif(u,key,M,t));
+    const sp=[[24,26,.85],[96,28,.85],[26,88,.75],[94,86,.85],[60,4,.7],[12,44,.6],[108,44,.6]];
+    if(t>=2) b+=this.spks(u,sp.slice(0,t));
+    return this.wrap(d,b);
+  },
+  tierMotif(u,key,M,t){
+    if(key==='def')return this.tDef(u,M,t);
+    if(key==='atk')return this.tAtk(u,M,t);
+    if(key==='conq')return this.tConq(u,M,t);
+    if(key==='km')return this.tKm(u,M,t);
+    if(key==='terr')return this.tTerr(u,M,t);
+    return this.tPace(u,M,t);
+  },
+  tDef(u,M,t){
+    let s='';
+    if(t>=4) s+=this.tSword(`url(#M${u})`,M.k,34)+this.tSword(`url(#M${u})`,M.k,-34);
+    const w=30+t*1.6,h=36+t*2;
+    s+=`<path d="${this.shPath(60,57,w,h)}" fill="url(#M${u})" stroke="${M.k}" stroke-width="1.2"/>`;
+    s+=`<path d="${this.shPath(60,57.5,w-8.5,h-9)}" fill="#0c2c1c" stroke="rgba(0,0,0,.55)" stroke-width="1"/>`;
+    if(t>=2){const yt=57-h*.46+4;[[60-w/2+4.4,yt],[60+w/2-4.4,yt],[60,57+h*.47]].forEach(p=>{s+=`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="1.3" fill="${M.l}" opacity=".9"/>`;});}
+    if(t>=3) s+=`<path d="M ${60-w/2+6} 52 L 60 57.5 L ${60+w/2-6} 52" fill="none" stroke="url(#V${u})" stroke-width="2.4"/>`;
+    if(t>=5) s+=this.st5(60,64,4.6,M.l,.95);
+    if(t>=6) s+=`<path d="${this.shPath(60,57.5,w-15,h-17)}" fill="none" stroke="${M.l}" stroke-width=".8" opacity=".55"/>`;
+    return s;
+  },
+  tAtk(u,M,t){
+    let s='';
+    if(t===1) s+=this.tSword(`url(#M${u})`,M.k,0);
+    else s+=this.tSword(`url(#M${u})`,M.k,32)+this.tSword(`url(#M${u})`,M.k,-32);
+    if(t>=4) s+=this.tSword(`url(#M${u})`,M.k,0,60,58,29);
+    if(t>=3) s+=this.st5(60,58,4,'#ffffff',.95);
+    if(t>=5) s+=`<path d="M 45 34 q 3 -6 8 -7 q -2 5 0 8 Z" fill="${M.l}" opacity=".85"/><path d="M 75 34 q -3 -6 -8 -7 q 2 5 0 8 Z" fill="${M.l}" opacity=".85"/>`;
+    if(t>=6){let burst='';for(let i=0;i<8;i++){const a=i/8*Math.PI*2+Math.PI/8;burst+=`<line x1="${(60+Math.cos(a)*13).toFixed(1)}" y1="${(58+Math.sin(a)*13).toFixed(1)}" x2="${(60+Math.cos(a)*18).toFixed(1)}" y2="${(58+Math.sin(a)*18).toFixed(1)}" stroke="${M.l}" stroke-width="1.1" opacity=".7"/>`;}s+=burst;}
+    return s;
+  },
+  tConq(u,M,t){
+    let s='';
+    if(t>=2) s+=`<path d="M 36 78 Q 60 66 84 78 L 84 80 L 36 80 Z" fill="url(#V${u})" opacity=".55"/>`;
+    if(t>=5) s+=`<rect x="38" y="60" width="44" height="13" fill="url(#V${u})" stroke="${M.k}" stroke-width="1"/>`;
+    if(t>=4){[42,78].forEach(x=>{s+=`<rect x="${x-6}" y="47" width="12" height="26" fill="url(#V${u})" stroke="${M.k}" stroke-width="1"/><rect x="${x-7}" y="43.5" width="4" height="4" fill="url(#V${u})"/><rect x="${x-2}" y="43.5" width="4" height="4" fill="url(#V${u})"/><rect x="${x+3}" y="43.5" width="4" height="4" fill="url(#V${u})"/>`;});}
+    if(t>=3) s+=`<rect x="52" y="40" width="16" height="34" fill="url(#M${u})" stroke="${M.k}" stroke-width="1.1"/><rect x="51" y="36" width="4.6" height="4.6" fill="url(#M${u})"/><rect x="57.7" y="36" width="4.6" height="4.6" fill="url(#M${u})"/><rect x="64.4" y="36" width="4.6" height="4.6" fill="url(#M${u})"/><path d="M 56.5 74 L 56.5 66 Q 60 62.5 63.5 66 L 63.5 74 Z" fill="#05140c"/>`;
+    if(t<3){
+      s+=`<line x1="60" y1="70" x2="60" y2="38" stroke="url(#M${u})" stroke-width="2.6" stroke-linecap="round"/>`;
+      s+=`<path d="M 60 38 L 79 43 L 73 48 L 79 53 L 60 58 Z" fill="url(#M${u})" stroke="${M.k}" stroke-width="1"/>`;
+      s+=`<path d="M 62.5 41.5 L 72 44.5" stroke="${M.l}" stroke-width="1" opacity=".6"/>`;
+      s+=`<ellipse cx="60" cy="71" rx="7.5" ry="2.6" fill="url(#V${u})" opacity=".9"/>`;
+      s+=`<circle cx="60" cy="36.5" r="2" fill="${M.l}"/>`;
+    } else {
+      const fy=36;
+      s+=`<line x1="60" y1="${fy}" x2="60" y2="${fy-13}" stroke="url(#M${u})" stroke-width="1.8"/><path d="M 60 ${fy-13} L ${70+t} ${fy-10.5} L 60 ${fy-8} Z" fill="url(#M${u})"/>`;
+    }
+    if(t>=6) s+=this.st5(60,65,3.4,M.l,.95);
+    return s;
+  },
+  tKm(u,M,t){
+    let s='';
+    for(let i=0;i<Math.min(t,4);i++){const y=46+i*7;const len=8+(i%2)*6;s+=`<line x1="26" y1="${y}" x2="${26+len}" y2="${y}" stroke="${M.m}" stroke-width="2" stroke-linecap="round" opacity=".6"/>`;}
+    if(t>=3) s+=`<path d="M 36 78 L 84 78" stroke="${M.d}" stroke-width="2" stroke-linecap="round" opacity=".6"/><path d="M 42 82 L 78 82" stroke="${M.d}" stroke-width="1.4" stroke-linecap="round" opacity=".4"/>`;
+    if(t>=4) s+=this.tWing(`url(#V${u})`,1,.7,62,50)+this.tWing(`url(#V${u})`,-1,.7,62,50);
+    s+=this.shoe(u,M,{cy:60,sc:.62+t*.04});
+    if(t>=6) s+=this.st5(60,24,3.6,M.l,.95);
+    return s;
+  },
+  tTerr(u,M,t){
+    const pos=[[60,57],[73,49.5],[73,64.5],[60,72],[47,64.5],[47,49.5],[60,42]];
+    const n=t===6?7:t;
+    let s='';
+    for(let i=0;i<n;i++){const p=pos[i];const main=i===0;
+      s+=`<polygon points="${this.hexP(p[0],p[1],8.6)}" fill="${main?`url(#M${u})`:`url(#V${u})`}" stroke="${M.k}" stroke-width="1" opacity="${main?1:.88}"/>`;
+      s+=`<polygon points="${this.hexP(p[0],p[1],6.2)}" fill="none" stroke="${M.l}" stroke-width=".6" opacity=".4"/>`;}
+    const fy=n>=7?42:57;
+    if(t>=2) s+=`<line x1="60" y1="${fy}" x2="60" y2="${fy-12}" stroke="url(#M${u})" stroke-width="1.7"/><path d="M 60 ${fy-12} L ${69+(t>=5?2:0)} ${fy-9.5} L 60 ${fy-7} Z" fill="url(#M${u})"/>`;
+    return s;
+  },
+  tPace(u,M,t){
+    let s='';
+    for(let i=0;i<Math.min(t+1,5);i++){const y=40+i*9;const len=7+(i%2)*7;s+=`<line x1="24" y1="${y}" x2="${24+len}" y2="${y}" stroke="${M.m}" stroke-width="2" stroke-linecap="round" opacity=".55"/>`;}
+    if(t>=4) s+=this.tWing(`url(#V${u})`,1,.85,62,50)+this.tWing(`url(#V${u})`,-1,.85,62,50);
+    if(t>=5) s+=`<path d="M 57 30 L 38 62 L 47.5 62 L 42 86 L 65 49 L 54.5 49 Z" fill="${M.m}" opacity=".3"/>`;
+    const bolt='M 66 30 L 47 62 L 56.5 62 L 51 86 L 74 49 L 63.5 49 Z';
+    if(t===1) s+=`<path d="${bolt}" fill="none" stroke="url(#M${u})" stroke-width="2.6" stroke-linejoin="round"/>`;
+    else s+=`<path d="${bolt}" fill="url(#V${u})" stroke="${M.k}" stroke-width="1" stroke-linejoin="round"/>`;
+    if(t>=3){let g='';for(let i=0;i<7;i++){const a=Math.PI*(1+i/6);g+=`<line x1="${(60+Math.cos(a)*30).toFixed(1)}" y1="${(56+Math.sin(a)*30).toFixed(1)}" x2="${(60+Math.cos(a)*34).toFixed(1)}" y2="${(56+Math.sin(a)*34).toFixed(1)}" stroke="${M.m}" stroke-width="1.2" opacity=".5"/>`;}s+=g;}
+    if(t>=6) s+=this.st5(88,36,3.4,M.l,.95);
+    return s;
+  }
+};
+/* ═══ (veraltet) Erfolg-Icons v1 — flacher Stil, nicht mehr verdrahtet ═══ */
 const RC_TIERS=[
   {name:'Bronze',  main:'#C0824A',soft:'rgba(192,130,74,.16)', deep:'#8a5a2e'},
   {name:'Silber',  main:'#CBD5DA',soft:'rgba(203,213,218,.16)',deep:'#7d878c'},
@@ -3821,13 +4003,27 @@ function _rcMPace(t,c,soft){const cx=50,cy=46;let s='';const lines=Math.max(2,t)
 function _rcMLandmark(t,c,soft){const cx=50;let s='';s+=`<path d="M 26 70 Q 50 60 74 70" fill="none" stroke="${c}" stroke-width="2.4" stroke-linecap="round" opacity=".55"/>`;const seg=Math.min(5,t+1),baseY=68,segH=6;for(let i=0;i<seg;i++){const y=baseY-(i+1)*segH;const ww=Math.max(7,20-i*3);s+=`<rect x="${(cx-ww/2).toFixed(1)}" y="${y}" width="${ww.toFixed(1)}" height="${segH-1}" rx="1" fill="${soft}" stroke="${c}" stroke-width="2"/>`;}const topY=baseY-seg*segH;s+=`<path d="M ${cx-5} ${topY} L ${cx} ${topY-9} L ${cx+5} ${topY} Z" fill="${soft}" stroke="${c}" stroke-width="2" stroke-linejoin="round"/>`;s+=_rcStar(cx,topY-12,3.2,c,1);const extra=t-1,cp=[[31,30],[39,22],[61,23],[69,31],[34,44]];let prev=null;for(let i=0;i<extra;i++){const p=cp[i%cp.length];if(prev)s+=`<line x1="${prev[0]}" y1="${prev[1]}" x2="${p[0]}" y2="${p[1]}" stroke="${c}" stroke-width="0.8" opacity=".3"/>`;s+=_rcStar(p[0],p[1],2,c,.85);prev=p;}return s;}
 function _rcFrame(t,c,locked){const op=locked?'.3':'1';if(t===1){return`<circle cx="50" cy="50" r="42" fill="none" stroke="${c}" stroke-width="1.6" opacity="${op}"/>`;}if(t===2){return`<circle cx="50" cy="50" r="42" fill="none" stroke="${c}" stroke-width="2.2" opacity="${op}"/><circle cx="50" cy="50" r="37" fill="none" stroke="${c}" stroke-width="1.1" opacity="${locked?'.22':'.55'}"/>`;}if(t===3){let teeth='';const n=24;for(let i=0;i<n;i++){const a=i/n*Math.PI*2;const r=i%2?44:40;teeth+=`${(50+Math.cos(a)*r).toFixed(1)},${(50+Math.sin(a)*r).toFixed(1)} `;}return`<polygon points="${teeth.trim()}" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round" opacity="${op}"/><circle cx="50" cy="50" r="36" fill="none" stroke="${c}" stroke-width="1.1" opacity="${locked?'.22':'.5'}"/>`;}if(t===4){let d='';const n=18;for(let i=0;i<=n;i++){const a=i/n*Math.PI*2;const r=i%2?43:39;const x=(50+Math.cos(a)*r).toFixed(1),y=(50+Math.sin(a)*r).toFixed(1);d+=(i===0?'M':'L')+x+' '+y+' ';}d+='Z';let dots='';for(let i=0;i<4;i++){const a=i/4*Math.PI*2-Math.PI/4;dots+=`<circle cx="${(50+Math.cos(a)*43).toFixed(1)}" cy="${(50+Math.sin(a)*43).toFixed(1)}" r="2.2" fill="${c}" opacity="${op}"/>`;}return`<path d="${d}" fill="none" stroke="${c}" stroke-width="2.4" stroke-linejoin="round" opacity="${op}"/><circle cx="50" cy="50" r="35" fill="none" stroke="${c}" stroke-width="1" opacity="${locked?'.2':'.45'}"/>`+dots;}if(t===5){let spikes='';const n=16;for(let i=0;i<n*2;i++){const a=i/(n*2)*Math.PI*2;const r=i%2?45:38;spikes+=`${(50+Math.cos(a)*r).toFixed(1)},${(50+Math.sin(a)*r).toFixed(1)} `;}let facet='';for(let i=0;i<n;i++){const a=i/n*Math.PI*2-Math.PI/2;facet+=`<line x1="${(50+Math.cos(a)*38).toFixed(1)}" y1="${(50+Math.sin(a)*38).toFixed(1)}" x2="${(50+Math.cos(a)*44.5).toFixed(1)}" y2="${(50+Math.sin(a)*44.5).toFixed(1)}" stroke="${c}" stroke-width="1" opacity="${locked?'.2':'.4'}"/>`;}return`<polygon points="${spikes.trim()}" fill="none" stroke="${c}" stroke-width="2.4" stroke-linejoin="round" opacity="${op}"/>`+facet+`<circle cx="50" cy="50" r="34" fill="none" stroke="${c}" stroke-width="1.2" opacity="${locked?'.22':'.55'}"/>`;}let rays='';const n=36;for(let i=0;i<n;i++){const a=i/n*Math.PI*2;const lng=i%3===0;rays+=`<line x1="${(50+Math.cos(a)*40).toFixed(1)}" y1="${(50+Math.sin(a)*40).toFixed(1)}" x2="${(50+Math.cos(a)*(lng?47:44)).toFixed(1)}" y2="${(50+Math.sin(a)*(lng?47:44)).toFixed(1)}" stroke="${c}" stroke-width="${lng?'1.8':'1'}" stroke-linecap="round" opacity="${locked?'.3':(lng?'.8':'.5')}"/>`;}const wreath=locked?'':`<path d="M 30 56 Q 26 67 37 72" fill="none" stroke="${c}" stroke-width="1.8" opacity=".6"/><path d="M 70 56 Q 74 67 63 72" fill="none" stroke="${c}" stroke-width="1.8" opacity=".6"/>`+[0,1,2].map(k=>`<circle cx="${30+k*2}" cy="${60+k*4}" r="1.2" fill="${c}" opacity=".5"/><circle cx="${70-k*2}" cy="${60+k*4}" r="1.2" fill="${c}" opacity=".5"/>`).join('');const crown=locked?'':`<path d="M 44 11 L 46.5 16 L 50 10.5 L 53.5 16 L 56 11 L 55 18 L 45 18 Z" fill="${c}"/>`;return rays+`<circle cx="50" cy="50" r="40" fill="none" stroke="${c}" stroke-width="3" opacity="${op}"/><circle cx="50" cy="50" r="35" fill="none" stroke="${c}" stroke-width="1.2" opacity="${locked?'.22':'.6'}"/>`+wreath+crown;}
 function rcBuildIconSvg(key,t,locked,opts={}){const showPips=opts.showPips!==false;const tr=locked?RC_LOCKED:RC_TIERS[t-1];const c=tr.main,soft=tr.soft,deep=tr.deep;const uid=key+t+(locked?'l':'u')+(++_rcUid);const glow=(!locked&&t>=4);const fillStop=locked?'.4':(0.22+t*0.09).toFixed(2);let defs=`<defs><radialGradient id="g${uid}" cx="50%" cy="34%" r="74%"><stop offset="0%" stop-color="${locked?'#0e3326':deep}" stop-opacity="${locked?'1':fillStop}"/><stop offset="100%" stop-color="#06291f" stop-opacity="1"/></radialGradient>`;if(glow)defs+=`<filter id="f${uid}" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="${t>=6?'2.6':'1.7'}" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;defs+=`<clipPath id="c${uid}"><circle cx="50" cy="50" r="38"/></clipPath></defs>`;const plate=`<circle cx="50" cy="50" r="38" fill="url(#g${uid})" ${glow?`filter="url(#f${uid})"`:''}/>`;const fr=_rcFrame(t,c,locked);const m=`<g clip-path="url(#c${uid})"${locked?' opacity=".3"':''}>${_rcMotif(key,t,c,soft)}</g>`;let pips='';if(showPips){const gap=6,sx=50-(5*gap)/2,y=85;for(let i=0;i<6;i++){const on=i<t;pips+=`<circle cx="${(sx+i*gap).toFixed(1)}" cy="${y}" r="1.9" fill="${on?(locked?'#33564a':c):'none'}" stroke="${on?'none':'rgba(255,255,255,.16)'}" stroke-width="1"/>`;}}let lock='';if(locked)lock=`<g><circle cx="50" cy="51" r="13" fill="#05231a" stroke="rgba(255,255,255,.16)" stroke-width="1.4"/><rect x="44" y="49" width="12" height="9.5" rx="1.8" fill="#9fb4aa"/><path d="M46.2 49 v-2.6 a3.8 3.8 0 0 1 7.6 0 V49" fill="none" stroke="#9fb4aa" stroke-width="1.8"/><circle cx="50" cy="53.4" r="1.3" fill="#05231a"/></g>`;return`<svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">${defs}${plate}${fr}${m}${lock}${pips}</svg>`;}
-const RC_ACH_KEY={conq:'territory',km:'distance',atk:'raid',def:'rank',disc:'landmark',streak:'streak'};
+/* App-Kategorie -> Stufen-Motiv des neuen Sets (design_handoff_v2):
+   conq/km/atk/def direkt; disc(Orte)->terr(Hexagon-Gebiete); streak->pace(Blitz). */
+const RC_ACH_KEY={conq:'conq',km:'km',atk:'atk',def:'def',disc:'terr',streak:'pace'};
 function getAchSvg(a,sz=44){
+  rcEnsureBadgeDefs();
   const peers=achievements.filter(x=>x.cat===a.cat);
   const tier=Math.max(1,Math.min(6,peers.findIndex(x=>x.id===a.id)+1));
-  const key=RC_ACH_KEY[a.cat]||'distance';
-  const svg=rcBuildIconSvg(key,tier,!a.earned,{showPips:sz>=48});
-  return `<div style="width:${sz}px;height:${sz}px;display:block;margin:0 auto;flex-shrink:0">${svg}</div>`;
+  const key=RC_ACH_KEY[a.cat]||'conq';
+  const uid='a'+String(a.id).replace(/[^a-z0-9]/gi,'')+(++_rcUid);
+  const svg=RCB.tierIcon(uid,key,tier);
+  if(a.earned){
+    return `<div style="width:${sz}px;height:${sz}px;display:block;margin:0 auto;flex-shrink:0">${svg}</div>`;
+  }
+  // Gesperrt: entsättigt/abgedunkelt + Schloss-Overlay (das v2-Set hat keinen
+  // eigenen Locked-Zustand -> per CSS-Filter, damit die Geometrie erhalten bleibt).
+  const lk=Math.round(sz*0.34);
+  return `<div style="position:relative;width:${sz}px;height:${sz}px;margin:0 auto;flex-shrink:0">`
+    +`<div style="width:100%;height:100%;filter:grayscale(.9) brightness(.5);opacity:.5">${svg}</div>`
+    +`<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">`
+    +`<svg viewBox="0 0 24 24" width="${lk}" height="${lk}"><rect x="5" y="10.5" width="14" height="10" rx="2" fill="#0a2c20" stroke="#9fb4aa" stroke-width="1.6"/><path d="M8 10.5 V7.5 a4 4 0 0 1 8 0 V10.5" fill="none" stroke="#9fb4aa" stroke-width="1.6"/><circle cx="12" cy="15.2" r="1.5" fill="#9fb4aa"/></svg>`
+    +`</div></div>`;
 }
 function initAch(){achievements=[
   {id:'conq1',  name:'Erste Straße',       target:1,    progress:0,earned:false,cat:'conq'},
@@ -4780,7 +4976,9 @@ function _showNextAch(){
   const ov=$('achPopup');if(!ov)return;
   if(!_achQ.length){ov.classList.remove('open');return;}
   const a=_achQ.shift();
-  $('achPopIc').textContent=ACH_CAT_IC[a.cat]||'🏆';
+  // Neues v2-Abzeichen im Popup (statt Emoji); Fallback auf Emoji bei Bedarf.
+  try{$('achPopIc').innerHTML=getAchSvg({...a,earned:true},104);}
+  catch(e){$('achPopIc').textContent=ACH_CAT_IC[a.cat]||'🏆';}
   $('achPopName').textContent=a.name;
   const rest=_achQ.length;
   $('achPopCount').textContent=rest?`Noch ${rest} weitere${rest===1?'r':''} Erfolg${rest===1?'':'e'}`:'';
