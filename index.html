@@ -648,8 +648,11 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .ach-pop-overlay{position:fixed;inset:0;z-index:3000;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .ach-pop-overlay.open{display:flex;animation:achFade .25s ease}
 .ach-pop-card{position:relative;overflow:hidden;width:100%;max-width:340px;background:linear-gradient(160deg,var(--bg2),var(--card));border:1px solid rgba(var(--primary-rgb),.4);border-radius:24px;padding:30px 24px 22px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08);animation:achPop .45s cubic-bezier(.16,1.3,.4,1)}
-.ach-pop-glow{position:absolute;top:-45%;left:50%;transform:translateX(-50%);width:220px;height:220px;background:radial-gradient(circle,rgba(var(--primary-rgb),.35),transparent 70%);pointer-events:none}
-.ach-pop-ic{position:relative;font-size:4.2rem;line-height:1;filter:drop-shadow(0 4px 16px rgba(var(--primary-rgb),.5));animation:achBounce .6s ease .05s both}
+/* Kein farbiger Glow-Hintergrund mehr hinter dem Abzeichen (war auf grünen Themes
+   ein grüner Kreis, den es in der Design-Vorlage nicht gibt). Das Badge bringt
+   seine eigene Aura mit. */
+.ach-pop-glow{display:none}
+.ach-pop-ic{position:relative;font-size:4.2rem;line-height:1;animation:achBounce .6s ease .05s both}
 .ach-pop-kicker{position:relative;margin-top:12px;font-family:'Bebas Neue',sans-serif;letter-spacing:3px;font-size:.82rem;color:var(--primary);text-transform:uppercase}
 .ach-pop-name{position:relative;margin-top:6px;font-family:'Bebas Neue',sans-serif;font-size:1.9rem;line-height:1.08;color:var(--text);word-break:break-word;overflow-wrap:anywhere}
 .ach-pop-xp{position:relative;margin-top:8px;font-size:.9rem;font-weight:700;color:var(--primary)}
@@ -1220,7 +1223,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         </div>
         <div class="map-panel-sep"></div>
         <button class="map-panel-btn active" id="panelTerrBtn"><i class="fas fa-map"></i> Gebiete</button>
-        <button class="map-panel-btn active" id="panelLmBtn"><i class="fas fa-church"></i> Kirchen</button>
+        <button class="map-panel-btn active" id="panelLmBtn"><i class="fas fa-star"></i> Wahrzeichen</button>
         <button class="map-panel-btn" id="panelFraktBtn"><i class="fas fa-flag"></i> Fraktionskarte</button>
         <button class="map-panel-btn" id="panelOwnTerrBtn"><i class="fas fa-map-marker-alt"></i> Eigene Gebiete</button>
         <button class="map-panel-btn" id="panelFollowBtn"><i class="fas fa-user-friends"></i> Follower</button>
@@ -1907,7 +1910,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v144';
+const APP_VERSION='v146';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3924,7 +3927,6 @@ function rcEnsureBadgeDefs(){
     +'<filter id="rcGlow2" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="3.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'
     // Dunkle Medaillon-Platte hinter jedem Badge -> auf hellen wie dunklen
     // Hintergründen (helle Themes, Popup-Karte) gleich gut sichtbar.
-    +'<radialGradient id="rcPlate" cx="50%" cy="40%" r="65%"><stop offset="0%" stop-color="#0e4231"/><stop offset="70%" stop-color="#06271c"/><stop offset="100%" stop-color="#03150e"/></radialGradient>'
     +'</defs></svg>';
   document.body.appendChild(div);
   _rcbDefsInjected=true;
@@ -4632,6 +4634,21 @@ function renderBadgeSection(list,title){
   }).join('');
   return `<div style="margin-top:28px"><div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border)"><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px">${title}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary)">${done}/${list.length}</span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px 8px">${tiles}</div></div>`;
 }
+/* Saison-Siege der Fraktion auch im Erfolge-/Icon-Bereich zeigen (je gewonnener
+   Monat ein Medaillon). Leer, wenn noch keiner gewonnen wurde. */
+function renderSeasonWinsSection(){
+  if(!factionWins||!factionWins.length||typeof renderSeasonBadge!=='function')return '';
+  const cards=[...factionWins].sort().reverse().map(mk=>{
+    const p=mk.split('-'),y=p[0],mi=Math.max(0,Math.min(11,parseInt(p[1],10)-1));
+    const badge=renderSeasonBadge({month:mi,year:parseInt(y,10)});
+    return `<div style="flex:0 0 auto;width:150px;text-align:center;padding:14px 8px;border-radius:20px;background:radial-gradient(110% 150% at 50% -20%,rgba(255,215,0,.12),transparent 62%);border:1px solid rgba(255,215,0,.30)">
+      <div style="width:112px;height:112px;margin:0 auto;filter:drop-shadow(0 8px 22px rgba(255,215,0,.26))">${badge.svg}</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.35rem;letter-spacing:2px;color:#FFD700;margin-top:6px;text-shadow:0 0 18px rgba(255,215,0,.4)">${badge.monthName}</div>
+      <div style="font-size:.54rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:2px">${esc(badge.caption)}</div>
+    </div>`;
+  }).join('');
+  return `<div style="margin-top:28px"><div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border)"><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px">🏆 SAISON-SIEGE</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:#FFD700">${factionWins.length}</span></div><div style="display:flex;gap:12px;overflow-x:auto;padding:2px 2px 8px;-webkit-overflow-scrolling:touch">${cards}</div></div>`;
+}
 /* Antippen eines Einzel-/Meisterklasse-Abzeichens -> groß anzeigen. */
 window.rcZoomBadge=function(badge){
   const def=RC_NAMED.concat(RC_MASTER).find(x=>x.badge===badge);
@@ -4765,12 +4782,13 @@ function renderLandmarks(){
   landmarkLayer.clearLayers();
   landmarks.forEach(lm=>{
     const captured=capturedLandmarks.includes(lm.id);
-    const shortName=esc(lm.name.length>14?lm.name.slice(0,14)+'…':lm.name);
+    /* Nur der Stern — der Name (Kirchen-/Wahrzeichen-Bezeichnung) erscheint erst,
+       wenn man den Stern antippt (Popup). Kein dauerhaftes Namens-Label mehr. */
     const iconHtml=captured
       ?`<div class="lm-star" style="filter:drop-shadow(0 0 6px ${userColor}cc)">${_lmStar(userColor,26)}</div>`
-      :`<div style="display:flex;flex-direction:column;align-items:center;gap:3px"><div class="lm-star" style="filter:drop-shadow(0 0 6px #ffd70099)">${_lmStar('#ffd700',30)}</div><div style="background:rgba(0,0,0,.75);color:#ffd700;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;white-space:nowrap;letter-spacing:.3px">${shortName}</div></div>`;
-    const sz=captured?[26,26]:[30,46];
-    const anchor=captured?[13,13]:[15,23];
+      :`<div class="lm-star" style="filter:drop-shadow(0 0 6px #ffd70099)">${_lmStar('#ffd700',30)}</div>`;
+    const sz=captured?[26,26]:[30,30];
+    const anchor=captured?[13,13]:[15,15];
     const icon=L.divIcon({html:iconHtml,className:'',iconSize:sz,iconAnchor:anchor});
     L.marker([lm.lat,lm.lng],{icon})
       .bindPopup(`<b>${esc(lm.name)}</b><br><span style="font-size:.72rem;color:#6b6b82">${esc(lm.type)}</span>${captured?'<br><span style="color:#10b981;font-size:.72rem">✅ Entdeckt</span>':'<br><span style="font-size:.72rem;color:#ffd700">⭐ Nähern: 50 m</span>'}`)
@@ -5603,6 +5621,7 @@ function countUp(el,to,opts){
   clearTimeout(el._cuT);el._cuT=setTimeout(function(){requestAnimationFrame(step);},delay);
 }
 /* POST RUN */
+let _postRunRec=null; // zuletzt im Post-Run-Modal gezeigter Lauf (für Teilen/Share-Card)
 function showPostRun(rec,detail){
   const _tt=$('postRunTitle');if(_tt&&!detail)_tt.textContent='LAUF BEENDET 🎉';
   countUp($('postPts'),rec.pts,{prefix:'+',duration:1000,delay:200,reduce:window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches});
@@ -5613,7 +5632,7 @@ function showPostRun(rec,detail){
   const inflHTML=(sessionNewTerrNames.length||sessionNewLandmarks.length)?`<div style="background:rgba(var(--primary-rgb),.06);border:1px solid rgba(var(--primary-rgb),.2);border-radius:14px;padding:14px;margin-bottom:10px"><div style="font-size:.6rem;font-weight:700;letter-spacing:1.5px;color:var(--primary);margin-bottom:8px">🗺️ DEIN EINFLUSS</div>${sessionNewTerrNames.map(n=>`<div style="display:flex;align-items:center;gap:6px;font-size:.8rem;margin-bottom:4px"><span style="width:8px;height:8px;border-radius:50%;background:${userColor};flex-shrink:0;display:inline-block"></span>${esc(n)}</div>`).join('')}${sessionNewLandmarks.map(n=>`<div style="display:flex;align-items:center;gap:6px;font-size:.8rem;margin-bottom:4px"><span style="color:#ffd700">⭐</span>${esc(n)}</div>`).join('')}</div>`:'';
   $('postInfluence').innerHTML=runEventsSummaryHTML()+runNotesSummaryHTML()+inflHTML;
   $('postRunModal').style.display='flex';
-  document.getElementById('cardRunBtn')?.addEventListener('click',()=>{showShareCardEditor(rec);},{ once:true });
+  _postRunRec=rec; // aktueller Lauf für die Teilen-/Karten-Buttons (Share-Card)
 }
 /* Vergangenen Lauf im gleichen Modal wie nach dem Lauf anzeigen (alle Werte +
    Punkte + Splits). Session-Bilanz/Hinweise werden neutralisiert, damit keine
@@ -6649,9 +6668,11 @@ async function renderFactionWar(){
   const leader=stats[0];
   /* Führende Fraktion global merken -> Mitglieder bekommen ein Extra-Icon im Profil. */
   window._factionLeaderId=(leader&&leader.total>0)?leader.id:null;
-  /* Führt die eigene Fraktion diesen Monat -> Fraktionssieg für den aktuellen
-     Monat gutschreiben (einmal pro Monat, bleibt als Trophäe erhalten). */
-  if(window._factionLeaderId&&window._factionLeaderId===userTeam){
+  /* Saison-Sieg NUR gutschreiben, wenn die eigene Fraktion wirklich (mit echten,
+     aggregierten Live-Daten) die meisten Punkte hat. Im Offline-Fallback stünde
+     die eigene Fraktion sonst immer auf Platz 1 -> unverdiente Auszeichnung.
+     Voraussetzung: man ist selbst in dieser (führenden) Fraktion. */
+  if(isLive&&userTeam&&window._factionLeaderId&&window._factionLeaderId===userTeam){
     const _mk=new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0');
     if(!factionWins.includes(_mk)){factionWins.push(_mk);saveProfile();if(typeof renderFactionWins==='function')renderFactionWins();}
   }
@@ -8179,7 +8200,7 @@ function renderDrawer(){
         }).join('');
         return `<div style="margin-top:28px"><div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border)"><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px">${CAT_NAMES[cat]}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary)">${doneN}/6</span></div><div class="tier-row">${tiles}</div></div>`;
       }).join('');
-      return summary+groups+renderBadgeSection(RC_NAMED,'⭐ EINZEL-ERFOLGE')+renderBadgeSection(RC_MASTER,'👑 MEISTERKLASSE');
+      return summary+groups+renderBadgeSection(RC_NAMED,'⭐ EINZEL-ERFOLGE')+renderBadgeSection(RC_MASTER,'👑 MEISTERKLASSE')+renderSeasonWinsSection();
     },
     calendar:()=>{setTimeout(drawCalendar,0);return'<div id="calDiv"></div>'}
   };
@@ -8942,8 +8963,10 @@ window.initApp=function(){
       if(statusEl)statusEl.innerHTML='<span style="color:var(--red)">❌ '+(e.message||'Fehler')+'</span>';
     }
   });
-  /* Share run button */
-  $('shareRunBtn')?.addEventListener('click',shareRun);
+  /* Teilen nach dem Lauf: beide Buttons öffnen die schöne Share-Card
+     (isometrisches Revier + Zeit/Pace/km + Logo, transparent teilbar). */
+  $('shareRunBtn')?.addEventListener('click',()=>{if(_postRunRec)showShareCardEditor(_postRunRec);else shareRun();});
+  $('cardRunBtn')?.addEventListener('click',()=>{if(_postRunRec)showShareCardEditor(_postRunRec);});
   /* Map panel */
   $('mapPanelArrow')?.addEventListener('click',toggleMapPanel);
   $('panelLocateBtn')?.addEventListener('click',()=>{if(mapL){mapL.locate({setView:true,maxZoom:17,enableHighAccuracy:true});toast('📍 Standort wird ermittelt…')}});
@@ -8997,11 +9020,11 @@ window.initApp=function(){
     if(on){
       landmarkLayer&&mapL.addLayer(landmarkLayer);
       if(typeof loadLandmarks==='function')loadLandmarks(); // erst jetzt laden
-      toast('⛪ Kirchen werden geladen…');
+      toast('⭐ Wahrzeichen werden geladen…');
     }else{
       landmarkLayer&&mapL.removeLayer(landmarkLayer);
       landmarkLayer&&landmarkLayer.clearLayers(); // Karte sauber halten
-      toast('Kirchen ausgeblendet');
+      toast('Wahrzeichen ausgeblendet');
     }
   });
   /* Panel-Lauf-Buttons */
