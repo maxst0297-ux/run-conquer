@@ -1227,6 +1227,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <button class="map-panel-btn" id="panelFraktBtn"><i class="fas fa-flag"></i> Fraktionskarte</button>
         <button class="map-panel-btn" id="panelOwnTerrBtn"><i class="fas fa-map-marker-alt"></i> Eigene Gebiete</button>
         <button class="map-panel-btn" id="panelFollowBtn"><i class="fas fa-user-friends"></i> Follower</button>
+        <button class="map-panel-btn" id="panelMyRunsBtn"><i class="fas fa-route"></i> Meine Läufe</button>
       </div>
     </div>
 
@@ -1788,7 +1789,7 @@ function getLvlName(pts){return CFG.LVL_NAMES[Math.min(getLevel(pts)-1,CFG.LVL_N
 function getLvlProg(pts){const lv=getLevel(pts),cur=CFG.LVL_XP[lv-1]||0,nx=CFG.LVL_XP[lv]||CFG.LVL_XP[CFG.LVL_XP.length-1]+1;return{lv,name:getLvlName(pts),pct:Math.min(100,Math.round((pts-cur)/(nx-cur)*100)),xpLeft:Math.max(0,nx-pts)}}
 
 /* STATE */
-let mapL,userMarker,pathLayer,terrLayer,landmarkLayer;
+let mapL,userMarker,pathLayer,terrLayer,landmarkLayer,myRunsLayer;
 let h3Layer,h3Territories=[];
 let isRunning=false,watchId=null,bgWatchId=null,bgGeoWatcher=null;
 let accCircle=null,_gpsCentered=false;
@@ -1910,7 +1911,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v147';
+const APP_VERSION='v148';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -5444,6 +5445,14 @@ async function finalizeRun(elapsed){
      processConquest in `energy` aktualisiert. Der Client rechnet daher KEINEN
      zusätzlichen Multiplikator und bucht nichts lokal ab. */
   _collectingRunNotes=true;_postRunNotes=[]; // ab hier Hinweise sammeln statt einzeln zu toasten
+  /* Kampf-Status IMMER sichtbar machen (Beschwerde: "Angriff wird nicht angezeigt").
+     _runEvents wurde in processConquest gesetzt: leer + Fehler = Server/Setup-Problem;
+     leer ohne Fehler = kein gegnerisches Gebiet auf der Strecke berührt. */
+  if(res&&res.error){
+    runNote('⚠️ Eroberung nicht gewertet – Server nicht erreichbar oder Setup unvollständig (Edge Function „conquer" deployen bzw. SQL ausführen).');
+  }else if(!_runEvents||!_runEvents.length){
+    runNote('ℹ️ Kein gegnerisches Gebiet auf deiner Strecke – daher kein Angriff. Neu erlaufene freie Fläche wird trotzdem dein Revier.');
+  }
   const streakMul=streakDays>0?Math.min(2,1+(streakDays-1)*0.1):1;
   const kmXP=Math.round(xpForKm(dist/1000,getWeeklyKm())*streakMul);
   const totalPts=Math.round(res.pts+kmXP);
@@ -5504,6 +5513,34 @@ function mkPolyFrom(pth,d){
 }
 function mkPoly(){return mkPolyFrom(path,dist);}
 
+/* „Meine Läufe": alle bisher gelaufenen Strecken (rec.path) als farbige Spuren
+   auf der Karte — unabhängig davon, ob dabei ein Gebiet gewonnen/verloren wurde.
+   Zweck: sehen, wo man schon war, um eine ganze Region planvoll zu erlaufen.
+   Eine Spur antippen öffnet die Lauf-Details. */
+function renderMyRuns(){
+  if(!mapL||!window.L){toast('Karte noch nicht bereit');return;}
+  if(!myRunsLayer)myRunsLayer=L.layerGroup();
+  myRunsLayer.clearLayers();
+  const runs=(history||[]).filter(r=>Array.isArray(r.path)&&r.path.length>=2);
+  if(!runs.length){toast('🏃 Noch keine Läufe aufgezeichnet');return;}
+  const col=userColor||'#e8ff47';
+  const all=[];
+  runs.forEach(r=>{
+    const ll=r.path.map(p=>[p[0],p[1]]).filter(p=>isFinite(p[0])&&isFinite(p[1]));
+    if(ll.length<2)return;
+    // Dunkle Unterlinie für Kontrast + farbige Hauptlinie in Spielerfarbe.
+    L.polyline(ll,{color:'#000',weight:6,opacity:.22,lineCap:'round',lineJoin:'round',interactive:false}).addTo(myRunsLayer);
+    const pl=L.polyline(ll,{color:col,weight:3.5,opacity:.9,lineCap:'round',lineJoin:'round'});
+    pl.on('click',(e)=>{try{L.DomEvent.stopPropagation(e);}catch(_){}try{showRunDetail(r);}catch(_){}});
+    pl.addTo(myRunsLayer);
+    ll.forEach(p=>all.push(p));
+  });
+  mapL.addLayer(myRunsLayer);
+  if(all.length)try{mapL.fitBounds(all,{padding:[40,40]});}catch(e){}
+  toast('🏃 '+runs.length+(runs.length===1?' Lauf':' Läufe')+' auf der Karte · tippe eine Spur für Details');
+}
+window.renderMyRuns=renderMyRuns;
+
 /* CONQUEST (H3-System)
    Eroberungslogik läuft server-autoritativ in der Edge Function 'conquer'
    (supabase/functions/conquer) auf Basis der getesteten Engine. Der Client
@@ -5530,6 +5567,7 @@ async function processConquest(np,area,d,boosted=false,isImport=false,durationS=
      — ein Polygon; dann fällt es auf den globalen path zurück. */
   const runPath=(np&&np.path)?np.path:(Array.isArray(np)?np:path);
   if(!runPath||runPath.length<2)return{pts:0,conquered:false,defended:false,error:'other'};
+  _runEvents=[]; // IMMER zuerst leeren – sonst zeigt ein Server-Fehler die Ereignisse des VORIGEN Laufs
   const cadence=await getRunCadence(); // Phase 4: null ohne Health-Plugin -> Server wertet GPS-only
   let data,error;
   try{
@@ -9042,6 +9080,16 @@ window.initApp=function(){
       landmarkLayer&&mapL.removeLayer(landmarkLayer);
       landmarkLayer&&landmarkLayer.clearLayers(); // Karte sauber halten
       toast('Wahrzeichen ausgeblendet');
+    }
+  });
+  $('panelMyRunsBtn')?.addEventListener('click',function(){
+    this.classList.toggle('active');
+    const on=this.classList.contains('active');
+    if(on){renderMyRuns();}
+    else{
+      myRunsLayer&&myRunsLayer.clearLayers();
+      myRunsLayer&&mapL&&mapL.removeLayer(myRunsLayer);
+      toast('Meine Läufe ausgeblendet');
     }
   });
   /* Panel-Lauf-Buttons */
