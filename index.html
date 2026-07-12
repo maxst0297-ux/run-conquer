@@ -1911,7 +1911,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v152';
+const APP_VERSION='v153';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2016,9 +2016,12 @@ async function syncProfile(){
     const _g=(()=>{try{return JSON.parse(localStorage.getItem('rc_v4_'+userId)||'{}');}catch(e){return {};}})();
     const _p=(()=>{try{return JSON.parse(localStorage.getItem('rc_profile_'+userId)||'{}');}catch(e){return {};}})();
     const gameSnap=JSON.stringify({v:2,game:_g,profile:_p});
+    /* points wird bewusst NICHT mehr mitgesendet: die Punkte verwaltet der Server
+       (conquer schreibt Lauf-XP, rc_award_xp gedeckelte Belohnungen, rc_claim_event
+       Event-Prämien). Ein Trigger-Guard auf profiles blockt direkte Client-Writes. */
     const{error:e1}=await sb.from('profiles').upsert({
       id:sbUserId,user_id:userId,player_name:playerName,user_avatar:userAvatar,user_color:userColor,
-      points,total_km:totalKm,total_conquered:totalConquered,streak_days:streakDays,
+      total_km:totalKm,total_conquered:totalConquered,streak_days:streakDays,
       total_defended:totalDefended,total_discovered:totalDiscovered,total_raids:totalRaids,
       updated_at:new Date().toISOString(),
       user_team:userTeam||null,club_code:userClub?.code||null,bio:userBio||null,
@@ -2796,7 +2799,7 @@ const BATTLE_PASS_REWARDS=[
   {lv:20,icon:'🏆',name:'Titel: Unaufhaltsam',type:'title',val:'Unaufhaltsam'},
 ];
 function genWeeklyChallenges(){const wk=getWeekKey();if(weekChalKey===wk&&weeklyChals.length===4)return;weekChalKey=wk;const seed=new Date().getDate()+new Date().getMonth()*31;const pool=[...WEEKLY_POOL];const sel=[];for(let i=0;i<4;i++){const idx=Math.abs(seed*(i+7)*1009)%pool.length;sel.push({...pool[idx],progress:0,done:false});pool.splice(idx,1);}weeklyChals=sel;save();}
-function updateWeeklyChallenges(rec){const wk=getWeekKey();if(weekChalKey!==wk)genWeeklyChallenges();weeklyChals.forEach(c=>{if(c.done)return;const prev=c.progress||0;if(c.key==='km')c.progress=Math.min(c.target,prev+rec.distance/1000);else if(c.key==='runs')c.progress=Math.min(c.target,prev+1);else if(c.key==='conq'&&rec.conquered)c.progress=Math.min(c.target,prev+1);else if(c.key==='def'&&rec.defended)c.progress=Math.min(c.target,prev+1);else if(c.key==='lm')c.progress=Math.min(c.target,capturedLandmarks.length);if(!c.done&&c.progress>=c.target){c.done=true;weeklyAchsDone++;points+=c.reward;runNote('🎯 Wochen-Challenge: '+c.desc+' +'+c.reward+' XP');}});save();}
+function updateWeeklyChallenges(rec){const wk=getWeekKey();if(weekChalKey!==wk)genWeeklyChallenges();weeklyChals.forEach(c=>{if(c.done)return;const prev=c.progress||0;if(c.key==='km')c.progress=Math.min(c.target,prev+rec.distance/1000);else if(c.key==='runs')c.progress=Math.min(c.target,prev+1);else if(c.key==='conq'&&rec.conquered)c.progress=Math.min(c.target,prev+1);else if(c.key==='def'&&rec.defended)c.progress=Math.min(c.target,prev+1);else if(c.key==='lm')c.progress=Math.min(c.target,capturedLandmarks.length);if(!c.done&&c.progress>=c.target){c.done=true;weeklyAchsDone++;awardXp(c.reward,'weekly');runNote('🎯 Wochen-Challenge: '+c.desc+' +'+c.reward+' XP');}});save();}
 function trackPersonalRecords(rec,totalPts,area){const pr=personalRecords;let newPR=false;if(!pr.longestRun||rec.distance>pr.longestRun.dist){pr.longestRun={dist:rec.distance,date:rec.date};newPR=true;}if(rec.splits&&rec.splits.length&&(!pr.fastestKm||rec.splits[0].splitSecs<pr.fastestKm.secs)){pr.fastestKm={secs:rec.splits[0].splitSecs,date:rec.date};newPR=true;}if(!pr.mostXp||totalPts>pr.mostXp.pts){pr.mostXp={pts:totalPts,date:rec.date};newPR=true;}if(!pr.mostArea||area>pr.mostArea.area){pr.mostArea={area,date:rec.date};newPR=true;}if(newPR)toast('🏆 Neue Persönliche Bestleistung!');}
 function generateRunCard(rec,runPath){const cv=document.createElement('canvas');cv.width=360;cv.height=640;const ctx=cv.getContext('2d');const tm=TEAMS.find(t=>t.id===userTeam)||{color:'#e8ff47',icon:'🏃',name:''};const col=tm.color||'#e8ff47';const g=ctx.createLinearGradient(0,0,0,640);g.addColorStop(0,'#09090f');g.addColorStop(1,'#1a1a2e');ctx.fillStyle=g;ctx.fillRect(0,0,360,640);ctx.fillStyle=col+'22';ctx.fillRect(0,0,360,200);ctx.font='bold 13px sans-serif';ctx.fillStyle=col;ctx.textAlign='left';ctx.fillText('RUNCONQUER',20,32);ctx.font='11px sans-serif';ctx.fillStyle='rgba(255,255,255,.4)';ctx.fillText(new Date(rec.date).toLocaleDateString('de'),20,50);ctx.font='54px serif';ctx.textAlign='center';ctx.fillText(tm.icon||'🏃',180,130);ctx.font='bold 20px sans-serif';ctx.fillStyle='#fff';ctx.textAlign='center';ctx.fillText(playerName||'Läufer',180,162);ctx.strokeStyle=col+'44';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(20,178);ctx.lineTo(340,178);ctx.stroke();const stats=[['DISTANZ',fmtDist(rec.distance)],['ZEIT',fmtTime(rec.duration)],['PACE',fmtPace(rec.distance,rec.duration)],['PUNKTE','+'+rec.pts]];stats.forEach((s,i)=>{const x=i%2===0?90:270,y=220+Math.floor(i/2)*100;ctx.font='10px sans-serif';ctx.fillStyle='rgba(255,255,255,.4)';ctx.textAlign='center';ctx.fillText(s[0],x,y-12);ctx.font='bold 28px sans-serif';ctx.fillStyle=col;ctx.fillText(s[1],x,y+18);});if(runPath&&runPath.length>1){const lats=runPath.map(p=>p[0]),lngs=runPath.map(p=>p[1]);const minLat=Math.min(...lats),maxLat=Math.max(...lats),minLng=Math.min(...lngs),maxLng=Math.max(...lngs);const pw=280,ph=150,px=40,py=440;const lrng=maxLat-minLat||0.001,lgrng=maxLng-minLng||0.001;const sc=Math.min(pw/lgrng,ph/lrng)*0.82;const cx0=(minLng+maxLng)/2,cy0=(minLat+maxLat)/2;ctx.strokeStyle=col;ctx.lineWidth=3;ctx.lineCap='round';ctx.lineJoin='round';ctx.shadowColor=col;ctx.shadowBlur=8;ctx.beginPath();runPath.forEach((p,i)=>{const cx=px+pw/2+(p[1]-cx0)*sc,cy=py+ph/2-(p[0]-cy0)*sc;i===0?ctx.moveTo(cx,cy):ctx.lineTo(cx,cy);});ctx.stroke();ctx.shadowBlur=0;const sp=runPath[0],ep=runPath[runPath.length-1];ctx.fillStyle='#10b981';ctx.beginPath();ctx.arc(px+pw/2+(sp[1]-cx0)*sc,py+ph/2-(sp[0]-cy0)*sc,5,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ef4444';ctx.beginPath();ctx.arc(px+pw/2+(ep[1]-cx0)*sc,py+ph/2-(ep[0]-cy0)*sc,5,0,Math.PI*2);ctx.fill();}ctx.font='9px sans-serif';ctx.fillStyle='rgba(255,255,255,.2)';ctx.textAlign='center';ctx.fillText('runconquer.app',180,630);return cv;}
 function shareRunCard(rec,runPath){const cv=generateRunCard(rec,runPath);cv.toBlob(blob=>{if(navigator.share&&blob){const f=new File([blob],'run.png',{type:'image/png'});navigator.share({files:[f],title:'Mein Lauf bei RunConquer'}).catch(()=>{const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='runconquer-lauf.png';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);});return;}const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='runconquer-lauf.png';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);},'image/png');}
@@ -2826,7 +2829,7 @@ function updateDailyChallenges(rec){
     else if(c.key==='duration')c.progress=Math.min(c.target,prev+rec.duration);
     if(!c.done&&c.progress>=c.target){
       c.done=true;anyDone=true;
-      points+=c.reward;
+      awardXp(c.reward,'daily');
       runNote(`🎯 Challenge erledigt! ${c.desc} · +${c.reward} XP`);
     }
   });
@@ -3150,7 +3153,7 @@ function showDailyRewardOverlay(shieldUsed){
     }
     setTimeout(()=>{
       document.getElementById('drCheck').style.display='block';
-      points+=reward.xp+reward.sp;
+      awardXp(reward.xp+reward.sp,'dailyreward');
       if(newStreak===14||newStreak===30)streakShields=Math.min(3,streakShields+(newStreak===30?2:1));
       recentQuoteIds=[quote.id,...recentQuoteIds].slice(0,60);
       save();updateUI();
@@ -5421,7 +5424,7 @@ function onGPS(pos){
       capturedLandmarks.push(lm.id);
       sessionNewLandmarks.push(lm.name);
       trackNatureLandmark(lm);
-      points+=CFG.LANDMARK_PTS;
+      awardXp(CFG.LANDMARK_PTS,'landmark');
       save();renderLandmarks();
       toast('⭐ Wahrzeichen entdeckt: '+lm.name+' +'+CFG.LANDMARK_PTS+' Pts!');beep(880,.1);vib(120);
       addNotif('⭐','Wahrzeichen entdeckt: '+lm.name);
@@ -5747,14 +5750,25 @@ const STARTER_QUESTS=[
   {id:'sq4',title:'Öffne dein Profil',xp:10,check:()=>starterQuestFlags.profileOpened},
   {id:'sq5',title:'Halte ein Gebiet für 7 Tage',xp:20,check:()=>territories.some(t=>t.owner===userId&&(Date.now()-t.createdAt)>=7*86400000)},
 ];
-function checkStarterQuests(){STARTER_QUESTS.forEach(q=>{if(starterQuestsDone.includes(q.id))return;if(q.check()){starterQuestsDone.push(q.id);points+=q.xp;toast('⭐ Starter-Quest: '+q.title+' +'+q.xp+' XP');save();}});}
+/* XP-Gutschrift für Client-Belohnungen (Quests, Erfolge, Challenges, …):
+   lokal sofort buchen (UI) UND serverseitig über rc_award_xp persistieren —
+   dort hart gedeckelt (max 500/Aufruf, 3000/Tag). profiles.points ist per
+   Trigger-Guard gegen direkte Client-Schreibzugriffe geschützt; Lauf-Punkte
+   schreibt die Edge Function 'conquer' selbst. */
+function awardXp(amount,reason){
+  const amt=Math.max(0,Math.round(+amount||0));
+  if(!amt)return;
+  points+=amt;
+  try{sb&&sb.rpc('rc_award_xp',{amount:amt,reason:String(reason||'').slice(0,40)}).then(()=>{},()=>{});}catch(e){}
+}
+function checkStarterQuests(){STARTER_QUESTS.forEach(q=>{if(starterQuestsDone.includes(q.id))return;if(q.check()){starterQuestsDone.push(q.id);awardXp(q.xp,'starter');toast('⭐ Starter-Quest: '+q.title+' +'+q.xp+' XP');save();}});}
 function renderStarterQuests(){
   const done=starterQuestsDone;
   return`<div style="margin-top:12px"><div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">⭐ Starter-Quests</div>`+STARTER_QUESTS.map(q=>{const isDone=done.includes(q.id);return`<div class="quest-item" style="opacity:${isDone?0.6:1}"><div class="quest-row"><span>${isDone?'✅':''} ${q.title}</span><span class="quest-pts" style="color:${isDone?'#10b981':'var(--primary)'}">${isDone?'Erledigt':'+'+q.xp+' XP'}</span></div></div>`;}).join('')+'</div>';}
 
 /* QUESTS/ACH */
-function updateQuests(rec){quests.forEach(q=>{if(q.claimed)return;if(q.type==='distance')q.progress=Math.min(q.target,q.progress+rec.distance);if(q.type==='conquer'&&rec.conquered)q.progress++;if(q.type==='defend'&&rec.defended)q.progress++;if(q.progress>=q.target){q.claimed=true;points+=q.reward;runNote('✅ '+q.desc+' +'+q.reward);}});checkStarterQuests();}
-function updateAch(){const earned=[];achievements.forEach(a=>{let p=0;if(a.cat==='km')p=totalKm;else if(a.cat==='conq')p=totalConquered;else if(a.cat==='atk')p=totalRaids;else if(a.cat==='def')p=totalDefended;else if(a.cat==='disc')p=totalDiscovered;else if(a.cat==='streak')p=streakDays;a.progress=p;if(!a.earned&&p>=a.target){a.earned=true;points+=200;earned.push(a);}});if(earned.length)queueAchPopup(earned);return earned;}
+function updateQuests(rec){quests.forEach(q=>{if(q.claimed)return;if(q.type==='distance')q.progress=Math.min(q.target,q.progress+rec.distance);if(q.type==='conquer'&&rec.conquered)q.progress++;if(q.type==='defend'&&rec.defended)q.progress++;if(q.progress>=q.target){q.claimed=true;awardXp(q.reward,'quest');runNote('✅ '+q.desc+' +'+q.reward);}});checkStarterQuests();}
+function updateAch(){const earned=[];achievements.forEach(a=>{let p=0;if(a.cat==='km')p=totalKm;else if(a.cat==='conq')p=totalConquered;else if(a.cat==='atk')p=totalRaids;else if(a.cat==='def')p=totalDefended;else if(a.cat==='disc')p=totalDiscovered;else if(a.cat==='streak')p=streakDays;a.progress=p;if(!a.earned&&p>=a.target){a.earned=true;awardXp(200,'achievement');earned.push(a);}});if(earned.length)queueAchPopup(earned);return earned;}
 /* Zentriertes Erfolg-Popup (ersetzt den abgeschnittenen Toast): mehrere neue
    Erfolge werden nacheinander gezeigt, mehrzeilig und immer mittig. */
 const ACH_CAT_IC={conq:'🏙️',km:'🏃',atk:'⚔️',def:'🛡️',disc:'🧭',streak:'🔥'};
@@ -6343,7 +6357,7 @@ function importGarminActivity(distM,durSecs,dateMs,path,extId){
     imported:true,importSource:'garmin',extId:extId||null};
   history.push(rec);if(history.length>500)history.shift();
   if(extId){try{const k='rc_garmin_ids_'+userId;const s=new Set(JSON.parse(localStorage.getItem(k)||'[]'));s.add(extId);localStorage.setItem(k,JSON.stringify([...s].slice(-500)));}catch(e){}}
-  totalKm+=distM/1000;points+=kmXP;
+  totalKm+=distM/1000;awardXp(kmXP,'garmin');
   checkStarterQuests();save();
   if(path&&path.length>=2&&mapL){
     if(importedLayer)mapL.removeLayer(importedLayer);
@@ -6782,17 +6796,70 @@ window.applaudActivity=function(idx){
   toast('👍 Applaus!');
 };
 
-/* ── EVENTS ── */
-function renderEvents(){
-  const now=Date.now();
-  const EVENTS=[
-    {id:'ev1',title:'Stadtmarathon Challenge',desc:'Laufe 5 km in einem Stück',icon:'🏙️',endsAt:now+2*86400000+3*3600000,color:'',participants:['⚡','🤸','🏋️','🏃','👟'],reward:500},
-    {id:'ev2',title:'Gebietskrieg: Norden',desc:'Erobere 2 feindliche Gebiete',icon:'⚔️',endsAt:now+5*3600000+22*60000,color:'red',participants:['⚡','🤸'],reward:350},
-    {id:'ev3',title:'Wochenend-Sprint',desc:'Schnellste 1 km diese Woche',icon:'⚡',endsAt:now+1*86400000+14*3600000,color:'cyan',participants:['🏃','⚡','🤸','👟'],reward:200}
-  ];
-  function fmtCD(ms){if(ms<=0)return'BEENDET';const d=Math.floor(ms/86400000),h=Math.floor((ms%86400000)/3600000),m=Math.floor((ms%3600000)/60000);return d>0?`${d}T ${h}Std`:h>0?`${h}Std ${m}Min`:`${m}Min`}
-  $('eventsList').innerHTML='<div style="font-size:.6rem;color:var(--muted);margin-bottom:8px;letter-spacing:1px;text-transform:uppercase">🔬 Vorschau – Community-Events starten mit der offenen Beta</div>'+EVENTS.map(ev=>{const rem=ev.endsAt-now;return`<div class="event-item ${ev.color}"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="flex:1"><div style="font-weight:600;font-size:.88rem">${ev.icon} ${ev.title}</div><div style="font-size:.72rem;color:var(--muted);margin:2px 0">${ev.desc}</div><div style="display:flex;align-items:center;gap:8px;margin-top:4px"><span class="event-countdown">⏱ ${fmtCD(rem)}</span><span style="font-size:.65rem;color:var(--muted)">🎁 +${ev.reward} Pts</span></div></div></div><div class="event-badges">${ev.participants.map(p=>`<span class="event-badge">${p}</span>`).join('')}<span class="event-badge">+${3+ev.id.charCodeAt(2)%8} weitere</span></div></div>`}).join('');
+/* ── EVENTS (echt, serverseitig) ──
+   Events kommen aus der events-Tabelle; der Fortschritt wird ausschließlich von
+   der Edge Function 'conquer' aus validierten Läufen geschrieben, die Belohnung
+   über rc_claim_event serverseitig gutgeschrieben. Ohne Server (offline/SQL
+   fehlt) zeigt der Bereich einen Hinweis statt Fake-Daten. */
+function _evFmtCD(ms){if(ms<=0)return'BEENDET';const d=Math.floor(ms/86400000),h=Math.floor((ms%86400000)/3600000),m=Math.floor((ms%3600000)/60000);return d>0?`${d}T ${h}Std`:h>0?`${h}Std ${m}Min`:`${m}Min`}
+function _evProgLbl(ev,prog){
+  if(ev.type==='conquer'||ev.type==='runs')return Math.floor(prog)+'/'+Math.floor(ev.target);
+  return (prog/1000).toFixed(1)+'/'+(ev.target/1000).toFixed(1)+' km';
 }
+function renderEvents(){
+  const el=$('eventsList');if(!el)return;
+  el.innerHTML='<div style="font-size:.72rem;color:var(--muted);padding:10px 0">Events werden geladen…</div>';
+  (async()=>{
+    try{
+      if(!sb)throw 0;
+      try{await sb.rpc('rc_ensure_events');}catch(e){} // laufende Events sicherstellen
+      const nowIso=new Date().toISOString();
+      const{data:evs,error}=await sb.from('events').select('*').lte('starts_at',nowIso).gt('ends_at',nowIso).order('ends_at');
+      if(error||!Array.isArray(evs))throw error||0;
+      if(!evs.length){el.innerHTML='<div style="font-size:.72rem;color:var(--muted);padding:10px 0">Gerade kein aktives Event – schau später wieder rein.</div>';return;}
+      const ids=evs.map(e=>e.id);
+      const[{data:mine},{data:allProg}]=await Promise.all([
+        sb.from('event_progress').select('event_id,progress,claimed').eq('user_id',userId).in('event_id',ids),
+        sb.from('event_progress').select('event_id').in('event_id',ids).limit(5000)
+      ]);
+      const myMap={};(mine||[]).forEach(r=>{myMap[r.event_id]=r;});
+      const cnt={};(allProg||[]).forEach(r=>{cnt[r.event_id]=(cnt[r.event_id]||0)+1;});
+      const now=Date.now();
+      el.innerHTML=evs.map(ev=>{
+        const my=myMap[ev.id],prog=my?(+my.progress||0):0,done=prog>=ev.target,claimed=!!(my&&my.claimed);
+        const pct=Math.min(100,Math.round(prog/ev.target*100));
+        const n=cnt[ev.id]||0;
+        const cta=claimed?'<span style="font-size:.68rem;color:#10b981;font-weight:700">✓ Abgeholt</span>'
+          :done?`<button class="btn btn-p" style="padding:5px 12px;font-size:.7rem" onclick="claimEvent('${ev.id}')">🎁 +${ev.reward} abholen</button>`
+          :`<span style="font-size:.65rem;color:var(--muted)">🎁 +${ev.reward} Pts</span>`;
+        return`<div class="event-item ${ev.color||''}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:.88rem">${ev.icon} ${esc(ev.title)}</div>
+              <div style="font-size:.72rem;color:var(--muted);margin:2px 0">${esc(ev.descr)}</div>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap"><span class="event-countdown">⏱ ${_evFmtCD(Date.parse(ev.ends_at)-now)}</span>${cta}</div>
+            </div>
+          </div>
+          <div style="margin-top:8px"><div class="q-bar"><div class="q-fill" style="width:${pct}%"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:.62rem;color:var(--muted);margin-top:3px"><span>${_evProgLbl(ev,prog)}</span><span>👥 ${n} Teilnehmer</span></div></div>
+        </div>`;
+      }).join('');
+    }catch(e){
+      el.innerHTML='<div style="font-size:.72rem;color:var(--muted);padding:10px 0">📡 Events nicht erreichbar – Fortschritt zählt trotzdem: Er wird bei jedem gewerteten Lauf serverseitig fortgeschrieben.</div>';
+    }
+  })();
+}
+/* Event-Belohnung abholen: rein serverseitig (rc_claim_event prüft Ziel+Doppelabholung). */
+window.claimEvent=async function(eid){
+  try{
+    if(!sb)return;
+    const{data,error}=await sb.rpc('rc_claim_event',{eid});
+    const got=(!error&&typeof data==='number')?data:0;
+    if(got>0){points+=got;toast('🎁 Event-Belohnung: +'+got+' XP');beep(880,.12);vib(40);save();updateUI&&updateUI();}
+    else toast('Noch nicht abholbar');
+    renderEvents();
+  }catch(e){toast('Fehler beim Abholen');}
+};
 
 /* ── FRAKTIONS-KRIEG (echte, geteilte Welt) ──
    Aggregiert reale Spieler aus der öffentlichen profiles-Tabelle (user_team,
@@ -8300,7 +8367,7 @@ function updateProfile(){
   $('pvPRs').innerHTML=[['⚡','Schnellster km',fastKmFmt+'/km'],['📏','Längster Lauf',fmtDist(pr.longestRun?.dist||bd)],['🗺️','Größtes Gebiet',Math.round(pr.mostArea?.area||ba)+' m²'],['🏆','Meiste XP/Lauf',pr.mostXp?'+'+pr.mostXp.pts:'--'],['🔥','kcal gesamt',history.reduce((s,r)=>s+(r.kcal||0),0)+' kcal'],['⚔️','Gebiete erobert',totalConquered]].map(([i,l,v])=>`<div class="pr-row"><span class="pr-icon">${i}</span><span class="pr-label">${l}</span><span class="pr-val">${v}</span></div>`).join('');
   // Battle Pass
   const bpEl=document.getElementById('pvBattlePass');
-  if(bpEl){const bpLv=Math.min(20,Math.floor(seasonXp/500));const bpPct=Math.min(100,(seasonXp%500)/5);const nextSp=(bpLv<20)?(bpLv+1)*500-seasonXp:0;bpEl.innerHTML=`<div class="section-title"><i class="fas fa-ticket-alt"></i> Saison-Pass <span style="font-size:.65rem;color:var(--muted);font-weight:400;margin-left:6px">Level ${bpLv}/20</span></div><div style="height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;margin-bottom:8px"><div style="height:100%;width:${bpPct}%;background:var(--primary);border-radius:3px;transition:width .4s"></div></div><div style="font-size:.68rem;color:var(--muted);margin-bottom:10px">${bpLv<20?nextSp+' XP bis Level '+(bpLv+1):'🏆 Max Level erreicht!'}</div><div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px">${BATTLE_PASS_REWARDS.map(r=>{const unlocked=bpLv>=r.lv;const claimed=battlePassClaimed.includes(r.lv);return`<div data-bplv="${r.lv}" style="flex-shrink:0;width:68px;padding:8px 4px;border-radius:12px;background:${unlocked?claimed?'rgba(16,185,129,.15)':'rgba(232,255,71,.1)':'var(--card)'};border:1px solid ${unlocked?claimed?'rgba(16,185,129,.4)':'rgba(232,255,71,.4)':'var(--border)'};text-align:center;cursor:${unlocked&&!claimed?'pointer':'default'}"><div style="font-size:1.2rem">${r.icon}</div><div style="font-size:.58rem;color:${unlocked?'var(--primary)':'var(--muted)'};line-height:1.2;margin:3px 0">${r.name}</div><div style="font-size:.55rem;color:var(--muted)">Lv.${r.lv}</div>${unlocked&&!claimed?`<div style="font-size:.55rem;background:var(--primary);color:#000;border-radius:4px;padding:1px 4px;margin-top:2px;font-weight:700">Abholen</div>`:claimed?'<div style="font-size:.65rem;color:#10b981">✓</div>':''}</div>`;}).join('')}</div>`;bpEl.querySelectorAll('[data-bplv]').forEach(el=>{const lv=Number(el.dataset.bplv);if(bpLv>=lv&&!battlePassClaimed.includes(lv)){el.addEventListener('click',()=>{battlePassClaimed.push(lv);const rw=BATTLE_PASS_REWARDS.find(r=>r.lv===lv);if(rw){if(rw.type==='xp'){points+=rw.val;toast('🎁 Battle Pass: +'+rw.val+' XP');}else if(rw.type==='shield'){streakShields=Math.min(3,streakShields+rw.val);toast('🛡️ Streak-Schutz hinzugefügt!');}else if(rw.type==='energy'){energy=Math.min(CFG.ENERGY_MAX,energy+rw.val);toast('⚡ Energie aufgeladen!');}else if(rw.type==='title'){toast('👑 Titel freigeschaltet: '+rw.val);}else{toast('🎁 '+rw.name+' freigeschaltet!');}}save();updateProfile();},{ once:true });}});}
+  if(bpEl){const bpLv=Math.min(20,Math.floor(seasonXp/500));const bpPct=Math.min(100,(seasonXp%500)/5);const nextSp=(bpLv<20)?(bpLv+1)*500-seasonXp:0;bpEl.innerHTML=`<div class="section-title"><i class="fas fa-ticket-alt"></i> Saison-Pass <span style="font-size:.65rem;color:var(--muted);font-weight:400;margin-left:6px">Level ${bpLv}/20</span></div><div style="height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;margin-bottom:8px"><div style="height:100%;width:${bpPct}%;background:var(--primary);border-radius:3px;transition:width .4s"></div></div><div style="font-size:.68rem;color:var(--muted);margin-bottom:10px">${bpLv<20?nextSp+' XP bis Level '+(bpLv+1):'🏆 Max Level erreicht!'}</div><div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px">${BATTLE_PASS_REWARDS.map(r=>{const unlocked=bpLv>=r.lv;const claimed=battlePassClaimed.includes(r.lv);return`<div data-bplv="${r.lv}" style="flex-shrink:0;width:68px;padding:8px 4px;border-radius:12px;background:${unlocked?claimed?'rgba(16,185,129,.15)':'rgba(232,255,71,.1)':'var(--card)'};border:1px solid ${unlocked?claimed?'rgba(16,185,129,.4)':'rgba(232,255,71,.4)':'var(--border)'};text-align:center;cursor:${unlocked&&!claimed?'pointer':'default'}"><div style="font-size:1.2rem">${r.icon}</div><div style="font-size:.58rem;color:${unlocked?'var(--primary)':'var(--muted)'};line-height:1.2;margin:3px 0">${r.name}</div><div style="font-size:.55rem;color:var(--muted)">Lv.${r.lv}</div>${unlocked&&!claimed?`<div style="font-size:.55rem;background:var(--primary);color:#000;border-radius:4px;padding:1px 4px;margin-top:2px;font-weight:700">Abholen</div>`:claimed?'<div style="font-size:.65rem;color:#10b981">✓</div>':''}</div>`;}).join('')}</div>`;bpEl.querySelectorAll('[data-bplv]').forEach(el=>{const lv=Number(el.dataset.bplv);if(bpLv>=lv&&!battlePassClaimed.includes(lv)){el.addEventListener('click',()=>{battlePassClaimed.push(lv);const rw=BATTLE_PASS_REWARDS.find(r=>r.lv===lv);if(rw){if(rw.type==='xp'){awardXp(rw.val,'battlepass');toast('🎁 Battle Pass: +'+rw.val+' XP');}else if(rw.type==='shield'){streakShields=Math.min(3,streakShields+rw.val);toast('🛡️ Streak-Schutz hinzugefügt!');}else if(rw.type==='energy'){energy=Math.min(CFG.ENERGY_MAX,energy+rw.val);toast('⚡ Energie aufgeladen!');}else if(rw.type==='title'){toast('👑 Titel freigeschaltet: '+rw.val);}else{toast('🎁 '+rw.name+' freigeschaltet!');}}save();updateProfile();},{ once:true });}});}
   {
     const CAT_META={conq:{name:'Straßen',unit:'Straßen'},km:{name:'Kilometer',unit:'km'},atk:{name:'Angriffe',unit:'Siege'},def:{name:'Vert.',unit:'Vert.'},disc:{name:'Orte',unit:'Orte'},streak:{name:'Streak',unit:'Tage'}};
     const totalEarned=achievements.filter(a=>a.earned).length;
@@ -8658,7 +8725,7 @@ async function checkInvasionRepel(lat,lng){
       if(data&&data.ok){
         invasions=invasions.filter(x=>x.id!==inv.id);
         const xp=Math.round(data.xp||CFG.INV_REPEL_XP);
-        points+=xp;
+        awardXp(xp,'breach');
         toast('🛡️ Invasion abgewehrt! +'+xp+' XP');beep(880,.12);vib([80,40,80]);
         addNotif('🛡️','Invasion abgewehrt – '+(data.name||'Gebiet')+' gesichert!');
         renderInvasions();updateStatsUI();save();

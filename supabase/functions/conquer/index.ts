@@ -159,6 +159,38 @@ Deno.serve(async (req) => {
       try { await svc.rpc('rc_add_faction_points', { mk, team_id: userTeam, pts: Math.round(runTotal) }); } catch (_) { /* noop */ }
     }
 
+    // ── Echte Events: Fortschritt dieses Laufs fortschreiben ─────────────────
+    // Events sind serverseitig definiert (events-Tabelle); der Fortschritt wird
+    // hier — und nur hier — aus validierten Läufen geschrieben. Fehlt das SQL
+    // noch, scheitert der Block leise.
+    try {
+      const nowIso = new Date().toISOString();
+      try { await svc.rpc('rc_ensure_events'); } catch (_) { /* noop */ }
+      const { data: evs } = await svc.from('events').select('id,type,target')
+        .lte('starts_at', nowIso).gt('ends_at', nowIso);
+      if (evs && evs.length) {
+        const { data: prows } = await svc.from('event_progress')
+          .select('event_id,progress,completed_at')
+          .eq('user_id', user.id).in('event_id', evs.map((e: any) => e.id));
+        const pmap = new Map((prows || []).map((r: any) => [r.event_id, r]));
+        const conqCount = (res.events || []).filter((e: any) => e.type === 'conquered' || e.type === 'cut').length;
+        for (const ev of evs) {
+          const cur: any = pmap.get(ev.id);
+          let prog = cur ? (+cur.progress || 0) : 0;
+          if (ev.type === 'distance_single') prog = Math.max(prog, distanceM);
+          else if (ev.type === 'distance_total') prog += distanceM;
+          else if (ev.type === 'conquer') prog += conqCount;
+          else if (ev.type === 'runs') prog += 1;
+          // claimed wird bewusst NICHT mitgeschickt -> bleibt beim Upsert erhalten.
+          await svc.from('event_progress').upsert({
+            event_id: ev.id, user_id: user.id, progress: prog,
+            completed_at: (cur && cur.completed_at) || (prog >= ev.target ? nowIso : null),
+            updated_at: nowIso,
+          }, { onConflict: 'event_id,user_id' });
+        }
+      }
+    } catch (_) { /* Events optional — Lauf bleibt gewertet */ }
+
     return json({ ok: true, points: res.playerPoints, kmXp, events: res.events, atkPts: res.atkPts, defPts: res.defPts, energy, boosted: applyBoost });
   } catch (e) {
     return json({ error: String(e && (e as Error).message || e) }, 500);
