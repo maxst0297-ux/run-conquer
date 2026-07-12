@@ -1,0 +1,55 @@
+name: Deploy Supabase Functions
+
+# Deployt die Edge Functions automatisch, sobald sich unter supabase/functions/
+# etwas ändert. Beseitigt die häufigste Fehlerquelle der letzten Wochen:
+# Spiellogik-Fixes (Engine/conquer/bot_tick), die nie deployt wurden und daher
+# "nicht wirkten".
+#
+# Voraussetzung (einmalig): Repo-Secret SUPABASE_ACCESS_TOKEN anlegen
+#   GitHub → Settings → Secrets and variables → Actions → New repository secret
+#   Token erzeugen unter https://supabase.com/dashboard/account/tokens
+on:
+  push:
+    branches: [main]
+    paths: ['supabase/functions/**']
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-functions
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PROJECT_REF: mlkpryhacihbqnmtgkcg
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Secret vorhanden?
+        id: gate
+        run: |
+          if [ -z "${{ secrets.SUPABASE_ACCESS_TOKEN }}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::SUPABASE_ACCESS_TOKEN fehlt (Repo → Settings → Secrets → Actions). Deploy übersprungen — Functions bitte manuell deployen."
+          fi
+
+      - uses: supabase/setup-cli@v1
+        if: steps.gate.outputs.skip != 'true'
+        with:
+          version: latest
+
+      - name: Engine-Tests vor dem Deploy
+        if: steps.gate.outputs.skip != 'true'
+        run: |
+          npm install --no-save h3-js@4.1.0
+          node supabase/functions/_shared/h3-engine.test.mjs
+
+      - name: Deploy conquer + bot_tick
+        if: steps.gate.outputs.skip != 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase functions deploy conquer  --project-ref "$PROJECT_REF" --use-api
+          supabase functions deploy bot_tick --project-ref "$PROJECT_REF" --use-api

@@ -69,6 +69,13 @@ Deno.serve(async (req) => {
     const now = new Date().toISOString();
     const claimedThisTick = new Set<string>();
     const actions: any[] = [];
+    // Monats-Fraktionspunkte: Bot-Aktionen halten den Saison-Wettkampf lebendig.
+    // Fehlt das SQL (rc_add_faction_points), scheitert das leise.
+    const monthKey = now.slice(0, 7); // 'YYYY-MM'
+    const addFactionPts = async (team: string | null, pts: number) => {
+      if (!team || !(pts > 0)) return;
+      try { await svc.rpc('rc_add_faction_points', { mk: monthKey, team_id: team, pts: Math.round(pts) }); } catch (_) { /* noop */ }
+    };
 
     // Bots agieren bevorzugt an Spielergebieten (dort wird gespielt).
     const playerTerr = trows.filter((t: any) => !botIdSet.has(t.owner));
@@ -93,9 +100,11 @@ Deno.serve(async (req) => {
           }).eq('id', anchor.id);
           anchor.owner = bot.id;
           actions.push({ type: 'attack_take', id: anchor.id, bot: bot.player_name });
+          await addFactionPts(bot.user_team, strength);
         } else {
           await svc.from('h3_territories').update({ defense: r.newDefense, updated_at: now }).eq('id', anchor.id);
           actions.push({ type: 'attack_weaken', id: anchor.id, def: Math.round(r.newDefense) });
+          await addFactionPts(randBot().user_team, strength * 0.5);
         }
       } else {
         // Neutrale Nachbarzellen des Anchors beanspruchen -> neues Bot-Gebiet.
@@ -119,6 +128,7 @@ Deno.serve(async (req) => {
             await svc.from('h3_cells').upsert(neutral.map((c) => ({ cell: c, territory_id: nt.id })), { onConflict: 'cell' });
             neutral.forEach((c) => { claimedThisTick.add(c); ownedCells.add(c); });
             actions.push({ type: 'claim', bot: bot.player_name, cells: neutral.length });
+            await addFactionPts(bot.user_team, neutral.length);
           }
         }
       }
