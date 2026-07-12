@@ -1911,7 +1911,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v150';
+const APP_VERSION='v151';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2649,6 +2649,37 @@ function settleSeasonWins(){
   if(changed){saveProfile();if(typeof renderFactionWins==='function')renderFactionWins();}
   return changed;
 }
+/* In welcher Fraktion war ich im Monat mk? Primär aus dem Live-Mitschrieb; sonst
+   zählt die aktuelle Fraktion, wenn der letzte Wechsel ("YYYY-MM") nicht NACH mk
+   lag — dann galt sie am Monatsende von mk bereits. */
+function _teamDuringMonth(mk){
+  const t=loadSeasonTrack();
+  if(t[mk]&&t[mk].team)return t[mk].team;
+  if(userTeam&&(!lastFraktionChangeDate||lastFraktionChangeDate<=mk))return userTeam;
+  return null;
+}
+/* SERVER-Abrechnung (autoritativ, für alle Spieler gleich): rc_settle_season()
+   schreibt nach Monatsende den Fraktions-Sieger in season_winners fest. Der Orden
+   wird nur vergeben, wenn man im jeweiligen Monat selbst in der Sieger-Fraktion war.
+   Fehlt das SQL noch, scheitert der Aufruf leise -> lokaler Fallback (settleSeasonWins). */
+async function settleSeasonWinsServer(){
+  if(!sb||!userId)return false;
+  try{
+    try{await sb.rpc('rc_settle_season');}catch(e){} // idempotent; legt ggf. den Vormonat fest
+    const{data,error}=await sb.from('season_winners').select('month_key,winner_team').order('month_key',{ascending:false}).limit(24);
+    if(error||!Array.isArray(data))return false;
+    const nowMk=currentMonthKey();
+    let changed=pruneInvalidSeasonWins();
+    data.forEach(r=>{
+      const mk=r&&r.month_key;
+      if(!(typeof mk==='string'&&mk<nowMk)||!r.winner_team)return;
+      const my=_teamDuringMonth(mk);
+      if(my&&my===r.winner_team&&!factionWins.includes(mk)){factionWins.push(mk);changed=true;}
+    });
+    if(changed){saveProfile();if(typeof renderFactionWins==='function')renderFactionWins();toast('🏆 Saison-Sieg! Deine Fraktion hat den Monat gewonnen');}
+    return changed;
+  }catch(e){return false;}
+}
 /* Eigene Beschreibung/Zitat bearbeiten (öffentlich sichtbar). */
 function editBio(){
   document.getElementById('bioEditOv')?.remove();
@@ -2928,6 +2959,7 @@ function renderClubCommunity(){
 function checkSeasonRollover(){
   if(seasonChecked)return;seasonChecked=true;
   try{settleSeasonWins();}catch(e){} // Saison-Orden abrechnen + fälschlich vergebene (laufender Monat) entfernen
+  try{settleSeasonWinsServer();}catch(e){} // serverseitige (autoritative) Abrechnung, async
   try{
     const seasons=JSON.parse(localStorage.getItem('rc_seasons_'+userId)||'[]');
     const now=new Date(),cm=now.getMonth(),cy=now.getFullYear();
@@ -4679,18 +4711,28 @@ function renderBadgeSection(list,title){
    Monat ein Medaillon). Leer, wenn noch keiner gewonnen wurde. */
 function renderSeasonWinsSection(){
   if(typeof renderSeasonBadge!=='function')return '';
-  // Nur ABGESCHLOSSENE Monate zeigen (der laufende Monat ist noch nicht entschieden).
+  // Abschnitt ist IMMER sichtbar (der „Ordner" existiert). Icons erscheinen aber nur
+  // für ABGESCHLOSSENE Monate, in denen die eigene Fraktion gewonnen hat.
   const nowMk=(typeof currentMonthKey==='function')?currentMonthKey():'';
-  const wins=[...(factionWins||[])].filter(mk=>typeof mk==='string'&&mk<nowMk);
-  if(!wins.length)return '';
-  // Gleicher Kachel-Look wie Einzel-Erfolge/Meisterklasse -> die Saison-Medaillons
-  // stehen mit im Icon-Raster, nicht in einem separaten Streifen.
-  const tiles=wins.sort().reverse().map(mk=>{
-    const p=mk.split('-'),y=p[0],mi=Math.max(0,Math.min(11,parseInt(p[1],10)-1));
-    const badge=renderSeasonBadge({month:mi,year:parseInt(y,10)});
-    return `<div style="text-align:center"><div class="badge-tap" onclick="rcZoomSeason('${mk}')"><div style="width:74px;height:74px;margin:0 auto;filter:drop-shadow(0 6px 16px rgba(255,215,0,.28))">${badge.svg}</div></div><div style="font-size:.66rem;font-weight:700;margin-top:5px;color:#FFD700">${badge.monthName} ${badge.year}</div><div style="font-size:.56rem;color:var(--muted);line-height:1.3;margin-top:1px">Fraktion gewonnen</div></div>`;
-  }).join('');
-  return `<div style="margin-top:28px"><div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border)"><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px">🏆 SAISON-SIEGE</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:#FFD700">${wins.length}</span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px 8px">${tiles}</div></div>`;
+  const wins=[...(factionWins||[])].filter(mk=>typeof mk==='string'&&mk<nowMk).sort().reverse();
+  const hdr=`<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border)"><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px">🏆 SAISON-SIEGE</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:#FFD700">${wins.length}</span></div>`;
+  let inner;
+  if(!wins.length){
+    // Leerer Zustand: der Ordner ist da, nur noch ohne Orden.
+    inner=`<div style="text-align:center;padding:22px 14px;border:1px dashed var(--border);border-radius:16px">
+      <div style="font-size:.82rem;font-weight:700;color:var(--text);margin-bottom:4px">Noch keine Saison-Siege</div>
+      <div style="font-size:.7rem;line-height:1.45;color:var(--muted)">Gewinne mit deiner Fraktion einen ganzen Monat – nach Monatsende erscheint hier dein Orden.</div>
+    </div>`;
+  }else{
+    // Gleicher Kachel-Look wie Einzel-Erfolge/Meisterklasse.
+    const tiles=wins.map(mk=>{
+      const p=mk.split('-'),y=p[0],mi=Math.max(0,Math.min(11,parseInt(p[1],10)-1));
+      const badge=renderSeasonBadge({month:mi,year:parseInt(y,10)});
+      return `<div style="text-align:center"><div class="badge-tap" onclick="rcZoomSeason('${mk}')"><div style="width:74px;height:74px;margin:0 auto;filter:drop-shadow(0 6px 16px rgba(255,215,0,.28))">${badge.svg}</div></div><div style="font-size:.66rem;font-weight:700;margin-top:5px;color:#FFD700">${badge.monthName} ${badge.year}</div><div style="font-size:.56rem;color:var(--muted);line-height:1.3;margin-top:1px">Fraktion gewonnen</div></div>`;
+    }).join('');
+    inner=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px 8px">${tiles}</div>`;
+  }
+  return `<div style="margin-top:28px">${hdr}${inner}</div>`;
 }
 /* Antippen eines Saison-Medaillons -> groß anzeigen (analog rcZoomBadge). */
 window.rcZoomSeason=function(mk){
@@ -5498,7 +5540,7 @@ async function finalizeRun(elapsed){
      _runEvents wurde in processConquest gesetzt: leer + Fehler = Server/Setup-Problem;
      leer ohne Fehler = kein gegnerisches Gebiet auf der Strecke berührt. */
   if(res&&res.error){
-    runNote('⚠️ Eroberung nicht gewertet – Server nicht erreichbar oder Setup unvollständig (Edge Function „conquer" deployen bzw. SQL ausführen).');
+    runNote('⚠️ Eroberung nicht gewertet – '+(res.errMsg||'Server nicht erreichbar oder Setup unvollständig')+'.');
   }else if(!_runEvents||!_runEvents.length){
     runNote('ℹ️ Kein gegnerisches Gebiet auf deiner Strecke – daher kein Angriff. Neu erlaufene freie Fläche wird trotzdem dein Revier.');
   }
@@ -5629,22 +5671,33 @@ async function processConquest(np,area,d,boosted=false,isImport=false,durationS=
   }catch(e){error=e;}
 
   if(error||!data||data.error){
-    const code=(data&&data.error)||(error&&error.message)||'other';
+    /* Echte Fehlerursache herausziehen: bei FunctionsHttpError steckt die
+       Server-Antwort (Status + Body) in error.context (eine Response). */
+    let status=0,detail='';
+    try{status=(error&&error.context&&error.context.status)||0;}catch(_){}
+    try{if(error&&error.context&&typeof error.context.text==='function')detail=String(await error.context.text()||'').slice(0,300);}catch(_){}
+    const code=((data&&data.error)||(error&&error.message)||'other')+(detail?(' · '+detail):'');
     const cs=String(code).toLowerCase();
-    if(cs.includes('speed_hardcap')){toast('⚠️ Unrealistisches Tempo – Lauf nicht gewertet');return{pts:0,conquered:false,defended:false,error:'other'};}
-    if(cs.includes('too_short'))return{pts:0,conquered:false,defended:false,error:'other'};
-    logError&&logError('conquer',error||new Error(String(code)),{code:String(code)});
-    console.warn('[conquer] fehlgeschlagen:',code);
-    /* Server-Setup nicht vollständig? -> klare Ansage statt vager Meldung. Häufig:
-       Edge Function 'conquer' nicht deployt (404/not found) oder H3-Tabellen/View
-       fehlen (relation ... does not exist / 42P01). */
-    if(cs.includes('not found')||cs.includes('404')||cs.includes('failed to fetch')||cs.includes('function'))
-      toast('⚠️ Eroberung: Server-Function fehlt – „conquer" deployen');
-    else if(cs.includes('relation')||cs.includes('42p01')||cs.includes('does not exist')||cs.includes('h3_'))
-      toast('⚠️ Eroberung: Datenbank-Tabellen fehlen – SQL vollständig ausführen');
+    if(cs.includes('speed_hardcap')){toast('⚠️ Unrealistisches Tempo – Lauf nicht gewertet');return{pts:0,conquered:false,defended:false,error:'other',errMsg:'Unrealistisches Tempo'};}
+    if(cs.includes('too_short'))return{pts:0,conquered:false,defended:false,error:'other',errMsg:'Lauf zu kurz'};
+    logError&&logError('conquer',error||new Error(String(code)),{code:String(code).slice(0,400),status});
+    console.warn('[conquer] fehlgeschlagen:',status,code);
+    /* Klare Ansage nach ECHTER Ursache (Status/Body), nicht nach vager Vermutung.
+       Reihenfolge wichtig: SQL-Fehler zuerst prüfen, denn die generische
+       FunctionsHttpError-Meldung enthält selbst das Wort "function". */
+    let msg;
+    if(cs.includes('relation')||cs.includes('42p01')||cs.includes('does not exist'))
+      msg='Datenbank-Tabellen fehlen – supabase_all.sql im SQL-Editor ausführen';
+    else if(status===401||cs.includes('unauthorized')||cs.includes('jwt'))
+      msg='Anmeldung abgelaufen – bitte aus- und wieder einloggen';
+    else if(status===404||cs.includes('not found')||cs.includes('failed to send')||cs.includes('failed to fetch'))
+      msg='Edge Function „conquer" nicht deployt – supabase functions deploy conquer';
+    else if(status>=500)
+      msg='Serverfehler ('+status+')'+(detail?': '+detail.slice(0,120):'')+' – Function-Logs prüfen';
     else
-      toast('⚠️ Eroberung konnte nicht gespeichert werden');
-    return{pts:0,conquered:false,defended:false,error:'other'};
+      msg='Fehler: '+String(code).slice(0,140);
+    toast('⚠️ Eroberung: '+msg);
+    return{pts:0,conquered:false,defended:false,error:'other',errMsg:msg};
   }
 
   let conquered=false,defended=false;
@@ -6784,6 +6837,7 @@ async function renderFactionWar(){
      Fraktion diesen ABGESCHLOSSENEN Monat gewonnen hat (settleSeasonWins). */
   if(isLive&&_realLeaderId&&userTeam)trackSeasonLeader(_realLeaderId,userTeam);
   settleSeasonWins();
+  try{settleSeasonWinsServer();}catch(e){} // Server-Abrechnung (season_winners), async
   el.innerHTML=(isLive?'':'<div style="font-size:.62rem;color:var(--muted);margin-bottom:6px">📡 Offline – lokale Schätzung</div>')
     +stats.map((tm,i)=>{
       const share=Math.round((tm.total/grand)*100);
