@@ -563,12 +563,13 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
    Drawer): sonst verschwindet die unterste Zeile – z.B. die letzte Kalenderwoche
    – hinter der Leiste. */
 .drawer-body{padding:14px 14px calc(var(--nav-total) + 24px);min-height:0;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch}
-.drawer-body.anim{animation:drawerContentIn .28s cubic-bezier(.22,1,.36,1)}
-@keyframes drawerContentIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-/* Sanftes Ausblenden des alten Reiter-Inhalts vor dem Wechsel (Crossfade,
-   verhindert das harte Umspringen zwischen Quests/Läufe/… ). */
-.drawer-body.leaving{animation:drawerContentOut .13s ease forwards}
-@keyframes drawerContentOut{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-6px)}}
+/* Reiterwechsel = klarer horizontaler Slide. Richtung über --sx (in JS gesetzt):
+   vorwärts (rechts) -> neuer Inhalt kommt von rechts herein; rückwärts von links. */
+.drawer-body.anim{animation:drawerContentIn .3s cubic-bezier(.22,1,.36,1)}
+@keyframes drawerContentIn{from{opacity:0;transform:translateX(var(--sx,26px))}to{opacity:1;transform:translateX(0)}}
+/* Alten Reiter-Inhalt in die Gegenrichtung ausschieben (Crossfade). */
+.drawer-body.leaving{animation:drawerContentOut .14s ease forwards}
+@keyframes drawerContentOut{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(calc(var(--sx,26px) * -0.7))}}
 @media (prefers-reduced-motion:reduce){.drawer-body.anim,.drawer-body.leaving{animation:none}}
 
 /* ═══ MODALS ═══ */
@@ -1833,7 +1834,7 @@ let heartRate=72,hrSource='sim';
 let cadence=0,gpsSpeed=null,gpsAlt=null;
 let btDevice=null,btChar=null;
 let calDate=new Date();
-let currentView='map',currentTab='history';
+let currentView='map',currentTab='history',_drawerDir=1;
 let landmarks=[];
 let weekChart=null;
 let selectedTerrId=null,editAvatar=AVATARS[0];
@@ -1911,7 +1912,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v153';
+const APP_VERSION='v154';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -6870,7 +6871,7 @@ window.claimEvent=async function(eid){
 async function renderFactionWar(){
   const el=$('teamRankList');
   if(!el)return;
-  let stats,isLive=false,isMonthly=false;
+  let stats,isLive=false;
   try{
     if(!sb)throw 0;
     // Mitglieder/Gebiete weiterhin aus profiles aggregieren …
@@ -6888,40 +6889,26 @@ async function renderFactionWar(){
     });
     stats=TEAMS.map(tm=>({...tm,total:agg[tm.id]?.total||0,terr:agg[tm.id]?.terr||0,members:agg[tm.id]?.members||0}));
     isLive=true;
-    /* … aber die WERTUNG kommt aus den MONATS-Fraktionspunkten (echte Saison:
-       jeder Monat startet bei 0). Fehlt die Tabelle noch (SQL nicht ausgeführt),
-       bleibt die kumulierte Gesamtwertung als Fallback aktiv. */
-    try{
-      const{data:fmp,error:fe}=await sb.from('faction_month_points')
-        .select('team,points').eq('month_key',currentMonthKey());
-      if(!fe&&Array.isArray(fmp)){
-        const mp={};fmp.forEach(r=>{mp[r.team]=r.points||0;});
-        stats.forEach(t=>{t.total=mp[t.id]||0;});
-        isMonthly=true;
-      }
-    }catch(e){}
   }catch(e){
     // Fallback: nur lokal bekannte Daten
     stats=TEAMS.map(tm=>({...tm,
       total:userTeam===tm.id?points:0,
-      terr:userTeam===tm.id?territories.filter(t=>t.owner===userId).length:0,
+      terr:userTeam===tm.id?totalConquered:0,
       members:userTeam===tm.id?1:0}));
   }
-  /* Führenden für die AUSZEICHNUNG aus den ECHTEN Server-Summen bestimmen — VOR dem
-     lokalen Eigen-Punkte-Bump. Sonst hebt der Bump (mine.total=points) die eigene
-     Fraktion künstlich auf Platz 1 und es gäbe einen UNVERDIENTEN Saison-Sieg. */
-  const _realLeader=[...stats].sort((a,b)=>b.total-a.total)[0];
-  const _realLeaderId=(_realLeader&&_realLeader.total>0)?_realLeader.id:null;
-  // Eigene (evtl. noch nicht gesyncte) Punkte als Untergrenze der eigenen Fraktion
-  // — nur für die ANZEIGE der kumulierten Rangliste. In der Monatswertung wäre der
-  // Gesamtpunktestand die falsche Größenordnung -> dort KEIN Bump.
+  /* RANKING = kumulativ eroberte Gebiete je Fraktion (total_conquered summiert).
+     Zählt AUCH wieder verlorene Gebiete -> „einmal erobern reicht". Dadurch ist die
+     Kontrolle sofort > 0 %, sobald erobert wurde, statt an den frisch-leeren
+     Monats-Punkten zu hängen. */
   const mine=stats.find(t=>t.id===userTeam);
-  if(!isMonthly&&mine&&points>mine.total){mine.total=points;if(!mine.members)mine.members=1;}
-  stats.sort((a,b)=>b.total-a.total);
-  const grand=stats.reduce((s,t)=>s+t.total,0)||1;
+  // Eigene, evtl. noch nicht gesyncte Eroberungen als Untergrenze der eigenen Fraktion.
+  if(mine&&totalConquered>mine.terr){mine.terr=totalConquered;if(!mine.members)mine.members=1;}
+  stats.sort((a,b)=>b.terr-a.terr||b.total-a.total);
+  const grand=stats.reduce((s,t)=>s+t.terr,0)||1;
   const leader=stats[0];
-  /* Führende Fraktion global merken (Anzeige-Leader inkl. Bump) -> „👑 Führende Fraktion". */
-  window._factionLeaderId=(leader&&leader.total>0)?leader.id:null;
+  const _realLeaderId=(leader&&leader.terr>0)?leader.id:null;
+  /* Führende Fraktion (meiste Eroberungen) global merken -> „👑 Führende Fraktion". */
+  window._factionLeaderId=_realLeaderId;
   /* Saison-Sieg wird NICHT mehr mitten im Monat vergeben. Stattdessen wird der reale
      Monats-Führende (echte Server-Daten) + die eigene Fraktion laufend mitgeschrieben.
      Die Auszeichnung erhält man erst NACH Monatsende — und nur, wenn die eigene
@@ -6929,32 +6916,31 @@ async function renderFactionWar(){
   if(isLive&&_realLeaderId&&userTeam)trackSeasonLeader(_realLeaderId,userTeam);
   settleSeasonWins();
   try{settleSeasonWinsServer();}catch(e){} // Server-Abrechnung (season_winners), async
-  const MONTH_LBL=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'][new Date().getMonth()];
   el.innerHTML=(isLive?'':'<div style="font-size:.62rem;color:var(--muted);margin-bottom:6px">📡 Offline – lokale Schätzung</div>')
-    +(isMonthly?`<div style="font-size:.62rem;color:var(--muted);margin-bottom:6px">🗓️ Monatswertung ${MONTH_LBL} – Sieger wird nach Monatsende gekürt</div>`:'')
+    +'<div style="font-size:.62rem;color:var(--muted);margin-bottom:6px">🗺️ Kontrolle = Anteil aller je eroberten Gebiete (zählt auch verlorene)</div>'
     +stats.map((tm,i)=>{
-      const share=Math.round((tm.total/grand)*100);
+      const share=Math.round((tm.terr/grand)*100);
       const isMine=tm.id===userTeam;
-      const isLeader=i===0&&tm.total>0;
+      const isLeader=i===0&&tm.terr>0;
       return`<div class="list-row" style="flex-direction:column;align-items:stretch;gap:5px${isMine?';background:rgba(var(--primary-rgb),.06);border:1px solid rgba(var(--primary-rgb),.25)':''}">
         <div style="display:flex;align-items:center;gap:8px;width:100%">
           <span style="font-size:1rem;width:20px;flex-shrink:0">${['🥇','🥈','🥉','4.'][i]||''}</span>
           <span style="font-size:1.1rem">${tm.icon}</span>
           <span class="row-txt" style="color:${tm.color};font-weight:700">${tm.name}${isMine?' <span style="font-size:.56rem;color:var(--primary)">· DEINE</span>':''}${isLeader?' 👑':''}</span>
           <span style="font-size:.64rem;color:var(--muted)">${tm.members} L.</span>
-          <span style="font-family:'Bebas Neue',sans-serif;color:${tm.color};margin-left:auto">${tm.total}</span>
+          <span style="font-family:'Bebas Neue',sans-serif;color:${tm.color};margin-left:auto">${tm.terr}</span>
         </div>
         <div style="height:6px;border-radius:4px;background:rgba(255,255,255,.07);overflow:hidden"><div style="height:100%;width:${share}%;background:${tm.color};border-radius:4px;transition:width .6s var(--ease-out)"></div></div>
-        <div style="display:flex;justify-content:space-between;font-size:.58rem;color:var(--muted)"><span>${share}% Kontrolle</span><span>${tm.terr} Gebiete</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:.58rem;color:var(--muted)"><span>${share}% Kontrolle</span><span>${tm.terr} erobert · ${tm.total} XP</span></div>
       </div>`;
     }).join('');
   // Persönlicher Beitrag + Kriegslage
   if(mine){
-    const contribPct=mine.total>0?Math.min(100,Math.round((points/mine.total)*100)):0;
+    const contribPct=mine.terr>0?Math.min(100,Math.round((totalConquered/mine.terr)*100)):0;
     const lead=leader.id===userTeam
       ?'ihr führt den Krieg an! 👑'
-      :`${esc(leader.name)} führt mit ${Math.max(0,leader.total-mine.total)} Pts Vorsprung`;
-    el.innerHTML+=`<div style="margin-top:8px;padding:8px 10px;border-radius:10px;background:rgba(var(--primary-rgb),.05);font-size:.66rem;color:var(--muted);line-height:1.5">⚔️ Dein Beitrag für <b style="color:${mine.color}">${esc(mine.name)}</b>: <b style="color:var(--primary)">${points} Pts</b> (${contribPct}%) — ${lead}</div>`;
+      :`${esc(leader.name)} führt mit ${Math.max(0,leader.terr-mine.terr)} Gebieten Vorsprung`;
+    el.innerHTML+=`<div style="margin-top:8px;padding:8px 10px;border-radius:10px;background:rgba(var(--primary-rgb),.05);font-size:.66rem;color:var(--muted);line-height:1.5">⚔️ Dein Beitrag für <b style="color:${mine.color}">${esc(mine.name)}</b>: <b style="color:var(--primary)">${totalConquered} Gebiete</b> (${contribPct}%) — ${lead}</div>`;
   }
 }
 
@@ -8460,16 +8446,17 @@ function renderDrawer(){
     calendar:()=>{setTimeout(drawCalendar,0);return'<div id="calDiv"></div>'}
   };
   document.querySelectorAll('#drawerTabs .tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===currentTab));
-  const _build=()=>{try{drawerBody.innerHTML=tabs[currentTab]?tabs[currentTab]():'';}catch(err){drawerBody.innerHTML=`<div style="color:#ef4444;padding:16px;font-size:.8rem">Fehler: ${err.message}</div>`;console.error('renderDrawer error:',err);}drawerBody.scrollTop=0;drawerBody.classList.remove('leaving');drawerBody.classList.remove('anim');void drawerBody.offsetWidth;drawerBody.classList.add('anim');};
+  const _build=()=>{try{drawerBody.innerHTML=tabs[currentTab]?tabs[currentTab]():'';}catch(err){drawerBody.innerHTML=`<div style="color:#ef4444;padding:16px;font-size:.8rem">Fehler: ${err.message}</div>`;console.error('renderDrawer error:',err);}drawerBody.scrollTop=0;drawerBody.style.setProperty('--sx',(_drawerDir>=0?26:-26)+'px');drawerBody.classList.remove('leaving');drawerBody.classList.remove('anim');void drawerBody.offsetWidth;drawerBody.classList.add('anim');};
   /* Reiterwechsel = weicher Crossfade: erst den alten Inhalt kurz ausblenden,
      dann tauschen und neu einblenden. Beim ersten Öffnen (leerer Body) sofort
      aufbauen, damit nichts verzögert wirkt. */
   const hasContent=drawerBody.innerHTML.trim().length>0;
   const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches;
   if(hasContent&&!reduce&&drawer.classList.contains('open')){
+    drawerBody.style.setProperty('--sx',(_drawerDir>=0?26:-26)+'px');
     drawerBody.classList.remove('anim');
     drawerBody.classList.add('leaving');
-    setTimeout(_build,120);
+    setTimeout(_build,130);
   }else{
     requestAnimationFrame(_build);
   }
@@ -9081,7 +9068,11 @@ window.initApp=function(){
     navPauseFab.addEventListener('touchend',e=>{e.preventDefault();_pTapped=true;if(isRunning){isPaused?resumeRun():pauseRun();}},{passive:false});
     navPauseFab.addEventListener('click',()=>{if(_pTapped){_pTapped=false;return;}if(isRunning){isPaused?resumeRun():pauseRun();}});
   }
-  document.querySelectorAll('#drawerTabs .tab-btn').forEach(b=>b.addEventListener('click',function(){const t=this.dataset.tab;if(t===currentTab)return;currentTab=t;renderDrawer();}));
+  document.querySelectorAll('#drawerTabs .tab-btn').forEach(b=>b.addEventListener('click',function(){const t=this.dataset.tab;if(t===currentTab)return;
+    /* Slide-Richtung aus der Reiter-Reihenfolge: nach rechts = neuer Inhalt von rechts. */
+    const order=['history','quests','terr','fitness','ach','calendar'];
+    _drawerDir=(order.indexOf(t)>=order.indexOf(currentTab))?1:-1;
+    currentTab=t;renderDrawer();}));
   $('pvEditBtn').addEventListener('click',()=>openSettingsAt('profil'));
   $('userBadge').addEventListener('click',()=>openSettingsAt('home'));
   $('saveProfileBtn').addEventListener('click',()=>{playerName=$('editName').value.trim()||playerName;userAvatar=editAvatar;saveProfile();$('profileModal').style.display='none';toast('Profil gespeichert');updateProfile()});

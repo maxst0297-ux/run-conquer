@@ -421,9 +421,12 @@ export function createEngine(h3) {
   return {
     pathToCells, enclosedCells, clusters, classify,
     resolveAttack, resolveDefenseBuild, resolveRun,
-    // Re-Exports als Convenience
+    // Re-Exports als Convenience — die conquer-Function ruft diese als
+    // engine.X(...) auf, daher MÜSSEN sie im Objekt liegen (sonst
+    // "engine.decayedDefense is not a function" zur Laufzeit).
     paceFactor, distanceBonus, runValue, clampDefense,
+    decayedDefense, timeToMinMs, botAttack, pickBotTargets,
     RES, DEF_MIN, DEF_MAX, CAPTURE_BONUS, DAILY_BUILD_CAP, OWN_BUILD_MIN_PER_KM,
-    NEGLECT_CAPTURE_DEF,
+    NEGLECT_CAPTURE_DEF, DECAY_PER_DAY, ENERGY_BOOST, ENERGY_PER_WEEK,
   };
 }

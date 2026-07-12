@@ -142,14 +142,24 @@ Deno.serve(async (req) => {
         await svc.from('h3_cells').upsert(cr.cells.map((c: string) => ({ cell: c, territory_id: nt.id })), { onConflict: 'cell' });
     }
 
+    // ── Eroberungs-Bonus: Erobern gibt spürbar mehr XP (zusätzlich zu den
+    //    Angriffspunkten der Engine): +40 XP je erobertem/abgetrenntem Gebiet. ─
+    const CONQUEST_BONUS_XP = 40;
+    const conqCount = (res.events || []).filter((e: any) => e.type === 'conquered' || e.type === 'cut').length;
+    const conquestBonus = conqCount * CONQUEST_BONUS_XP;
+
     // ── Punkte + Energie persistieren (Energie server-autoritativ) ───────────
-    // Lauf-XP (Eroberung + km-XP) werden serverseitig gutgeschrieben; der Client
-    // bucht dieselben Beträge lokal (identische Formel) — konsistenter Endstand.
-    const runTotal = (res.playerPoints || 0) + kmXp;
+    // Lauf-XP (Eroberung + Bonus + km-XP) werden serverseitig gutgeschrieben; der
+    // Client bucht dieselben Beträge lokal (identische Formel) — konsistenter Stand.
+    const runTotal = (res.playerPoints || 0) + conquestBonus + kmXp;
     await svc.from('profiles').update({
       points: (prof?.points || 0) + runTotal,
       energy, energy_week: weekKey,
     }).eq('id', user.id);
+    // Eigene Eroberungen serverseitig mitzählen (Fraktions-Kontrolle basiert darauf).
+    if (conqCount > 0) {
+      try { await svc.rpc('rc_bump_conquered', { uid: user.id, n: conqCount }); } catch (_) { /* noop */ }
+    }
 
     // ── Monats-Fraktionspunkte (echte Saisons: jeden Monat bei 0) ────────────
     // Fehlt das SQL noch (rc_add_faction_points), scheitert das leise — der Lauf
@@ -173,7 +183,6 @@ Deno.serve(async (req) => {
           .select('event_id,progress,completed_at')
           .eq('user_id', user.id).in('event_id', evs.map((e: any) => e.id));
         const pmap = new Map((prows || []).map((r: any) => [r.event_id, r]));
-        const conqCount = (res.events || []).filter((e: any) => e.type === 'conquered' || e.type === 'cut').length;
         for (const ev of evs) {
           const cur: any = pmap.get(ev.id);
           let prog = cur ? (+cur.progress || 0) : 0;
@@ -191,7 +200,7 @@ Deno.serve(async (req) => {
       }
     } catch (_) { /* Events optional — Lauf bleibt gewertet */ }
 
-    return json({ ok: true, points: res.playerPoints, kmXp, events: res.events, atkPts: res.atkPts, defPts: res.defPts, energy, boosted: applyBoost });
+    return json({ ok: true, points: (res.playerPoints || 0) + conquestBonus, kmXp, conquestBonus, events: res.events, atkPts: res.atkPts, defPts: res.defPts, energy, boosted: applyBoost });
   } catch (e) {
     return json({ error: String(e && (e as Error).message || e) }, 500);
   }

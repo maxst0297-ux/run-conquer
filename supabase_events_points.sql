@@ -176,3 +176,23 @@ begin
 end;
 $$;
 grant execute on function public.rc_award_xp(int, text) to authenticated;
+
+-- ── Eroberungen kumulativ zählen (Fraktions-Kontrolle) ──
+-- Nur Server (service_role via Edge Functions conquer/bot_tick) darf zählen.
+-- total_conquered wird NIE verringert -> "einmal erobern reicht" (zählt auch
+-- wieder verlorene Gebiete).
+create or replace function public.rc_bump_conquered(uid uuid, n int)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  update profiles
+     set total_conquered = coalesce(total_conquered, 0) + greatest(0, n),
+         updated_at = now()
+   where id = uid;
+$$;
+revoke execute on function public.rc_bump_conquered(uuid, int) from public;
+revoke execute on function public.rc_bump_conquered(uuid, int) from anon;
+revoke execute on function public.rc_bump_conquered(uuid, int) from authenticated;
+grant  execute on function public.rc_bump_conquered(uuid, int) to service_role;
