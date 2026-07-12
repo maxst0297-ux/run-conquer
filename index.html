@@ -1911,7 +1911,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v151';
+const APP_VERSION='v152';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2885,8 +2885,13 @@ function renderPowerRankings(){
   const allPlayers=[
     {name:playerName,avatar:userAvatar,wkm,wConq,wTime,streak:streakDays,isMe:true},
     ...BOTS.map(b=>{
-      const seed=b.pts;
-      return{name:b.name,avatar:b.avatar,wkm:+(b.totalKm*.12+Math.random()*3).toFixed(1),wConq:Math.floor(b.conquered*.04+Math.random()*2),wTime:Math.floor(b.totalKm*.12*400+Math.random()*1800),streak:b.streak,isMe:false};
+      /* Deterministische Bot-Wochenwerte: mit (Bot-ID + Wochenstart) geseedet,
+         damit die Rangliste innerhalb einer Woche stabil ist statt bei jedem
+         Öffnen neu zu würfeln. */
+      let h=0;const ss=b.id+ws.toISOString().slice(0,10);
+      for(let i=0;i<ss.length;i++)h=(h*31+ss.charCodeAt(i))>>>0;
+      const rnd=()=>{h=(h*1664525+1013904223)>>>0;return h/4294967296;};
+      return{name:b.name,avatar:b.avatar,wkm:+(b.totalKm*.12+rnd()*3).toFixed(1),wConq:Math.floor(b.conquered*.04+rnd()*2),wTime:Math.floor(b.totalKm*.12*400+rnd()*1800),streak:b.streak,isMe:false};
     })
   ];
 
@@ -5545,7 +5550,10 @@ async function finalizeRun(elapsed){
     runNote('ℹ️ Kein gegnerisches Gebiet auf deiner Strecke – daher kein Angriff. Neu erlaufene freie Fläche wird trotzdem dein Revier.');
   }
   const streakMul=streakDays>0?Math.min(2,1+(streakDays-1)*0.1):1;
-  const kmXP=Math.round(xpForKm(dist/1000,getWeeklyKm())*streakMul);
+  /* km-XP: bevorzugt den SERVER-Wert (conquer berechnet mit identischer Formel und
+     schreibt ihn bereits in profiles.points + Monats-Fraktionspunkte). Lokale
+     Formel nur als Offline-Fallback — so bleiben Client und Server konsistent. */
+  const kmXP=(res&&typeof res.kmXp==='number')?res.kmXp:Math.round(xpForKm(dist/1000,getWeeklyKm())*streakMul);
   const totalPts=Math.round(res.pts+kmXP);
   const lvBefore=getLevel(prevPts);
   points+=totalPts;
@@ -5665,7 +5673,9 @@ async function processConquest(np,area,d,boosted=false,isImport=false,durationS=
     const r=await sb.functions.invoke('conquer',{body:{
       path:runPath.map(p=>[p[0],p[1]]),
       distanceM:d,durationS:durationS||0,cadence,
-      playerName,userColor,userTeam,boosted:!!boosted
+      playerName,userColor,userTeam,boosted:!!boosted,
+      // Für die serverseitige km-XP-Berechnung (Server klammert die Werte hart).
+      weeklyKm:getWeeklyKm(),streakDays
     }});
     data=r.data;error=r.error;
   }catch(e){error=e;}
@@ -5726,7 +5736,7 @@ async function processConquest(np,area,d,boosted=false,isImport=false,durationS=
      niemals wieder hochsetzen, sonst „verbraucht sich nichts". */
   if(typeof data.energy==='number'&&data.energy<energy)energy=data.energy;
   loadH3Territories&&loadH3Territories(); // Karte + Stats mit neuem Stand aktualisieren
-  return{pts:data.points||0,conquered,defended,boostUsed:!!data.boosted};
+  return{pts:data.points||0,kmXp:(typeof data.kmXp==='number'?data.kmXp:null),conquered,defended,boostUsed:!!data.boosted};
 }
 
 /* STARTER QUESTS */
@@ -6781,7 +6791,7 @@ function renderEvents(){
     {id:'ev3',title:'Wochenend-Sprint',desc:'Schnellste 1 km diese Woche',icon:'⚡',endsAt:now+1*86400000+14*3600000,color:'cyan',participants:['🏃','⚡','🤸','👟'],reward:200}
   ];
   function fmtCD(ms){if(ms<=0)return'BEENDET';const d=Math.floor(ms/86400000),h=Math.floor((ms%86400000)/3600000),m=Math.floor((ms%3600000)/60000);return d>0?`${d}T ${h}Std`:h>0?`${h}Std ${m}Min`:`${m}Min`}
-  $('eventsList').innerHTML=EVENTS.map(ev=>{const rem=ev.endsAt-now;return`<div class="event-item ${ev.color}"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="flex:1"><div style="font-weight:600;font-size:.88rem">${ev.icon} ${ev.title}</div><div style="font-size:.72rem;color:var(--muted);margin:2px 0">${ev.desc}</div><div style="display:flex;align-items:center;gap:8px;margin-top:4px"><span class="event-countdown">⏱ ${fmtCD(rem)}</span><span style="font-size:.65rem;color:var(--muted)">🎁 +${ev.reward} Pts</span></div></div></div><div class="event-badges">${ev.participants.map(p=>`<span class="event-badge">${p}</span>`).join('')}<span class="event-badge">+${3+ev.id.charCodeAt(2)%8} weitere</span></div></div>`}).join('');
+  $('eventsList').innerHTML='<div style="font-size:.6rem;color:var(--muted);margin-bottom:8px;letter-spacing:1px;text-transform:uppercase">🔬 Vorschau – Community-Events starten mit der offenen Beta</div>'+EVENTS.map(ev=>{const rem=ev.endsAt-now;return`<div class="event-item ${ev.color}"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="flex:1"><div style="font-weight:600;font-size:.88rem">${ev.icon} ${ev.title}</div><div style="font-size:.72rem;color:var(--muted);margin:2px 0">${ev.desc}</div><div style="display:flex;align-items:center;gap:8px;margin-top:4px"><span class="event-countdown">⏱ ${fmtCD(rem)}</span><span style="font-size:.65rem;color:var(--muted)">🎁 +${ev.reward} Pts</span></div></div></div><div class="event-badges">${ev.participants.map(p=>`<span class="event-badge">${p}</span>`).join('')}<span class="event-badge">+${3+ev.id.charCodeAt(2)%8} weitere</span></div></div>`}).join('');
 }
 
 /* ── FRAKTIONS-KRIEG (echte, geteilte Welt) ──
@@ -6793,9 +6803,10 @@ function renderEvents(){
 async function renderFactionWar(){
   const el=$('teamRankList');
   if(!el)return;
-  let stats,isLive=false;
+  let stats,isLive=false,isMonthly=false;
   try{
     if(!sb)throw 0;
+    // Mitglieder/Gebiete weiterhin aus profiles aggregieren …
     const{data,error}=await sb.from('profiles')
       .select('user_team,points,total_conquered')
       .not('user_team','is',null)
@@ -6810,6 +6821,18 @@ async function renderFactionWar(){
     });
     stats=TEAMS.map(tm=>({...tm,total:agg[tm.id]?.total||0,terr:agg[tm.id]?.terr||0,members:agg[tm.id]?.members||0}));
     isLive=true;
+    /* … aber die WERTUNG kommt aus den MONATS-Fraktionspunkten (echte Saison:
+       jeder Monat startet bei 0). Fehlt die Tabelle noch (SQL nicht ausgeführt),
+       bleibt die kumulierte Gesamtwertung als Fallback aktiv. */
+    try{
+      const{data:fmp,error:fe}=await sb.from('faction_month_points')
+        .select('team,points').eq('month_key',currentMonthKey());
+      if(!fe&&Array.isArray(fmp)){
+        const mp={};fmp.forEach(r=>{mp[r.team]=r.points||0;});
+        stats.forEach(t=>{t.total=mp[t.id]||0;});
+        isMonthly=true;
+      }
+    }catch(e){}
   }catch(e){
     // Fallback: nur lokal bekannte Daten
     stats=TEAMS.map(tm=>({...tm,
@@ -6823,9 +6846,10 @@ async function renderFactionWar(){
   const _realLeader=[...stats].sort((a,b)=>b.total-a.total)[0];
   const _realLeaderId=(_realLeader&&_realLeader.total>0)?_realLeader.id:null;
   // Eigene (evtl. noch nicht gesyncte) Punkte als Untergrenze der eigenen Fraktion
-  // — nur für die ANZEIGE der Rangliste, NICHT für die Sieg-Vergabe.
+  // — nur für die ANZEIGE der kumulierten Rangliste. In der Monatswertung wäre der
+  // Gesamtpunktestand die falsche Größenordnung -> dort KEIN Bump.
   const mine=stats.find(t=>t.id===userTeam);
-  if(mine&&points>mine.total){mine.total=points;if(!mine.members)mine.members=1;}
+  if(!isMonthly&&mine&&points>mine.total){mine.total=points;if(!mine.members)mine.members=1;}
   stats.sort((a,b)=>b.total-a.total);
   const grand=stats.reduce((s,t)=>s+t.total,0)||1;
   const leader=stats[0];
@@ -6838,7 +6862,9 @@ async function renderFactionWar(){
   if(isLive&&_realLeaderId&&userTeam)trackSeasonLeader(_realLeaderId,userTeam);
   settleSeasonWins();
   try{settleSeasonWinsServer();}catch(e){} // Server-Abrechnung (season_winners), async
+  const MONTH_LBL=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'][new Date().getMonth()];
   el.innerHTML=(isLive?'':'<div style="font-size:.62rem;color:var(--muted);margin-bottom:6px">📡 Offline – lokale Schätzung</div>')
+    +(isMonthly?`<div style="font-size:.62rem;color:var(--muted);margin-bottom:6px">🗓️ Monatswertung ${MONTH_LBL} – Sieger wird nach Monatsende gekürt</div>`:'')
     +stats.map((tm,i)=>{
       const share=Math.round((tm.total/grand)*100);
       const isMine=tm.id===userTeam;
@@ -7310,8 +7336,8 @@ function renderSettingsTab(tab){
     }
 
   } else if(tab==='spiel'){
-    body.innerHTML=`<div style="display:flex;flex-direction:column;gap:10px"><div style="font-size:.8rem;color:var(--muted);background:var(--card);padding:12px;border-radius:12px;border:1px solid var(--border)"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>⚡ Energie</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${energy}/${CFG.ENERGY_MAX}</span></div><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>🏆 Punkte</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${points}</span></div><div style="display:flex;justify-content:space-between"><span>📐 Gebiete</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${territories.filter(t=>t.owner===userId).length}</span></div></div><button class="btn btn-p" id="setPulsBtn"><i class="fas fa-heartbeat"></i> Pulsmesser koppeln</button><div id="setVersionTap" style="text-align:center;color:var(--muted);font-size:.6rem;margin-top:8px;cursor:pointer;-webkit-user-select:none;user-select:none">v2.0.0 · Runners Conquer</div></div>`;
-    $('setPulsBtn').addEventListener('click',connectBT);
+    body.innerHTML=`<div style="display:flex;flex-direction:column;gap:10px"><div style="font-size:.8rem;color:var(--muted);background:var(--card);padding:12px;border-radius:12px;border:1px solid var(--border)"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>⚡ Energie</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${energy}/${CFG.ENERGY_MAX}</span></div><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>🏆 Punkte</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${points}</span></div><div style="display:flex;justify-content:space-between"><span>📐 Gebiete</span><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif">${territories.filter(t=>t.owner===userId).length}</span></div></div>${navigator.bluetooth?`<button class="btn btn-p" id="setPulsBtn"><i class="fas fa-heartbeat"></i> Pulsmesser koppeln</button>`:''}<div id="setVersionTap" style="text-align:center;color:var(--muted);font-size:.6rem;margin-top:8px;cursor:pointer;-webkit-user-select:none;user-select:none">v2.0.0 · Runners Conquer</div></div>`;
+    $('setPulsBtn')?.addEventListener('click',connectBT);
     let vTaps=0;
     $('setVersionTap').addEventListener('click',()=>{vTaps++;if(vTaps>=5){vTaps=0;$('settingsModal').style.display='none';openAdminPanel();}});
   } else if(tab==='support'){
@@ -8344,7 +8370,7 @@ function renderDrawer(){
     history:()=>history.slice(-8).reverse().map(r=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)"><span style="font-size:1.2rem">${r.conquered?'⚔️':r.defended?'🛡️':'🏃'}</span><div style="flex:1"><div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary)">${fmtDist(r.distance)}</div><div style="font-size:.68rem;color:var(--muted)">${new Date(r.date).toLocaleDateString('de')} · ${fmtTime(r.duration)}</div></div><span style="font-family:'Bebas Neue',sans-serif;color:var(--primary)">+${r.pts}</span></div>`).join('')||'<div class="muted" style="padding:16px">Noch keine Läufe</div>',
     quests:()=>{genWeeklyChallenges();const now=new Date(),dow=(now.getDay()+6)%7,daysLeft=7-dow;const wkHdr=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><span style="font-size:.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--primary);font-weight:700">🗓️ Wochen-Challenges</span><span style="font-size:.62rem;color:var(--muted)">noch ${daysLeft} Tag${daysLeft!==1?'e':''}</span></div>`;const wkCards=weeklyChals.map(c=>{const p=Math.min(100,Math.round((c.progress||0)/c.target*100));const lbl=c.key==='km'?((c.progress||0).toFixed(1)+'/'+c.target+' km'):c.key==='runs'?Math.floor(c.progress||0)+'/'+c.target+' Läufe':(Math.floor(c.progress||0)+'/'+c.target);return`<div style="background:var(--card);border-radius:14px;padding:12px;margin-bottom:8px;border:1px solid ${c.done?'var(--primary)44':'var(--border)'}"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:1.2rem">${c.done?'✅':c.icon}</span><span style="flex:1;font-size:.82rem;font-weight:600;color:${c.done?'#10b981':'var(--text)'}">${c.desc}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;color:var(--primary)">+${c.reward}</span></div><div class="q-bar"><div class="q-fill" style="width:${p}%"></div></div><div style="font-size:.62rem;color:var(--muted);margin-top:4px">${lbl}</div></div>`;}).join('');const divider='<div style="height:1px;background:var(--border);margin:12px 0"></div><div style="font-size:.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700;margin-bottom:8px">⭐ Starter-Quests</div>';const sqCards=quests.map(q=>{const p=Math.min(100,Math.round(q.progress/q.target*100));return`<div style="background:var(--card);border-radius:14px;padding:12px;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:1.2rem">${q.icon}</span><span style="flex:1;font-size:.82rem;font-weight:600;color:${q.claimed?'#10b981':'var(--text)'}">${q.desc}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:.9rem;color:var(--primary)">🎁 ${q.reward}</span></div><div class="q-bar"><div class="q-fill" style="width:${p}%"></div></div></div>`;}).join('');return wkHdr+wkCards+divider+sqCards;},
     terr:()=>territories.filter(t=>t.owner===userId).map(t=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)"><div style="width:10px;height:10px;border-radius:50%;background:${userColor}"></div><span style="flex:1;cursor:pointer" onclick="window.flyTo('${t.id}')">${esc(territoryName(t))}</span><span class="muted" style="font-size:.72rem">${Math.round(t.area)} m²</span><button onclick="window.openRename('${t.id}')" style="background:none;border:none;color:var(--muted);cursor:pointer">✏️</button></div>`).join('')||'<div class="muted" style="padding:16px">Noch keine Gebiete</div>',
-    fitness:()=>{setTimeout(()=>{document.getElementById('btBtn2')?.addEventListener('click',connectBT)},100);return`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${[['Schritte',stepsToday],['Puls',heartRate+' bpm'],['Laufzeit',fmtTime(runSecs)],['Pace',fmtPace(dist,runSecs)],['Gesamt km',totalKm.toFixed(1)],['Streak',streakDays+'🔥'],['kcal',history.reduce((s,r)=>s+(r.kcal||0),0)],['Gebiete',territories.filter(t=>t.owner===userId).length]].map(([l,v])=>`<div class="stat-card"><div class="sv">${v}</div><div class="sl">${l}</div></div>`).join('')}</div><button class="btn" id="btBtn2" style="width:100%;margin-top:14px"><i class="fas fa-heartbeat"></i> Pulsmesser koppeln</button>`},
+    fitness:()=>{setTimeout(()=>{document.getElementById('btBtn2')?.addEventListener('click',connectBT)},100);return`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${[['Schritte',stepsToday],['Puls',heartRate+' bpm'],['Laufzeit',fmtTime(runSecs)],['Pace',fmtPace(dist,runSecs)],['Gesamt km',totalKm.toFixed(1)],['Streak',streakDays+'🔥'],['kcal',history.reduce((s,r)=>s+(r.kcal||0),0)],['Gebiete',territories.filter(t=>t.owner===userId).length]].map(([l,v])=>`<div class="stat-card"><div class="sv">${v}</div><div class="sl">${l}</div></div>`).join('')}</div>${navigator.bluetooth?`<button class="btn" id="btBtn2" style="width:100%;margin-top:14px"><i class="fas fa-heartbeat"></i> Pulsmesser koppeln</button>`:`<div style="margin-top:14px;font-size:.68rem;color:var(--muted);text-align:center">💓 Pulsmesser-Kopplung folgt in einem App-Update</div>`}`},
     ach:()=>{
       const CAT_NAMES={conq:'Straßen erobert',km:'Kilometer gelaufen',atk:'Angriffe gewonnen',def:'Verteidigungen',disc:'Orte besucht',streak:'Tage in Folge'};
       const CAT_UNITS={conq:'Straßen',km:'km',atk:'Siege',def:'Vert.',disc:'Orte',streak:'Tage'};
@@ -9069,6 +9095,9 @@ window.initApp=function(){
   $('closeRenameBtn').addEventListener('click',()=>$('renameModal').style.display='none');
   $('showNearBtn').addEventListener('click',()=>setView('map'));
   $('pvBtBtn').addEventListener('click',connectBT);
+  // Ohne Web-Bluetooth (native iOS/Android-WebView) den Puls-Button ausblenden —
+  // ein Knopf, der nur „nicht verfügbar" toastet, wirkt kaputt.
+  if(!navigator.bluetooth){const b=$('pvBtBtn');if(b)b.style.display='none';}
   $('pvThemeBtn').addEventListener('click',toggleTheme);
   /* Locate-me button */
   $('locateBtn').addEventListener('click',()=>{

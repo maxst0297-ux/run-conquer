@@ -58,6 +58,15 @@ Deno.serve(async (req) => {
     if (!Array.isArray(path) || path.length < 2) return json({ error: 'bad_path' }, 400);
     const cadence = (body.cadence != null) ? +body.cadence : null; // Ø Schritte/Min (optional, aus HealthKit/Fit)
     const distanceKm = distanceM / 1000;
+    // km-XP serverseitig (gleiche Formel wie der Client): Basis km*10, degressiv
+    // nach Wochen-km, Streak-Multiplikator hart auf max ×2 gedeckelt. weeklyKm/
+    // streakDays sind Client-Angaben, aber eng geklammert — die XP-Höhe bleibt
+    // durch die VALIDIERTE Distanz begrenzt (max km*20).
+    const weeklyKm = Math.max(0, Math.min(500, +body.weeklyKm || 0));
+    const streakDays = Math.max(0, Math.min(3650, Math.floor(+body.streakDays || 0)));
+    const xpFactor = weeklyKm < 20 ? 1.0 : (weeklyKm < 50 ? 0.7 : 0.4);
+    const streakMul = streakDays > 0 ? Math.min(2, 1 + (streakDays - 1) * 0.1) : 1;
+    const kmXp = Math.round(Math.round(distanceKm * 10 * xpFactor) * streakMul);
     // Anti-Cheat (GDS 3.1): Mindestdistanz, 25-km/h-Hardcap, Cadence-Plausibilität.
     const v = validateRun({ distanceM, durationS, cadence });
     if (!v.ok) return json({ error: v.reason }, 400);
@@ -134,12 +143,23 @@ Deno.serve(async (req) => {
     }
 
     // ── Punkte + Energie persistieren (Energie server-autoritativ) ───────────
+    // Lauf-XP (Eroberung + km-XP) werden serverseitig gutgeschrieben; der Client
+    // bucht dieselben Beträge lokal (identische Formel) — konsistenter Endstand.
+    const runTotal = (res.playerPoints || 0) + kmXp;
     await svc.from('profiles').update({
-      points: (prof?.points || 0) + (res.playerPoints || 0),
+      points: (prof?.points || 0) + runTotal,
       energy, energy_week: weekKey,
     }).eq('id', user.id);
 
-    return json({ ok: true, points: res.playerPoints, events: res.events, atkPts: res.atkPts, defPts: res.defPts, energy, boosted: applyBoost });
+    // ── Monats-Fraktionspunkte (echte Saisons: jeden Monat bei 0) ────────────
+    // Fehlt das SQL noch (rc_add_faction_points), scheitert das leise — der Lauf
+    // selbst bleibt gewertet.
+    if (userTeam && runTotal > 0) {
+      const mk = new Date().toISOString().slice(0, 7); // 'YYYY-MM' (UTC)
+      try { await svc.rpc('rc_add_faction_points', { mk, team_id: userTeam, pts: Math.round(runTotal) }); } catch (_) { /* noop */ }
+    }
+
+    return json({ ok: true, points: res.playerPoints, kmXp, events: res.events, atkPts: res.atkPts, defPts: res.defPts, energy, boosted: applyBoost });
   } catch (e) {
     return json({ error: String(e && (e as Error).message || e) }, 500);
   }

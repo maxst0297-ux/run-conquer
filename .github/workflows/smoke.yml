@@ -19,6 +19,11 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Engine-Tests (Spielmechanik)
+        run: |
+          npm install --no-save h3-js@4.1.0
+          node supabase/functions/_shared/h3-engine.test.mjs
+
       - name: Playwright-Chromium für Headless-Boot
         run: |
           npm install --no-save playwright

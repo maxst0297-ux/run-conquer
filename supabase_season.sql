@@ -1,16 +1,56 @@
 -- ══════════════════════════════════════════════════════════════════════
--- Runners Conquer — Saison-Abrechnung (Fraktions-Monatssieger, autoritativ)
+-- Runners Conquer — Saison-System (Monatspunkte + Monatssieger, autoritativ)
 -- ----------------------------------------------------------------------
--- Nach Monatsende wird der Fraktions-Sieger EINMAL festgeschrieben
--- (season_winners). Der Client vergibt den Saison-Orden nur an Spieler,
--- die in dem Monat selbst in der Sieger-Fraktion waren.
+-- 1) faction_month_points: Punkte je Fraktion UND Monat. Wird ausschließlich
+--    serverseitig befüllt (Edge Functions conquer/bot_tick über die Funktion
+--    rc_add_faction_points) — Clients können nur lesen.
+--    Damit startet jede Fraktion jeden Monat bei 0 (echte Saisons), statt dass
+--    die historisch stärkste Fraktion über kumulierte Punkte ewig gewinnt.
+-- 2) season_winners: Nach Monatsende wird der Sieger EINMAL festgeschrieben.
 -- Sicher mehrfach ausführbar (idempotent).
 -- ══════════════════════════════════════════════════════════════════════
 
+-- ── Monatspunkte je Fraktion ──
+create table if not exists public.faction_month_points (
+  month_key  text not null,               -- 'YYYY-MM'
+  team       text not null,               -- 'fire' | 'ice' | 'storm' | 'shadow'
+  points     bigint not null default 0,
+  updated_at timestamptz not null default now(),
+  primary key (month_key, team)
+);
+
+alter table public.faction_month_points enable row level security;
+
+drop policy if exists "faction_month_points lesen" on public.faction_month_points;
+create policy "faction_month_points lesen"
+  on public.faction_month_points for select
+  to authenticated using (true);
+-- Kein insert/update/delete für Clients: Schreiben nur über rc_add_faction_points.
+
+-- Punkte gutschreiben (nur Edge Functions mit service_role dürfen das).
+create or replace function public.rc_add_faction_points(mk text, team_id text, pts bigint)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  insert into faction_month_points (month_key, team, points)
+  values (mk, team_id, greatest(0, pts))
+  on conflict (month_key, team) do update
+    set points = faction_month_points.points + greatest(0, excluded.points),
+        updated_at = now();
+$$;
+
+revoke execute on function public.rc_add_faction_points(text, text, bigint) from public;
+revoke execute on function public.rc_add_faction_points(text, text, bigint) from anon;
+revoke execute on function public.rc_add_faction_points(text, text, bigint) from authenticated;
+grant  execute on function public.rc_add_faction_points(text, text, bigint) to service_role;
+
+-- ── Monatssieger ──
 create table if not exists public.season_winners (
   month_key    text primary key,          -- 'YYYY-MM' des ABGESCHLOSSENEN Monats
-  winner_team  text not null,             -- 'fire' | 'ice' | 'storm' | 'shadow'
-  total_points bigint not null default 0, -- Punktesumme der Sieger-Fraktion bei Abrechnung
+  winner_team  text not null,
+  total_points bigint not null default 0, -- Monatspunkte der Sieger-Fraktion
   settled_at   timestamptz not null default now()
 );
 
@@ -20,11 +60,11 @@ drop policy if exists "season_winners lesen" on public.season_winners;
 create policy "season_winners lesen"
   on public.season_winners for select
   to authenticated using (true);
--- Kein insert/update/delete für Clients: Schreiben nur über die Funktion unten.
 
 -- Abrechnung: legt den Sieger des VORMONATS fest, falls noch nicht geschehen.
--- Punktestand = Summe profiles.points je Fraktion zum Zeitpunkt der ersten
--- Abrechnung nach Monatswechsel (Bots zählen mit — konsistent zum Fraktionskrieg).
+-- Quelle sind die MONATSPUNKTE des Vormonats (faction_month_points) — nicht die
+-- kumulierten Gesamtpunkte. Gibt es für den Vormonat keine Punkte, gibt es
+-- keinen Sieger (kein Fallback auf Gesamtsummen).
 create or replace function public.rc_settle_season()
 returns void
 language plpgsql
@@ -41,16 +81,15 @@ begin
     return; -- Vormonat bereits abgerechnet
   end if;
 
-  select user_team, sum(coalesce(points, 0))::bigint
+  select team, points
     into w_team, w_total
-    from profiles
-   where user_team is not null and user_team <> ''
-   group by user_team
-   order by 2 desc
+    from faction_month_points
+   where month_key = prev_mk
+   order by points desc
    limit 1;
 
   if w_team is null or coalesce(w_total, 0) <= 0 then
-    return; -- keine Daten -> nichts festschreiben
+    return; -- keine Monatsdaten -> kein Sieger
   end if;
 
   insert into season_winners (month_key, winner_team, total_points)
