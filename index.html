@@ -609,7 +609,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 @keyframes conPulse{0%,100%{opacity:.9;r:18}50%{opacity:.4;r:24}}
 /* Hervorgehobenes Revier: langsames Pulsieren + Glow, damit die Gebiete optisch
    „heraustreten". Läuft dauerhaft, bis clearOwnerHighlight() die Klasse entfernt. */
-@keyframes terrHi{0%,100%{fill-opacity:.30;filter:drop-shadow(0 0 3px rgba(255,255,255,.6))}50%{fill-opacity:.82;filter:drop-shadow(0 0 12px rgba(255,255,255,1))}}
+@keyframes terrHi{0%,100%{fill-opacity:.30;filter:drop-shadow(0 0 2px rgba(255,255,255,.5))}50%{fill-opacity:.78;filter:drop-shadow(0 0 6px rgba(255,255,255,.85))}}
 .terr-hi{animation:terrHi 1.9s ease-in-out infinite}
 /* Wahrzeichen-Star: sanftes Pulsieren (wie die animate-ui-Vorlage) */
 @keyframes lmStarPulse{0%,100%{transform:scale(1)}30%{transform:scale(.88)}60%{transform:scale(1.18)}}
@@ -1911,7 +1911,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v148';
+const APP_VERSION='v149';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -4969,18 +4969,19 @@ function clearOwnerHighlight(){
   _hiPolys.forEach(p=>{try{if(p._path)p._path.classList.remove('terr-hi');if(p._baseStyle)p.setStyle(p._baseStyle);}catch(e){}});
   _hiPolys=[];
 }
-function highlightOwnerTerr(owner){
-  clearOwnerHighlight();
-  (_ownerPolys[owner]||[]).forEach(p=>{
-    try{
-      const base=p._baseStyle||{weight:2};
-      p.setStyle({weight:Math.max(3,(base.weight||2)+1.5),color:'#ffffff'});
-      p.bringToFront&&p.bringToFront();
-      if(p._path)p._path.classList.add('terr-hi');
-      _hiPolys.push(p);
-    }catch(e){}
-  });
+function _applyHi(p){
+  try{
+    const base=p._baseStyle||{weight:2};
+    p.setStyle({weight:Math.max(3,(base.weight||2)+1.5),color:'#ffffff'});
+    p.bringToFront&&p.bringToFront();
+    if(p._path)p._path.classList.add('terr-hi');
+    _hiPolys.push(p);
+  }catch(e){}
 }
+/* Nur die Polygone EINES bestimmten Gebiets hervorheben (das angetippte). */
+function highlightTerrPolys(polys){clearOwnerHighlight();(polys||[]).forEach(_applyHi);}
+/* Alle Gebiete eines Besitzers hervorheben (weiterhin verfügbar, aktuell ungenutzt). */
+function highlightOwnerTerr(owner){clearOwnerHighlight();(_ownerPolys[owner]||[]).forEach(_applyHi);}
 /* Gebiets-Infoleiste unter der Kopfleiste füllen + einblenden (ersetzt die
    frühere schwebende Karten-Sprechblase). */
 function showTerrBar(info){
@@ -5048,6 +5049,7 @@ function renderH3Territories(){
     try{mp=h3.cellsToMultiPolygon(renderCells,false);}catch(e){return;}
     // Infos für die Gebiets-Leiste (statt Karten-Sprechblase) einmal pro Gebiet bündeln.
     const terrInfo={name:territoryName(t),relText:(own?'Dein Gebiet':(ally?'Verbündet':'Feindlich')+(isBot?' · Bot':'')),team,own,ownerName:t.owner_name,def,tteMin,size:cells.length,rar,borderCol};
+    const terrPolys=[]; // Polygone GENAU dieses Gebiets -> beim Klick nur dieses hervorheben
     mp.forEach(poly=>{
       const pl=L.polygon(poly,{color:borderCol,weight:rstyle.weight,dashArray:rstyle.dash||undefined,fillColor,
         fillOpacity:window._fraktMapMode?0.55:(own?Math.max(.18,strPct*.4):Math.max(.1,strPct*.28)),
@@ -5055,9 +5057,12 @@ function renderH3Territories(){
         .addTo(h3Layer);
       pl._baseStyle={fillOpacity:pl.options.fillOpacity,weight:pl.options.weight,color:pl.options.color};
       /* stopPropagation: sonst feuert direkt danach der Karten-Click (mapL 'click'),
-         der die Leiste sofort wieder schließt -> es käme „gar nichts". */
-      pl.on('click',(e)=>{try{L.DomEvent.stopPropagation(e);}catch(_){}highlightOwnerTerr(t.owner);showTerrBar(terrInfo);});
+         der die Leiste sofort wieder schließt -> es käme „gar nichts".
+         Hervorgehoben wird NUR das angetippte Gebiet (terrPolys) — nicht das ganze
+         Revier des Besitzers (das ließ fälschlich fremde Gebiete mit-leuchten). */
+      pl.on('click',(e)=>{try{L.DomEvent.stopPropagation(e);}catch(_){}highlightTerrPolys(terrPolys);showTerrBar(terrInfo);});
       (_ownerPolys[t.owner]=_ownerPolys[t.owner]||[]).push(pl);
+      terrPolys.push(pl);
     });
   });
 }
@@ -6715,19 +6720,24 @@ async function renderFactionWar(){
       terr:userTeam===tm.id?territories.filter(t=>t.owner===userId).length:0,
       members:userTeam===tm.id?1:0}));
   }
+  /* Führenden für die AUSZEICHNUNG aus den ECHTEN Server-Summen bestimmen — VOR dem
+     lokalen Eigen-Punkte-Bump. Sonst hebt der Bump (mine.total=points) die eigene
+     Fraktion künstlich auf Platz 1 und es gäbe einen UNVERDIENTEN Saison-Sieg. */
+  const _realLeader=[...stats].sort((a,b)=>b.total-a.total)[0];
+  const _realLeaderId=(_realLeader&&_realLeader.total>0)?_realLeader.id:null;
   // Eigene (evtl. noch nicht gesyncte) Punkte als Untergrenze der eigenen Fraktion
+  // — nur für die ANZEIGE der Rangliste, NICHT für die Sieg-Vergabe.
   const mine=stats.find(t=>t.id===userTeam);
   if(mine&&points>mine.total){mine.total=points;if(!mine.members)mine.members=1;}
   stats.sort((a,b)=>b.total-a.total);
   const grand=stats.reduce((s,t)=>s+t.total,0)||1;
   const leader=stats[0];
-  /* Führende Fraktion global merken -> Mitglieder bekommen ein Extra-Icon im Profil. */
+  /* Führende Fraktion global merken (Anzeige-Leader inkl. Bump) -> „👑 Führende Fraktion". */
   window._factionLeaderId=(leader&&leader.total>0)?leader.id:null;
-  /* Saison-Sieg NUR gutschreiben, wenn die eigene Fraktion wirklich (mit echten,
-     aggregierten Live-Daten) die meisten Punkte hat. Im Offline-Fallback stünde
-     die eigene Fraktion sonst immer auf Platz 1 -> unverdiente Auszeichnung.
-     Voraussetzung: man ist selbst in dieser (führenden) Fraktion. */
-  if(isLive&&userTeam&&window._factionLeaderId&&window._factionLeaderId===userTeam){
+  /* Saison-Sieg NUR gutschreiben, wenn die eigene Fraktion mit ECHTEN, aggregierten
+     Server-Daten die meisten Punkte hat (isLive) UND man selbst darin ist. Der lokale
+     Bump wird hier bewusst NICHT berücksichtigt (kein Selbst-Sieg durch eigene Punkte). */
+  if(isLive&&userTeam&&_realLeaderId&&_realLeaderId===userTeam){
     const _mk=new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0');
     if(!factionWins.includes(_mk)){factionWins.push(_mk);saveProfile();if(typeof renderFactionWins==='function')renderFactionWins();}
   }
