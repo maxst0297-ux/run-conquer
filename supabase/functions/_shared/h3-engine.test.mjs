@@ -236,5 +236,46 @@ ok('botAttack: stark genug -> übernommen', (()=>{const r=botAttack(40,50);retur
 ok('botAttack: zu schwach -> nur geschwächt', (()=>{const r=botAttack(100,50);return !r.taken&&r.newDefense===50;})());
 ok('botAttack: Schwächung floored bei 1', (()=>{const r=botAttack(3,50);return r.taken;})()); // 50>=3 -> taken
 
+// ================= Vernachlässigtes Gebiet: Drüberlaufen erobert =================
+// Ein Gebiet mit ~1 Verteidigung fällt beim Durchlaufen — unabhängig vom Tempo
+// und ohne den 0.2-Durchlauf-Dämpfer.
+{
+  // Durchlauf (through) über ein Gebiet mit Verteidigung 1, winzige Angriffspunkte.
+  const r = eng.resolveAttack({ enemyCells: territory, enemyDefense: 1, runCells: throughRun, enclosed: new Set(), attackPoints: 2 });
+  ok('SCHWACH(1) Durchlauf -> ganzes Gebiet erobert', r.conquered && r.defenderCells.length === 0 && r.attackerCells.length === territory.length, 'mode=' + r.mode + ' atkDef=' + r.attackerDefense);
+}
+{
+  // Sogar bei atkPts=0 (z. B. sehr langsamer Lauf) fällt das aufgegebene Gebiet.
+  const r = eng.resolveAttack({ enemyCells: territory, enemyDefense: 1, runCells: throughRun, enclosed: new Set(), attackPoints: 0 });
+  ok('SCHWACH(1) Durchlauf, atk=0 -> trotzdem erobert', r.conquered && r.attackerDefense === 1 + 20, 'atkDef=' + r.attackerDefense);
+}
+{
+  // Genau an der Schwelle (8) -> noch erobert.
+  const r = eng.resolveAttack({ enemyCells: territory, enemyDefense: 8, runCells: throughRun, enclosed: new Set(), attackPoints: 1 });
+  ok('SCHWACH(8=Schwelle) Durchlauf -> erobert', r.conquered && r.defenderCells.length === 0, 'mode=' + r.mode);
+}
+{
+  // Knapp über der Schwelle (9) mit kleinem Angriff -> NICHT via Neglect erobert,
+  // fällt zurück auf normalen 0.2-Durchlauf (dmg 0.2*1=0.2 < 9 -> nur geschwächt).
+  const r = eng.resolveAttack({ enemyCells: territory, enemyDefense: 9, runCells: throughRun, enclosed: new Set(), attackPoints: 1 });
+  ok('SCHWACH(9) knapp drüber, kleiner Angriff -> nur geschwächt', !r.conquered && r.mode === 'through', 'def=' + r.defenderDefense);
+}
+{
+  // Reine Randberührung (edge) eines schwachen Gebiets -> KEIN Gratis-Claim.
+  const r = eng.resolveAttack({ enemyCells: territory, enemyDefense: 1, runCells: edgeRun, enclosed: new Set(), attackPoints: 2 });
+  ok('SCHWACH(1) nur Rand (edge) -> nicht via Neglect erobert', r.mode === 'edge', 'conquered=' + r.conquered);
+}
+{
+  // resolveRun-Ende-zu-Ende: Durchlauf über schwaches Gegnergebiet -> delete+create+Event.
+  const r = eng.resolveRun({ userId: uid, runCells: throughRun, enclosed: new Set(), distanceKm: 0.3, paceKmh: 7, territories: [{ id: 'WEAK', owner: 'foe', defense: 1, cells: new Set(territory) }] });
+  const conqEv = r.events.find(e => e.type === 'conquered');
+  ok('resolveRun: langsamer Durchlauf über SCHWACH(1) -> erobert', r.deletes.includes('WEAK') && r.creates.some(c => !c.neutral && c.owner === uid) && !!conqEv, 'deletes=' + r.deletes.length + ' events=' + JSON.stringify(r.events.map(e=>e.type)));
+}
+{
+  // Gegenprobe: gepflegtes Gebiet (Verteidigung 40) beim Durchlaufen NICHT gekapert.
+  const r = eng.resolveRun({ userId: uid, runCells: throughRun, enclosed: new Set(), distanceKm: 1, paceKmh: 12, territories: [{ id: 'STRONG', owner: 'foe', defense: 40, cells: new Set(territory) }] });
+  ok('resolveRun: Durchlauf über GEPFLEGT(40) -> nur geschwächt, kein Claim', r.deletes.length === 0 && !r.creates.some(c => !c.neutral), 'deletes=' + r.deletes.length);
+}
+
 console.log(`\n==== ${pass} passed, ${fail} failed ====`);
 process.exit(fail ? 1 : 0);
