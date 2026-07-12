@@ -277,5 +277,17 @@ ok('botAttack: Schwächung floored bei 1', (()=>{const r=botAttack(3,50);return 
   ok('resolveRun: Durchlauf über GEPFLEGT(40) -> nur geschwächt, kein Claim', r.deletes.length === 0 && !r.creates.some(c => !c.neutral), 'deletes=' + r.deletes.length);
 }
 
+// ===== Engine-Objekt: alle von conquer/bot_tick als engine.X(...) genutzten Member =====
+// Fängt Fehler wie "engine.decayedDefense is not a function" ab, die zur Laufzeit
+// in der Edge Function auftreten, weil das Objekt einen Export nicht enthält.
+{
+  const need = ['pathToCells','enclosedCells','resolveRun','decayedDefense','timeToMinMs'];
+  need.forEach(k => ok('engine.'+k+' ist function', typeof eng[k] === 'function', 'typeof=' + typeof eng[k]));
+  const needNum = ['ENERGY_PER_WEEK','ENERGY_BOOST'];
+  needNum.forEach(k => ok('engine.'+k+' ist number', typeof eng[k] === 'number', 'typeof=' + typeof eng[k]));
+  // Funktioniert der Aufruf, wie conquer ihn macht?
+  ok('engine.decayedDefense rechnet', near(eng.decayedDefense(100, 0, 2 * DAY), 100 - 2 * DECAY_PER_DAY), '=' + eng.decayedDefense(100, 0, 2 * DAY));
+}
+
 console.log(`\n==== ${pass} passed, ${fail} failed ====`);
 process.exit(fail ? 1 : 0);

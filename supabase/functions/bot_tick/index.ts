@@ -101,6 +101,8 @@ Deno.serve(async (req) => {
           anchor.owner = bot.id;
           actions.push({ type: 'attack_take', id: anchor.id, bot: bot.player_name });
           await addFactionPts(bot.user_team, strength);
+          // Bot-Eroberung zählt für die Fraktions-Kontrolle (kumulativ, wie bei Spielern).
+          try { await svc.rpc('rc_bump_conquered', { uid: bot.id, n: 1 }); } catch (_) { /* noop */ }
         } else {
           await svc.from('h3_territories').update({ defense: r.newDefense, updated_at: now }).eq('id', anchor.id);
           actions.push({ type: 'attack_weaken', id: anchor.id, def: Math.round(r.newDefense) });
