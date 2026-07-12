@@ -1910,7 +1910,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v146';
+const APP_VERSION='v147';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -4638,17 +4638,34 @@ function renderBadgeSection(list,title){
    Monat ein Medaillon). Leer, wenn noch keiner gewonnen wurde. */
 function renderSeasonWinsSection(){
   if(!factionWins||!factionWins.length||typeof renderSeasonBadge!=='function')return '';
-  const cards=[...factionWins].sort().reverse().map(mk=>{
+  // Gleicher Kachel-Look wie Einzel-Erfolge/Meisterklasse -> die Saison-Medaillons
+  // stehen mit im Icon-Raster, nicht in einem separaten Streifen.
+  const tiles=[...factionWins].sort().reverse().map(mk=>{
     const p=mk.split('-'),y=p[0],mi=Math.max(0,Math.min(11,parseInt(p[1],10)-1));
     const badge=renderSeasonBadge({month:mi,year:parseInt(y,10)});
-    return `<div style="flex:0 0 auto;width:150px;text-align:center;padding:14px 8px;border-radius:20px;background:radial-gradient(110% 150% at 50% -20%,rgba(255,215,0,.12),transparent 62%);border:1px solid rgba(255,215,0,.30)">
-      <div style="width:112px;height:112px;margin:0 auto;filter:drop-shadow(0 8px 22px rgba(255,215,0,.26))">${badge.svg}</div>
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.35rem;letter-spacing:2px;color:#FFD700;margin-top:6px;text-shadow:0 0 18px rgba(255,215,0,.4)">${badge.monthName}</div>
-      <div style="font-size:.54rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:2px">${esc(badge.caption)}</div>
-    </div>`;
+    return `<div style="text-align:center"><div class="badge-tap" onclick="rcZoomSeason('${mk}')"><div style="width:74px;height:74px;margin:0 auto;filter:drop-shadow(0 6px 16px rgba(255,215,0,.28))">${badge.svg}</div></div><div style="font-size:.66rem;font-weight:700;margin-top:5px;color:#FFD700">${badge.monthName} ${badge.year}</div><div style="font-size:.56rem;color:var(--muted);line-height:1.3;margin-top:1px">Fraktion gewonnen</div></div>`;
   }).join('');
-  return `<div style="margin-top:28px"><div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border)"><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px">🏆 SAISON-SIEGE</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:#FFD700">${factionWins.length}</span></div><div style="display:flex;gap:12px;overflow-x:auto;padding:2px 2px 8px;-webkit-overflow-scrolling:touch">${cards}</div></div>`;
+  return `<div style="margin-top:28px"><div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border)"><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px">🏆 SAISON-SIEGE</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:#FFD700">${factionWins.length}</span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px 8px">${tiles}</div></div>`;
 }
+/* Antippen eines Saison-Medaillons -> groß anzeigen (analog rcZoomBadge). */
+window.rcZoomSeason=function(mk){
+  const p=mk.split('-'),y=p[0],mi=Math.max(0,Math.min(11,parseInt(p[1],10)-1));
+  const badge=renderSeasonBadge({month:mi,year:parseInt(y,10)});
+  document.getElementById('badgeZoomOv')?.remove();
+  const ov=document.createElement('div');ov.id='badgeZoomOv';
+  ov.style.cssText='position:fixed;inset:0;z-index:9700;background:rgba(0,0,0,.74);display:flex;align-items:center;justify-content:center;padding:24px';
+  ov.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:22px;padding:26px 22px calc(22px + env(safe-area-inset-bottom,0px));max-width:300px;width:100%;text-align:center;animation:badgeZoomIn .28s cubic-bezier(.2,1,.3,1)">
+    <div style="width:190px;height:190px;margin:0 auto 14px;filter:drop-shadow(0 10px 26px rgba(255,215,0,.3))">${badge.svg}</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:1px;color:#FFD700">${esc(badge.monthName)} ${badge.year}</div>
+    <div style="font-size:.78rem;color:var(--muted);margin-top:4px">${esc(badge.caption)}</div>
+    <div style="font-size:.74rem;margin-top:12px;font-weight:700;color:#10b981">✓ Deine Fraktion war Monatssieger</div>
+    <button id="badgeZoomClose" style="margin-top:16px;background:none;border:1px solid var(--border);border-radius:10px;color:var(--muted);padding:8px 24px;font-size:.8rem;cursor:pointer;font-family:'Poppins',sans-serif">Schließen</button>
+  </div>`;
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+  document.body.appendChild(ov);
+  document.getElementById('badgeZoomClose').onclick=()=>ov.remove();
+  try{vib(20);}catch(e){}
+};
 /* Antippen eines Einzel-/Meisterklasse-Abzeichens -> groß anzeigen. */
 window.rcZoomBadge=function(badge){
   const def=RC_NAMED.concat(RC_MASTER).find(x=>x.badge===badge);
