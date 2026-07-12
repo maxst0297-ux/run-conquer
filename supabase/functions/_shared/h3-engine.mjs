@@ -16,6 +16,13 @@ export const RES = 10; // ~65–76 m Kantenlänge; feinkörnig genug für Straß
 export const DEF_MIN = 1;
 export const DEF_MAX = 300;
 export const CAPTURE_BONUS = 20;      // +20 nach Eroberung (darf 300 überschreiten)
+// Vernachlässigungs-Schwelle: Ein Gebiet, dessen WIRKSAME (verfallene) Verteidigung
+// hierunter liegt, gilt als aufgegeben und fällt an jeden, der es tatsächlich
+// DURCHLÄUFT oder umrundet — ohne den Durchlauf-Dämpfer (0.2) und unabhängig vom
+// Tempo. So wird ein Gebiet mit ~1 Verteidigung beim Drüberlaufen sofort erobert.
+// Gepflegte/frische Gebiete starten bei >=20 (Neutral-Claim 20, Bot 22) und sind
+// damit klar oberhalb dieser Schwelle geschützt.
+export const NEGLECT_CAPTURE_DEF = 8;
 export const DAILY_BUILD_CAP = 100;   // max +100 Verteidigung pro Gebiet & Tag
 // Mindest-Verteidigungsaufbau im EIGENEN Gebiet je gelaufenem km — unabhängig vom
 // Tempo. So verstärkt auch ein ruhiger Lauf durch eigenes Revier die Verteidigung
@@ -248,6 +255,21 @@ export function createEngine(h3) {
     };
     if (info.mode === 'none') return base;
 
+    // --- Vernachlässigtes Gebiet: einfach drüberlaufen genügt (GDS-Ergänzung) ---
+    // Wer ein Gebiet mit sehr niedriger, verfallener Verteidigung tatsächlich
+    // überläuft (Überdeckung/Durchlauf/Cut) oder umrundet, beansprucht es KOMPLETT.
+    // Der 0.2-Durchlauf-Dämpfer und die Pace-Punkte spielen hier bewusst keine
+    // Rolle — ein aufgegebenes Gebiet (~1 Verteidigung) soll fallen, sobald man
+    // darüberläuft. Reine Randberührung ('edge', kein Überlappen) zählt NICHT.
+    if (info.mode !== 'edge' && enemyDefense <= NEGLECT_CAPTURE_DEF) {
+      return {
+        ...base, conquered: true, damage: enemyDefense,
+        defenderCells: [], defenderDefense: 0,
+        attackerCells: [...E],
+        attackerDefense: Math.max(DEF_MIN, attackPoints - enemyDefense) + CAPTURE_BONUS,
+      };
+    }
+
     // --- Teilabschnitt (1.6): kleinster Cluster wird separat bewertet ---
     if (info.mode === 'cut') {
       const total = E.size;
@@ -402,5 +424,6 @@ export function createEngine(h3) {
     // Re-Exports als Convenience
     paceFactor, distanceBonus, runValue, clampDefense,
     RES, DEF_MIN, DEF_MAX, CAPTURE_BONUS, DAILY_BUILD_CAP, OWN_BUILD_MIN_PER_KM,
+    NEGLECT_CAPTURE_DEF,
   };
 }
