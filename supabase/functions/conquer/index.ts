@@ -72,8 +72,12 @@ Deno.serve(async (req) => {
     if (!v.ok) return json({ error: v.reason }, 400);
     const paceKmh = v.paceKmh;
 
-    // ── GPS-Track -> H3-Zellen; geschlossener Loop -> eingeschlossene Zellen ──
-    const runCells: Set<string> = engine.pathToCells(path);
+    // ── GPS-Track -> H3-Zellen (+ Tempo je Zelle, #44); Loop -> eingeschlossen ──
+    // path kann [lat,lng,tMs] enthalten (Live-Lauf): dann bekommt jede Zelle das
+    // Tempo zum Durchlauf-Zeitpunkt -> unterschiedliche Angriffs-/Verteidigungs-
+    // werte je Gebiet. Ohne Zeitstempel (Alt-Track) fällt die Engine aufs Global-
+    // Tempo (paceKmh) zurück.
+    const { cells: runCells, cellPace } = engine.pathToCellPace(path) as { cells: Set<string>, cellPace: Map<string, number> };
     const gap = haversine(path[0], path[path.length - 1]);
     let enclosed: Set<string> = gap < 60 ? engine.enclosedCells([...path, path[0]]) : new Set();
     // Sicherheits-Kappung: eine absurd große eingeschlossene Fläche (Spoofing /
@@ -127,7 +131,7 @@ Deno.serve(async (req) => {
     if (body.boosted && energy > 0) { applyBoost = true; energy -= 1; }
 
     // ── Engine entscheidet ───────────────────────────────────────────────────
-    const res = engine.resolveRun({ userId: user.id, runCells, enclosed, distanceKm, paceKmh, territories, boosted: applyBoost });
+    const res = engine.resolveRun({ userId: user.id, runCells, enclosed, distanceKm, paceKmh, territories, boosted: applyBoost, cellPace });
 
     // ── Mutationen anwenden (Reihenfolge: delete -> update -> create, damit
     //    Zellen frei sind, bevor sie neu vergeben werden; cell ist global PK) ─

@@ -1934,7 +1934,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v161';
+const APP_VERSION='v162';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -5495,13 +5495,13 @@ function onGPS(pos){
     }else if(d>=100||(d/dt)>CFG.MAX_SPEED_MPS){
       if(!gpsJumpWarned){gpsJumpWarned=true;toast('📡 Unplausibler GPS-Sprung ignoriert');}
     }else{
-      dist+=d;path.push(pt);pathLayer.addLatLng(pt);distLive.textContent=fmtDist(dist);
+      dist+=d;path.push([lat,lng,now]);pathLayer.addLatLng(pt);distLive.textContent=fmtDist(dist);
       lastPos=pt;lastPosTime=now;
       if(path.length>=2&&Math.floor(dist/150)>(window._lastPrevAt||0)){window._lastPrevAt=Math.floor(dist/150);clearTimeout(window._prevTimer);window._prevTimer=setTimeout(()=>{const pv=mkPoly();if(pv){if(previewLayer)mapL.removeLayer(previewLayer);previewLayer=L.geoJSON({type:'Feature',geometry:pv.polyGeom.geometry},{style:{fillColor:userColor,fillOpacity:.12,color:userColor,weight:2,dashArray:'6 4',opacity:.5}}).addTo(mapL);}},200);}
       const km=Math.floor(dist/1000);
       if(km>lastSplitKm){const el=runSecs+Math.floor((Date.now()-runStart)/1000),ss=el-lastSplitSecs;kmSplits.push({km,pace:fmtPace(1000,ss),splitSecs:ss});lastSplitKm=km;lastSplitSecs=el;beep(660,.1);toast(`KM ${km} · ${fmtPace(1000,ss)}/km`);}
     }
-  } else if(!lastPos){path.push(pt);pathLayer.addLatLng(pt);lastPos=pt;lastPosTime=now;}
+  } else if(!lastPos){path.push([lat,lng,now]);pathLayer.addLatLng(pt);lastPos=pt;lastPosTime=now;}
   landmarks.forEach(lm=>{
     if(capturedLandmarks.includes(lm.id))return;
     const dist2=turf.distance(turf.point([lng,lat]),turf.point([lm.lng,lm.lat]),{units:'meters'});
@@ -5759,7 +5759,7 @@ async function processConquest(np,area,d,boosted=false,isImport=false,durationS=
   let data,error;
   try{
     const r=await sb.functions.invoke('conquer',{body:{
-      path:runPath.map(p=>[p[0],p[1]]),
+      path:runPath.map(p=>p.length>2&&p[2]!=null?[p[0],p[1],p[2]]:[p[0],p[1]]),
       distanceM:d,durationS:durationS||0,cadence,
       playerName,userColor,userTeam,boosted:!!boosted,
       // Für die serverseitige km-XP-Berechnung (Server klammert die Werte hart).

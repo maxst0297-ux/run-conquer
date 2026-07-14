@@ -300,5 +300,55 @@ ok('botAttack: Schwächung floored bei 1', (()=>{const r=botAttack(3,50);return 
   ok('Gebiets-Schutz: geschütztes Gebiet NICHT erobert', shielded.deletes.length === 0 && !shielded.creates.some(c => !c.neutral) && !!ev, 'deletes=' + shielded.deletes.length);
 }
 
+// ===== #44 — Tempo je Hexagon: pathToCellPace + gebietsabhängige Angriffskraft =====
+{
+  // pathToCells bleibt abwärtskompatibel ein Set.
+  const legacy = eng.pathToCells([[48.137, 11.575], [48.1388, 11.575]]);
+  ok('#44 pathToCells -> Set (kompatibel)', legacy instanceof Set && legacy.size > 0, 'size=' + legacy.size);
+
+  // pathToCellPace: gleicher Weg, aber schneller gelaufen -> höheres Zell-Tempo.
+  const A = [48.137, 11.575], B = [48.1388, 11.575]; // ~200 m auseinander
+  const fast = eng.pathToCellPace([[A[0], A[1], 0], [B[0], B[1], 40000]]);  // 200m/40s ≈ 18 km/h
+  const slow = eng.pathToCellPace([[A[0], A[1], 0], [B[0], B[1], 120000]]); // 200m/120s ≈ 6 km/h
+  const maxFast = Math.max(...fast.cellPace.values());
+  const maxSlow = Math.max(...slow.cellPace.values());
+  ok('#44 Zell-Tempo aus Zeitstempeln', fast.cellPace.size > 0 && maxFast > maxSlow + 5, `fast=${maxFast.toFixed(1)} slow=${maxSlow.toFixed(1)}`);
+  ok('#44 Zell-Tempo <= Hardcap', maxFast <= 25 && maxSlow > 0, `maxFast=${maxFast.toFixed(1)}`);
+
+  // Ohne Zeitstempel (Alt-Track/Import): kein Zell-Tempo -> Engine nutzt Global-Tempo.
+  const noTime = eng.pathToCellPace([[A[0], A[1]], [B[0], B[1]]]);
+  ok('#44 ohne Zeitstempel -> cellPace leer', noTime.cellPace.size === 0);
+
+  // resolveRun mit Zell-Tempo: ZWEI gleich starke Gegner-Gebiete, EIN Lauf. Durch
+  // das eine wird gesprintet (16 km/h), durchs andere getrabt (8 km/h). Nur das
+  // schnell durchlaufene fällt -> verschiedene Verteidigungswerte je Gebiet.
+  const cFast = h3.latLngToCell(48.137, 11.575, 10);
+  const cSlow = h3.latLngToCell(48.200, 11.660, 10); // weit weg -> disjunkt
+  const tFast = h3.gridDisk(cFast, 2), tSlow = h3.gridDisk(cSlow, 2);
+  const run = new Set([...tFast, ...tSlow]); // deckt beide Gebiete vollständig ab (covered)
+  const cp = new Map();
+  tFast.forEach(c => cp.set(c, 16)); // Sprint
+  tSlow.forEach(c => cp.set(c, 8));  // Trab
+  // defense 100; 6 km @16 atk = 6*18=108 >=100 (erobert); @8 atk = 6*8=48 <100 (hält).
+  const terrsPace = [
+    { id: 'FAST', owner: 'foe', defense: 100, cells: new Set(tFast) },
+    { id: 'SLOW', owner: 'foe', defense: 100, cells: new Set(tSlow) },
+  ];
+  const withPace = eng.resolveRun({ userId: uid, runCells: run, enclosed: new Set(), distanceKm: 6, paceKmh: 8, territories: terrsPace, cellPace: cp });
+  ok('#44 Sprint-Gebiet erobert', withPace.deletes.includes('FAST'), 'deletes=' + JSON.stringify(withPace.deletes));
+  ok('#44 Trab-Gebiet hält', !withPace.deletes.includes('SLOW'));
+
+  // Gegenprobe ohne Zell-Tempo (Global 8 km/h): KEINES fällt -> beweist, dass das
+  // Zell-Tempo den Unterschied macht.
+  const noPace = eng.resolveRun({ userId: uid, runCells: run, enclosed: new Set(), distanceKm: 6, paceKmh: 8, territories: [
+    { id: 'FAST', owner: 'foe', defense: 100, cells: new Set(tFast) },
+    { id: 'SLOW', owner: 'foe', defense: 100, cells: new Set(tSlow) },
+  ] });
+  ok('#44 ohne Zell-Tempo faellt keines', noPace.deletes.length === 0, 'deletes=' + JSON.stringify(noPace.deletes));
+}
+
+// engine.pathToCellPace muss im Objekt liegen (conquer ruft engine.pathToCellPace).
+ok('engine.pathToCellPace ist function', typeof eng.pathToCellPace === 'function', 'typeof=' + typeof eng.pathToCellPace);
+
 console.log(`\n==== ${pass} passed, ${fail} failed ====`);
 process.exit(fail ? 1 : 0);
