@@ -1867,6 +1867,7 @@ let lastNameChangeDate=''; // "YYYY-MM" – Name nur 1×/Monat änderbar
 let dailyLoginDate='',dailyLoginStreak=0,streakShields=0,recentQuoteIds=[];
 /* Freigeschaltete Streak-Belohnungen (IDs) + aktuell angelegte Kosmetik. */
 let streakUnlocks=[],equipped={};
+let selectedTitle=''; // im Profil angezeigter Titel (aus verdienten Titeln wählbar)
 /* Monate, in denen die eigene Fraktion die meisten Punkte hatte ("YYYY-MM"). */
 let factionWins=[];
 let weeklyChals=[],weekChalKey='';
@@ -1912,7 +1913,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v158';
+const APP_VERSION='v159';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2457,7 +2458,7 @@ function applyTheme(name){
 }
 function saveProfile(){
   const theme=getActiveTheme();
-  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,friends,streakUnlocks,equipped,userBio,profilePublic,pushEnabled,lastNameChangeDate,WEEKLY_GOAL,DAILY_GOAL_KM,MONTHLY_GOAL,factionWins}));
+  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,friends,streakUnlocks,equipped,userBio,profilePublic,pushEnabled,lastNameChangeDate,WEEKLY_GOAL,DAILY_GOAL_KM,MONTHLY_GOAL,factionWins,selectedTitle}));
   $('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;
   const hi=$('hdrHi');if(hi)hi.textContent='Hallo, '+(playerName||'Läufer');
   // Update theme-color meta for Android status bar
@@ -2466,7 +2467,7 @@ function saveProfile(){
   syncProfileDebounced();
 }
 function loadProfile(){
-  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';friends=p.friends||[];streakUnlocks=p.streakUnlocks||[];equipped=p.equipped||{};userBio=p.userBio||'';factionWins=p.factionWins||[];profilePublic=p.profilePublic!==false;pushEnabled=!!p.pushEnabled;lastNameChangeDate=p.lastNameChangeDate||'';if(p.WEEKLY_GOAL>0)WEEKLY_GOAL=p.WEEKLY_GOAL;if(p.DAILY_GOAL_KM>0)DAILY_GOAL_KM=p.DAILY_GOAL_KM;if(p.MONTHLY_GOAL>0)MONTHLY_GOAL=p.MONTHLY_GOAL;const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
+  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';friends=p.friends||[];streakUnlocks=p.streakUnlocks||[];equipped=p.equipped||{};userBio=p.userBio||'';factionWins=p.factionWins||[];selectedTitle=p.selectedTitle||'';profilePublic=p.profilePublic!==false;pushEnabled=!!p.pushEnabled;lastNameChangeDate=p.lastNameChangeDate||'';if(p.WEEKLY_GOAL>0)WEEKLY_GOAL=p.WEEKLY_GOAL;if(p.DAILY_GOAL_KM>0)DAILY_GOAL_KM=p.DAILY_GOAL_KM;if(p.MONTHLY_GOAL>0)MONTHLY_GOAL=p.MONTHLY_GOAL;const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
   return false;
 }
 /* ── STREAK-BELOHNUNGEN (Inventar) ──────────────────────────────────────────
@@ -2699,6 +2700,13 @@ async function settleSeasonWinsServer(){
   }catch(e){return false;}
 }
 /* Eigene Beschreibung/Zitat bearbeiten (öffentlich sichtbar). */
+/* Verdiente Titel (Standard "Kein Titel" + Streak-Titel + Battle-Pass-Titel). */
+function getEarnedTitles(){
+  const out=[{value:'',label:'Kein Titel'}];
+  try{Object.keys(STREAK_REWARDS).forEach(d=>{const r=STREAK_REWARDS[d];if(r&&r.type==='title'&&streakUnlocks.includes(r.id))out.push({value:r.value,label:r.value});});}catch(e){}
+  try{(BATTLE_PASS_REWARDS||[]).forEach(r=>{if(r&&r.type==='title'&&(battlePassClaimed||[]).includes(r.lv))out.push({value:r.val,label:r.val});});}catch(e){}
+  const seen=new Set();return out.filter(t=>{if(seen.has(t.value))return false;seen.add(t.value);return true;});
+}
 function editBio(){
   document.getElementById('bioEditOv')?.remove();
   const ov=document.createElement('div');ov.id='bioEditOv';
@@ -2707,6 +2715,9 @@ function editBio(){
     <div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:1px;margin-bottom:4px">Beschreibung</div>
     <div style="font-size:.72rem;color:var(--muted);margin-bottom:12px">Schreibe etwas über dich (max. 80 Zeichen).</div>
     <textarea id="bioInput" maxlength="80" rows="3" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px;color:var(--text);font-family:'Poppins',sans-serif;font-size:.85rem;resize:none;box-sizing:border-box" placeholder="z. B. obsessed with running">${esc(userBio)}</textarea>
+    <div style="font-size:.72rem;color:var(--muted);margin:14px 0 6px">🎖️ Titel wählen <span style="opacity:.7">(im Profil sichtbar)</span></div>
+    <select id="titleSelect" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px;color:var(--text);font-size:.85rem;box-sizing:border-box">${getEarnedTitles().map(t=>`<option value="${esc(t.value)}"${t.value===selectedTitle?' selected':''}>${esc(t.label)}</option>`).join('')}</select>
+    <div style="font-size:.6rem;color:var(--muted);margin-top:5px">Titel verdienst du über Login-Serie & Battle-Pass.</div>
     <div style="display:flex;gap:8px;margin-top:14px">
       <button id="bioCancel" style="flex:1;background:none;border:1px solid var(--border);color:var(--muted);border-radius:12px;padding:11px;font-size:.85rem;cursor:pointer">Abbrechen</button>
       <button id="bioSave" class="btn btn-p" style="flex:1">Speichern</button>
@@ -2716,7 +2727,7 @@ function editBio(){
   document.body.appendChild(ov);
   document.getElementById('bioInput').focus();
   document.getElementById('bioCancel').onclick=()=>ov.remove();
-  document.getElementById('bioSave').onclick=()=>{userBio=document.getElementById('bioInput').value.trim().slice(0,80);saveProfile();if(typeof updateProfile==='function')updateProfile();toast('Beschreibung gespeichert');ov.remove();};
+  document.getElementById('bioSave').onclick=()=>{userBio=document.getElementById('bioInput').value.trim().slice(0,80);const ts=document.getElementById('titleSelect');if(ts)selectedTitle=ts.value||'';saveProfile();if(typeof updateProfile==='function')updateProfile();toast('Beschreibung & Titel gespeichert');ov.remove();};
 }
 window.editBio=editBio;
 function closeAllModals(){['profileModal','postRunModal','renameModal','settingsModal','adminModal','inboxModal'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
@@ -6992,6 +7003,7 @@ async function renderFactionWar(){
   const _sumTerr=stats.reduce((s,t)=>s+t.terr,0),_sumXp=stats.reduce((s,t)=>s+t.mxp,0);
   stats.forEach(t=>{t.score=0.7*(_sumTerr>0?t.terr/_sumTerr:0)+0.3*(_sumXp>0?t.mxp/_sumXp:0);});
   stats.sort((a,b)=>b.score-a.score||b.terr-a.terr);
+  window._factionRankOrder=stats.map(t=>t.id); // fürs Profil: Fraktions-Rang-Farbe
   const grand=stats.reduce((s,t)=>s+t.score,0)||1;
   const leader=stats[0];
   const _realLeaderId=(leader&&leader.score>0)?leader.id:null;
@@ -8370,7 +8382,8 @@ function updateProfile(){
   const _ban=equipped.banner&&REWARD_BY_ID[equipped.banner];if(_ban){banner.style.background=_ban.value;const m=_ban.value.match(/#[0-9a-f]{6}/i);banner.style.borderColor=(m&&m[0]||userColor)+'88';}
   const _frm=equipped.frame&&REWARD_BY_ID[equipped.frame];const _av=$('pvAvatar');if(_av)_av.style.boxShadow=_frm?('0 0 0 3px '+_frm.value+',0 0 16px '+_frm.value+'99'):'';
   renderRewards();renderFactionWins();applyEquipped();
-  if(history.length){const d=new Date(history[0].date);$('pvSince').textContent='Aktiv seit '+d.toLocaleDateString('de',{month:'long',year:'numeric'});}
+  // "Aktiv seit" entfällt bewusst; pvSince bleibt leer (die Badges darunter zeigen Titel/Fraktion).
+  {const _se=$('pvSince');if(_se)_se.textContent='';}
   const noRunEl=$('pvNoRunState');if(noRunEl)noRunEl.style.display=history.length===0?'':'none';
   const lvD=getLvlProg(points);
   $('pvLvLabel').textContent='Level '+lvD.lv+' · '+lvD.name;
@@ -8384,10 +8397,15 @@ function updateProfile(){
   if(sinceEl){
     const oldBadges=sinceEl.parentNode.querySelector('.pv-extra-badges');if(oldBadges)oldBadges.remove();
     const badgeDiv=document.createElement('div');badgeDiv.className='pv-extra-badges';badgeDiv.style.cssText='text-align:center;margin-top:6px;display:flex;flex-wrap:wrap;justify-content:center;gap:5px';
-    badgeDiv.innerHTML=`<span class="ruler-badge">👑 ${title}</span>`;
-    const _st=equippedTitle();if(_st)badgeDiv.innerHTML+=`<span class="team-badge" style="background:rgba(var(--primary-rgb),.15);color:var(--primary);border:1px solid rgba(var(--primary-rgb),.4)">⭐ ${esc(_st)}</span>`;
-    if(userTeam){const tm=TEAMS.find(t=>t.id===userTeam);if(tm)badgeDiv.innerHTML+=`<span class="team-badge" style="background:${tm.color}22;color:${tm.color};border:1px solid ${tm.color}44">${tm.icon} ${tm.name}</span>`;}
-    if(userTeam&&window._factionLeaderId===userTeam)badgeDiv.innerHTML+=`<span class="team-badge" style="background:rgba(255,215,0,.15);color:#FFD700;border:1px solid rgba(255,215,0,.45)">👑 Führende Fraktion</span>`;
+    badgeDiv.innerHTML='';
+    // Gewählter Titel (aus verdienten Titeln, siehe Einstellungen -> Beschreibung).
+    const _st=selectedTitle||equippedTitle();if(_st)badgeDiv.innerHTML+=`<span class="team-badge" style="background:rgba(var(--primary-rgb),.15);color:var(--primary);border:1px solid rgba(var(--primary-rgb),.4)">🎖️ ${esc(_st)}</span>`;
+    // Fraktion nach Rang gefärbt: 1. Gold, 2. Silber, 3. Bronze, 4. neutral weiß.
+    if(userTeam){const tm=TEAMS.find(t=>t.id===userTeam);if(tm){
+      const order=window._factionRankOrder||[];const rank=order.indexOf(userTeam);
+      const RANKCOL=['#FFD700','#C0C0C0','#CD7F32','#ffffff'];const rc=(rank>=0&&rank<4)?RANKCOL[rank]:'#ffffff';
+      badgeDiv.innerHTML+=`<span class="team-badge" style="background:${rc}1f;color:${rc};border:1px solid ${rc}66;font-weight:700">${tm.icon} ${tm.name}</span>`;
+    }}
     if(userClub)badgeDiv.innerHTML+=`<span class="club-badge">${esc(userClub.icon)} ${esc(userClub.name)}</span>`;
     sinceEl.insertAdjacentElement('afterend',badgeDiv);
   }
