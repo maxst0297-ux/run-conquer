@@ -1945,7 +1945,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v163';
+const APP_VERSION='v164';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -5100,8 +5100,76 @@ async function loadH3Territories(){
     }));
     renderH3Territories();
     updateStatsUI&&updateStatsUI();
+    // #39 — Re-Login-Update: einmal pro Sitzung nach dem ersten Laden vergleichen,
+    // was seit dem letzten Besuch mit den eigenen Gebieten passiert ist.
+    if(!window._terrDiffDone){window._terrDiffDone=true;try{checkTerritoryChanges();}catch(e){}}
   }catch(e){logError&&logError('h3_load',e);}
 }
+/* #39 — Gebiets-Veränderungen seit dem letzten Besuch.
+   Snapshot = wirksame (verfallene) Verteidigung je eigenem Gebiet + Zeitstempel.
+   Beim nächsten Login wird verglichen:
+     • verloren        = war meins, gehört jetzt jemand anderem (oder existiert nicht mehr)
+     • angegriffen/gehalten = noch meins, aber die Verteidigung ist STÄRKER gefallen,
+                          als reiner Verfall erklärt -> jemand hat angegriffen, ich hielt
+     • gehalten        = weiterhin meins
+   Rein clientseitig, kein Server-Event nötig. */
+function _terrSnapKey(){return 'rc_terr_snap_'+userId;}
+function _ownedDefMap(){
+  const m={};
+  for(const t of (h3Territories||[])){ if(t.owner===userId) m[t.id]=Math.round(h3Decayed(t.defense,t.updated_at)); }
+  return m;
+}
+function saveTerritorySnapshot(){
+  if(!userId||userId==='user')return;
+  try{localStorage.setItem(_terrSnapKey(),JSON.stringify({ts:Date.now(),terr:_ownedDefMap()}));}catch(e){}
+}
+function checkTerritoryChanges(){
+  if(!userId||userId==='user')return;
+  let snap=null;try{snap=JSON.parse(localStorage.getItem(_terrSnapKey()));}catch(e){}
+  const cur=_ownedDefMap();
+  if(!snap||!snap.terr||!Object.keys(snap.terr).length){saveTerritorySnapshot();return;} // Erstbesuch -> nur merken
+  const days=Math.max(0,(Date.now()-(snap.ts||Date.now()))/86400000);
+  let lost=0,held=0,defended=0;
+  for(const id of Object.keys(snap.terr)){
+    if(cur[id]==null){lost++;continue;}
+    held++;
+    const expected=snap.terr[id]-H3_DECAY_PER_DAY*days; // reiner Verfall
+    if(cur[id]<expected-5)defended++; // stärker gefallen als Verfall -> Angriff überstanden
+  }
+  saveTerritorySnapshot(); // neuen Stand merken
+  const minsAgo=(Date.now()-(snap.ts||Date.now()))/60000;
+  if(minsAgo<30)return;                 // schnelle Reloads nicht stören
+  if(lost===0&&defended===0)return;     // nichts Nennenswertes -> ruhig bleiben
+  showTerritoryUpdate({lost,held,defended,minsAgo});
+}
+function _agoLabel(mins){
+  if(mins<90)return 'vor '+Math.max(1,Math.round(mins))+' Min';
+  const h=mins/60; if(h<36)return 'vor '+Math.round(h)+' Std';
+  return 'vor '+Math.round(h/24)+' Tagen';
+}
+function showTerritoryUpdate({lost,held,defended,minsAgo}){
+  const old=$('terrUpdateOverlay');if(old)old.remove();
+  const rows=[];
+  if(defended)rows.push(['🛡️','#22c55e',defended+(defended===1?' Gebiet':' Gebiete')+' verteidigt','Angriff überstanden, weiterhin deins']);
+  if(lost)rows.push(['⚔️','#ff4d6d',lost+(lost===1?' Gebiet':' Gebiete')+' verloren','Von anderen erobert – du kannst zurückschlagen']);
+  if(held)rows.push(['🔵','var(--primary)',held+(held===1?' Gebiet':' Gebiete')+' gehalten','Seit deinem letzten Besuch behauptet']);
+  const ov=document.createElement('div');
+  ov.id='terrUpdateOverlay';
+  ov.style.cssText='position:fixed;inset:0;z-index:4000;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)';
+  ov.innerHTML=`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px;max-width:360px;width:100%;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:1px;color:var(--primary);margin-bottom:2px">Willkommen zurück</div>
+    <div style="font-size:.72rem;color:var(--muted);margin-bottom:16px">Seit deinem letzten Besuch · ${_agoLabel(minsAgo)}</div>
+    ${rows.map(([ic,col,ti,su])=>`<div style="display:flex;align-items:center;gap:12px;padding:11px 12px;background:var(--card);border:1px solid var(--border);border-radius:13px;margin-bottom:9px">
+      <span style="font-size:1.4rem;line-height:1">${ic}</span>
+      <div style="min-width:0"><div style="font-weight:700;font-size:.9rem;color:${col}">${ti}</div><div style="font-size:.68rem;color:var(--muted)">${su}</div></div>
+    </div>`).join('')}
+    <button onclick="closeTerritoryUpdate()" class="btn btn-p" style="width:100%;margin-top:6px">Weiter</button>
+  </div>`;
+  ov.addEventListener('click',e=>{if(e.target===ov)closeTerritoryUpdate();});
+  document.body.appendChild(ov);
+}
+function closeTerritoryUpdate(){const o=$('terrUpdateOverlay');if(o)o.remove();}
+window.closeTerritoryUpdate=closeTerritoryUpdate;
 /* Lazy-Decay im Client: gleiche Rate wie in der Engine (DECAY_PER_DAY=8). Die
    wirksame Verteidigung (und die Dauer, bis sie 1 erreicht) wird live aus dem
    Zeitstempel der letzten Änderung berechnet. */
