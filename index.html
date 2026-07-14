@@ -644,7 +644,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .dr-streak-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:0}
 
 /* ═══ TOAST ═══ */
-#toast{position:fixed;bottom:calc(var(--nav-h) + 14px);left:50%;transform:translateX(-50%);background:var(--primary);color:var(--bg);padding:9px 22px;border-radius:40px;z-index:2000;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;font-size:.82rem;font-weight:700}
+#toast{position:fixed;bottom:calc(var(--nav-h) + 14px);left:50%;transform:translateX(-50%);background:var(--primary);color:var(--bg);padding:11px 20px;border-radius:22px;z-index:2000;opacity:0;transition:opacity .25s;pointer-events:none;white-space:normal;overflow-wrap:break-word;text-align:center;line-height:1.35;max-width:min(420px,calc(100vw - 28px));font-size:.82rem;font-weight:700;box-sizing:border-box}
 /* Zentriertes Erfolg-Popup (nach dem Lauf) */
 .ach-pop-overlay{position:fixed;inset:0;z-index:3000;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .ach-pop-overlay.open{display:flex;animation:achFade .25s ease}
@@ -1912,7 +1912,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v156';
+const APP_VERSION='v157';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2256,6 +2256,19 @@ function showShieldInfo(){
     :'🛡️ Noch kein Streak-Schutz. Logg dich regelmäßig ein – an Tag 14 und 30 gibt es welche. Sie retten deine Serie bei einem verpassten Tag.');
 }
 window.showShieldInfo=showShieldInfo;
+/* Volle Serien-Belohnungsübersicht (Meilenstein-Tag -> Belohnung, erreicht/gesperrt). */
+window.showStreakRewards=function(){
+  const ms=[7,14,30,50,75,100,180,365,730];
+  const labels={7:'Bronze-Kiste',14:'Silber-Kiste',30:'Gold-Kiste',50:'Titel „Beständig"',75:'Exklusives Banner',100:'Titel „Unaufhaltsam"',180:'Goldener Kartenmarker',365:'Legendäre Kiste',730:'Titel „Die Legende"'};
+  document.getElementById('streakRwOv')?.remove();
+  const ov=document.createElement('div');ov.id='streakRwOv';
+  ov.style.cssText='position:fixed;inset:0;z-index:9700;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:22px';
+  const rows=ms.map(d=>{const got=(dailyLoginStreak||0)>=d;return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)"><span style="font-size:1.1rem">${got?'✅':'🔒'}</span><div style="flex:1"><div style="font-size:.82rem;font-weight:600;color:${got?'#10b981':'var(--text)'}">${labels[d]}</div><div style="font-size:.62rem;color:var(--muted)">Tag ${d}</div></div>${!got?`<span style="font-size:.62rem;color:var(--muted)">noch ${d-(dailyLoginStreak||0)}</span>`:''}</div>`;}).join('');
+  ov.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:20px;max-width:340px;width:100%;max-height:80vh;overflow-y:auto"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:1px;margin-bottom:2px">🔥 SERIEN-BELOHNUNGEN</div><div style="font-size:.7rem;color:var(--muted);margin-bottom:12px">Aktuell: ${dailyLoginStreak||0} Tage in Folge</div>${rows}<button id="streakRwClose" style="margin-top:14px;width:100%;background:none;border:1px solid var(--border);border-radius:10px;color:var(--muted);padding:9px;font-size:.8rem;cursor:pointer">Schließen</button></div>`;
+  document.body.appendChild(ov);
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+  document.getElementById('streakRwClose').onclick=()=>ov.remove();
+};
 function toggleBoost(){
   if(boostArmed){
     // Deaktivieren -> reservierter Boost wird zurückgelegt (gespart)
@@ -8353,21 +8366,18 @@ function updateProfile(){
       const endDay=dr.nextMs||dailyLoginStreak+1;
       const pct=endDay>prevMs?Math.round((dailyLoginStreak-prevMs)/(endDay-prevMs)*100):100;
       dsEl.style.display='';
-      /* Flammen-Grid: eine Flamme pro Tag des aktuellen Monats, aufeinander-
-         folgende Login-Tage füllen sie auf (Gesamt-Streak läuft separat weiter). */
-      const _now=new Date();
-      const daysInMonth=new Date(_now.getFullYear(),_now.getMonth()+1,0).getDate();
-      const litCount=Math.min(dailyLoginStreak,daysInMonth);
-      const monthName=_now.toLocaleString('de',{month:'long'});
-      const flameGrid=Array.from({length:daysInMonth},(_,i)=>{const lit=i<litCount;return `<span style="font-size:1rem;line-height:1.4;${lit?'filter:drop-shadow(0 0 4px rgba(255,120,40,.7))':'filter:grayscale(1);opacity:.25'}">🔥</span>`;}).join('');
+      // Kompakte Serie: Zahl + nächste Belohnung + Fortschritt, dazu ein Button
+      // für die volle Belohnungsübersicht (showStreakRewards).
       dsEl.innerHTML=`<div class="section-title"><i class="fas fa-fire"></i> Tägliche Serie</div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--primary)">${dailyLoginStreak} Tage 🔥</div>
-        <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:6px 0 5px">${monthName} · ${litCount}/${daysInMonth} Flammen</div>
-        <div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:12px">${flameGrid}</div>
-        ${dr.nextMs?`<div style="font-size:.72rem;color:var(--muted);margin-bottom:6px">Nächste Belohnung: <b style="color:var(--primary)">${dr.nextMsName}</b> · Noch ${dr.daysLeft} ${dr.daysLeft===1?'Tag':'Tage'}</div>
-        <div style="height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;margin-bottom:10px"><div style="height:100%;width:${pct}%;background:var(--primary);border-radius:3px"></div></div>`:'<div style="font-size:.72rem;color:var(--muted);margin-bottom:10px">Alle Meilensteine erreicht! 🏆</div>'}
-        ${streakShields>0?`<div style="font-size:.72rem;color:#c084fc;margin-bottom:10px">🛡️ Streak-Schutz: ${streakShields}/3</div>`:''}
-        ${earned.length?`<div style="font-size:.68rem;color:var(--muted)">${earned.map(d=>`✅ ${msLabels[d]} (Tag ${d})`).join(' &nbsp; ')}</div>`:''}`;
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--primary);line-height:1;white-space:nowrap">${dailyLoginStreak} 🔥<span style="font-size:.72rem;color:var(--muted)"> Tage</span></div>
+          <div style="flex:1;min-width:130px">
+            ${dr.nextMs?`<div style="font-size:.66rem;color:var(--muted);margin-bottom:4px">Nächste: <b style="color:var(--primary)">${dr.nextMsName}</b> · ${dr.daysLeft} ${dr.daysLeft===1?'Tag':'Tage'}</div>
+            <div style="height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:var(--primary);border-radius:3px"></div></div>`:'<div style="font-size:.66rem;color:var(--muted)">Alle Meilensteine erreicht! 🏆</div>'}
+          </div>
+          <button onclick="showStreakRewards()" style="background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:7px 11px;font-size:.7rem;cursor:pointer;white-space:nowrap">📋 Belohnungen</button>
+        </div>
+        ${streakShields>0?`<div style="font-size:.66rem;color:#c084fc;margin-top:8px">🛡️ Streak-Schutz: ${streakShields}/3</div>`:''}`;
     }else{
       dsEl.style.display='none';
     }
