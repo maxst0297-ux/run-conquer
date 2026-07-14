@@ -33,6 +33,7 @@ create table if not exists public.profiles (
 alter table public.profiles add column if not exists user_id text;
 alter table public.profiles add column if not exists user_team text;
 alter table public.profiles add column if not exists club_code text;
+alter table public.profiles add column if not exists user_avatar_img text; -- Profilbild (Rangliste)
 
 alter table public.profiles enable row level security;
 
