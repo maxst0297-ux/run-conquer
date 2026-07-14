@@ -78,15 +78,13 @@ Deno.serve(async (req) => {
     // werte je Gebiet. Ohne Zeitstempel (Alt-Track) fällt die Engine aufs Global-
     // Tempo (paceKmh) zurück.
     const { cells: runCells, cellPace } = engine.pathToCellPace(path) as { cells: Set<string>, cellPace: Map<string, number> };
-    const gap = haversine(path[0], path[path.length - 1]);
-    let enclosed: Set<string> = gap < 60 ? engine.enclosedCells([...path, path[0]]) : new Set();
-    // Sicherheits-Kappung: eine absurd große eingeschlossene Fläche (Spoofing /
-    // Riesen-Loop) würde tausende Zellen und teure Abfragen erzeugen. Res-10-Zelle
-    // ~0,015 km² -> 5000 Zellen ≈ 75 km². Darüber: Umrundung verwerfen.
-    if (enclosed.size > 5000) enclosed = new Set();
+    // #36 — es zählen ausschließlich Hexagone, durch die der Lauf physisch führt.
+    // Die eingeschlossene Schleifenfläche wird NICHT mehr beansprucht/gewertet;
+    // Umrundung ist kein Angriff mehr. enclosed bleibt leer (Signatur-Kompatibilität).
+    const enclosed: Set<string> = new Set();
 
     // ── Betroffene Gebiete finden (Zellen + Randnachbarn für Rand-Berührung) ─
-    const candidate = new Set<string>([...runCells, ...enclosed]);
+    const candidate = new Set<string>([...runCells]);
     for (const c of runCells) { try { for (const n of h3.gridDisk(c, 1)) candidate.add(n); } catch (_) { /*noop*/ } }
 
     const svc = createClient(SUPABASE_URL, SERVICE);

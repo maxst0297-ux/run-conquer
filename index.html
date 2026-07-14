@@ -715,6 +715,15 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .map-panel-btn i{color:var(--primary);width:16px;text-align:center}
 .map-panel-btn.active{background:rgba(var(--primary-rgb),.08);border-color:rgba(var(--primary-rgb),.25)}
 .map-panel-btn:active{transform:scale(.97)}
+#mapLegend{position:absolute;left:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);z-index:520;width:min(230px,calc(100vw - 90px));max-height:52vh;overflow-y:auto;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px 13px;box-shadow:0 8px 30px rgba(0,0,0,.4);-webkit-backdrop-filter:blur(16px) saturate(150%);backdrop-filter:blur(16px) saturate(150%);display:none;font-family:'Poppins',sans-serif}
+#mapLegend.open{display:block}
+#mapLegend h4{margin:0 0 8px;font-size:.72rem;letter-spacing:1px;text-transform:uppercase;color:var(--primary);display:flex;align-items:center;justify-content:space-between}
+#mapLegend .lg-close{cursor:pointer;color:var(--muted);font-size:.9rem;padding:2px 4px}
+#mapLegend .lg-sec{font-size:.58rem;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:9px 0 4px}
+#mapLegend .lg-row{display:flex;align-items:center;gap:8px;font-size:.74rem;margin:3px 0;color:var(--text)}
+#mapLegend .lg-sw{width:15px;height:15px;border-radius:4px;flex:0 0 auto;border:2px solid transparent}
+#mapLegend .lg-line{width:15px;height:0;flex:0 0 auto;border-top-width:3px;border-top-style:solid}
+#mapLegend .lg-note{font-size:.64rem;color:var(--muted);margin-top:8px;line-height:1.35}
 
 /* ═══ SETTINGS / ADMIN TABS ═══ */
 .stab-btn{padding:8px 14px;min-height:40px;display:inline-flex;align-items:center;border-radius:40px;border:none;background:var(--card);color:var(--muted);font-weight:600;font-size:.72rem;cursor:pointer;white-space:nowrap;transition:all .2s;font-family:'Poppins',sans-serif}
@@ -1229,7 +1238,9 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <button class="map-panel-btn" id="panelOwnTerrBtn"><i class="fas fa-map-marker-alt"></i> Eigene Gebiete</button>
         <button class="map-panel-btn" id="panelFollowBtn"><i class="fas fa-user-friends"></i> Follower</button>
         <button class="map-panel-btn" id="panelMyRunsBtn"><i class="fas fa-route"></i> Meine Läufe</button>
+        <button class="map-panel-btn" id="panelLegendBtn"><i class="fas fa-palette"></i> Legende</button>
       </div>
+      <div id="mapLegend" aria-live="polite"></div>
     </div>
 
     <!-- START HUB (redesign) -->
@@ -1934,7 +1945,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v162';
+const APP_VERSION='v163';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -5184,6 +5195,55 @@ function resetMapModes(){
   hideTerrBar();
 }
 window.resetMapModes=resetMapModes;
+/* ════════════════════════════════════════════════════════════════════════
+   #36 — HEXAGON-FARB- & STATUS-REGELN (verbindliche Definition)
+   ------------------------------------------------------------------------
+   FÜLLFARBE (wer besitzt das Hexagon):
+     • Eigenes Gebiet ............ userColor (deine gewählte Gebietsfarbe)
+     • Feindliches Gebiet ........ Rot  (#ff3333)
+     • (Fraktionskarte-Modus) .... Fraktionsfarbe des Besitzers, grau ohne Fraktion
+   RAND (zwei Bedeutungen, in dieser Priorität):
+     1) Seltenheit nach Größe (Zellen): selten=Cyan, episch=Lila, legendär=Gold
+        (common trägt keine eigene Randfarbe -> siehe 2)
+     2) common-Gebiete: eigenes = userColor; FREMDES = „Ampel" nach WIRKSAMER
+        (verfallener) Verteidigung, aus Sicht des Angreifers:
+            GRÜN (#22c55e)  def < 50   -> schwach, leicht erobern
+            GELB (#eab308)  50–149     -> mittel
+            ROT  (#ef4444)  def >= 150 -> stark, kaum erobern
+   DECKKRAFT (Füllung/Rand) ...... skaliert mit der Verteidigungsstärke (def/300).
+   GEWERTET werden ausschließlich Hexagone, durch die der Lauf PHYSISCH führt
+   (#36 Teil b) — kein Umranden/Einschließen leerer Flächen.
+   Quelle der Wahrheit: fillColor/borderCol unten + h3AmpelColor()/RARITY_COLORS.
+   Die sichtbare Kartenlegende (buildMapLegend) wird aus genau diesen Werten erzeugt.
+   ════════════════════════════════════════════════════════════════════════ */
+function buildMapLegend(){
+  const el=$('mapLegend');if(!el)return;
+  const sw=(c,extra='')=>`<span class="lg-sw" style="background:${c};${extra}"></span>`;
+  const line=(c)=>`<span class="lg-line" style="border-top-color:${c}"></span>`;
+  el.innerHTML=`
+    <h4>Kartenlegende <span class="lg-close" onclick="toggleMapLegend(false)">✕</span></h4>
+    <div class="lg-sec">Besitz (Füllung)</div>
+    <div class="lg-row">${sw(userColor)} Dein Gebiet</div>
+    <div class="lg-row">${sw('#ff3333')} Feindliches Gebiet</div>
+    <div class="lg-row">${sw('#8891a0')} Ohne Fraktion (Fraktionskarte)</div>
+    <div class="lg-sec">Feind-Stärke (Rand-Ampel)</div>
+    <div class="lg-row">${line('#22c55e')} Schwach · leicht erobern (Vert. &lt;50)</div>
+    <div class="lg-row">${line('#eab308')} Mittel (50–149)</div>
+    <div class="lg-row">${line('#ef4444')} Stark · kaum erobern (≥150)</div>
+    <div class="lg-sec">Seltenheit (Rand)</div>
+    <div class="lg-row">${line(RARITY_COLORS.rare)} Selten</div>
+    <div class="lg-row">${line(RARITY_COLORS.epic)} Episch</div>
+    <div class="lg-row">${line(RARITY_COLORS.legendary)} Legendär</div>
+    <div class="lg-note">Nur Hexagone zählen, durch die du wirklich läufst. Kräftigere Farbe = stärker verteidigt.</div>`;
+}
+function toggleMapLegend(force){
+  const el=$('mapLegend');const btn=$('panelLegendBtn');if(!el)return;
+  const on=(force!=null)?force:!el.classList.contains('open');
+  if(on)buildMapLegend();
+  el.classList.toggle('open',on);
+  if(btn)btn.classList.toggle('active',on);
+}
+window.toggleMapLegend=toggleMapLegend;
 function renderH3Territories(){
   if(!h3Layer||!h3Ready())return;
   h3Layer.clearLayers();
@@ -7236,7 +7296,7 @@ const _HELP_RULER=[['Neuling','#5A8A6E'],['Besitzer','#00D4FF'],['Baron','#9B5DE
 const _HELP_RARITY=[['Gewöhnlich','#5A8A6E'],['Selten','#00D4FF'],['Episch','#9B5DE5'],['Legendär','#FFD700']];
 function helpChip(label,color){return `<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:40px;font-family:'Bebas Neue',sans-serif;font-size:.78rem;letter-spacing:1px;color:${color};border:1px solid ${color}55;background:${color}1a">${label}</span>`;}
 const HELP_SECTIONS=[
-  {icon:'fa-route',title:'Laufen & Gebiete erobern',intro:'Die Welt ist in sechseckige Waben (Hexagons) aufgeteilt. Jeder echte Lauf zeichnet deine GPS-Strecke auf, und alle Hexagons, durch die du wirklich läufst, werden zu deinem Revier. Du musst also nicht eine Fläche umrunden – es zählt, worüber du tatsächlich läufst.',bullets:['Freie (neutrale) Hexagons, die du überläufst, gehören danach sofort dir.','Feindliche Gebiete machst du dir streitig, indem du über ihre Hexagons läufst. Wie viel Verteidigung du brichst, hängt von deinem Tempo ab: schneller = mehr Angriff.','Jedes Hexagon hat einen eigenen Verteidigungswert – je nach Tempo an genau dieser Stelle können die Werte innerhalb eines Gebiets unterschiedlich sein.','Vernachlässigte, stark verfallene Gebiete (sehr niedrige Verteidigung) fallen schon, wenn du einfach darüberläufst.','Über den Karten-Reiter „Meine Läufe" siehst du all deine bisherigen Strecken – praktisch, um eine ganze Region planvoll zu erlaufen.','Eroberungen geben dir spürbar mehr XP als reines Kilometersammeln – und zählen für die Fraktions-Kontrolle.','Auf der Karte siehst du jederzeit, welche Hexagons dir, deiner Fraktion oder anderen gehören. Tippe ein Gebiet an für Details.']},
+  {icon:'fa-route',title:'Laufen & Gebiete erobern',intro:'Die Welt ist in sechseckige Waben (Hexagons) aufgeteilt. Jeder echte Lauf zeichnet deine GPS-Strecke auf, und alle Hexagons, durch die du wirklich läufst, werden zu deinem Revier. Du musst also nicht eine Fläche umrunden – es zählt, worüber du tatsächlich läufst.',bullets:['Freie (neutrale) Hexagons, die du überläufst, gehören danach sofort dir.','Feindliche Gebiete machst du dir streitig, indem du über ihre Hexagons läufst. Wie viel Verteidigung du brichst, hängt von deinem Tempo ab: schneller = mehr Angriff.','Jedes Hexagon hat einen eigenen Verteidigungswert – je nach Tempo an genau dieser Stelle können die Werte innerhalb eines Gebiets unterschiedlich sein.','Vernachlässigte, stark verfallene Gebiete (sehr niedrige Verteidigung) fallen schon, wenn du einfach darüberläufst.','Über den Karten-Reiter „Meine Läufe" siehst du all deine bisherigen Strecken – praktisch, um eine ganze Region planvoll zu erlaufen.','Eroberungen geben dir spürbar mehr XP als reines Kilometersammeln – und zählen für die Fraktions-Kontrolle.','Farben auf der Karte: Deine Gebiete tragen deine Gebietsfarbe, feindliche sind rot. Der Rahmen zeigt die Feind-Stärke als Ampel (grün = schwach/leicht erobern, gelb = mittel, rot = stark) bzw. bei seltenen Gebieten die Seltenheitsfarbe (Cyan/Lila/Gold). Kräftigere Farbe = stärker verteidigt.','Über den Karten-Button „Legende" blendest du jederzeit eine Erklärung aller Farben ein. Tippe ein Gebiet an für Details.']},
   {icon:'fa-bolt',title:'Energie',intro:'Energie ist deine Ausdauer-Ressource für alles, was mit Eroberung zu tun hat. Sie ist eine Art Akku, der begrenzt, wie viel du am Stück beanspruchen kannst, und der dich zwingt, dir deine Läufe klug einzuteilen statt alles auf einmal zu versuchen.',bullets:['Energie wird verbraucht, während du aktiv Fläche eroberst oder dein Revier hältst.','Mit der Zeit füllt sie sich von ganz allein wieder auf – auch ohne dass du läufst.','Ein voller Energie-Vorrat erlaubt dir größere oder mehrere Eroberungen am Stück.','Ist deine Energie aufgebraucht, lohnt sich eine Pause: Sobald sie sich erholt hat, kannst du weiter erobern.','Ein regelmäßiger Rhythmus aus Läufen und Pausen ist effizienter, als deine Energie in einem einzigen Marathon-Lauf zu verbrauchen.','Dein Streak (aufeinanderfolgende aktive Tage) und dein Wochenziel helfen dir dabei, dauerhaft mit voller Energie zu spielen.']},
   {icon:'fa-shield-halved',title:'Verteidigen',intro:'Ein erobertes Gebiet gehört dir nicht für immer automatisch weiter – andere Läufer:innen können es dir streitig machen, indem sie dieselbe Fläche selbst ablaufen und dadurch übernehmen.',bullets:['Um ein Gebiet zu behalten, musst du es von Zeit zu Zeit erneut selbst ablaufen – das zählt als Verteidigung.','Ist dein Revier bedroht, siehst du das in der Gebiets-Ansicht: Dort werden dir Läufer:innen angezeigt, die in der Nähe aktiv sind und dir das Gebiet abjagen könnten.','Je länger du ein Gebiet ununterbrochen hältst und verteidigst, desto mehr Ansehen und Punkte bringt es dir dauerhaft ein.','Regelmäßiges Verteidigen ist genauso wichtig wie das Erobern neuer Flächen – ein großes Revier, das du vernachlässigst, geht mit der Zeit an aktivere Läufer:innen verloren.','Besonders zentrale oder seltene Gebiete werden öfter angelaufen und brauchen darum mehr Aufmerksamkeit.']},
   {icon:'fa-crown',title:'Ruler-Rangstufen',intro:'Je mehr Fläche du dauerhaft beherrschst und je konsequenter du sie verteidigst, desto höher steigst du in der Rangordnung der Herrscher (Ruler) auf. Dein aktueller Titel wird überall dort angezeigt, wo dein Name erscheint – auf der Karte, in der Rangliste und in deinem Profil.',chips:_HELP_RULER,note:'Der Aufstieg verläuft in dieser Reihenfolge von Neuling bis Imperator. Ein höherer Titel ist reines Prestige und Sichtbarkeit – er zeigt anderen Läufer:innen auf einen Blick, wie ernst du es mit deinem Revier meinst.'},
@@ -7248,7 +7308,7 @@ const HELP_SECTIONS=[
   {icon:'fa-palette',title:'Erscheinungsbild',intro:'Runners Conquer lässt dich das Design der App selbst wählen – such dir das Erscheinungsbild aus, das dir am besten gefällt.',bullets:['Unter Einstellungen → Erscheinungsbild stehen dir mehrere fertige Designs zur Auswahl.','Citrus ist der markante Signature-Look: tiefes Waldgrün mit leuchtendem Limetten-Akzent.','Daneben gibt es hellere und ruhigere Varianten für alle, die einen anderen Stil bevorzugen.','Das gewählte Design ändert nur die Optik – deine Gebiete, Punkte und dein Fortschritt bleiben davon unberührt.','Du kannst das Design jederzeit wieder wechseln, ganz ohne Einfluss auf dein Spiel.']},
   {icon:'fa-tower-broadcast',title:'Nachrichten & Benachrichtigungen',intro:'Damit dir nichts Wichtiges entgeht, hält dich Runners Conquer über einen Nachrichten- und Benachrichtigungsbereich auf dem Laufenden.',bullets:['Ein Aktivitäts-Feed zeigt dir laufend, was in deiner Umgebung passiert – etwa wenn jemand ein Gebiet in deiner Nähe erobert oder du selbst befördert wurdest.','Wird dein eigenes Revier bedroht, bekommst du das direkt als eigene Nachricht angezeigt, damit du rechtzeitig reagieren kannst.','Push-Benachrichtigungen holen dich auch dann ab, wenn die App gerade nicht offen ist – etwa bei einer Bedrohung deines Reviers.','Welche Benachrichtigungen du bekommen möchtest, stellst du einzeln unter Einstellungen → Benachrichtigungen ein.']},
   {icon:'fa-user-shield',title:'Konto, Datenschutz & Support',intro:'Dein Profil, deine Laufdaten und dein gesamter Fortschritt sind an dein Konto gebunden und werden sicher gespeichert, damit du auf jedem Gerät weiterspielen kannst.',bullets:['Profil, Avatar, Name und Club lassen sich jederzeit in den Einstellungen anpassen.','Standort- und Laufdaten werden ausschließlich zum Betrieb des Spiels genutzt – du entscheidest, was davon sichtbar für andere ist.','Push-Benachrichtigungen (z. B. wenn dein Revier bedroht ist) lassen sich einzeln in den Einstellungen an- und ausschalten.','Bei Fragen, Problemen oder zum Löschen deines Kontos erreichst du den Support direkt über Einstellungen → Support.']},
-  {icon:'fa-circle-question',title:'Häufig gestellte Fragen',intro:'Die wichtigsten Antworten auf einen Blick.',faq:[['Was passiert, wenn mir jemand mein Gebiet streitig macht?','Du wirst darauf aufmerksam gemacht, dass dein Revier bedroht ist, und kannst es zurückerobern, indem du die Fläche einfach erneut selbst abläufst.'],['Verliere ich Punkte, wenn ich ein Gebiet verliere?','Dein bereits gesammelter Punktestand bleibt dir erhalten – nur die laufende Fläche und ihr weiterer Ertrag gehen an die Person über, die sie neu erobert hat.'],['Wie steige ich schneller im Ruler-Rang auf?','Regelmäßig laufen, neue Gebiete erobern und dein bestehendes Revier konsequent verteidigen bringt dich am schnellsten voran.'],['Kann ich meinen Club später wechseln?','Ja, jederzeit über Einstellungen → Dein Club.'],['Wo sehe ich, wenn mein Revier bedroht wird?','Dafür gibt es den Nachrichten- und Benachrichtigungsbereich – dort und per Push wirst du direkt informiert.'],['Was ist der Unterschied zwischen Gebiet und Wahrzeichen?','Ein Gebiet ist die Fläche, die du durch Laufen umschließt. Ein Wahrzeichen ist ein besonderer, seltenerer Ort darin, der zusätzliches Prestige und mehr Punkte bringt.'],['Läuft eine Saison irgendwann ab?','Ja, jede Saison endet nach einer festgelegten Zeit, die Rangliste wird final ausgewertet und danach beginnt die nächste Saison neu.'],['Was bringt mir Energie eigentlich konkret?','Ohne Energie kannst du keine neue Fläche erobern – sie begrenzt, wie viel du am Stück schaffst, und füllt sich mit der Zeit von selbst wieder auf.']]}
+  {icon:'fa-circle-question',title:'Häufig gestellte Fragen',intro:'Die wichtigsten Antworten auf einen Blick.',faq:[['Was passiert, wenn mir jemand mein Gebiet streitig macht?','Du wirst darauf aufmerksam gemacht, dass dein Revier bedroht ist, und kannst es zurückerobern, indem du die Fläche einfach erneut selbst abläufst.'],['Verliere ich Punkte, wenn ich ein Gebiet verliere?','Dein bereits gesammelter Punktestand bleibt dir erhalten – nur die laufende Fläche und ihr weiterer Ertrag gehen an die Person über, die sie neu erobert hat.'],['Wie steige ich schneller im Ruler-Rang auf?','Regelmäßig laufen, neue Gebiete erobern und dein bestehendes Revier konsequent verteidigen bringt dich am schnellsten voran.'],['Kann ich meinen Club später wechseln?','Ja, jederzeit über Einstellungen → Dein Club.'],['Wo sehe ich, wenn mein Revier bedroht wird?','Dafür gibt es den Nachrichten- und Benachrichtigungsbereich – dort und per Push wirst du direkt informiert.'],['Was ist der Unterschied zwischen Gebiet und Wahrzeichen?','Ein Gebiet besteht aus den Hexagons, durch die du wirklich läufst (Umranden allein zählt nicht). Ein Wahrzeichen ist ein besonderer, seltenerer Ort darin, der zusätzliches Prestige und mehr Punkte bringt.'],['Läuft eine Saison irgendwann ab?','Ja, jede Saison endet nach einer festgelegten Zeit, die Rangliste wird final ausgewertet und danach beginnt die nächste Saison neu.'],['Was bringt mir Energie eigentlich konkret?','Ohne Energie kannst du keine neue Fläche erobern – sie begrenzt, wie viel du am Stück schaffst, und füllt sich mit der Zeit von selbst wieder auf.']]}
 ];
 function _helpInner(sec){
   let h=`<p style="margin:0 0 10px;opacity:.92">${sec.intro}</p>`;
@@ -9420,6 +9480,7 @@ window.initApp=function(){
       toast('Meine Läufe ausgeblendet');
     }
   });
+  $('panelLegendBtn')?.addEventListener('click',function(){toggleMapLegend();});
   /* Panel-Lauf-Buttons */
   $('panelStartBtn')?.addEventListener('click',()=>{startRun();});
   $('panelPauseBtn2')?.addEventListener('click',()=>{isPaused?resumeRun():pauseRun();});

@@ -52,27 +52,35 @@ const cutRun = new Set(h3.gridPathCells(west, east));
   ok('classify CUT (>=2 Cluster)', c.mode === 'cut', 'mode=' + c.mode + (c.clusters ? ' clusters=' + c.clusters.length : ''));
 }
 
-// CIRCUMNAVIGATION
-ok('classify CIRCUMNAVIGATION', eng.classify(new Set(territory), new Set([center]), enclosedSuper).mode === 'circumnavigation');
+// #36 — reines UMSCHLIESSEN (Umrundung ohne Durchlaufen) ist KEIN Angriff mehr.
+const ringOutside = new Set(h3.gridRingUnsafe(center, 4)); // grenzt an Gebiet, überlappt NICHT
+ok('#36 Umrundung != circumnavigation', eng.classify(new Set(territory), ringOutside, enclosedSuper).mode !== 'circumnavigation', 'mode=' + eng.classify(new Set(territory), ringOutside, enclosedSuper).mode);
+{
+  // Selbst mit riesiger eingeschlossener Fläche + hohem Angriff kein Sieg: der Lauf
+  // durchläuft das Gebiet nicht, er umschließt es nur.
+  const r = eng.resolveAttack({ enemyCells: territory, enemyDefense: 15, runCells: ringOutside, enclosed: enclosedSuper, attackPoints: runValue(6, 16, 'atk') });
+  ok('#36 Umrundung erobert NICHT', !r.conquered && r.mode !== 'circumnavigation', 'mode=' + r.mode + ' conquered=' + r.conquered);
+}
 
-// COVERED: Pfad deckt gesamtes Gebiet
+// COVERED: Pfad deckt gesamtes Gebiet (echter Durchlauf -> gültiger Angriff)
 ok('classify COVERED', eng.classify(new Set(territory), new Set(territory), new Set()).mode === 'covered');
 
-// ---------- resolveAttack: Umrundung LANGSAM vs SCHNELL vs schwaches Gebiet ----------
-// atk = runValue; fresh territory defense 100.
+// ---------- resolveAttack: DURCHLAUFEN/Überdeckung LANGSAM vs SCHNELL ----------
+// atk = runValue; fresh territory defense 100. Angriff nur durch echtes Überlaufen.
 const atkSlow = runValue(2, 10, 'atk');   // 2km@10 = 20 -> zu wenig für def 100
 const atkFast = runValue(6, 16, 'atk');   // 6km@16 = 6*18 + Bonus(6km=0) = 108 -> >100
 {
-  const r = eng.resolveAttack({ enemyCells: territory, enemyDefense: 100, runCells: new Set([center]), enclosed: enclosedSuper, attackPoints: atkSlow });
-  ok('Umrundung LANGSAM (atk20) -> KEIN Sieg', r.mode === 'circumnavigation' && !r.conquered && r.defenderDefense === 80, 'def=' + r.defenderDefense);
+  const r = eng.resolveAttack({ enemyCells: territory, enemyDefense: 100, runCells: new Set(territory), enclosed: new Set(), attackPoints: atkSlow });
+  ok('Überdeckung LANGSAM (atk20) -> KEIN Sieg', r.mode === 'covered' && !r.conquered && r.defenderDefense === 80, 'def=' + r.defenderDefense);
 }
 {
-  const r = eng.resolveAttack({ enemyCells: territory, enemyDefense: 100, runCells: new Set([center]), enclosed: enclosedSuper, attackPoints: atkFast });
-  ok('Umrundung SCHNELL (atk108) -> Sieg', r.mode === 'circumnavigation' && r.conquered && r.attackerDefense === (108 - 100) + 20, 'atkDef=' + r.attackerDefense);
+  const r = eng.resolveAttack({ enemyCells: territory, enemyDefense: 100, runCells: new Set(territory), enclosed: new Set(), attackPoints: atkFast });
+  ok('Überdeckung SCHNELL (atk108) -> Sieg', r.mode === 'covered' && r.conquered && r.attackerDefense === (108 - 100) + 20, 'atkDef=' + r.attackerDefense);
 }
 {
-  const r = eng.resolveAttack({ enemyCells: territory, enemyDefense: 15, runCells: new Set([center]), enclosed: enclosedSuper, attackPoints: atkSlow });
-  ok('Umrundung langsam, Gebiet SCHWACH(15) -> Sieg', r.conquered && r.attackerDefense === Math.max(1, 20 - 15) + 20, 'atkDef=' + r.attackerDefense);
+  // Schwaches Gebiet (Vernachlässigung, def<=8) fällt beim Überlaufen sofort.
+  const r = eng.resolveAttack({ enemyCells: territory, enemyDefense: 5, runCells: new Set(territory), enclosed: new Set(), attackPoints: atkSlow });
+  ok('Überlaufen, Gebiet SCHWACH(5) -> Sieg', r.conquered && r.attackerDefense === Math.max(1, 20 - 5) + 20, 'atkDef=' + r.attackerDefense);
 }
 
 // ---------- resolveAttack: gerader Durchlauf = 20% ----------
@@ -128,11 +136,12 @@ const atkFast = runValue(6, 16, 'atk');   // 6km@16 = 6*18 + Bonus(6km=0) = 108 
 const uid = 'me';
 const enemyT = { id: 'T1', owner: 'foe', ownerName: 'Gegner', defense: 100, cells: new Set(territory) };
 
-// 1) Neutral-Claim: Loop um leeres Land, keine Gebiete
+// 1) Neutral-Claim: #36 — NUR der gelaufene Pfad, die eingeschlossene Fläche zählt NICHT
 {
-  const r = eng.resolveRun({ userId: uid, runCells: new Set([center]), enclosed: enclosedSuper, distanceKm: 3, paceKmh: 12, territories: [] });
+  const pathRun = new Set([center, h3.gridDisk(center, 1)[1]]); // 2 gelaufene Zellen
+  const r = eng.resolveRun({ userId: uid, runCells: pathRun, enclosed: enclosedSuper, distanceKm: 3, paceKmh: 12, territories: [] });
   const neut = r.creates.find(c => c.neutral);
-  ok('resolveRun NEUTRAL-Claim erzeugt Gebiet', !!neut && neut.cells.length === enclosedSuper.size && r.deletes.length === 0, 'cells=' + (neut && neut.cells.length));
+  ok('#36 NEUTRAL-Claim nur Pfad (enclosed ignoriert)', !!neut && neut.cells.length === 2 && r.deletes.length === 0, 'cells=' + (neut && neut.cells.length) + ' (enclosed=' + enclosedSuper.size + ' wird ignoriert)');
 }
 // 2) Enemy schwächen (Durchlauf 20%)
 {
@@ -140,10 +149,10 @@ const enemyT = { id: 'T1', owner: 'foe', ownerName: 'Gegner', defense: 100, cell
   const up = r.updates.find(u => u.id === 'T1');
   ok('resolveRun WEAKEN: update ohne create/delete', !!up && up.defense < 100 && !up.setCells && r.creates.length === 0 && r.deletes.length === 0, 'def=' + (up && up.defense));
 }
-// 3) Ganzes Gebiet erobern (schnelle Umrundung eines schwachen Gebiets)
+// 3) Ganzes Gebiet erobern durch DURCHLAUFEN/Überdecken eines schwachen Gebiets
 {
-  const r = eng.resolveRun({ userId: uid, runCells: new Set([center]), enclosed: enclosedSuper, distanceKm: 6, paceKmh: 16, territories: [{ ...enemyT, defense: 30, cells: new Set(territory) }] });
-  ok('resolveRun CONQUER: delete + create', r.deletes.includes('T1') && r.creates.some(c => !c.neutral && c.owner === uid && c.cells.length === territory.length), 'deletes=' + r.deletes.length + ' creates=' + r.creates.length);
+  const r = eng.resolveRun({ userId: uid, runCells: new Set(territory), enclosed: new Set(), distanceKm: 6, paceKmh: 16, territories: [{ ...enemyT, defense: 30, cells: new Set(territory) }] });
+  ok('resolveRun CONQUER (Überdeckung): delete + create', r.deletes.includes('T1') && r.creates.some(c => !c.neutral && c.owner === uid && c.cells.length === territory.length), 'deletes=' + r.deletes.length + ' creates=' + r.creates.length);
 }
 // 4) Cut: Linie quer, genug Angriff
 {
@@ -291,11 +300,11 @@ ok('botAttack: Schwächung floored bei 1', (()=>{const r=botAttack(3,50);return 
 
 // ===== Gebiets-Schutz: geschütztes Gegnergebiet ist unangreifbar =====
 {
-  // Ohne Schutz: schwaches Gebiet wird beim Umrunden erobert.
-  const noShield = eng.resolveRun({ userId: uid, runCells: new Set([center]), enclosed: enclosedSuper, distanceKm: 6, paceKmh: 16, territories: [{ ...enemyT, defense: 30, cells: new Set(territory) }] });
+  // Ohne Schutz: schwaches Gebiet wird beim Überlaufen erobert.
+  const noShield = eng.resolveRun({ userId: uid, runCells: new Set(territory), enclosed: new Set(), distanceKm: 6, paceKmh: 16, territories: [{ ...enemyT, defense: 30, cells: new Set(territory) }] });
   ok('Schutz-Gegenprobe: ungeschützt -> erobert', noShield.deletes.includes('T1'));
   // Mit Schutz: derselbe Angriff prallt ab (kein delete/create, nur 'shielded'-Event).
-  const shielded = eng.resolveRun({ userId: uid, runCells: new Set([center]), enclosed: enclosedSuper, distanceKm: 6, paceKmh: 16, territories: [{ ...enemyT, defense: 30, shielded: true, cells: new Set(territory) }] });
+  const shielded = eng.resolveRun({ userId: uid, runCells: new Set(territory), enclosed: new Set(), distanceKm: 6, paceKmh: 16, territories: [{ ...enemyT, defense: 30, shielded: true, cells: new Set(territory) }] });
   const ev = shielded.events.find(e => e.type === 'shielded');
   ok('Gebiets-Schutz: geschütztes Gebiet NICHT erobert', shielded.deletes.length === 0 && !shielded.creates.some(c => !c.neutral) && !!ev, 'deletes=' + shielded.deletes.length);
 }

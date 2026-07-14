@@ -250,10 +250,13 @@ export function createEngine(h3) {
     return false;
   }
 
-  /* Bestimmt die Lauf-Art gegen ein Feindgebiet (GDS 1.5/1.6, Schritt 1–2). */
+  /* Bestimmt die Lauf-Art gegen ein Feindgebiet (GDS 1.5/1.6, Schritt 1–2).
+     #36 — es zählen AUSSCHLIESSLICH Zellen, durch die der Lauf PHYSISCH führt.
+     Reines Umschließen (Umrundung) ohne Durchlaufen ist KEIN Angriff mehr — der
+     Parameter `encl` wird bewusst nicht mehr ausgewertet (bleibt für Signatur-
+     Kompatibilität erhalten). */
   function classify(enemyCells, runCells, encl) {
     if (!enemyCells.size) return { mode: 'none' };
-    if (encl && encl.size && isSuperset(encl, enemyCells)) return { mode: 'circumnavigation' };
 
     const overlap = new Set();
     for (const c of runCells) if (enemyCells.has(c)) overlap.add(c);
@@ -458,13 +461,13 @@ export function createEngine(h3) {
     }
 
     // Neutral-Claim: alle Zellen, die dieser Lauf beansprucht und die noch
-    // niemandem gehören, werden ein neues Gebiet. Das ist der DURCHLAUFENE PFAD
-    // (auch der Teil außerhalb eigener Gebiete!) PLUS — bei einer Schleife — das
-    // eingeschlossene Innere. So geht die außerhalb gelaufene Strecke nicht
-    // verloren.
+    // niemandem gehören, werden ein neues Gebiet. #36 — das ist NUR der DURCHLAUFENE
+    // PFAD (auch der Teil außerhalb eigener Gebiete). Eine eingeschlossene Schleifen-
+    // fläche zählt NICHT mehr — es werden ausschließlich Hexagone gewertet, durch
+    // die man wirklich läuft.
     const owned = new Set();
     for (const t of terrs) { const cs = t.cells instanceof Set ? t.cells : new Set(t.cells); for (const c of cs) owned.add(c); }
-    const source = new Set([...R, ...encl]);
+    const source = new Set(R);
     const neutral = [];
     for (const c of source) if (!owned.has(c) && !claimed.has(c)) neutral.push(c);
     if (neutral.length) {
