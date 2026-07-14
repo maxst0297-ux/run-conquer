@@ -378,6 +378,10 @@ export function createEngine(h3) {
         }
         continue;
       }
+      // Gebiets-Schutz: geschützte Gegnergebiete (24h-Immunität) können NICHT
+      // angegriffen/erobert werden. Der Schutz wird pro Gebiet als t.shielded=true
+      // hereingereicht (in conquer aus profiles.shield_until der Besitzer bestimmt).
+      if (t.shielded) { out.events.push({ type: 'shielded', id: t.id }); continue; }
       const ra = resolveAttack({ enemyCells: [...cells], enemyDefense: t.defense, runCells: R, enclosed: encl, attackPoints: atkPts });
       if (ra.mode === 'none') continue;
       if (ra.conquered && ra.defenderCells.length === 0) {

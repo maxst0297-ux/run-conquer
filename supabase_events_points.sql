@@ -196,3 +196,31 @@ revoke execute on function public.rc_bump_conquered(uuid, int) from public;
 revoke execute on function public.rc_bump_conquered(uuid, int) from anon;
 revoke execute on function public.rc_bump_conquered(uuid, int) from authenticated;
 grant  execute on function public.rc_bump_conquered(uuid, int) to service_role;
+
+-- ══════════════════════════════════════════════════════════════════════
+-- Gebiets-Schutz: 24h komplette Angriffs-Immunität für alle eigenen Gebiete
+-- Quellen: Battle-Pass Lvl 18, Geburtstag, Fraktions-Monatssieg.
+-- ══════════════════════════════════════════════════════════════════════
+alter table public.profiles add column if not exists shield_until timestamptz;
+
+-- Schutz gewähren (der Nutzer selbst; hours auf 1..48 geklammert; verlängert nie
+-- rückwärts). Läuft als DEFINER, Guard wird transaktional geöffnet.
+create or replace function public.rc_grant_shield(hours int default 24)
+returns timestamptz
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare uid uuid := auth.uid(); h int; newt timestamptz;
+begin
+  if uid is null then return null; end if;
+  h := greatest(1, least(coalesce(hours, 24), 48));
+  newt := now() + make_interval(hours => h);
+  perform set_config('rc.allow_points', '1', true);
+  update profiles
+     set shield_until = greatest(coalesce(shield_until, now()), newt), updated_at = now()
+   where id = uid;
+  return newt;
+end;
+$$;
+grant execute on function public.rc_grant_shield(int) to authenticated;

@@ -96,6 +96,16 @@ Deno.serve(async (req) => {
       const { data: allCells } = await svc.from('h3_cells').select('cell,territory_id').in('territory_id', terrIds);
       const byT: Record<string, Set<string>> = {};
       for (const r of (allCells || [])) (byT[r.territory_id] ||= new Set()).add(r.cell);
+      // Gebiets-Schutz: shield_until der Gegner-Besitzer laden. Ist er in der Zukunft,
+      // sind ALLE Gebiete dieses Spielers 24h angriffs-immun. Fehlt die Spalte, leer.
+      const shieldByOwner: Record<string, boolean> = {};
+      try {
+        const owners = [...new Set((trows || []).map((t: any) => t.owner).filter((o: string) => o && o !== user.id))];
+        if (owners.length) {
+          const { data: shrows } = await svc.from('profiles').select('id,shield_until').in('id', owners);
+          for (const p of (shrows || [])) { const t = Date.parse(p.shield_until || ''); if (t && t > nowMs) shieldByOwner[p.id] = true; }
+        }
+      } catch (_) { /* Spalte fehlt -> kein Schutz */ }
       const today = new Date().toISOString().slice(0, 10);
       for (const t of (trows || [])) territories.push({
         id: t.id, owner: t.owner, ownerName: t.owner_name,
@@ -103,6 +113,7 @@ Deno.serve(async (req) => {
         // damit Angriffe gegen lange nicht verteidigte Gebiete leichter sind.
         defense: engine.decayedDefense(t.defense, Date.parse(t.updated_at || t.created_at) || nowMs, nowMs),
         dailyAdded: t.daily_defense_added, lastDay: t.last_defense_day,
+        shielded: !!shieldByOwner[t.owner],
         today, cells: byT[t.id] || new Set(),
       });
     }

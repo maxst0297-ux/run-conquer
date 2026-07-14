@@ -289,5 +289,16 @@ ok('botAttack: Schwächung floored bei 1', (()=>{const r=botAttack(3,50);return 
   ok('engine.decayedDefense rechnet', near(eng.decayedDefense(100, 0, 2 * DAY), 100 - 2 * DECAY_PER_DAY), '=' + eng.decayedDefense(100, 0, 2 * DAY));
 }
 
+// ===== Gebiets-Schutz: geschütztes Gegnergebiet ist unangreifbar =====
+{
+  // Ohne Schutz: schwaches Gebiet wird beim Umrunden erobert.
+  const noShield = eng.resolveRun({ userId: uid, runCells: new Set([center]), enclosed: enclosedSuper, distanceKm: 6, paceKmh: 16, territories: [{ ...enemyT, defense: 30, cells: new Set(territory) }] });
+  ok('Schutz-Gegenprobe: ungeschützt -> erobert', noShield.deletes.includes('T1'));
+  // Mit Schutz: derselbe Angriff prallt ab (kein delete/create, nur 'shielded'-Event).
+  const shielded = eng.resolveRun({ userId: uid, runCells: new Set([center]), enclosed: enclosedSuper, distanceKm: 6, paceKmh: 16, territories: [{ ...enemyT, defense: 30, shielded: true, cells: new Set(territory) }] });
+  const ev = shielded.events.find(e => e.type === 'shielded');
+  ok('Gebiets-Schutz: geschütztes Gebiet NICHT erobert', shielded.deletes.length === 0 && !shielded.creates.some(c => !c.neutral) && !!ev, 'deletes=' + shielded.deletes.length);
+}
+
 console.log(`\n==== ${pass} passed, ${fail} failed ====`);
 process.exit(fail ? 1 : 0);

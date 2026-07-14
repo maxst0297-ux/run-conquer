@@ -80,6 +80,15 @@ Deno.serve(async (req) => {
     // Bots agieren bevorzugt an Spielergebieten (dort wird gespielt).
     const playerTerr = trows.filter((t: any) => !botIdSet.has(t.owner));
     const anchors = playerTerr.length ? playerTerr : trows;
+    // Gebiets-Schutz: Spieler mit shield_until in der Zukunft sind angriffs-immun.
+    const shielded = new Set<string>();
+    try {
+      const owners = [...new Set(playerTerr.map((t: any) => t.owner).filter(Boolean))];
+      if (owners.length) {
+        const { data: shrows } = await svc.from('profiles').select('id,shield_until').in('id', owners);
+        for (const p of (shrows || [])) { const tm = Date.parse(p.shield_until || ''); if (tm && tm > nowMs) shielded.add(p.id); }
+      }
+    } catch (_) { /* Spalte fehlt -> kein Schutz */ }
 
     for (let i = 0; i < BOT_ACTIONS_PER_TICK && anchors.length; i++) {
       const anchor: any = anchors[Math.floor(Math.random() * anchors.length)];
@@ -87,8 +96,9 @@ Deno.serve(async (req) => {
       if (!anchorCells.length) continue;
       const doAttack = Math.random() < BOT_ATTACK_CHANCE;
 
-      if (doAttack && !botIdSet.has(anchor.owner)) {
+      if (doAttack && !botIdSet.has(anchor.owner) && !shielded.has(anchor.owner)) {
         // Angriff auf ein Spielergebiet — mittlere Stärke, unabhängig vom Wert.
+        // (Geschützte Spieler werden übersprungen.)
         const def = decayedDefense(anchor.defense, Date.parse(anchor.updated_at) || nowMs, nowMs);
         const strength = BOT_ATK_MIN + Math.random() * (BOT_ATK_MAX - BOT_ATK_MIN);
         const r = botAttack(def, strength);
