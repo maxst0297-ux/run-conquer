@@ -148,6 +148,14 @@ export function validateRun({ distanceM, durationS, cadence, paceKmh } = {}) {
   return { ok: true, paceKmh: pace };
 }
 
+// Großkreis-Distanz zweier [lat,lng]-Punkte in Metern (rein, für Tempo je Zelle).
+export function haversineM(a, b) {
+  const R = 6371000, toRad = (d) => d * Math.PI / 180;
+  const dLat = toRad(b[0] - a[0]), dLng = toRad(b[1] - a[1]);
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a[0])) * Math.cos(toRad(b[0])) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
+}
+
 export function createEngine(h3) {
   if (!h3 || !h3.latLngToCell) throw new Error('createEngine: h3-Lib fehlt');
 
@@ -155,18 +163,45 @@ export function createEngine(h3) {
      aufeinanderfolgenden Fixes wird der Zellpfad gefüllt (gridPathCells), damit
      bei großem Fix-Abstand keine Lücken in der Schneise entstehen. */
   function pathToCells(latlngs, res = RES) {
+    return pathToCellPace(latlngs, res).cells;
+  }
+
+  /* GPS-Track MIT Zeitstempeln ([lat,lng,tMs]) -> DURCHLAUFENE Zellen PLUS das
+     Tempo (km/h) je Zelle zum Zeitpunkt des Durchlaufens (#44). Zwischen zwei
+     Fixes wird die Segment-Geschwindigkeit (Distanz/Zeit) berechnet und JEDER
+     Zelle des gefüllten Zellpfads zugewiesen. Fehlen Zeitstempel (Alt-Track/
+     Import), bleibt cellPace leer -> die Engine fällt aufs Global-Tempo zurück.
+     Rückgabe: { cells:Set, cellPace:Map<cell, kmh> }. */
+  function pathToCellPace(latlngs, res = RES) {
     const cells = new Set();
-    let prev = null;
-    for (const [lat, lng] of latlngs) {
+    const cellPace = new Map();
+    let prev = null, prevLL = null, prevT = null;
+    const setPace = (c, kmh) => {
+      if (!(kmh > 0)) return;
+      // Bei überlappenden Segmenten die höhere plausible Geschwindigkeit behalten
+      // (kurzer Sprint durch eine Zelle soll nicht vom langsamen Nachbarsegment
+      // verwässert werden). Hart auf den Anti-Cheat-Hardcap geklammert.
+      const v = Math.min(HARD_MAX_KMH, kmh);
+      const cur = cellPace.get(c);
+      if (cur == null || v > cur) cellPace.set(c, v);
+    };
+    for (const ll of latlngs) {
+      const lat = ll[0], lng = ll[1], t = (ll.length > 2 && ll[2] != null) ? +ll[2] : null;
       const c = h3.latLngToCell(lat, lng, res);
+      let segKmh = 0;
+      if (prevLL && prevT != null && t != null && t > prevT) {
+        const dM = haversineM(prevLL, [lat, lng]);
+        segKmh = (dM / 1000) / ((t - prevT) / 3600000);
+      }
       if (prev && prev !== c) {
-        try { for (const p of h3.gridPathCells(prev, c)) cells.add(p); }
+        try { for (const p of h3.gridPathCells(prev, c)) { cells.add(p); setPace(p, segKmh); } }
         catch { cells.add(c); } // gridPathCells wirft bei zu weiter Distanz
       }
       cells.add(c);
-      prev = c;
+      setPace(c, segKmh);
+      prev = c; prevLL = [lat, lng]; prevT = t;
     }
-    return cells;
+    return { cells, cellPace };
   }
 
   /* Fläche eines geschlossenen Laufs -> eingeschlossene H3-Zellen (für die
@@ -215,10 +250,13 @@ export function createEngine(h3) {
     return false;
   }
 
-  /* Bestimmt die Lauf-Art gegen ein Feindgebiet (GDS 1.5/1.6, Schritt 1–2). */
+  /* Bestimmt die Lauf-Art gegen ein Feindgebiet (GDS 1.5/1.6, Schritt 1–2).
+     #36 — es zählen AUSSCHLIESSLICH Zellen, durch die der Lauf PHYSISCH führt.
+     Reines Umschließen (Umrundung) ohne Durchlaufen ist KEIN Angriff mehr — der
+     Parameter `encl` wird bewusst nicht mehr ausgewertet (bleibt für Signatur-
+     Kompatibilität erhalten). */
   function classify(enemyCells, runCells, encl) {
     if (!enemyCells.size) return { mode: 'none' };
-    if (encl && encl.size && isSuperset(encl, enemyCells)) return { mode: 'circumnavigation' };
 
     const overlap = new Set();
     for (const c of runCells) if (enemyCells.has(c)) overlap.add(c);
@@ -347,12 +385,26 @@ export function createEngine(h3) {
        updates : { id, defense, dailyAdded?, lastDay?, setCells? }  (setCells = neue Zell-Liste)
        deletes : [territoryId]   (vollständig erobert -> gelöscht, Zellen wandern in ein create)
        creates : { owner, cells[], defense, neutral? }  (neues Gebiet des Angreifers) */
-  function resolveRun({ userId, runCells, enclosed, distanceKm, paceKmh, territories, boosted }) {
-    // Energie-Boost: +10% Angriffspunkte (Verteidigungsaufbau bleibt unberührt).
-    const atkPts = runValue(distanceKm, paceKmh, 'atk') * (boosted ? (1 + ENERGY_BOOST) : 1);
+  function resolveRun({ userId, runCells, enclosed, distanceKm, paceKmh, territories, boosted, cellPace }) {
+    const boostMul = boosted ? (1 + ENERGY_BOOST) : 1;
+    // Global-Tempo als Reporting-/Fallback-Wert (out.atkPts/defPts, sowie überall
+    // dort, wo kein Zell-Tempo vorliegt — z.B. Alt-Tracks ohne Zeitstempel).
+    const atkPts = runValue(distanceKm, paceKmh, 'atk') * boostMul;
     const defPts = runValue(distanceKm, paceKmh, 'def');
     const R = runCells instanceof Set ? runCells : new Set(runCells);
     const encl = enclosed instanceof Set ? enclosed : new Set(enclosed || []);
+    const cp = (cellPace instanceof Map) ? cellPace : null;
+    // #44 — Tempo je Hexagon: das für ein Gebiet wirksame Tempo ist der Mittelwert
+    // des Lauf-Tempos ÜBER GENAU DIE ZELLEN, die dieser Lauf in dem Gebiet berührt.
+    // So schlägt ein Sprint durch ein Gebiet härter zu als ein Spaziergang durch
+    // ein anderes — verschiedene Gebiete bekommen dadurch verschiedene Angriffs-
+    // bzw. Verteidigungswerte aus DEMSELBEN Lauf. Ohne Zell-Tempo: Global-Tempo.
+    const localPace = (cells) => {
+      if (!cp) return paceKmh;
+      let sum = 0, n = 0;
+      for (const c of cells) { if (R.has(c) && cp.has(c)) { sum += cp.get(c); n++; } }
+      return n ? sum / n : paceKmh;
+    };
     const terrs = territories || [];
     const out = { atkPts, defPts, playerPoints: 0, updates: [], deletes: [], creates: [], events: [] };
     const claimed = new Set(); // Zellen, die in diesem Lauf an den Angreifer gehen
@@ -367,9 +419,11 @@ export function createEngine(h3) {
         let covered = 0;
         for (const c of cells) if (R.has(c)) covered++;
         const coverFrac = cells.size ? covered / cells.size : 0;
-        // Verteidigungspunkte: Tempo-basiert, aber mit tempo-unabhängigem Mindestwert
-        // je km, damit auch langsames Durchlaufen des eigenen Gebiets verstärkt.
-        const buildPoints = Math.max(defPts, distanceKm * OWN_BUILD_MIN_PER_KM);
+        // Verteidigungspunkte tempo-basiert (lokales Tempo in DIESEM Gebiet), mit
+        // tempo-unabhängigem Mindestwert je km, damit auch langsames Durchlaufen
+        // des eigenen Gebiets verstärkt.
+        const ownDefPts = runValue(distanceKm, localPace(cells), 'def');
+        const buildPoints = Math.max(ownDefPts, distanceKm * OWN_BUILD_MIN_PER_KM);
         const rb = resolveDefenseBuild({ ownDefense: t.defense, coverFrac, buildPoints, dailyAlready: already });
         if (rb.built > 0) {
           out.updates.push({ id: t.id, own: true, defense: rb.defense, dailyAdded: rb.dailyAfter, lastDay: t.today });
@@ -378,20 +432,27 @@ export function createEngine(h3) {
         }
         continue;
       }
-      const ra = resolveAttack({ enemyCells: [...cells], enemyDefense: t.defense, runCells: R, enclosed: encl, attackPoints: atkPts });
+      // Gebiets-Schutz: geschützte Gegnergebiete (24h-Immunität) können NICHT
+      // angegriffen/erobert werden. Der Schutz wird pro Gebiet als t.shielded=true
+      // hereingereicht (in conquer aus profiles.shield_until der Besitzer bestimmt).
+      if (t.shielded) { out.events.push({ type: 'shielded', id: t.id }); continue; }
+      // #44 — Angriffspunkte für DIESES Gebiet aus dem lokalen Tempo (Sprint durch
+      // ein Gebiet trifft härter als Trab durch ein anderes). Boost bleibt aktiv.
+      const tAtk = runValue(distanceKm, localPace(cells), 'atk') * boostMul;
+      const ra = resolveAttack({ enemyCells: [...cells], enemyDefense: t.defense, runCells: R, enclosed: encl, attackPoints: tAtk });
       if (ra.mode === 'none') continue;
       if (ra.conquered && ra.defenderCells.length === 0) {
         out.deletes.push(t.id);
         out.creates.push({ owner: userId, cells: ra.attackerCells, defense: ra.attackerDefense });
         ra.attackerCells.forEach(c => claimed.add(c));
         out.events.push({ type: 'conquered', id: t.id, cells: ra.attackerCells.length });
-        out.playerPoints += Math.round(atkPts);
+        out.playerPoints += Math.round(tAtk);
       } else if (ra.conquered && ra.cutOff) {
         out.updates.push({ id: t.id, defense: ra.defenderDefense, setCells: ra.defenderCells });
         out.creates.push({ owner: userId, cells: ra.attackerCells, defense: ra.attackerDefense });
         ra.attackerCells.forEach(c => claimed.add(c));
         out.events.push({ type: 'cut', id: t.id, got: ra.attackerCells.length });
-        out.playerPoints += Math.round(atkPts);
+        out.playerPoints += Math.round(tAtk);
       } else {
         out.updates.push({ id: t.id, defense: ra.defenderDefense });
         out.events.push({ type: 'attacked', id: t.id, damage: Math.round(ra.damage) });
@@ -400,13 +461,13 @@ export function createEngine(h3) {
     }
 
     // Neutral-Claim: alle Zellen, die dieser Lauf beansprucht und die noch
-    // niemandem gehören, werden ein neues Gebiet. Das ist der DURCHLAUFENE PFAD
-    // (auch der Teil außerhalb eigener Gebiete!) PLUS — bei einer Schleife — das
-    // eingeschlossene Innere. So geht die außerhalb gelaufene Strecke nicht
-    // verloren.
+    // niemandem gehören, werden ein neues Gebiet. #36 — das ist NUR der DURCHLAUFENE
+    // PFAD (auch der Teil außerhalb eigener Gebiete). Eine eingeschlossene Schleifen-
+    // fläche zählt NICHT mehr — es werden ausschließlich Hexagone gewertet, durch
+    // die man wirklich läuft.
     const owned = new Set();
     for (const t of terrs) { const cs = t.cells instanceof Set ? t.cells : new Set(t.cells); for (const c of cs) owned.add(c); }
-    const source = new Set([...R, ...encl]);
+    const source = new Set(R);
     const neutral = [];
     for (const c of source) if (!owned.has(c) && !claimed.has(c)) neutral.push(c);
     if (neutral.length) {
@@ -419,7 +480,7 @@ export function createEngine(h3) {
   }
 
   return {
-    pathToCells, enclosedCells, clusters, classify,
+    pathToCells, pathToCellPace, haversineM, enclosedCells, clusters, classify,
     resolveAttack, resolveDefenseBuild, resolveRun,
     // Re-Exports als Convenience — die conquer-Function ruft diese als
     // engine.X(...) auf, daher MÜSSEN sie im Objekt liegen (sonst

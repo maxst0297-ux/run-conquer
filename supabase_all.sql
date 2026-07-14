@@ -33,12 +33,15 @@ create table if not exists public.profiles (
 alter table public.profiles add column if not exists user_id text;
 alter table public.profiles add column if not exists user_team text;
 alter table public.profiles add column if not exists club_code text;
+alter table public.profiles add column if not exists user_avatar_img text; -- Profilbild (Rangliste)
 
 alter table public.profiles enable row level security;
 
+drop policy if exists "Alle können Profile lesen" on public.profiles;
 create policy "Alle können Profile lesen"
   on public.profiles for select using (true);
 
+drop policy if exists "Nutzer verwalten eigenes Profil" on public.profiles;
 create policy "Nutzer verwalten eigenes Profil"
   on public.profiles for all using (auth.uid() = id);
 
@@ -134,15 +137,18 @@ create table if not exists public.runs (
 
 alter table public.runs enable row level security;
 
+drop policy if exists "Alle können Runs lesen" on public.runs;
 create policy "Alle können Runs lesen"
   on public.runs for select using (true);
 
+drop policy if exists "Nutzer fügen eigene Runs ein" on public.runs;
 create policy "Nutzer fügen eigene Runs ein"
   on public.runs for insert with check (auth.uid() = user_id);
 
 -- UPDATE-Policy: nötig für syncRun()'s upsert(...,{onConflict:'id'}) – ohne sie
 -- würde der ON-CONFLICT-DO-UPDATE-Pfad bei Retries an RLS scheitern, da
 -- upsert technisch ein INSERT mit Fallback auf UPDATE ist.
+drop policy if exists "Nutzer aktualisieren eigene Runs" on public.runs;
 create policy "Nutzer aktualisieren eigene Runs"
   on public.runs for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
@@ -150,6 +156,7 @@ create policy "Nutzer aktualisieren eigene Runs"
 -- runs-delete()-Aufruf (DSGVO Art. 17) stillschweigend an RLS (0 Zeilen
 -- gelöscht, kein Error) -- nur über die anschließende profiles-Löschung
 -- per ON DELETE CASCADE würden die Runs zufällig trotzdem verschwinden.
+drop policy if exists "Nutzer löschen eigene Runs" on public.runs;
 create policy "Nutzer löschen eigene Runs"
   on public.runs for delete using (auth.uid() = user_id);
 
@@ -170,6 +177,7 @@ alter table public.support_messages enable row level security;
 -- INSERT: user_id muss (NULL-sicher) der eigene auth.uid() sein, Admin-Felder
 -- duerfen beim Einfuegen nicht vorbelegt werden (verhindert Identitaets- und
 -- Antwort-Faelschung, z.B. bei DSGVO-Loeschantraegen)
+drop policy if exists "Nutzer senden eigene Support-Nachrichten" on public.support_messages;
 create policy "Nutzer senden eigene Support-Nachrichten"
   on public.support_messages for insert
   with check (
@@ -178,6 +186,7 @@ create policy "Nutzer senden eigene Support-Nachrichten"
     and replied_at is null
   );
 
+drop policy if exists "Nutzer lesen eigene Nachrichten, Admin liest alle" on public.support_messages;
 create policy "Nutzer lesen eigene Nachrichten, Admin liest alle"
   on public.support_messages for select
   using (
@@ -185,11 +194,13 @@ create policy "Nutzer lesen eigene Nachrichten, Admin liest alle"
     or auth.uid() = user_id
   );
 
+drop policy if exists "Admin aktualisiert Nachrichten" on public.support_messages;
 create policy "Admin aktualisiert Nachrichten"
   on public.support_messages for update
   using ((auth.jwt() ->> 'email') = 'maxst0297@gmail.com')
   with check ((auth.jwt() ->> 'email') = 'maxst0297@gmail.com');
 
+drop policy if exists "Admin löscht Nachrichten" on public.support_messages;
 create policy "Admin löscht Nachrichten"
   on public.support_messages for delete
   using ((auth.jwt() ->> 'email') = 'maxst0297@gmail.com');
@@ -234,25 +245,24 @@ end $$;
 
 alter table public.direct_messages enable row level security;
 
-drop policy if exists "dm_own" on public.direct_messages;
-drop policy if exists "dm_select" on public.direct_messages;
-drop policy if exists "dm_insert" on public.direct_messages;
-drop policy if exists "dm_update" on public.direct_messages;
-drop policy if exists "dm_delete" on public.direct_messages;
 
 -- SELECT: nur Sender + Empfänger dürfen lesen
+drop policy if exists "dm_select" on public.direct_messages;
 create policy "dm_select" on public.direct_messages
   for select using (auth.uid()::text in (from_uid, to_uid));
 
 -- INSERT: from_uid MUSS die eigene Auth-ID sein (verhindert Absender-Fälschung)
+drop policy if exists "dm_insert" on public.direct_messages;
 create policy "dm_insert" on public.direct_messages
   for insert with check (from_uid = auth.uid()::text);
 
 -- UPDATE: Sender + Empfänger dürfen updaten (z.B. read_at setzen)
+drop policy if exists "dm_update" on public.direct_messages;
 create policy "dm_update" on public.direct_messages
   for update using (auth.uid()::text in (from_uid, to_uid));
 
 -- DELETE: Sender + Empfänger dürfen löschen (Chat leeren)
+drop policy if exists "dm_delete" on public.direct_messages;
 create policy "dm_delete" on public.direct_messages
   for delete using (auth.uid()::text in (from_uid, to_uid));
 
@@ -1944,7 +1954,6 @@ alter table public.profiles add column if not exists total_raids      integer de
 
 -- 2) GPS-Route schützen: runs nur noch für den Besitzer direkt lesbar
 --    (die pathlose View unten liefert die öffentlichen Felder für alle).
-drop policy if exists "Alle können Runs lesen" on public.runs;
 drop policy if exists "runs_select_own" on public.runs;
 create policy "runs_select_own"
   on public.runs for select using (auth.uid() = user_id);
@@ -2025,6 +2034,7 @@ begin
   end loop;
 end $$;
 
+drop policy if exists "Nutzer senden eigene Support-Nachrichten" on public.support_messages;
 create policy "Nutzer senden eigene Support-Nachrichten" on public.support_messages
   for insert with check (
     auth.uid() is not distinct from user_id
@@ -2032,16 +2042,19 @@ create policy "Nutzer senden eigene Support-Nachrichten" on public.support_messa
     and replied_at is null
   );
 
+drop policy if exists "Nutzer lesen eigene, Admin liest alle" on public.support_messages;
 create policy "Nutzer lesen eigene, Admin liest alle" on public.support_messages
   for select using (
     (auth.jwt() ->> 'email') = 'maxst0297@gmail.com'
     or auth.uid() = user_id
   );
 
+drop policy if exists "Admin aktualisiert Nachrichten" on public.support_messages;
 create policy "Admin aktualisiert Nachrichten" on public.support_messages
   for update using ((auth.jwt() ->> 'email') = 'maxst0297@gmail.com')
   with check ((auth.jwt() ->> 'email') = 'maxst0297@gmail.com');
 
+drop policy if exists "Admin loescht Nachrichten" on public.support_messages;
 create policy "Admin loescht Nachrichten" on public.support_messages
   for delete using ((auth.jwt() ->> 'email') = 'maxst0297@gmail.com');
 
@@ -2086,19 +2099,17 @@ create index if not exists app_logs_level_idx   on public.app_logs (level);
 
 alter table public.app_logs enable row level security;
 
-drop policy if exists "logs_insert_own" on public.app_logs;
-drop policy if exists "logs_select_admin" on public.app_logs;
-drop policy if exists "logs_update_none" on public.app_logs;
-drop policy if exists "logs_delete_admin" on public.app_logs;
 
 -- INSERT: jeder (auch anonym, vor Login) darf Logs schreiben, aber user_id muss
 -- NULL-sicher die eigene auth.uid() sein. Admin-Felder existieren hier nicht,
 -- also keine Fälschungsgefahr. created_at wird per default gesetzt.
+drop policy if exists "logs_insert_own" on public.app_logs;
 create policy "logs_insert_own"
   on public.app_logs for insert
   with check (auth.uid() is not distinct from user_id);
 
 -- SELECT: nur der Betreiber liest die Logs (kein Nutzer sieht fremde Fehler).
+drop policy if exists "logs_select_admin" on public.app_logs;
 create policy "logs_select_admin"
   on public.app_logs for select
   using ((auth.jwt() ->> 'email') = 'maxst0297@gmail.com');
@@ -2106,6 +2117,7 @@ create policy "logs_select_admin"
 -- UPDATE: niemand (Logs sind unveränderlich). Bewusst keine Policy => verboten.
 
 -- DELETE: nur Admin (z.B. zum manuellen Aufräumen).
+drop policy if exists "logs_delete_admin" on public.app_logs;
 create policy "logs_delete_admin"
   on public.app_logs for delete
   using ((auth.jwt() ->> 'email') = 'maxst0297@gmail.com');
@@ -2235,6 +2247,7 @@ create index if not exists garmin_activities_time_idx on public.garmin_activitie
 
 alter table public.garmin_activities enable row level security;
 -- Nutzer darf seine eigenen Aktivitäten lesen
+drop policy if exists "Nutzer liest eigene Garmin-Aktivitäten" on public.garmin_activities;
 create policy "Nutzer liest eigene Garmin-Aktivitäten"
   on public.garmin_activities for select
   using (auth.uid() = user_id);
@@ -2274,6 +2287,7 @@ create index if not exists garmin_health_user_date_idx
 
 alter table public.garmin_health_summaries enable row level security;
 
+drop policy if exists "Nutzer liest eigene Health-Summaries" on public.garmin_health_summaries;
 create policy "Nutzer liest eigene Health-Summaries"
   on public.garmin_health_summaries for select
   using (auth.uid() = user_id);
@@ -2333,28 +2347,28 @@ create index if not exists dm_from_uid_idx on public.direct_messages(from_uid, c
 alter table public.direct_messages enable row level security;
 
 -- alte Policies entfernen (falls ein Teil-Lauf bereits welche angelegt hat)
-drop policy if exists "Nutzer liest eigene DMs"        on public.direct_messages;
-drop policy if exists "Nutzer sendet DMs"              on public.direct_messages;
-drop policy if exists "Empfänger aktualisiert read_at" on public.direct_messages;
-drop policy if exists "Nutzer löscht eigene DMs"       on public.direct_messages;
 
 -- Nutzer kann eigene gesendeten/empfangenen Nachrichten lesen
+drop policy if exists "Nutzer liest eigene DMs" on public.direct_messages;
 create policy "Nutzer liest eigene DMs"
   on public.direct_messages for select
   using (auth.uid()::text = from_uid or auth.uid()::text = to_uid);
 
 -- Nutzer kann Nachrichten senden (from_uid muss eigene uid sein)
+drop policy if exists "Nutzer sendet DMs" on public.direct_messages;
 create policy "Nutzer sendet DMs"
   on public.direct_messages for insert
   with check (auth.uid()::text = from_uid);
 
 -- Empfänger kann als gelesen markieren
+drop policy if exists "Empfänger aktualisiert read_at" on public.direct_messages;
 create policy "Empfänger aktualisiert read_at"
   on public.direct_messages for update
   using (auth.uid()::text = to_uid)
   with check (auth.uid()::text = to_uid);
 
 -- Nutzer kann eigene Konversationen löschen
+drop policy if exists "Nutzer löscht eigene DMs" on public.direct_messages;
 create policy "Nutzer löscht eigene DMs"
   on public.direct_messages for delete
   using (auth.uid()::text = from_uid or auth.uid()::text = to_uid);
@@ -2478,6 +2492,12 @@ begin
   insert into season_winners (month_key, winner_team, total_points)
   values (prev_mk, w_team, w_total)
   on conflict (month_key) do nothing;
+
+  -- Fraktions-Monatssieg: allen (echten) Mitgliedern der Sieger-Fraktion 24h Gebiets-Schutz.
+  perform set_config('rc.allow_points', '1', true);
+  update profiles
+     set shield_until = greatest(coalesce(shield_until, now()), now() + interval '24 hours'), updated_at = now()
+   where user_team = w_team and coalesce(is_bot, false) = false;
 end;
 $$;
 

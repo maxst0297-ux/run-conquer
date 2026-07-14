@@ -95,6 +95,12 @@ begin
   insert into season_winners (month_key, winner_team, total_points)
   values (prev_mk, w_team, w_total)
   on conflict (month_key) do nothing;
+
+  -- Fraktions-Monatssieg: allen (echten) Mitgliedern der Sieger-Fraktion 24h Gebiets-Schutz.
+  perform set_config('rc.allow_points', '1', true);
+  update profiles
+     set shield_until = greatest(coalesce(shield_until, now()), now() + interval '24 hours'), updated_at = now()
+   where user_team = w_team and coalesce(is_bot, false) = false;
 end;
 $$;
 

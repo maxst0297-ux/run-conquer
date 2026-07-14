@@ -85,7 +85,7 @@ body{
 
 
 /* ═══ SPLASH ═══ */
-#splash{position:fixed;top:0;left:0;right:0;bottom:0;background:#000;display:flex;align-items:center;justify-content:center;z-index:10000;transition:opacity .7s;overflow:hidden}
+#splash{position:fixed;top:0;left:0;right:0;bottom:0;background:#33415C;display:flex;align-items:center;justify-content:center;z-index:10000;transition:opacity .7s;overflow:hidden}
 .splash-logo{text-align:center}
 /* animated logo lockup: crown + RC monogram + wordmark */
 .spl-lockup{position:relative;display:flex;flex-direction:column;align-items:center;width:min(46vmin,300px);transform:translateY(-2%)}
@@ -107,6 +107,40 @@ body{
 @keyframes splLetterUp{0%{opacity:0;transform:translateY(60%);filter:blur(4px)}100%{opacity:1;transform:translateY(0);filter:blur(0)}}
 @keyframes splDashIn{0%{transform:scaleX(0);opacity:0}100%{transform:scaleX(1);opacity:1}}
 @media (prefers-reduced-motion:reduce){.spl-mark,.spl-rc,.spl-crown,.spl-runners span,.spl-conquer span,.spl-conquer-row .spl-dash{animation:none!important;opacity:1!important;filter:none!important;transform:none!important}}
+
+/* ═══ NEUES BANNER-LOGO (Splash / Marken-Intro) — Design-Handoff „Banner Logo" ═══
+   Hängender Wimpel mit starrer Querstange, wehendem Stoff und RC-Monogramm; rechts
+   Trennlinie + gestapelte Wortmarke RUNNERS/CONQUER. Palette des Referenzbilds
+   (Slate-Navy + Eisblau). Wind läuft dauerhaft (rAF), Wortmarke staggert einmalig ein. */
+.bl-lockup{display:flex;align-items:center;gap:clamp(16px,5vmin,48px)}
+.bl-banner{height:min(50vmin,320px);width:auto;display:block;filter:drop-shadow(0 0 26px rgba(168,211,230,.10))}
+.bl-banner .bl-bar{fill:#A8D3E6}
+.bl-banner .bl-cloth-outer{fill:rgba(168,211,230,.05);stroke:#A8D3E6;stroke-width:7;stroke-linejoin:round}
+.bl-banner .bl-cloth-inner{fill:none;stroke:#A8D3E6;stroke-width:3;stroke-linejoin:round}
+.bl-banner .bl-rc-text{font-family:'Bebas Neue',sans-serif;font-size:118px;letter-spacing:3px;fill:#A8D3E6;text-anchor:middle;dominant-baseline:central}
+.bl-divider{width:3px;height:min(38vmin,240px);background:#fff;opacity:.85;border-radius:2px;transform-origin:center top}
+#splash.go .bl-divider{animation:blDivIn .55s cubic-bezier(.22,1,.36,1) 1s both}
+@keyframes blDivIn{0%{transform:scaleY(0);opacity:0}100%{transform:scaleY(1);opacity:.85}}
+.bl-words{display:flex;flex-direction:column;font-family:'Bebas Neue',sans-serif;font-size:clamp(30px,9vmin,72px);line-height:.94;letter-spacing:.045em;text-transform:uppercase}
+.bl-word{display:flex}
+.bl-word span{display:inline-block}
+.bl-word-runners{color:#fff}
+.bl-word-conquer{color:#A8D3E6}
+#splash.go .bl-word-runners span{animation:blLetterUp .55s cubic-bezier(.34,1.15,.64,1) backwards;animation-delay:calc(1.3s + var(--i)*.05s)}
+#splash.go .bl-word-conquer span{animation:blLetterUp .55s cubic-bezier(.34,1.15,.64,1) backwards;animation-delay:calc(1.9s + var(--i)*.05s)}
+@keyframes blLetterUp{0%{opacity:0;transform:translateY(55%);filter:blur(4px)}100%{opacity:1;transform:translateY(0);filter:blur(0)}}
+@keyframes blDivInH{0%{transform:scaleX(0);opacity:0}100%{transform:scaleX(1);opacity:.85}}
+/* Hochformat (Handy): vertikales Lockup — Banner oben, kurze horizontale Trennlinie,
+   Wortmarke zentriert darunter. Verhindert das seitliche Abschneiden. */
+@media (max-aspect-ratio:1/1){
+  .bl-lockup{flex-direction:column;gap:clamp(12px,3.5vmin,26px);max-width:94vw}
+  .bl-banner{height:min(44vmin,320px)}
+  .bl-divider{width:min(46vmin,260px);height:3px;transform-origin:center}
+  #splash.go .bl-divider{animation:blDivInH .55s cubic-bezier(.22,1,.36,1) 1s both}
+  .bl-words{align-items:center;text-align:center;font-size:clamp(28px,8.5vmin,58px);line-height:.98}
+  .bl-word{justify-content:center;max-width:94vw}
+}
+@media (prefers-reduced-motion:reduce){#splash.go .bl-divider,#splash.go .bl-word-runners span,#splash.go .bl-word-conquer span{animation:none!important;opacity:1!important;transform:none!important;filter:none!important}}
 
 /* ═══ ONBOARDING ═══ */
 #bgVideo{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;object-fit:cover;pointer-events:none}
@@ -644,7 +678,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .dr-streak-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:0}
 
 /* ═══ TOAST ═══ */
-#toast{position:fixed;bottom:calc(var(--nav-h) + 14px);left:50%;transform:translateX(-50%);background:var(--primary);color:var(--bg);padding:9px 22px;border-radius:40px;z-index:2000;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;font-size:.82rem;font-weight:700}
+#toast{position:fixed;bottom:calc(var(--nav-h) + 14px);left:50%;transform:translateX(-50%);background:var(--primary);color:var(--bg);padding:11px 20px;border-radius:22px;z-index:2000;opacity:0;transition:opacity .25s;pointer-events:none;white-space:normal;overflow-wrap:break-word;text-align:center;line-height:1.35;max-width:min(420px,calc(100vw - 28px));font-size:.82rem;font-weight:700;box-sizing:border-box}
 /* Zentriertes Erfolg-Popup (nach dem Lauf) */
 .ach-pop-overlay{position:fixed;inset:0;z-index:3000;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.72);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .ach-pop-overlay.open{display:flex;animation:achFade .25s ease}
@@ -715,6 +749,15 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .map-panel-btn i{color:var(--primary);width:16px;text-align:center}
 .map-panel-btn.active{background:rgba(var(--primary-rgb),.08);border-color:rgba(var(--primary-rgb),.25)}
 .map-panel-btn:active{transform:scale(.97)}
+#mapLegend{position:absolute;left:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);z-index:520;width:min(230px,calc(100vw - 90px));max-height:52vh;overflow-y:auto;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px 13px;box-shadow:0 8px 30px rgba(0,0,0,.4);-webkit-backdrop-filter:blur(16px) saturate(150%);backdrop-filter:blur(16px) saturate(150%);display:none;font-family:'Poppins',sans-serif}
+#mapLegend.open{display:block}
+#mapLegend h4{margin:0 0 8px;font-size:.72rem;letter-spacing:1px;text-transform:uppercase;color:var(--primary);display:flex;align-items:center;justify-content:space-between}
+#mapLegend .lg-close{cursor:pointer;color:var(--muted);font-size:.9rem;padding:2px 4px}
+#mapLegend .lg-sec{font-size:.58rem;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:9px 0 4px}
+#mapLegend .lg-row{display:flex;align-items:center;gap:8px;font-size:.74rem;margin:3px 0;color:var(--text)}
+#mapLegend .lg-sw{width:15px;height:15px;border-radius:4px;flex:0 0 auto;border:2px solid transparent}
+#mapLegend .lg-line{width:15px;height:0;flex:0 0 auto;border-top-width:3px;border-top-style:solid}
+#mapLegend .lg-note{font-size:.64rem;color:var(--muted);margin-top:8px;line-height:1.35}
 
 /* ═══ SETTINGS / ADMIN TABS ═══ */
 .stab-btn{padding:8px 14px;min-height:40px;display:inline-flex;align-items:center;border-radius:40px;border:none;background:var(--card);color:var(--muted);font-weight:600;font-size:.72rem;cursor:pointer;white-space:nowrap;transition:all .2s;font-family:'Poppins',sans-serif}
@@ -899,25 +942,54 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 
 <!-- SPLASH -->
 <div id="splash">
-  <div class="spl-lockup">
-    <div class="spl-mark">
-      <img class="spl-rc" src="/assets/logo/lyr_rc.png" alt="Runners Conquer Monogramm">
-      <img class="spl-crown" src="/assets/logo/lyr_crown.png" alt="Krone">
-    </div>
-    <div class="spl-wordmark">
-      <div class="spl-word spl-runners" aria-label="RUNNERS">
+  <div class="bl-lockup">
+    <svg class="bl-banner" viewBox="0 0 360 480" role="img" aria-label="Runners Conquer Banner mit RC-Monogramm">
+      <g>
+        <path id="blClothOuter" class="bl-cloth-outer" d=""></path>
+        <path id="blClothInner" class="bl-cloth-inner" d=""></path>
+        <text id="blRcText" class="bl-rc-text" x="180" y="212">RC</text>
+      </g>
+      <rect x="36" y="36" width="288" height="36" rx="16" class="bl-bar"></rect>
+    </svg>
+    <div class="bl-divider"></div>
+    <div class="bl-words">
+      <div class="bl-word bl-word-runners" aria-label="RUNNERS">
         <span style="--i:0">R</span><span style="--i:1">U</span><span style="--i:2">N</span><span style="--i:3">N</span><span style="--i:4">E</span><span style="--i:5">R</span><span style="--i:6">S</span>
       </div>
-      <div class="spl-conquer-row">
-        <span class="spl-dash"></span>
-        <div class="spl-word spl-conquer" aria-label="CONQUER">
-          <span style="--i:0">C</span><span style="--i:1">O</span><span style="--i:2">N</span><span style="--i:3">Q</span><span style="--i:4">U</span><span style="--i:5">E</span><span style="--i:6">R</span>
-        </div>
-        <span class="spl-dash"></span>
+      <div class="bl-word bl-word-conquer" aria-label="CONQUER">
+        <span style="--i:0">C</span><span style="--i:1">O</span><span style="--i:2">N</span><span style="--i:3">Q</span><span style="--i:4">U</span><span style="--i:5">E</span><span style="--i:6">R</span>
       </div>
     </div>
   </div>
 </div>
+<script>
+/* Banner-Logo: Wind-Animation (Stoff pro Frame neu berechnet) + einmaliger
+   Wortmarken-Einzug. Startet sofort beim Parsen, stoppt sobald der Splash aus ist. */
+(function(){
+  var REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var sp=document.getElementById('splash');
+  var outer=document.getElementById('blClothOuter'),inner=document.getElementById('blClothInner'),rc=document.getElementById('blRcText');
+  if(!sp||!outer||!inner||!rc)return;
+  var TOP=72,BOT=380,APEX=316,L=60,R=300,CX=180,IN=22;
+  var iL=L+IN,iR=R-IN,iTOP=TOP+22,iBOT=352,iAPEX=300,AMP=13;
+  function disp(x,y,t,amp){var d=(y-TOP)/(BOT-TOP);d=Math.max(0,Math.min(1,d));var a=amp*Math.pow(d,1.45);var dx=a*(0.72*Math.sin(y*0.030+x*0.006-t*2.6)+0.38*Math.sin(y*0.052+x*0.004-t*3.4+1.7));var dy=a*0.30*Math.cos(y*0.030+x*0.008-t*2.6);return [x+dx,y+dy];}
+  function edge(pts,x0,y0,x1,y1,n,t,amp){for(var i=1;i<=n;i++){var k=i/n;pts.push(disp(x0+(x1-x0)*k,y0+(y1-y0)*k,t,amp));}}
+  function shape(t,amp,l,r,top,bot,apex){var pts=[disp(l,top,t,amp)];edge(pts,l,top,l,bot,14,t,amp);edge(pts,l,bot,CX,apex,8,t,amp);edge(pts,CX,apex,r,bot,8,t,amp);edge(pts,r,bot,r,top,14,t,amp);return 'M'+pts.map(function(p){return p[0].toFixed(2)+' '+p[1].toFixed(2);}).join('L')+'Z';}
+  function frame(now){
+    if(sp.style.display==='none'){return;} // Splash weg -> Loop beenden (CPU sparen)
+    var t=now/1000, amp=REDUCED?0:AMP;
+    outer.setAttribute('d',shape(t,amp,L,R,TOP,BOT,APEX));
+    inner.setAttribute('d',shape(t,amp,iL,iR,iTOP,iBOT,iAPEX));
+    var cy=212, p=disp(CX,cy,t,amp);
+    var dxA=disp(CX,cy-20,t,amp)[0]-CX, dxB=disp(CX,cy+20,t,amp)[0]-CX;
+    var skew=Math.max(-10,Math.min(10,Math.atan2(dxB-dxA,40)*180/Math.PI));
+    rc.setAttribute('transform','translate('+(p[0]-CX).toFixed(2)+','+(p[1]-cy).toFixed(2)+') translate('+CX+','+cy+') skewX('+skew.toFixed(2)+') translate(-'+CX+',-'+cy+')');
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  requestAnimationFrame(function(){sp.classList.add('go');}); // Wortmarken-Einzug triggern
+})();
+</script>
 
 <!-- ONBOARDING -->
 <!-- Poster (40 KB) erscheint sofort; das Video (bg.mp4) wird erst lazy nachgeladen,
@@ -1114,7 +1186,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
     <!-- Hidden elements kept for JS compatibility -->
     <span id="userBadge" style="display:none"><span id="hdrAvatar">🏃</span><span id="hdrName">Läufer</span><span id="hdrLevel">Lv.1</span></span>
     <!-- Right actions -->
-    <span class="hdr-flame-pill" id="hdrFlamePill"><i class="fas fa-fire"></i><span id="hdrStreakVal">0</span></span>
+    <span class="hdr-flame-pill" id="hdrFlamePill" style="display:none"><i class="fas fa-fire"></i><span id="hdrStreakVal">0</span></span>
     <button class="icon-btn" id="inboxBtn" aria-label="Posteingang" style="display:none;flex-shrink:0"><span class="ai-ic" data-ai="inbox"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/><line x1="16" y1="12" x2="16" y2="12"/><line x1="12" y1="12" x2="12" y2="12"/><line x1="8" y1="12" x2="8" y2="12"/></g></svg></span><span id="inboxBadge" class="notif-badge" style="display:none">0</span></button>
     <button class="icon-btn" id="settingsBtn" style="position:relative;flex-shrink:0"><span class="ai-ic" data-ai="cog"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g><path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/><path d="M12 2v2"/><path d="M12 22v-2"/><path d="m17 20.66-1-1.73"/><path d="M11 10.27 7 3.34"/><path d="m20.66 17-1.73-1"/><path d="m3.34 7 1.73 1"/><path d="M14 12h8"/><path d="M2 12h2"/><path d="m20.66 7-1.73 1"/><path d="m3.34 17 1.73-1"/><path d="m17 3.34-1 1.73"/><path d="m11 13.73-4 6.93"/></g></svg></span><span id="settingsBadge" class="notif-badge" style="display:none;background:#ff4d6d;font-size:.55rem">!</span></button>
     <button class="icon-btn" id="notifBtn" aria-label="Benachrichtigungen" style="position:relative;flex-shrink:0"><span class="ai-ic" data-ai="bell"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg></span><span id="notifBadge" class="notif-badge" style="display:none">0</span></button>
@@ -1229,7 +1301,9 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <button class="map-panel-btn" id="panelOwnTerrBtn"><i class="fas fa-map-marker-alt"></i> Eigene Gebiete</button>
         <button class="map-panel-btn" id="panelFollowBtn"><i class="fas fa-user-friends"></i> Follower</button>
         <button class="map-panel-btn" id="panelMyRunsBtn"><i class="fas fa-route"></i> Meine Läufe</button>
+        <button class="map-panel-btn" id="panelLegendBtn"><i class="fas fa-palette"></i> Legende</button>
       </div>
+      <div id="mapLegend" aria-live="polite"></div>
     </div>
 
     <!-- START HUB (redesign) -->
@@ -1867,6 +1941,46 @@ let lastNameChangeDate=''; // "YYYY-MM" – Name nur 1×/Monat änderbar
 let dailyLoginDate='',dailyLoginStreak=0,streakShields=0,recentQuoteIds=[];
 /* Freigeschaltete Streak-Belohnungen (IDs) + aktuell angelegte Kosmetik. */
 let streakUnlocks=[],equipped={};
+let selectedTitle=''; // im Profil angezeigter Titel (aus verdienten Titeln wählbar)
+let userBirthday='';  // 'MM-TT' für Geburtstags-Gebietsschutz
+let shieldUntil=0;    // lokaler Anzeige-Timestamp des aktiven Gebiets-Schutzes
+/* Gebiets-Schutz gewähren (24h Angriffs-Immunität). Serverseitig via rc_grant_shield;
+   lokal nur für die Anzeige gespiegelt. */
+function grantTerritoryShield(hours,msg,opts){
+  opts=opts||{};
+  // #51 — Gebiets-Schutz-Belohnung nur EINMAL pro Saison (Monat). Gilt für alle
+  // Belohnungs-Quellen (Battle-Pass, Geburtstag, Monatssieg). Bereits vergeben ->
+  // abgelehnt, damit man ihn nicht mehrfach im selben Monat stapeln kann.
+  if(opts.seasonLimited!==false){
+    const k='rc_terrshield_season_'+userId;const seasonKey=new Date().toISOString().slice(0,7);
+    if(localStorage.getItem(k)===seasonKey){toast('🛡️ Gebiets-Schutz gibt es nur einmal pro Saison – diesen Monat schon erhalten.');return false;}
+    localStorage.setItem(k,seasonKey);
+  }
+  const h=Math.max(1,Math.min(48,hours||24));
+  try{sb&&sb.rpc('rc_grant_shield',{hours:h}).then(()=>{},()=>{});}catch(e){}
+  shieldUntil=Math.max(shieldUntil,Date.now()+h*3600000);
+  if(msg)toast(msg);
+  try{updateProfile&&updateProfile();}catch(e){}
+  return true;
+}
+/* #51 — Flammenschutz (Serien-Schutz) gewähren: max 3 besitzbar. Jeder darüber
+   hinausgehende (der 4.+) wird stattdessen in +100 XP umgewandelt. */
+function grantStreakShield(n){
+  n=Math.max(0,Math.floor(n||0));let added=0,xp=0;
+  for(let i=0;i<n;i++){ if((streakShields||0)<3){streakShields=(streakShields||0)+1;added++;} else {xp+=100;} }
+  if(xp>0)awardXp(xp,'shield_overflow');
+  return{added,xp};
+}
+/* Geburtstags-Schutz: einmal pro Jahr am Geburtstag automatisch 24h. */
+function checkBirthdayShield(){
+  if(!userBirthday||!/^\d{2}-\d{2}$/.test(userBirthday))return;
+  const n=new Date();const md=String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');
+  if(md!==userBirthday)return;
+  const key='rc_bday_shield_'+userId+'_'+n.getFullYear();
+  if(localStorage.getItem(key))return;
+  localStorage.setItem(key,'1');
+  grantTerritoryShield(24,'🎂 Alles Gute! 24h Gebiets-Schutz aktiviert.');
+}
 /* Monate, in denen die eigene Fraktion die meisten Punkte hatte ("YYYY-MM"). */
 let factionWins=[];
 let weeklyChals=[],weekChalKey='';
@@ -1912,7 +2026,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v154';
+const APP_VERSION='v166';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2022,6 +2136,7 @@ async function syncProfile(){
        Event-Prämien). Ein Trigger-Guard auf profiles blockt direkte Client-Writes. */
     const{error:e1}=await sb.from('profiles').upsert({
       id:sbUserId,user_id:userId,player_name:playerName,user_avatar:userAvatar,user_color:userColor,
+      user_avatar_img:(userAvatarImg&&userAvatarImg.length<200000)?userAvatarImg:null,
       total_km:totalKm,total_conquered:totalConquered,streak_days:streakDays,
       total_defended:totalDefended,total_discovered:totalDiscovered,total_raids:totalRaids,
       updated_at:new Date().toISOString(),
@@ -2255,6 +2370,19 @@ function showShieldInfo(){
     :'🛡️ Noch kein Streak-Schutz. Logg dich regelmäßig ein – an Tag 14 und 30 gibt es welche. Sie retten deine Serie bei einem verpassten Tag.');
 }
 window.showShieldInfo=showShieldInfo;
+/* Volle Serien-Belohnungsübersicht (Meilenstein-Tag -> Belohnung, erreicht/gesperrt). */
+window.showStreakRewards=function(){
+  const ms=[7,14,30,50,75,100,180,365,730];
+  const labels={7:'Bronze-Kiste',14:'Silber-Kiste',30:'Gold-Kiste',50:'Titel „Beständig"',75:'Exklusives Banner',100:'Titel „Unaufhaltsam"',180:'Goldener Kartenmarker',365:'Legendäre Kiste',730:'Titel „Die Legende"'};
+  document.getElementById('streakRwOv')?.remove();
+  const ov=document.createElement('div');ov.id='streakRwOv';
+  ov.style.cssText='position:fixed;inset:0;z-index:9700;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:22px';
+  const rows=ms.map(d=>{const got=(dailyLoginStreak||0)>=d;return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)"><span style="font-size:1.1rem">${got?'✅':'🔒'}</span><div style="flex:1"><div style="font-size:.82rem;font-weight:600;color:${got?'#10b981':'var(--text)'}">${labels[d]}</div><div style="font-size:.62rem;color:var(--muted)">Tag ${d}</div></div>${!got?`<span style="font-size:.62rem;color:var(--muted)">noch ${d-(dailyLoginStreak||0)}</span>`:''}</div>`;}).join('');
+  ov.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:20px;max-width:340px;width:100%;max-height:80vh;overflow-y:auto"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:1px;margin-bottom:2px">🔥 SERIEN-BELOHNUNGEN</div><div style="font-size:.7rem;color:var(--muted);margin-bottom:12px">Aktuell: ${dailyLoginStreak||0} Tage in Folge</div>${rows}<button id="streakRwClose" style="margin-top:14px;width:100%;background:none;border:1px solid var(--border);border-radius:10px;color:var(--muted);padding:9px;font-size:.8rem;cursor:pointer">Schließen</button></div>`;
+  document.body.appendChild(ov);
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+  document.getElementById('streakRwClose').onclick=()=>ov.remove();
+};
 function toggleBoost(){
   if(boostArmed){
     // Deaktivieren -> reservierter Boost wird zurückgelegt (gespart)
@@ -2443,7 +2571,7 @@ function applyTheme(name){
 }
 function saveProfile(){
   const theme=getActiveTheme();
-  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,friends,streakUnlocks,equipped,userBio,profilePublic,pushEnabled,lastNameChangeDate,WEEKLY_GOAL,DAILY_GOAL_KM,MONTHLY_GOAL,factionWins}));
+  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,friends,streakUnlocks,equipped,userBio,profilePublic,pushEnabled,lastNameChangeDate,WEEKLY_GOAL,DAILY_GOAL_KM,MONTHLY_GOAL,factionWins,selectedTitle,userBirthday}));
   $('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;
   const hi=$('hdrHi');if(hi)hi.textContent='Hallo, '+(playerName||'Läufer');
   // Update theme-color meta for Android status bar
@@ -2452,7 +2580,7 @@ function saveProfile(){
   syncProfileDebounced();
 }
 function loadProfile(){
-  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';friends=p.friends||[];streakUnlocks=p.streakUnlocks||[];equipped=p.equipped||{};userBio=p.userBio||'';factionWins=p.factionWins||[];profilePublic=p.profilePublic!==false;pushEnabled=!!p.pushEnabled;lastNameChangeDate=p.lastNameChangeDate||'';if(p.WEEKLY_GOAL>0)WEEKLY_GOAL=p.WEEKLY_GOAL;if(p.DAILY_GOAL_KM>0)DAILY_GOAL_KM=p.DAILY_GOAL_KM;if(p.MONTHLY_GOAL>0)MONTHLY_GOAL=p.MONTHLY_GOAL;const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
+  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';friends=p.friends||[];streakUnlocks=p.streakUnlocks||[];equipped=p.equipped||{};userBio=p.userBio||'';factionWins=p.factionWins||[];selectedTitle=p.selectedTitle||'';userBirthday=p.userBirthday||'';profilePublic=p.profilePublic!==false;pushEnabled=!!p.pushEnabled;lastNameChangeDate=p.lastNameChangeDate||'';if(p.WEEKLY_GOAL>0)WEEKLY_GOAL=p.WEEKLY_GOAL;if(p.DAILY_GOAL_KM>0)DAILY_GOAL_KM=p.DAILY_GOAL_KM;if(p.MONTHLY_GOAL>0)MONTHLY_GOAL=p.MONTHLY_GOAL;const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
   return false;
 }
 /* ── STREAK-BELOHNUNGEN (Inventar) ──────────────────────────────────────────
@@ -2491,10 +2619,19 @@ function equipReward(id){
 function unequipReward(type){if(type==='color')return;delete equipped[type];saveProfile();applyEquipped();if(typeof updateProfile==='function')updateProfile();}
 /* Marker (und andere globale Effekte) sofort anwenden; Banner/Rahmen/Titel setzt updateProfile. */
 function applyEquipped(){try{if(userMarker&&mapL)userMarker.setIcon(mkUserIcon());}catch(e){}}
+/* #51 — Horizontalen Scroller so verschieben, dass das Ziel-Element mittig steht. */
+function _centerScroller(scrollEl,targetEl){
+  if(!scrollEl||!targetEl)return;
+  const left=targetEl.offsetLeft-(scrollEl.clientWidth-targetEl.clientWidth)/2;
+  try{scrollEl.scrollTo({left:Math.max(0,left),behavior:'auto'});}catch(e){scrollEl.scrollLeft=Math.max(0,left);}
+}
 /* Belohnungs-Inventar im Profil rendern. */
 function renderRewards(){
   const el=document.getElementById('pvRewards');if(!el)return;
   const days=Object.keys(STREAK_REWARDS).map(Number).sort((a,b)=>a-b);
+  // #51 — "aktuelle" Belohnung = erste noch nicht freigeschaltete (das nächste Ziel),
+  // sonst die letzte. Diese wird nach dem Rendern mittig gescrollt.
+  const curDay=days.find(d=>!streakUnlocks.includes(STREAK_REWARDS[d].id))||days[days.length-1];
   const cards=days.map(day=>{
     const r=STREAK_REWARDS[day];
     const unlocked=streakUnlocks.includes(r.id);
@@ -2506,14 +2643,15 @@ function renderRewards(){
     const preview=r.type==='color'
       ? `<div style="width:46px;height:46px;border-radius:50%;background:${r.value};margin:0 auto;box-shadow:0 0 0 2px var(--border)${active?',0 0 12px '+r.value:''}"></div>`
       : `<div style="font-size:2rem;height:46px;line-height:46px">${r.icon}</div>`;
-    return `<div style="flex:0 0 auto;width:124px;text-align:center;background:var(--bg2);border:1px solid ${active?'var(--primary)':'var(--border)'};border-radius:16px;padding:14px 10px;opacity:${unlocked?1:.6};scroll-snap-align:start">
+    return `<div ${day===curDay?'id="pvRwCur"':''} style="flex:0 0 auto;width:124px;text-align:center;background:var(--bg2);border:1px solid ${active?'var(--primary)':'var(--border)'};border-radius:16px;padding:14px 10px;opacity:${unlocked?1:.6};scroll-snap-align:start">
       ${preview}
       <div style="font-size:.74rem;font-weight:700;margin-top:8px;line-height:1.2">${r.name}</div>
       <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px">${REWARD_TYPE_LABEL[r.type]}</div>
       ${ctrl}
     </div>`;
   }).join('');
-  el.innerHTML=`<div class="section-title"><i class="fas fa-gift"></i> Belohnungen <span style="font-size:.62rem;color:var(--muted);font-weight:400;margin-left:auto">${streakUnlocks.length}/${days.length} frei</span></div><div style="display:flex;gap:12px;overflow-x:auto;padding:4px 2px 8px;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity">${cards}</div>`;
+  el.innerHTML=`<div class="section-title"><i class="fas fa-gift"></i> Belohnungen <span style="font-size:.62rem;color:var(--muted);font-weight:400;margin-left:auto">${streakUnlocks.length}/${days.length} frei</span></div><div id="pvRewardsScroll" style="display:flex;gap:12px;overflow-x:auto;padding:4px 2px 8px;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity">${cards}</div>`;
+  requestAnimationFrame(()=>_centerScroller(document.getElementById('pvRewardsScroll'),document.getElementById('pvRwCur')));
 }
 window.equipReward=equipReward;window.unequipReward=unequipReward;
 /* ── FRAKTIONSSIEGER-MEDAILLON (Design-Handoff „champion-icon") ──────────────
@@ -2685,6 +2823,13 @@ async function settleSeasonWinsServer(){
   }catch(e){return false;}
 }
 /* Eigene Beschreibung/Zitat bearbeiten (öffentlich sichtbar). */
+/* Verdiente Titel (Standard "Kein Titel" + Streak-Titel + Battle-Pass-Titel). */
+function getEarnedTitles(){
+  const out=[{value:'',label:'Kein Titel'}];
+  try{Object.keys(STREAK_REWARDS).forEach(d=>{const r=STREAK_REWARDS[d];if(r&&r.type==='title'&&streakUnlocks.includes(r.id))out.push({value:r.value,label:r.value});});}catch(e){}
+  try{(BATTLE_PASS_REWARDS||[]).forEach(r=>{if(r&&r.type==='title'&&(battlePassClaimed||[]).includes(r.lv))out.push({value:r.val,label:r.val});});}catch(e){}
+  const seen=new Set();return out.filter(t=>{if(seen.has(t.value))return false;seen.add(t.value);return true;});
+}
 function editBio(){
   document.getElementById('bioEditOv')?.remove();
   const ov=document.createElement('div');ov.id='bioEditOv';
@@ -2693,6 +2838,9 @@ function editBio(){
     <div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:1px;margin-bottom:4px">Beschreibung</div>
     <div style="font-size:.72rem;color:var(--muted);margin-bottom:12px">Schreibe etwas über dich (max. 80 Zeichen).</div>
     <textarea id="bioInput" maxlength="80" rows="3" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px;color:var(--text);font-family:'Poppins',sans-serif;font-size:.85rem;resize:none;box-sizing:border-box" placeholder="z. B. obsessed with running">${esc(userBio)}</textarea>
+    <div style="font-size:.72rem;color:var(--muted);margin:14px 0 6px">🎖️ Titel wählen <span style="opacity:.7">(im Profil sichtbar)</span></div>
+    <select id="titleSelect" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px;color:var(--text);font-size:.85rem;box-sizing:border-box">${getEarnedTitles().map(t=>`<option value="${esc(t.value)}"${t.value===selectedTitle?' selected':''}>${esc(t.label)}</option>`).join('')}</select>
+    <div style="font-size:.6rem;color:var(--muted);margin-top:5px">Titel verdienst du über Login-Serie & Battle-Pass.</div>
     <div style="display:flex;gap:8px;margin-top:14px">
       <button id="bioCancel" style="flex:1;background:none;border:1px solid var(--border);color:var(--muted);border-radius:12px;padding:11px;font-size:.85rem;cursor:pointer">Abbrechen</button>
       <button id="bioSave" class="btn btn-p" style="flex:1">Speichern</button>
@@ -2702,7 +2850,7 @@ function editBio(){
   document.body.appendChild(ov);
   document.getElementById('bioInput').focus();
   document.getElementById('bioCancel').onclick=()=>ov.remove();
-  document.getElementById('bioSave').onclick=()=>{userBio=document.getElementById('bioInput').value.trim().slice(0,80);saveProfile();if(typeof updateProfile==='function')updateProfile();toast('Beschreibung gespeichert');ov.remove();};
+  document.getElementById('bioSave').onclick=()=>{userBio=document.getElementById('bioInput').value.trim().slice(0,80);const ts=document.getElementById('titleSelect');if(ts)selectedTitle=ts.value||'';saveProfile();if(typeof updateProfile==='function')updateProfile();toast('Beschreibung & Titel gespeichert');ov.remove();};
 }
 window.editBio=editBio;
 function closeAllModals(){['profileModal','postRunModal','renameModal','settingsModal','adminModal','inboxModal'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
@@ -2795,7 +2943,7 @@ const BATTLE_PASS_REWARDS=[
   {lv:15,icon:'👑',name:'Titel: Veteran',type:'title',val:'Veteran'},
   {lv:16,icon:'⚡',name:'+200 Bonus-XP',type:'xp',val:200},
   {lv:17,icon:'🎨',name:'Farbe: Gold',type:'color',val:'#ffd700'},
-  {lv:18,icon:'🛡️',name:'Streak-Schutz ×3',type:'shield',val:3},
+  {lv:18,icon:'🛡️',name:'Gebiets-Schutz 24h',type:'terrshield',val:24},
   {lv:19,icon:'🗺️',name:'Marker: Goldener Stern',type:'marker',val:'goldstar'},
   {lv:20,icon:'🏆',name:'Titel: Unaufhaltsam',type:'title',val:'Unaufhaltsam'},
 ];
@@ -2810,12 +2958,23 @@ function genDailyChallenges(){
   const today=new Date().toDateString();
   if(dailyChalDate===today&&dailyChallenges.length===3)return;
   dailyChalDate=today;
-  const seed=new Date().getDate()+new Date().getMonth()*31+new Date().getFullYear();
-  const pool=[...CHAL_POOL];
-  const selected=[];
-  for(let i=0;i<3;i++){const idx=Math.abs(seed*(i+3)*1013)%pool.length;selected.push({...pool[idx],progress:0,done:false});pool.splice(idx,1);}
-  dailyChallenges=selected;
+  // Feste Daily Quests: 10.000 Schritte, 5 km, 1 Gebiet erobern.
+  dailyChallenges=[
+    {icon:'👟',desc:'10.000 Schritte gehen',key:'steps',target:10000,reward:150,progress:0,done:false},
+    {icon:'🏃',desc:'5 km laufen',key:'distance',target:5,reward:150,progress:0,done:false},
+    {icon:'⚔️',desc:'1 Gebiet erobern',key:'conq',target:1,reward:200,progress:0,done:false},
+  ];
   save();
+}
+/* Schritt-Quest fortschreiben (Schritte fallen ausserhalb von Läufen an). */
+function syncDailyStepsQuest(){
+  const today=new Date().toDateString();
+  if(dailyChalDate!==today)genDailyChallenges();
+  const c=(dailyChallenges||[]).find(x=>x.key==='steps');
+  if(c&&!c.done){
+    c.progress=Math.min(c.target,stepsToday||0);
+    if(c.progress>=c.target){c.done=true;awardXp(c.reward,'daily');toast('🎯 '+c.desc+' · +'+c.reward+' XP');save();}
+  }
 }
 function updateDailyChallenges(rec){
   const today=new Date().toDateString();
@@ -2848,6 +3007,7 @@ function updateDailyChallenges(rec){
 }
 function renderDailyChallenges(){
   genDailyChallenges();
+  try{syncDailyStepsQuest();}catch(e){}
   const el=$('dailyChalDiv');if(!el)return;
   const sb=$('chalStreakBadge');if(sb)sb.textContent=chalStreak>0?`🔥 ${chalStreak}`:'' ;
   el.innerHTML=dailyChallenges.map(c=>{
@@ -2969,6 +3129,7 @@ function checkSeasonRollover(){
   if(seasonChecked)return;seasonChecked=true;
   try{settleSeasonWins();}catch(e){} // Saison-Orden abrechnen + fälschlich vergebene (laufender Monat) entfernen
   try{settleSeasonWinsServer();}catch(e){} // serverseitige (autoritative) Abrechnung, async
+  try{checkBirthdayShield();}catch(e){} // Geburtstags-Gebietsschutz
   try{
     const seasons=JSON.parse(localStorage.getItem('rc_seasons_'+userId)||'[]');
     const now=new Date(),cm=now.getMonth(),cy=now.getFullYear();
@@ -3076,15 +3237,21 @@ const DAILY_QUOTES=[
 ];
 
 function getDailyReward(streak){
-  const s=streak;
-  const xp=s>=100?500:s>=51?400:s>=31?300:s>=15?250:s>=8?150:100;
-  const sp=s>=100?150:s>=51?125:s>=31?100:s>=15?75:s>=8?50:25;
+  const s=Math.max(1,streak);
+  // #51 — Tagesbelohnung ist AUSSCHLIESSLICH XP, gestaffelt nach Flammen-Serie:
+  // Tag1=50, 2=75, 3=100, 4=125, 5=150, ab Tag6 täglich 200. Verpasst man einen
+  // Login, fällt die Serie auf 0 zurück (checkDailyReward) und startet wieder bei 50.
+  const LADDER=[50,75,100,125,150];
+  const xp=s>=6?200:LADDER[s-1];
+  // Kosmetische Meilenstein-FREISCHALTUNGEN (Farben/Titel) bleiben als Inventar
+  // bestehen (syncStreakUnlocks) – sie sind aber KEINE XP-Tagesbelohnung, nur ein
+  // Bonus-Hinweis im Fortschrittsbalken.
   const MS={7:'🥉 Bronze-Kiste',14:'🥈 Silber-Kiste',30:'🥇 Gold-Kiste + Profilrahmen',50:'Titel „Beständig“',75:'Exklusives Banner',100:'Titel „Unaufhaltsam“',180:'Goldener Kartenmarker',365:'Titel „Der Unermüdliche“ + Legendäre Kiste',730:'Titel „Die Legende“'};
   const milestone=MS[s]||null;
   const msDays=Object.keys(MS).map(Number).sort((a,b)=>a-b);
   const nextMs=msDays.find(d=>d>s)||null;
   const nextMsName=nextMs?MS[nextMs]:null;
-  return{xp,sp,milestone,nextMs,nextMsName,daysLeft:nextMs?nextMs-s:null};
+  return{xp,sp:0,milestone,nextMs,nextMsName,daysLeft:nextMs?nextMs-s:null};
 }
 
 function checkDailyReward(){
@@ -3131,7 +3298,7 @@ function showDailyRewardOverlay(shieldUsed){
     </div>
     <div id="drRewardBox" style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:10px;text-align:center">
       <div style="font-size:.6rem;font-weight:700;letter-spacing:1.5px;color:var(--muted);margin-bottom:6px">🎁 TAGESBELOHNUNG</div>
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--primary);line-height:1.1">+${reward.xp}&nbsp;XP &nbsp;·&nbsp; +${reward.sp}&nbsp;SP</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--primary);line-height:1.1">+${reward.xp}&nbsp;XP</div>
       ${reward.milestone?`<div style="font-size:.82rem;color:var(--primary);margin-top:6px;font-weight:700">🎉 ${reward.milestone}</div>`:''}
       <div id="drCheck" style="display:none;font-size:2rem;margin-top:8px">✅</div>
     </div>
@@ -3154,8 +3321,7 @@ function showDailyRewardOverlay(shieldUsed){
     }
     setTimeout(()=>{
       document.getElementById('drCheck').style.display='block';
-      awardXp(reward.xp+reward.sp,'dailyreward');
-      if(newStreak===14||newStreak===30)streakShields=Math.min(3,streakShields+(newStreak===30?2:1));
+      awardXp(reward.xp,'dailyreward'); // #51 — Daily-Login gibt nur noch XP
       recentQuoteIds=[quote.id,...recentQuoteIds].slice(0,60);
       save();updateUI();
     },450);
@@ -4820,7 +4986,7 @@ function initMap(){
      Plattformen). Nur wenn GPS-Einwilligung vorliegt — sonst startet sie, sobald
      der Nutzer im Consent-Dialog zustimmt bzw. einen Lauf startet. */
   if(localStorage.getItem('rc_gps_consent')==='1')ensurePersistentGpsWatch();
-  mapL.on('click',()=>{closeDrawer();clearOwnerHighlight();hideTerrBar();});
+  mapL.on('click',()=>{closeDrawer();resetMapModes();});
   mapL.on('popupclose',clearOwnerHighlight); // Revier-Hervorhebung endet beim Verlassen der Gebiets-Ansicht
   /* Wahrzeichen beim Verschieben nur neu laden, WENN sie eingeblendet sind. */
   mapL.on('moveend',()=>{if(!window._lmEnabled)return;clearTimeout(window._lmMoveTimer);window._lmMoveTimer=setTimeout(loadLandmarks,900);});
@@ -4898,10 +5064,10 @@ function renderLandmarks(){
     /* Nur der Stern — der Name (Kirchen-/Wahrzeichen-Bezeichnung) erscheint erst,
        wenn man den Stern antippt (Popup). Kein dauerhaftes Namens-Label mehr. */
     const iconHtml=captured
-      ?`<div class="lm-star" style="filter:drop-shadow(0 0 6px ${userColor}cc)">${_lmStar(userColor,26)}</div>`
-      :`<div class="lm-star" style="filter:drop-shadow(0 0 6px #ffd70099)">${_lmStar('#ffd700',30)}</div>`;
-    const sz=captured?[26,26]:[30,30];
-    const anchor=captured?[13,13]:[15,15];
+      ?`<div class="lm-star" style="filter:drop-shadow(0 0 5px ${userColor}cc)">${_lmStar(userColor,17)}</div>`
+      :`<div class="lm-star" style="filter:drop-shadow(0 0 5px #ffd70099)">${_lmStar('#ffd700',20)}</div>`;
+    const sz=captured?[17,17]:[20,20];
+    const anchor=captured?[9,9]:[10,10];
     const icon=L.divIcon({html:iconHtml,className:'',iconSize:sz,iconAnchor:anchor});
     L.marker([lm.lat,lm.lng],{icon})
       .bindPopup(`<b>${esc(lm.name)}</b><br><span style="font-size:.72rem;color:#6b6b82">${esc(lm.type)}</span>${captured?'<br><span style="color:#10b981;font-size:.72rem">✅ Entdeckt</span>':'<br><span style="font-size:.72rem;color:#ffd700">⭐ Nähern: 50 m</span>'}`)
@@ -5030,8 +5196,76 @@ async function loadH3Territories(){
     }));
     renderH3Territories();
     updateStatsUI&&updateStatsUI();
+    // #39 — Re-Login-Update: einmal pro Sitzung nach dem ersten Laden vergleichen,
+    // was seit dem letzten Besuch mit den eigenen Gebieten passiert ist.
+    if(!window._terrDiffDone){window._terrDiffDone=true;try{checkTerritoryChanges();}catch(e){}}
   }catch(e){logError&&logError('h3_load',e);}
 }
+/* #39 — Gebiets-Veränderungen seit dem letzten Besuch.
+   Snapshot = wirksame (verfallene) Verteidigung je eigenem Gebiet + Zeitstempel.
+   Beim nächsten Login wird verglichen:
+     • verloren        = war meins, gehört jetzt jemand anderem (oder existiert nicht mehr)
+     • angegriffen/gehalten = noch meins, aber die Verteidigung ist STÄRKER gefallen,
+                          als reiner Verfall erklärt -> jemand hat angegriffen, ich hielt
+     • gehalten        = weiterhin meins
+   Rein clientseitig, kein Server-Event nötig. */
+function _terrSnapKey(){return 'rc_terr_snap_'+userId;}
+function _ownedDefMap(){
+  const m={};
+  for(const t of (h3Territories||[])){ if(t.owner===userId) m[t.id]=Math.round(h3Decayed(t.defense,t.updated_at)); }
+  return m;
+}
+function saveTerritorySnapshot(){
+  if(!userId||userId==='user')return;
+  try{localStorage.setItem(_terrSnapKey(),JSON.stringify({ts:Date.now(),terr:_ownedDefMap()}));}catch(e){}
+}
+function checkTerritoryChanges(){
+  if(!userId||userId==='user')return;
+  let snap=null;try{snap=JSON.parse(localStorage.getItem(_terrSnapKey()));}catch(e){}
+  const cur=_ownedDefMap();
+  if(!snap||!snap.terr||!Object.keys(snap.terr).length){saveTerritorySnapshot();return;} // Erstbesuch -> nur merken
+  const days=Math.max(0,(Date.now()-(snap.ts||Date.now()))/86400000);
+  let lost=0,held=0,defended=0;
+  for(const id of Object.keys(snap.terr)){
+    if(cur[id]==null){lost++;continue;}
+    held++;
+    const expected=snap.terr[id]-H3_DECAY_PER_DAY*days; // reiner Verfall
+    if(cur[id]<expected-5)defended++; // stärker gefallen als Verfall -> Angriff überstanden
+  }
+  saveTerritorySnapshot(); // neuen Stand merken
+  const minsAgo=(Date.now()-(snap.ts||Date.now()))/60000;
+  if(minsAgo<30)return;                 // schnelle Reloads nicht stören
+  if(lost===0&&defended===0)return;     // nichts Nennenswertes -> ruhig bleiben
+  showTerritoryUpdate({lost,held,defended,minsAgo});
+}
+function _agoLabel(mins){
+  if(mins<90)return 'vor '+Math.max(1,Math.round(mins))+' Min';
+  const h=mins/60; if(h<36)return 'vor '+Math.round(h)+' Std';
+  return 'vor '+Math.round(h/24)+' Tagen';
+}
+function showTerritoryUpdate({lost,held,defended,minsAgo}){
+  const old=$('terrUpdateOverlay');if(old)old.remove();
+  const rows=[];
+  if(defended)rows.push(['🛡️','#22c55e',defended+(defended===1?' Gebiet':' Gebiete')+' verteidigt','Angriff überstanden, weiterhin deins']);
+  if(lost)rows.push(['⚔️','#ff4d6d',lost+(lost===1?' Gebiet':' Gebiete')+' verloren','Von anderen erobert – du kannst zurückschlagen']);
+  if(held)rows.push(['🔵','var(--primary)',held+(held===1?' Gebiet':' Gebiete')+' gehalten','Seit deinem letzten Besuch behauptet']);
+  const ov=document.createElement('div');
+  ov.id='terrUpdateOverlay';
+  ov.style.cssText='position:fixed;inset:0;z-index:4000;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)';
+  ov.innerHTML=`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px;max-width:360px;width:100%;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:1px;color:var(--primary);margin-bottom:2px">Willkommen zurück</div>
+    <div style="font-size:.72rem;color:var(--muted);margin-bottom:16px">Seit deinem letzten Besuch · ${_agoLabel(minsAgo)}</div>
+    ${rows.map(([ic,col,ti,su])=>`<div style="display:flex;align-items:center;gap:12px;padding:11px 12px;background:var(--card);border:1px solid var(--border);border-radius:13px;margin-bottom:9px">
+      <span style="font-size:1.4rem;line-height:1">${ic}</span>
+      <div style="min-width:0"><div style="font-weight:700;font-size:.9rem;color:${col}">${ti}</div><div style="font-size:.68rem;color:var(--muted)">${su}</div></div>
+    </div>`).join('')}
+    <button onclick="closeTerritoryUpdate()" class="btn btn-p" style="width:100%;margin-top:6px">Weiter</button>
+  </div>`;
+  ov.addEventListener('click',e=>{if(e.target===ov)closeTerritoryUpdate();});
+  document.body.appendChild(ov);
+}
+function closeTerritoryUpdate(){const o=$('terrUpdateOverlay');if(o)o.remove();}
+window.closeTerritoryUpdate=closeTerritoryUpdate;
 /* Lazy-Decay im Client: gleiche Rate wie in der Engine (DECAY_PER_DAY=8). Die
    wirksame Verteidigung (und die Dauer, bis sie 1 erreicht) wird live aus dem
    Zeitstempel der letzten Änderung berechnet. */
@@ -5089,8 +5323,8 @@ function showTerrBar(info){
       <button class="tb-close" onclick="hideTerrBar()" aria-label="Schließen">✕</button>
     </div>
     <div class="tb-chips">
-      ${info.team?`<span class="tb-chip" style="border-color:${info.team.color}66"><span>${info.team.icon}</span> ${esc(info.team.name)}</span>`:'<span class="tb-chip"><span class="l">Fraktion</span> Keine</span>'}
-      <span class="tb-chip"><span class="l">👤</span> ${esc(info.ownerName||'Läufer')}${info.own?' (Du)':''}</span>
+      ${info.team?`<span class="tb-chip" role="button" title="Fraktionskarte anzeigen" onclick="showFactionMap('${info.teamId||info.team.id}')" style="border-color:${info.team.color}66;cursor:pointer"><span>${info.team.icon}</span> ${esc(info.team.name)}</span>`:'<span class="tb-chip"><span class="l">Fraktion</span> Keine</span>'}
+      <span class="tb-chip" role="button" title="Alle Gebiete dieses Spielers" onclick="highlightOwnerFromBar('${(info.owner||'').replace(/'/g,'')}')" style="cursor:pointer"><span class="l">👤</span> ${esc(info.ownerName||'Läufer')}${info.own?' (Du)':''}</span>
       <span class="tb-chip"><span class="l">🛡️</span> ${Math.round(info.def)}/300</span>
       <span class="tb-chip"><span class="l">⏳</span> ${fmtDecay(info.tteMin)}</span>
       <span class="tb-chip"><span class="l">⬡</span> ${info.size} ${info.size===1?'Zelle':'Zellen'}</span>
@@ -5100,6 +5334,80 @@ function showTerrBar(info){
 }
 function hideTerrBar(){const el=$('terrBar');if(el)el.classList.remove('open');}
 window.hideTerrBar=hideTerrBar;
+/* #48 Tap-Modi der Gebiets-Infoleiste. */
+window.highlightOwnerFromBar=function(owner){
+  if(!owner)return;
+  try{highlightOwnerTerr(owner);}catch(e){}
+  // Auf das Revier dieses Spielers zentrieren.
+  try{const pts=[];(_ownerPolys[owner]||[]).forEach(p=>{try{p.getLatLngs&&p.getLatLngs().flat(2).forEach(ll=>pts.push([ll.lat,ll.lng]));}catch(e){}});if(pts.length&&mapL)mapL.fitBounds(pts,{padding:[50,50]});}catch(e){}
+  toast('👤 Alle Gebiete dieses Spielers');
+};
+window.showFactionMap=function(teamId){
+  window._fraktMapMode=true;
+  try{renderH3Territories();}catch(e){}
+  try{if(typeof renderTerr==='function')renderTerr();}catch(e){}
+  const btn=$('panelFraktBtn');if(btn)btn.classList.add('active');
+  const tm=(typeof TEAMS!=='undefined')?TEAMS.find(t=>t.id===teamId):null;
+  toast('🏳️ Fraktionskarte'+(tm?' · '+tm.name:'')+' – tippe die Karte für normale Ansicht');
+};
+/* Karten-Tap = zurück zur normalen Ansicht (Highlight + Fraktionskarte aus). */
+function resetMapModes(){
+  let ch=false;
+  try{clearOwnerHighlight();}catch(e){}
+  if(window._fraktMapMode){window._fraktMapMode=false;const b=$('panelFraktBtn');if(b)b.classList.remove('active');ch=true;}
+  if(ch){try{renderH3Territories();}catch(e){}}
+  hideTerrBar();
+}
+window.resetMapModes=resetMapModes;
+/* ════════════════════════════════════════════════════════════════════════
+   #36 — HEXAGON-FARB- & STATUS-REGELN (verbindliche Definition)
+   ------------------------------------------------------------------------
+   FÜLLFARBE (wer besitzt das Hexagon):
+     • Eigenes Gebiet ............ userColor (deine gewählte Gebietsfarbe)
+     • Feindliches Gebiet ........ Rot  (#ff3333)
+     • (Fraktionskarte-Modus) .... Fraktionsfarbe des Besitzers, grau ohne Fraktion
+   RAND (zwei Bedeutungen, in dieser Priorität):
+     1) Seltenheit nach Größe (Zellen): selten=Cyan, episch=Lila, legendär=Gold
+        (common trägt keine eigene Randfarbe -> siehe 2)
+     2) common-Gebiete: eigenes = userColor; FREMDES = „Ampel" nach WIRKSAMER
+        (verfallener) Verteidigung, aus Sicht des Angreifers:
+            GRÜN (#22c55e)  def < 50   -> schwach, leicht erobern
+            GELB (#eab308)  50–149     -> mittel
+            ROT  (#ef4444)  def >= 150 -> stark, kaum erobern
+   DECKKRAFT (Füllung/Rand) ...... skaliert mit der Verteidigungsstärke (def/300).
+   GEWERTET werden ausschließlich Hexagone, durch die der Lauf PHYSISCH führt
+   (#36 Teil b) — kein Umranden/Einschließen leerer Flächen.
+   Quelle der Wahrheit: fillColor/borderCol unten + h3AmpelColor()/RARITY_COLORS.
+   Die sichtbare Kartenlegende (buildMapLegend) wird aus genau diesen Werten erzeugt.
+   ════════════════════════════════════════════════════════════════════════ */
+function buildMapLegend(){
+  const el=$('mapLegend');if(!el)return;
+  const sw=(c,extra='')=>`<span class="lg-sw" style="background:${c};${extra}"></span>`;
+  const line=(c)=>`<span class="lg-line" style="border-top-color:${c}"></span>`;
+  el.innerHTML=`
+    <h4>Kartenlegende <span class="lg-close" onclick="toggleMapLegend(false)">✕</span></h4>
+    <div class="lg-sec">Besitz (Füllung)</div>
+    <div class="lg-row">${sw(userColor)} Dein Gebiet</div>
+    <div class="lg-row">${sw('#ff3333')} Feindliches Gebiet</div>
+    <div class="lg-row">${sw('#8891a0')} Ohne Fraktion (Fraktionskarte)</div>
+    <div class="lg-sec">Feind-Stärke (Rand-Ampel)</div>
+    <div class="lg-row">${line('#22c55e')} Schwach · leicht erobern (Vert. &lt;50)</div>
+    <div class="lg-row">${line('#eab308')} Mittel (50–149)</div>
+    <div class="lg-row">${line('#ef4444')} Stark · kaum erobern (≥150)</div>
+    <div class="lg-sec">Seltenheit (Rand)</div>
+    <div class="lg-row">${line(RARITY_COLORS.rare)} Selten</div>
+    <div class="lg-row">${line(RARITY_COLORS.epic)} Episch</div>
+    <div class="lg-row">${line(RARITY_COLORS.legendary)} Legendär</div>
+    <div class="lg-note">Nur Hexagone zählen, durch die du wirklich läufst. Kräftigere Farbe = stärker verteidigt.</div>`;
+}
+function toggleMapLegend(force){
+  const el=$('mapLegend');const btn=$('panelLegendBtn');if(!el)return;
+  const on=(force!=null)?force:!el.classList.contains('open');
+  if(on)buildMapLegend();
+  el.classList.toggle('open',on);
+  if(btn)btn.classList.toggle('active',on);
+}
+window.toggleMapLegend=toggleMapLegend;
 function renderH3Territories(){
   if(!h3Layer||!h3Ready())return;
   h3Layer.clearLayers();
@@ -5143,7 +5451,7 @@ function renderH3Territories(){
     let mp;
     try{mp=h3.cellsToMultiPolygon(renderCells,false);}catch(e){return;}
     // Infos für die Gebiets-Leiste (statt Karten-Sprechblase) einmal pro Gebiet bündeln.
-    const terrInfo={name:territoryName(t),relText:(own?'Dein Gebiet':(ally?'Verbündet':'Feindlich')+(isBot?' · Bot':'')),team,own,ownerName:t.owner_name,def,tteMin,size:cells.length,rar,borderCol};
+    const terrInfo={name:territoryName(t),relText:(own?'Dein Gebiet':(ally?'Verbündet':'Feindlich')+(isBot?' · Bot':'')),team,teamId:effTeamId,owner:t.owner,own,ownerName:t.owner_name,def,tteMin,size:cells.length,rar,borderCol};
     const terrPolys=[]; // Polygone GENAU dieses Gebiets -> beim Klick nur dieses hervorheben
     mp.forEach(poly=>{
       const pl=L.polygon(poly,{color:borderCol,weight:rstyle.weight,dashArray:rstyle.dash||undefined,fillColor,
@@ -5411,13 +5719,13 @@ function onGPS(pos){
     }else if(d>=100||(d/dt)>CFG.MAX_SPEED_MPS){
       if(!gpsJumpWarned){gpsJumpWarned=true;toast('📡 Unplausibler GPS-Sprung ignoriert');}
     }else{
-      dist+=d;path.push(pt);pathLayer.addLatLng(pt);distLive.textContent=fmtDist(dist);
+      dist+=d;path.push([lat,lng,now]);pathLayer.addLatLng(pt);distLive.textContent=fmtDist(dist);
       lastPos=pt;lastPosTime=now;
       if(path.length>=2&&Math.floor(dist/150)>(window._lastPrevAt||0)){window._lastPrevAt=Math.floor(dist/150);clearTimeout(window._prevTimer);window._prevTimer=setTimeout(()=>{const pv=mkPoly();if(pv){if(previewLayer)mapL.removeLayer(previewLayer);previewLayer=L.geoJSON({type:'Feature',geometry:pv.polyGeom.geometry},{style:{fillColor:userColor,fillOpacity:.12,color:userColor,weight:2,dashArray:'6 4',opacity:.5}}).addTo(mapL);}},200);}
       const km=Math.floor(dist/1000);
       if(km>lastSplitKm){const el=runSecs+Math.floor((Date.now()-runStart)/1000),ss=el-lastSplitSecs;kmSplits.push({km,pace:fmtPace(1000,ss),splitSecs:ss});lastSplitKm=km;lastSplitSecs=el;beep(660,.1);toast(`KM ${km} · ${fmtPace(1000,ss)}/km`);}
     }
-  } else if(!lastPos){path.push(pt);pathLayer.addLatLng(pt);lastPos=pt;lastPosTime=now;}
+  } else if(!lastPos){path.push([lat,lng,now]);pathLayer.addLatLng(pt);lastPos=pt;lastPosTime=now;}
   landmarks.forEach(lm=>{
     if(capturedLandmarks.includes(lm.id))return;
     const dist2=turf.distance(turf.point([lng,lat]),turf.point([lm.lng,lm.lat]),{units:'meters'});
@@ -5675,7 +5983,7 @@ async function processConquest(np,area,d,boosted=false,isImport=false,durationS=
   let data,error;
   try{
     const r=await sb.functions.invoke('conquer',{body:{
-      path:runPath.map(p=>[p[0],p[1]]),
+      path:runPath.map(p=>p.length>2&&p[2]!=null?[p[0],p[1],p[2]]:[p[0],p[1]]),
       distanceM:d,durationS:durationS||0,cadence,
       playerName,userColor,userTeam,boosted:!!boosted,
       // Für die serverseitige km-XP-Berechnung (Server klammert die Werte hart).
@@ -5812,9 +6120,36 @@ function showPostRun(rec,detail){
   $('postSong').innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--card);border-radius:12px;color:var(--muted);font-size:.82rem"><i class="fas fa-music" style="color:var(--primary)"></i> Song wird analysiert…</div>`;
   setTimeout(()=>{const s=fallbackSong();$('postSong').innerHTML=`<div style="background:var(--card);border-radius:12px;padding:14px"><div style="font-size:.6rem;text-transform:uppercase;letter-spacing:2px;color:var(--primary);margin-bottom:6px">🎵 Dein Lauf-Song</div><div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem">${s.title}</div><div style="color:var(--muted);font-size:.75rem;margin-bottom:6px">${s.artist} · ${s.bpm} BPM</div><div style="font-size:.72rem;color:var(--muted)">${s.reason}</div></div>`;},1200);
   const inflHTML=(sessionNewTerrNames.length||sessionNewLandmarks.length)?`<div style="background:rgba(var(--primary-rgb),.06);border:1px solid rgba(var(--primary-rgb),.2);border-radius:14px;padding:14px;margin-bottom:10px"><div style="font-size:.6rem;font-weight:700;letter-spacing:1.5px;color:var(--primary);margin-bottom:8px">🗺️ DEIN EINFLUSS</div>${sessionNewTerrNames.map(n=>`<div style="display:flex;align-items:center;gap:6px;font-size:.8rem;margin-bottom:4px"><span style="width:8px;height:8px;border-radius:50%;background:${userColor};flex-shrink:0;display:inline-block"></span>${esc(n)}</div>`).join('')}${sessionNewLandmarks.map(n=>`<div style="display:flex;align-items:center;gap:6px;font-size:.8rem;margin-bottom:4px"><span style="color:#ffd700">⭐</span>${esc(n)}</div>`).join('')}</div>`:'';
-  $('postInfluence').innerHTML=runEventsSummaryHTML()+runNotesSummaryHTML()+inflHTML;
+  const _routeBtn=(rec&&Array.isArray(rec.path)&&rec.path.length>=2)?`<button class="btn" style="width:100%;margin-bottom:10px;background:var(--card);border:1px solid var(--border)" onclick="_openRunRoute()"><i class="fas fa-route"></i> Strecke auf Karte ansehen</button>`:'';
+  $('postInfluence').innerHTML=_routeBtn+runEventsSummaryHTML()+runNotesSummaryHTML()+inflHTML;
   $('postRunModal').style.display='flex';
   _postRunRec=rec; // aktueller Lauf für die Teilen-/Karten-Buttons (Share-Card)
+}
+window._openRunRoute=function(){if(_postRunRec)showRouteOnMap(_postRunRec);};
+/* Strecke eines (vergangenen) Laufs auf einer LEEREN Karte anzeigen — nur die
+   Strecke, kein weiterer Kartinhalt. */
+window.showRouteOnMap=function(rec){
+  if(!rec||!Array.isArray(rec.path)||rec.path.length<2){toast('Keine Strecke gespeichert');return;}
+  document.getElementById('routeMapOv')?.remove();
+  const ov=document.createElement('div');ov.id='routeMapOv';
+  ov.style.cssText='position:fixed;inset:0;z-index:9800;background:#0e1512';
+  ov.innerHTML='<div id="routeMapDiv" style="position:absolute;inset:0;background:#0e1512"></div>'
+    +'<button id="routeMapClose" style="position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);right:12px;z-index:2;background:var(--card);border:1px solid var(--border);border-radius:12px;color:var(--text);padding:8px 14px;font-size:.85rem;cursor:pointer">✕ Schließen</button>'
+    +'<div style="position:absolute;top:calc(env(safe-area-inset-top,0px) + 14px);left:14px;z-index:2;font-family:\'Bebas Neue\',sans-serif;letter-spacing:2px;color:#fff;font-size:1.1rem;text-shadow:0 1px 4px #000">DEINE STRECKE</div>';
+  document.body.appendChild(ov);
+  let rm=null;
+  document.getElementById('routeMapClose').onclick=()=>{try{rm&&rm.remove();}catch(e){}ov.remove();};
+  const ll=rec.path.map(p=>[p[0],p[1]]).filter(p=>isFinite(p[0])&&isFinite(p[1]));
+  try{
+    rm=L.map('routeMapDiv',{zoomControl:true,attributionControl:false});
+    L.polyline(ll,{color:'#000',weight:8,opacity:.35,lineCap:'round',lineJoin:'round'}).addTo(rm);
+    L.polyline(ll,{color:userColor||'#e8ff47',weight:4.5,opacity:.95,lineCap:'round',lineJoin:'round'}).addTo(rm);
+    // Start/Ziel-Marker
+    L.circleMarker(ll[0],{radius:6,color:'#10b981',fillColor:'#10b981',fillOpacity:1,weight:2}).addTo(rm);
+    L.circleMarker(ll[ll.length-1],{radius:6,color:'#ff4d6d',fillColor:'#ff4d6d',fillOpacity:1,weight:2}).addTo(rm);
+    rm.fitBounds(ll,{padding:[50,50]});
+    setTimeout(()=>{try{rm.invalidateSize();rm.fitBounds(ll,{padding:[50,50]});}catch(e){}},120);
+  }catch(e){toast('Karte konnte nicht geladen werden');}
 }
 /* Vergangenen Lauf im gleichen Modal wie nach dem Lauf anzeigen (alle Werte +
    Punkte + Splits). Session-Bilanz/Hinweise werden neutralisiert, damit keine
@@ -5954,8 +6289,14 @@ function renderGoal(){
 function renderQuestsDiv(){$('questsDiv').innerHTML=quests.slice(0,3).map(q=>{const p=Math.min(100,Math.round(q.progress/q.target*100));return`<div class="quest-item"><div class="quest-row"><span>${q.icon} ${q.desc}</span><span class="quest-pts" style="color:${q.claimed?'#10b981':'var(--primary)'}">${q.claimed?'✓':q.reward+' pts'}</span></div><div class="q-bar"><div class="q-fill" style="width:${p}%"></div></div></div>`}).join('')+renderStarterQuests();}
 function renderActivityCards(){
   const el=$('activityList'),rec=history.slice(-6).reverse();
-  if(!rec.length){el.innerHTML='<div class="empty-state" style="cursor:pointer" onclick="setView(\'start\')"><i class="fas fa-running"></i><p>Noch keine Läufe.<br><span style="color:var(--primary);font-weight:600">Starte deine erste Eroberung →</span></p></div>';return}
-  el.innerHTML=rec.map((r,i)=>{
+  // Kopf: aktuelle Anzahl eigener Hexagon-Flächen + Gesamt-XP (zuerst).
+  const hexCount=(typeof h3Territories!=='undefined'?h3Territories:[]).filter(t=>t.owner===userId).reduce((s,t)=>s+((t.cells&&t.cells.length)||0),0);
+  const summary=`<div class="activity-card" style="margin-bottom:12px"><div style="display:flex;gap:10px">
+    <div style="flex:1;text-align:center;padding:8px 4px;background:rgba(var(--primary-rgb),.06);border-radius:12px"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.9rem;line-height:1;color:var(--primary)">⬡ ${hexCount}</div><div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:3px">Hexagon-Flächen</div></div>
+    <div style="flex:1;text-align:center;padding:8px 4px;background:rgba(255,215,0,.06);border-radius:12px"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.9rem;line-height:1;color:#FFD700">${(points||0).toLocaleString('de-DE')}</div><div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:3px">XP gesamt</div></div>
+  </div></div>`;
+  if(!rec.length){el.innerHTML=summary+'<div class="empty-state" style="cursor:pointer" onclick="setView(\'start\')"><i class="fas fa-running"></i><p>Noch keine Läufe.<br><span style="color:var(--primary);font-weight:600">Starte deine erste Eroberung →</span></p></div>';return}
+  el.innerHTML=summary+rec.map((r,i)=>{
     const d=new Date(r.date),now=new Date(),diff=Math.floor((now-d)/86400000);
     const ds=diff===0?'Heute':diff===1?'Gestern':d.toLocaleDateString('de',{weekday:'short',day:'numeric',month:'short'});
     const importLabel=r.importSource==='strava'?'🔴 Strava':r.importSource==='tcx'?'📥 TCX':r.importSource==='kml'?'📥 KML':r.importSource==='manuell'?'✏️ Manuell':'📥 GPX';
@@ -5965,7 +6306,7 @@ function renderActivityCards(){
   rec.forEach((r,i)=>{const c=document.getElementById('ac-'+i);if(c&&r.path?.length>=2)drawMiniMap(c,r.path)});
   /* Tippen auf einen vergangenen Lauf -> gleiche Detailansicht wie nach dem Lauf. */
   const cards=el.querySelectorAll('.activity-card');
-  rec.forEach((r,i)=>{const card=cards[i];if(card){card.style.cursor='pointer';card.addEventListener('click',()=>showRunDetail(r));}});
+  rec.forEach((r,i)=>{const card=cards[i+1];if(card){card.style.cursor='pointer';card.addEventListener('click',()=>showRunDetail(r));}}); // +1: Summary-Karte überspringen
 }
 function renderWeekChart(){
   const ctx=$('weekChart').getContext('2d'),labels=['Mo','Di','Mi','Do','Fr','Sa','So'],today=(new Date().getDay()+6)%7;
@@ -6871,24 +7212,27 @@ window.claimEvent=async function(eid){
 async function renderFactionWar(){
   const el=$('teamRankList');
   if(!el)return;
-  let stats,isLive=false;
+  let stats,isLive=false;const monthXp={};
   try{
     if(!sb)throw 0;
-    // Mitglieder/Gebiete weiterhin aus profiles aggregieren …
+    // Nur ECHTE Spieler aggregieren — Bots zählen NICHT in die Fraktionswertung.
     const{data,error}=await sb.from('profiles')
-      .select('user_team,points,total_conquered')
+      .select('user_team,points,total_conquered,is_bot')
       .not('user_team','is',null)
       .order('points',{ascending:false})
-      .limit(1000);
+      .limit(2000);
     if(error||!data)throw error||0;
     const agg={};
     data.forEach(p=>{
+      // Bots zählen AKTUELL noch mit (spätere Aufgabe #49: nur echte Spieler).
       if(!TEAMS.some(t=>t.id===p.user_team))return;
       const a=agg[p.user_team]||(agg[p.user_team]={total:0,terr:0,members:0});
       a.total+=p.points||0;a.terr+=p.total_conquered||0;a.members++;
     });
     stats=TEAMS.map(tm=>({...tm,total:agg[tm.id]?.total||0,terr:agg[tm.id]?.terr||0,members:agg[tm.id]?.members||0}));
     isLive=true;
+    // Monats-XP je Fraktion (30%-Komponente); fehlt die Tabelle -> leer.
+    try{const{data:fmp}=await sb.from('faction_month_points').select('team,points').eq('month_key',currentMonthKey());(fmp||[]).forEach(r=>{monthXp[r.team]=r.points||0;});}catch(e){}
   }catch(e){
     // Fallback: nur lokal bekannte Daten
     stats=TEAMS.map(tm=>({...tm,
@@ -6896,18 +7240,20 @@ async function renderFactionWar(){
       terr:userTeam===tm.id?totalConquered:0,
       members:userTeam===tm.id?1:0}));
   }
-  /* RANKING = kumulativ eroberte Gebiete je Fraktion (total_conquered summiert).
-     Zählt AUCH wieder verlorene Gebiete -> „einmal erobern reicht". Dadurch ist die
-     Kontrolle sofort > 0 %, sobald erobert wurde, statt an den frisch-leeren
-     Monats-Punkten zu hängen. */
+  /* WERTUNG 70/30: 70% eroberte Gebiete (kumulativ, zählt auch verlorene ->
+     „einmal erobern reicht") + 30% Monats-XP der Fraktion. Beide Komponenten auf
+     ihren Gesamtwert normiert -> Score 0..1, angezeigt als „% Kontrolle". */
   const mine=stats.find(t=>t.id===userTeam);
-  // Eigene, evtl. noch nicht gesyncte Eroberungen als Untergrenze der eigenen Fraktion.
   if(mine&&totalConquered>mine.terr){mine.terr=totalConquered;if(!mine.members)mine.members=1;}
-  stats.sort((a,b)=>b.terr-a.terr||b.total-a.total);
-  const grand=stats.reduce((s,t)=>s+t.terr,0)||1;
+  stats.forEach(t=>{t.mxp=monthXp[t.id]||0;});
+  const _sumTerr=stats.reduce((s,t)=>s+t.terr,0),_sumXp=stats.reduce((s,t)=>s+t.mxp,0);
+  stats.forEach(t=>{t.score=0.7*(_sumTerr>0?t.terr/_sumTerr:0)+0.3*(_sumXp>0?t.mxp/_sumXp:0);});
+  stats.sort((a,b)=>b.score-a.score||b.terr-a.terr);
+  window._factionRankOrder=stats.map(t=>t.id); // fürs Profil: Fraktions-Rang-Farbe
+  const grand=stats.reduce((s,t)=>s+t.score,0)||1;
   const leader=stats[0];
-  const _realLeaderId=(leader&&leader.terr>0)?leader.id:null;
-  /* Führende Fraktion (meiste Eroberungen) global merken -> „👑 Führende Fraktion". */
+  const _realLeaderId=(leader&&leader.score>0)?leader.id:null;
+  /* Führende Fraktion (bester 70/30-Score) global merken -> „👑 Führende Fraktion". */
   window._factionLeaderId=_realLeaderId;
   /* Saison-Sieg wird NICHT mehr mitten im Monat vergeben. Stattdessen wird der reale
      Monats-Führende (echte Server-Daten) + die eigene Fraktion laufend mitgeschrieben.
@@ -6917,11 +7263,11 @@ async function renderFactionWar(){
   settleSeasonWins();
   try{settleSeasonWinsServer();}catch(e){} // Server-Abrechnung (season_winners), async
   el.innerHTML=(isLive?'':'<div style="font-size:.62rem;color:var(--muted);margin-bottom:6px">📡 Offline – lokale Schätzung</div>')
-    +'<div style="font-size:.62rem;color:var(--muted);margin-bottom:6px">🗺️ Kontrolle = Anteil aller je eroberten Gebiete (zählt auch verlorene)</div>'
+    +'<div style="font-size:.62rem;color:var(--muted);margin-bottom:6px">🗺️ Kontrolle = 70% eroberte Gebiete + 30% Monats-XP</div>'
     +stats.map((tm,i)=>{
-      const share=Math.round((tm.terr/grand)*100);
+      const share=Math.round((tm.score/grand)*100);
       const isMine=tm.id===userTeam;
-      const isLeader=i===0&&tm.terr>0;
+      const isLeader=i===0&&tm.score>0;
       return`<div class="list-row" style="flex-direction:column;align-items:stretch;gap:5px${isMine?';background:rgba(var(--primary-rgb),.06);border:1px solid rgba(var(--primary-rgb),.25)':''}">
         <div style="display:flex;align-items:center;gap:8px;width:100%">
           <span style="font-size:1rem;width:20px;flex-shrink:0">${['🥇','🥈','🥉','4.'][i]||''}</span>
@@ -6987,7 +7333,7 @@ function _lbRow(r,i,medals){
   const rowAttrs=!isMe?`data-rowuid="${r.user_id}" data-rowname="${esc(r.player_name)}" data-rowav="${esc(r.user_avatar||'🏃')}" data-rowcol="${esc(r.user_color||'#e8ff47')}" data-rowkm="${r.total_km||0}" data-rowterr="${r.total_conquered||0}" data-rowpts="${r.points||0}" data-rowstreak="${r.streak_days||0}" style="cursor:pointer"`:'';
   return`<div class="list-row" ${rowAttrs} style="background:${isMe?'rgba(232,255,71,.06)':''}${!isMe?';cursor:pointer':''}">
     <span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:${i<3?'var(--primary)':'var(--muted)'};width:22px;flex-shrink:0">${i<3?medals[i]:i+1}</span>
-    <span class="row-icon" style="font-size:1.2rem">${esc(r.user_avatar||'🏃')}</span>
+    ${r.user_avatar_img?`<img src="${esc(r.user_avatar_img)}" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;border:1px solid var(--border)">`:`<span class="row-icon" style="font-size:1.2rem">${esc(r.user_avatar||'🏃')}</span>`}
     <div class="row-txt"><b style="color:${isMe?'var(--primary)':'var(--text)'}">${esc(r.player_name)}</b>
     <div style="font-size:.65rem;color:var(--muted)">${sub}</div></div>
     <span style="font-family:'Bebas Neue',sans-serif;color:var(--primary);margin-left:auto">${r.points}</span>
@@ -7037,7 +7383,7 @@ async function renderLeaderboard(){
         const cur=ownerDist.get(t.owner);
         if(cur==null||dKm<cur)ownerDist.set(t.owner,dKm);
       }
-      const{data,error}=await sb.from('profiles').select('id,user_id,player_name,user_avatar,user_color,points,total_km,total_conquered,streak_days').order('points',{ascending:false}).limit(500);
+      const{data,error}=await sb.from('profiles').select('id,user_id,player_name,user_avatar,user_avatar_img,user_color,points,total_km,total_conquered,streak_days').order('points',{ascending:false}).limit(500);
       if(error)throw error;
       const near=(data||[]).map(r=>{
         const d=ownerDist.has(r.user_id)?ownerDist.get(r.user_id):(ownerDist.has(r.id)?ownerDist.get(r.id):null);
@@ -7051,7 +7397,7 @@ async function renderLeaderboard(){
     }
     // Weltweit — global nach Punkten
     const{data,error}=await sb.from('profiles')
-      .select('id,user_id,player_name,user_avatar,user_color,points,total_km,total_conquered,streak_days')
+      .select('id,user_id,player_name,user_avatar,user_avatar_img,user_color,points,total_km,total_conquered,streak_days')
       .order('points',{ascending:false})
       .limit(10);
     if(error||!data?.length)throw error||new Error('empty');
@@ -7114,18 +7460,19 @@ const _HELP_RULER=[['Neuling','#5A8A6E'],['Besitzer','#00D4FF'],['Baron','#9B5DE
 const _HELP_RARITY=[['Gewöhnlich','#5A8A6E'],['Selten','#00D4FF'],['Episch','#9B5DE5'],['Legendär','#FFD700']];
 function helpChip(label,color){return `<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:40px;font-family:'Bebas Neue',sans-serif;font-size:.78rem;letter-spacing:1px;color:${color};border:1px solid ${color}55;background:${color}1a">${label}</span>`;}
 const HELP_SECTIONS=[
-  {icon:'fa-route',title:'Laufen & Gebiete erobern',intro:'Das Grundprinzip von Runners Conquer: Jeder echte Lauf, den du draußen absolvierst, wird zu Eroberung auf der Karte. Du startest einen Lauf in der App, dein GPS zeichnet deine Strecke live auf, und sobald sich dein Weg zu einer geschlossenen Schleife formt, verwandelt sich die eingeschlossene Fläche in dein Gebiet.',bullets:['Der Lauf selbst zählt: Tempo oder Distanz sind zweitrangig, entscheidend ist, dass du eine Fläche vollständig umrundest.','Je größer die Schleife, desto größer das Gebiet, das am Ende dir gehört.','Ist eine Fläche noch neutral (niemandem zugeordnet), reicht ein einmaliges Umrunden, um sie dir zu sichern.','Gehört sie bereits einer anderen Person, musst du sie ihr streitig machen, indem du dieselbe Fläche ebenfalls selbst abläufst – wer sie zuletzt umrundet hat, hält sie.','Mehrere kleine Schleifen hintereinander lassen sich zu einem größeren, zusammenhängenden Revier verbinden.','Jedes neu eroberte Gebiet bringt dir sofort Punkte und zählt dauerhaft auf deine Gesamt-Herrschaft ein, solange du es hältst.','Auf der Karte siehst du jederzeit, welche Flächen dir, deinem Team oder anderen Läufer:innen gehören.']},
+  {icon:'fa-route',title:'Laufen & Gebiete erobern',intro:'Die Welt ist in sechseckige Waben (Hexagons) aufgeteilt. Jeder echte Lauf zeichnet deine GPS-Strecke auf, und alle Hexagons, durch die du wirklich läufst, werden zu deinem Revier. Du musst also nicht eine Fläche umrunden – es zählt, worüber du tatsächlich läufst.',bullets:['Freie (neutrale) Hexagons, die du überläufst, gehören danach sofort dir.','Feindliche Gebiete machst du dir streitig, indem du über ihre Hexagons läufst. Wie viel Verteidigung du brichst, hängt von deinem Tempo ab: schneller = mehr Angriff.','Jedes Hexagon hat einen eigenen Verteidigungswert – je nach Tempo an genau dieser Stelle können die Werte innerhalb eines Gebiets unterschiedlich sein.','Vernachlässigte, stark verfallene Gebiete (sehr niedrige Verteidigung) fallen schon, wenn du einfach darüberläufst.','Über den Karten-Reiter „Meine Läufe" siehst du all deine bisherigen Strecken – praktisch, um eine ganze Region planvoll zu erlaufen.','Eroberungen geben dir spürbar mehr XP als reines Kilometersammeln – und zählen für die Fraktions-Kontrolle.','Farben auf der Karte: Deine Gebiete tragen deine Gebietsfarbe, feindliche sind rot. Der Rahmen zeigt die Feind-Stärke als Ampel (grün = schwach/leicht erobern, gelb = mittel, rot = stark) bzw. bei seltenen Gebieten die Seltenheitsfarbe (Cyan/Lila/Gold). Kräftigere Farbe = stärker verteidigt.','Über den Karten-Button „Legende" blendest du jederzeit eine Erklärung aller Farben ein. Tippe ein Gebiet an für Details.']},
   {icon:'fa-bolt',title:'Energie',intro:'Energie ist deine Ausdauer-Ressource für alles, was mit Eroberung zu tun hat. Sie ist eine Art Akku, der begrenzt, wie viel du am Stück beanspruchen kannst, und der dich zwingt, dir deine Läufe klug einzuteilen statt alles auf einmal zu versuchen.',bullets:['Energie wird verbraucht, während du aktiv Fläche eroberst oder dein Revier hältst.','Mit der Zeit füllt sie sich von ganz allein wieder auf – auch ohne dass du läufst.','Ein voller Energie-Vorrat erlaubt dir größere oder mehrere Eroberungen am Stück.','Ist deine Energie aufgebraucht, lohnt sich eine Pause: Sobald sie sich erholt hat, kannst du weiter erobern.','Ein regelmäßiger Rhythmus aus Läufen und Pausen ist effizienter, als deine Energie in einem einzigen Marathon-Lauf zu verbrauchen.','Dein Streak (aufeinanderfolgende aktive Tage) und dein Wochenziel helfen dir dabei, dauerhaft mit voller Energie zu spielen.']},
   {icon:'fa-shield-halved',title:'Verteidigen',intro:'Ein erobertes Gebiet gehört dir nicht für immer automatisch weiter – andere Läufer:innen können es dir streitig machen, indem sie dieselbe Fläche selbst ablaufen und dadurch übernehmen.',bullets:['Um ein Gebiet zu behalten, musst du es von Zeit zu Zeit erneut selbst ablaufen – das zählt als Verteidigung.','Ist dein Revier bedroht, siehst du das in der Gebiets-Ansicht: Dort werden dir Läufer:innen angezeigt, die in der Nähe aktiv sind und dir das Gebiet abjagen könnten.','Je länger du ein Gebiet ununterbrochen hältst und verteidigst, desto mehr Ansehen und Punkte bringt es dir dauerhaft ein.','Regelmäßiges Verteidigen ist genauso wichtig wie das Erobern neuer Flächen – ein großes Revier, das du vernachlässigst, geht mit der Zeit an aktivere Läufer:innen verloren.','Besonders zentrale oder seltene Gebiete werden öfter angelaufen und brauchen darum mehr Aufmerksamkeit.']},
   {icon:'fa-crown',title:'Ruler-Rangstufen',intro:'Je mehr Fläche du dauerhaft beherrschst und je konsequenter du sie verteidigst, desto höher steigst du in der Rangordnung der Herrscher (Ruler) auf. Dein aktueller Titel wird überall dort angezeigt, wo dein Name erscheint – auf der Karte, in der Rangliste und in deinem Profil.',chips:_HELP_RULER,note:'Der Aufstieg verläuft in dieser Reihenfolge von Neuling bis Imperator. Ein höherer Titel ist reines Prestige und Sichtbarkeit – er zeigt anderen Läufer:innen auf einen Blick, wie ernst du es mit deinem Revier meinst.'},
   {icon:'fa-gem',title:'Seltenheit von Straßen & Wahrzeichen',intro:'Nicht jedes Stück Stadt ist gleich viel wert. Straßen, Plätze und Wahrzeichen haben jeweils eine Seltenheitsstufe, die zeigt, wie begehrt und wertvoll sie sind.',chips:_HELP_RARITY,note:'Gewöhnliche Straßen bilden das Grundgerüst deines Reviers. Seltene, epische und vor allem legendäre Wahrzeichen sind deutlich schwerer zu bekommen, bringen dafür aber überdurchschnittlich viele Punkte und Prestige – und ziehen entsprechend mehr Konkurrenz an, die versucht, sie dir abzunehmen.'},
-  {icon:'fa-bullseye',title:'Quests & Punkte',intro:'Quests sind klare, kleine Ziele, die dir Orientierung geben, was als Nächstes sinnvoll ist – zum Beispiel eine bestimmte Distanz laufen, mehrere Gebiete erobern oder dein Revier verteidigen.',bullets:['Es gibt zwei Arten von Quests: tägliche und wöchentliche.','Tägliche Quests wechseln jeden Tag neu – sie sind meist kleiner und schnell zu schaffen.','Wöchentliche Quests laufen über die ganze Woche und wechseln erst danach – sie sind größer angelegt und lohnen sich entsprechend mehr.','Jede abgeschlossene Quest belohnt dich direkt mit Punkten, unabhängig davon, ob sie täglich oder wöchentlich war.','Zusätzlich sammelst du Punkte durchs Erobern neuer Gebiete, durchs Verteidigen bestehender Gebiete und durch einen aktiven Streak.','Dein Gesamt-Punktestand ist die Grundlage für deinen Platz auf der Rangliste und deinen Ruler-Titel.','Ein offener Quest-Fortschritt bleibt sichtbar, damit du jederzeit siehst, wie nah du am Abschluss bist – und wie viel Zeit noch bleibt, bevor sie wechselt.']},
-  {icon:'fa-trophy',title:'Saison & Rangliste',intro:'Runners Conquer ist in Saisons unterteilt. Innerhalb einer Saison sammelst du Punkte und Gebiete, die dich auf der Rangliste gegen andere Läufer:innen in deiner Nähe positionieren.',bullets:['Die Rangliste zeigt für jede Person Rang, Ruler-Titel, gehaltene Gebietsfläche und Streak.','Dein eigener Platz und Abstand zu den Rängen darüber wird dir immer separat angezeigt, auch wenn du nicht ganz vorne stehst.','Am Ende einer Saison wird die Bestenliste final ausgewertet, bevor eine neue Saison mit einem frischen Rennen um Gebiete beginnt.','Bleib aktiv: Wer über längere Zeit pausiert, verliert Rang und ungenutzte Gebiete an aktivere Rivalen.']},
+  {icon:'fa-bullseye',title:'Quests, Events & Punkte',intro:'Ziele geben dir Orientierung und belohnen dich mit XP. Es gibt tägliche Quests, wöchentliche Challenges und echte, serverseitige Community-Events.',bullets:['Daily Quests (täglich): 10.000 Schritte gehen, 5 km laufen und 1 Gebiet erobern.','Wöchentliche Challenges laufen über die ganze Woche und lohnen sich entsprechend mehr.','Events (echt): z. B. Wochen-Sprint (5 km am Stück), Gebietskrieg (2 Eroberungen), Monats-Marathon (42 km). Der Fortschritt zählt aus jedem gewerteten Lauf, die Belohnung holst du per Button ab.','Zusätzlich sammelst du XP durchs Erobern (mehr XP!), Verteidigen und über deinen Streak.','Deine Gesamt-XP bleibt über Saisons hinweg erhalten – nur die Fraktions-Monatswertung startet jeden Monat neu.','Titel verdienst du über Login-Serie & Battle-Pass. Wählen kannst du sie unter Einstellungen → Beschreibung; sie erscheinen dann in deinem Profil.']},
+  {icon:'fa-flag',title:'Fraktionskrieg & Saison-Siege',intro:'Jede:r gehört einer von vier Fraktionen an. Gemeinsam kämpft ihr Monat für Monat um die Kontrolle.',bullets:['Die Monatswertung mischt 70 % eroberte Gebiete + 30 % gesammelte XP eurer Fraktion.','Im Profil ist deine Fraktion nach Rang gefärbt: 1. Gold, 2. Silber, 3. Bronze, 4. neutral weiß.','Am Monatsende bekommt die Sieger-Fraktion einen Saison-Sieg-Orden – aber nur, wer in dem Monat auch wirklich in dieser Fraktion war. Der Orden erscheint dann bei deinen Icons im Erfolge-Reiter.','Die Wertung ist server-autoritativ und startet jeden Monat frisch bei 0.']},
+  {icon:'fa-trophy',title:'Rangliste',intro:'Die Rangliste positioniert dich gegen andere Läufer:innen – im Umkreis von 20 km und weltweit.',bullets:['Angezeigt werden Profilbild, Name, gehaltene Gebiete und XP.','Dein eigener Platz wird hervorgehoben, auch wenn du nicht ganz vorne stehst.','Bleib aktiv: Wer lange pausiert, verliert Rang und – bei verfallender Verteidigung – auch Gebiete an aktivere Rivalen.']},
   {icon:'fa-people-group',title:'Clubs',intro:'Du kannst dich einem Club anschließen und gemeinsam mit anderen Läufer:innen in einer gemeinsamen Farbe antreten, statt nur für dich allein zu laufen.',bullets:['Dein Club ist an eurer gemeinsamen Farbe auf der Karte erkennbar, überall dort, wo Club-Mitglieder Gebiete halten.','Club-Erfolge zählen zusätzlich zu deinem persönlichen Fortschritt – ihr profitiert gemeinsam von der Fläche, die euer Club insgesamt hält.','Ein starker Club kann größere, zusammenhängende Reviere aufbauen und leichter verteidigen als Einzelspieler:innen.','Die Club-Wahl kannst du jederzeit in den Einstellungen ändern, falls du den Club wechseln möchtest.']},
   {icon:'fa-palette',title:'Erscheinungsbild',intro:'Runners Conquer lässt dich das Design der App selbst wählen – such dir das Erscheinungsbild aus, das dir am besten gefällt.',bullets:['Unter Einstellungen → Erscheinungsbild stehen dir mehrere fertige Designs zur Auswahl.','Citrus ist der markante Signature-Look: tiefes Waldgrün mit leuchtendem Limetten-Akzent.','Daneben gibt es hellere und ruhigere Varianten für alle, die einen anderen Stil bevorzugen.','Das gewählte Design ändert nur die Optik – deine Gebiete, Punkte und dein Fortschritt bleiben davon unberührt.','Du kannst das Design jederzeit wieder wechseln, ganz ohne Einfluss auf dein Spiel.']},
   {icon:'fa-tower-broadcast',title:'Nachrichten & Benachrichtigungen',intro:'Damit dir nichts Wichtiges entgeht, hält dich Runners Conquer über einen Nachrichten- und Benachrichtigungsbereich auf dem Laufenden.',bullets:['Ein Aktivitäts-Feed zeigt dir laufend, was in deiner Umgebung passiert – etwa wenn jemand ein Gebiet in deiner Nähe erobert oder du selbst befördert wurdest.','Wird dein eigenes Revier bedroht, bekommst du das direkt als eigene Nachricht angezeigt, damit du rechtzeitig reagieren kannst.','Push-Benachrichtigungen holen dich auch dann ab, wenn die App gerade nicht offen ist – etwa bei einer Bedrohung deines Reviers.','Welche Benachrichtigungen du bekommen möchtest, stellst du einzeln unter Einstellungen → Benachrichtigungen ein.']},
   {icon:'fa-user-shield',title:'Konto, Datenschutz & Support',intro:'Dein Profil, deine Laufdaten und dein gesamter Fortschritt sind an dein Konto gebunden und werden sicher gespeichert, damit du auf jedem Gerät weiterspielen kannst.',bullets:['Profil, Avatar, Name und Club lassen sich jederzeit in den Einstellungen anpassen.','Standort- und Laufdaten werden ausschließlich zum Betrieb des Spiels genutzt – du entscheidest, was davon sichtbar für andere ist.','Push-Benachrichtigungen (z. B. wenn dein Revier bedroht ist) lassen sich einzeln in den Einstellungen an- und ausschalten.','Bei Fragen, Problemen oder zum Löschen deines Kontos erreichst du den Support direkt über Einstellungen → Support.']},
-  {icon:'fa-circle-question',title:'Häufig gestellte Fragen',intro:'Die wichtigsten Antworten auf einen Blick.',faq:[['Was passiert, wenn mir jemand mein Gebiet streitig macht?','Du wirst darauf aufmerksam gemacht, dass dein Revier bedroht ist, und kannst es zurückerobern, indem du die Fläche einfach erneut selbst abläufst.'],['Verliere ich Punkte, wenn ich ein Gebiet verliere?','Dein bereits gesammelter Punktestand bleibt dir erhalten – nur die laufende Fläche und ihr weiterer Ertrag gehen an die Person über, die sie neu erobert hat.'],['Wie steige ich schneller im Ruler-Rang auf?','Regelmäßig laufen, neue Gebiete erobern und dein bestehendes Revier konsequent verteidigen bringt dich am schnellsten voran.'],['Kann ich meinen Club später wechseln?','Ja, jederzeit über Einstellungen → Dein Club.'],['Wo sehe ich, wenn mein Revier bedroht wird?','Dafür gibt es den Nachrichten- und Benachrichtigungsbereich – dort und per Push wirst du direkt informiert.'],['Was ist der Unterschied zwischen Gebiet und Wahrzeichen?','Ein Gebiet ist die Fläche, die du durch Laufen umschließt. Ein Wahrzeichen ist ein besonderer, seltenerer Ort darin, der zusätzliches Prestige und mehr Punkte bringt.'],['Läuft eine Saison irgendwann ab?','Ja, jede Saison endet nach einer festgelegten Zeit, die Rangliste wird final ausgewertet und danach beginnt die nächste Saison neu.'],['Was bringt mir Energie eigentlich konkret?','Ohne Energie kannst du keine neue Fläche erobern – sie begrenzt, wie viel du am Stück schaffst, und füllt sich mit der Zeit von selbst wieder auf.']]}
+  {icon:'fa-circle-question',title:'Häufig gestellte Fragen',intro:'Die wichtigsten Antworten auf einen Blick.',faq:[['Was passiert, wenn mir jemand mein Gebiet streitig macht?','Du wirst darauf aufmerksam gemacht, dass dein Revier bedroht ist, und kannst es zurückerobern, indem du die Fläche einfach erneut selbst abläufst.'],['Verliere ich Punkte, wenn ich ein Gebiet verliere?','Dein bereits gesammelter Punktestand bleibt dir erhalten – nur die laufende Fläche und ihr weiterer Ertrag gehen an die Person über, die sie neu erobert hat.'],['Wie steige ich schneller im Ruler-Rang auf?','Regelmäßig laufen, neue Gebiete erobern und dein bestehendes Revier konsequent verteidigen bringt dich am schnellsten voran.'],['Kann ich meinen Club später wechseln?','Ja, jederzeit über Einstellungen → Dein Club.'],['Wo sehe ich, wenn mein Revier bedroht wird?','Dafür gibt es den Nachrichten- und Benachrichtigungsbereich – dort und per Push wirst du direkt informiert.'],['Was ist der Unterschied zwischen Gebiet und Wahrzeichen?','Ein Gebiet besteht aus den Hexagons, durch die du wirklich läufst (Umranden allein zählt nicht). Ein Wahrzeichen ist ein besonderer, seltenerer Ort darin, der zusätzliches Prestige und mehr Punkte bringt.'],['Läuft eine Saison irgendwann ab?','Ja, jede Saison endet nach einer festgelegten Zeit, die Rangliste wird final ausgewertet und danach beginnt die nächste Saison neu.'],['Was bringt mir Energie eigentlich konkret?','Ohne Energie kannst du keine neue Fläche erobern – sie begrenzt, wie viel du am Stück schaffst, und füllt sich mit der Zeit von selbst wieder auf.']]}
 ];
 function _helpInner(sec){
   let h=`<p style="margin:0 0 10px;opacity:.92">${sec.intro}</p>`;
@@ -7174,7 +7521,9 @@ function renderSettingsTab(tab){
       </div>
       <div style="font-size:.65rem;color:var(--muted);margin-top:5px">Teile diese Nummer – andere finden dich damit unter „Spieler entdecken".</div>
     </div>
-    <div class="field"><label>Avatar</label><div class="avatar-row" id="setAvatarRow"></div></div><button class="btn btn-p" id="saveSetProfil" style="width:100%">Speichern</button><button id="logoutBtn" style="width:100%;margin-top:8px;background:none;border:1px solid #ff4d6d;color:#ff4d6d;border-radius:12px;padding:12px;font-size:.85rem;font-family:'Poppins',sans-serif;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent">🚪 Abmelden</button>`;
+    <div class="field"><label>Avatar</label><div class="avatar-row" id="setAvatarRow"></div></div>
+    <div class="field"><label>🎂 Geburtstag (Tag & Monat)</label><input type="text" id="setBirthday" class="modal-input" inputmode="numeric" placeholder="TT.MM" maxlength="5" value="${userBirthday?userBirthday.split('-').reverse().join('.'):''}"><div style="font-size:.62rem;color:var(--muted);margin-top:4px">An deinem Geburtstag bekommst du automatisch 24h Gebiets-Schutz.</div></div>
+    <button class="btn btn-p" id="saveSetProfil" style="width:100%">Speichern</button><button id="logoutBtn" style="width:100%;margin-top:8px;background:none;border:1px solid #ff4d6d;color:#ff4d6d;border-radius:12px;padding:12px;font-size:.85rem;font-family:'Poppins',sans-serif;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent">🚪 Abmelden</button>`;
     document.getElementById('copyPlayerNum')?.addEventListener('click',()=>{try{navigator.clipboard.writeText(String(playerNumberDisplay()));toast('📋 Nummer kopiert');}catch(e){toast('Nummer: '+playerNumberDisplay());}});
     // Echte Nummer aus der DB nachladen (falls Migration vorhanden) und ersetzen.
     if(sb&&userId&&myPlayerNumber==null){sb.from('profiles').select('player_number').or(`user_id.eq.${userId},id.eq.${userId}`).limit(1).maybeSingle().then(({data})=>{if(data&&data.player_number){myPlayerNumber=data.player_number;const e2=document.getElementById('setPlayerNum');if(e2)e2.textContent=myPlayerNumber;}}).catch(()=>{});}
@@ -7199,7 +7548,11 @@ function renderSettingsTab(tab){
         if(lastNameChangeDate===mk){toast('✋ Name nur 1× pro Monat änderbar – nächste Änderung ab dem 1. des Folgemonats.');return;}
         playerName=newName;lastNameChangeDate=mk;
       }
-      editAvatar=userAvatar;saveProfile();updateProfile();toast('Profil gespeichert');
+      // Geburtstag "TT.MM" -> intern "MM-TT".
+      const bd=($('setBirthday')?.value||'').trim();const bm=bd.match(/^(\d{1,2})[.\/-](\d{1,2})$/);
+      if(bm){const dd=Math.min(31,+bm[1]),mm=Math.min(12,+bm[2]);userBirthday=String(mm).padStart(2,'0')+'-'+String(dd).padStart(2,'0');}
+      else if(bd==='')userBirthday='';
+      editAvatar=userAvatar;saveProfile();updateProfile();toast('Profil gespeichert');try{checkBirthdayShield();}catch(e){}
     });
     document.getElementById('logoutBtn')?.addEventListener('click',logoutUser);
   } else if(tab==='theme'){
@@ -8282,7 +8635,8 @@ function updateProfile(){
   const _ban=equipped.banner&&REWARD_BY_ID[equipped.banner];if(_ban){banner.style.background=_ban.value;const m=_ban.value.match(/#[0-9a-f]{6}/i);banner.style.borderColor=(m&&m[0]||userColor)+'88';}
   const _frm=equipped.frame&&REWARD_BY_ID[equipped.frame];const _av=$('pvAvatar');if(_av)_av.style.boxShadow=_frm?('0 0 0 3px '+_frm.value+',0 0 16px '+_frm.value+'99'):'';
   renderRewards();renderFactionWins();applyEquipped();
-  if(history.length){const d=new Date(history[0].date);$('pvSince').textContent='Aktiv seit '+d.toLocaleDateString('de',{month:'long',year:'numeric'});}
+  // "Aktiv seit" entfällt bewusst; pvSince bleibt leer (die Badges darunter zeigen Titel/Fraktion).
+  {const _se=$('pvSince');if(_se)_se.textContent='';}
   const noRunEl=$('pvNoRunState');if(noRunEl)noRunEl.style.display=history.length===0?'':'none';
   const lvD=getLvlProg(points);
   $('pvLvLabel').textContent='Level '+lvD.lv+' · '+lvD.name;
@@ -8296,11 +8650,18 @@ function updateProfile(){
   if(sinceEl){
     const oldBadges=sinceEl.parentNode.querySelector('.pv-extra-badges');if(oldBadges)oldBadges.remove();
     const badgeDiv=document.createElement('div');badgeDiv.className='pv-extra-badges';badgeDiv.style.cssText='text-align:center;margin-top:6px;display:flex;flex-wrap:wrap;justify-content:center;gap:5px';
-    badgeDiv.innerHTML=`<span class="ruler-badge">👑 ${title}</span>`;
-    const _st=equippedTitle();if(_st)badgeDiv.innerHTML+=`<span class="team-badge" style="background:rgba(var(--primary-rgb),.15);color:var(--primary);border:1px solid rgba(var(--primary-rgb),.4)">⭐ ${esc(_st)}</span>`;
-    if(userTeam){const tm=TEAMS.find(t=>t.id===userTeam);if(tm)badgeDiv.innerHTML+=`<span class="team-badge" style="background:${tm.color}22;color:${tm.color};border:1px solid ${tm.color}44">${tm.icon} ${tm.name}</span>`;}
-    if(userTeam&&window._factionLeaderId===userTeam)badgeDiv.innerHTML+=`<span class="team-badge" style="background:rgba(255,215,0,.15);color:#FFD700;border:1px solid rgba(255,215,0,.45)">👑 Führende Fraktion</span>`;
+    badgeDiv.innerHTML='';
+    // Gewählter Titel (aus verdienten Titeln, siehe Einstellungen -> Beschreibung).
+    const _st=selectedTitle||equippedTitle();if(_st)badgeDiv.innerHTML+=`<span class="team-badge" style="background:rgba(var(--primary-rgb),.15);color:var(--primary);border:1px solid rgba(var(--primary-rgb),.4)">🎖️ ${esc(_st)}</span>`;
+    // Fraktion nach Rang gefärbt: 1. Gold, 2. Silber, 3. Bronze, 4. neutral weiß.
+    if(userTeam){const tm=TEAMS.find(t=>t.id===userTeam);if(tm){
+      const order=window._factionRankOrder||[];const rank=order.indexOf(userTeam);
+      const RANKCOL=['#FFD700','#C0C0C0','#CD7F32','#ffffff'];const rc=(rank>=0&&rank<4)?RANKCOL[rank]:'#ffffff';
+      badgeDiv.innerHTML+=`<span class="team-badge" style="background:${rc}1f;color:${rc};border:1px solid ${rc}66;font-weight:700">${tm.icon} ${tm.name}</span>`;
+    }}
     if(userClub)badgeDiv.innerHTML+=`<span class="club-badge">${esc(userClub.icon)} ${esc(userClub.name)}</span>`;
+    // Aktiver Gebiets-Schutz (24h Angriffs-Immunität).
+    if(shieldUntil>Date.now()){const hrs=Math.ceil((shieldUntil-Date.now())/3600000);badgeDiv.innerHTML+=`<span class="team-badge" style="background:rgba(96,165,250,.15);color:#93c5fd;border:1px solid rgba(96,165,250,.45)">🛡️ Geschützt · ${hrs}h</span>`;}
     sinceEl.insertAdjacentElement('afterend',badgeDiv);
   }
   // Daily streak card
@@ -8315,21 +8676,18 @@ function updateProfile(){
       const endDay=dr.nextMs||dailyLoginStreak+1;
       const pct=endDay>prevMs?Math.round((dailyLoginStreak-prevMs)/(endDay-prevMs)*100):100;
       dsEl.style.display='';
-      /* Flammen-Grid: eine Flamme pro Tag des aktuellen Monats, aufeinander-
-         folgende Login-Tage füllen sie auf (Gesamt-Streak läuft separat weiter). */
-      const _now=new Date();
-      const daysInMonth=new Date(_now.getFullYear(),_now.getMonth()+1,0).getDate();
-      const litCount=Math.min(dailyLoginStreak,daysInMonth);
-      const monthName=_now.toLocaleString('de',{month:'long'});
-      const flameGrid=Array.from({length:daysInMonth},(_,i)=>{const lit=i<litCount;return `<span style="font-size:1rem;line-height:1.4;${lit?'filter:drop-shadow(0 0 4px rgba(255,120,40,.7))':'filter:grayscale(1);opacity:.25'}">🔥</span>`;}).join('');
+      // Kompakte Serie: Zahl + nächste Belohnung + Fortschritt, dazu ein Button
+      // für die volle Belohnungsübersicht (showStreakRewards).
       dsEl.innerHTML=`<div class="section-title"><i class="fas fa-fire"></i> Tägliche Serie</div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--primary)">${dailyLoginStreak} Tage 🔥</div>
-        <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:6px 0 5px">${monthName} · ${litCount}/${daysInMonth} Flammen</div>
-        <div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:12px">${flameGrid}</div>
-        ${dr.nextMs?`<div style="font-size:.72rem;color:var(--muted);margin-bottom:6px">Nächste Belohnung: <b style="color:var(--primary)">${dr.nextMsName}</b> · Noch ${dr.daysLeft} ${dr.daysLeft===1?'Tag':'Tage'}</div>
-        <div style="height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;margin-bottom:10px"><div style="height:100%;width:${pct}%;background:var(--primary);border-radius:3px"></div></div>`:'<div style="font-size:.72rem;color:var(--muted);margin-bottom:10px">Alle Meilensteine erreicht! 🏆</div>'}
-        ${streakShields>0?`<div style="font-size:.72rem;color:#c084fc;margin-bottom:10px">🛡️ Streak-Schutz: ${streakShields}/3</div>`:''}
-        ${earned.length?`<div style="font-size:.68rem;color:var(--muted)">${earned.map(d=>`✅ ${msLabels[d]} (Tag ${d})`).join(' &nbsp; ')}</div>`:''}`;
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.15rem;color:var(--primary);line-height:1;white-space:nowrap">${dailyLoginStreak}<span style="font-size:.85em"> 🔥</span><span style="font-size:.62rem;color:var(--muted)"> Tage</span></div>
+          <div style="flex:1;min-width:130px">
+            ${dr.nextMs?`<div style="font-size:.66rem;color:var(--muted);margin-bottom:4px">Nächste: <b style="color:var(--primary)">${dr.nextMsName}</b> · ${dr.daysLeft} ${dr.daysLeft===1?'Tag':'Tage'}</div>
+            <div style="height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:var(--primary);border-radius:3px"></div></div>`:'<div style="font-size:.66rem;color:var(--muted)">Alle Meilensteine erreicht! 🏆</div>'}
+          </div>
+          <button onclick="showStreakRewards()" style="background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:7px 11px;font-size:.7rem;cursor:pointer;white-space:nowrap">📋 Belohnungen</button>
+        </div>
+        ${streakShields>0?`<div style="font-size:.66rem;color:#c084fc;margin-top:8px">🛡️ Streak-Schutz: ${streakShields}/3</div>`:''}`;
     }else{
       dsEl.style.display='none';
     }
@@ -8353,7 +8711,7 @@ function updateProfile(){
   $('pvPRs').innerHTML=[['⚡','Schnellster km',fastKmFmt+'/km'],['📏','Längster Lauf',fmtDist(pr.longestRun?.dist||bd)],['🗺️','Größtes Gebiet',Math.round(pr.mostArea?.area||ba)+' m²'],['🏆','Meiste XP/Lauf',pr.mostXp?'+'+pr.mostXp.pts:'--'],['🔥','kcal gesamt',history.reduce((s,r)=>s+(r.kcal||0),0)+' kcal'],['⚔️','Gebiete erobert',totalConquered]].map(([i,l,v])=>`<div class="pr-row"><span class="pr-icon">${i}</span><span class="pr-label">${l}</span><span class="pr-val">${v}</span></div>`).join('');
   // Battle Pass
   const bpEl=document.getElementById('pvBattlePass');
-  if(bpEl){const bpLv=Math.min(20,Math.floor(seasonXp/500));const bpPct=Math.min(100,(seasonXp%500)/5);const nextSp=(bpLv<20)?(bpLv+1)*500-seasonXp:0;bpEl.innerHTML=`<div class="section-title"><i class="fas fa-ticket-alt"></i> Saison-Pass <span style="font-size:.65rem;color:var(--muted);font-weight:400;margin-left:6px">Level ${bpLv}/20</span></div><div style="height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;margin-bottom:8px"><div style="height:100%;width:${bpPct}%;background:var(--primary);border-radius:3px;transition:width .4s"></div></div><div style="font-size:.68rem;color:var(--muted);margin-bottom:10px">${bpLv<20?nextSp+' XP bis Level '+(bpLv+1):'🏆 Max Level erreicht!'}</div><div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px">${BATTLE_PASS_REWARDS.map(r=>{const unlocked=bpLv>=r.lv;const claimed=battlePassClaimed.includes(r.lv);return`<div data-bplv="${r.lv}" style="flex-shrink:0;width:68px;padding:8px 4px;border-radius:12px;background:${unlocked?claimed?'rgba(16,185,129,.15)':'rgba(232,255,71,.1)':'var(--card)'};border:1px solid ${unlocked?claimed?'rgba(16,185,129,.4)':'rgba(232,255,71,.4)':'var(--border)'};text-align:center;cursor:${unlocked&&!claimed?'pointer':'default'}"><div style="font-size:1.2rem">${r.icon}</div><div style="font-size:.58rem;color:${unlocked?'var(--primary)':'var(--muted)'};line-height:1.2;margin:3px 0">${r.name}</div><div style="font-size:.55rem;color:var(--muted)">Lv.${r.lv}</div>${unlocked&&!claimed?`<div style="font-size:.55rem;background:var(--primary);color:#000;border-radius:4px;padding:1px 4px;margin-top:2px;font-weight:700">Abholen</div>`:claimed?'<div style="font-size:.65rem;color:#10b981">✓</div>':''}</div>`;}).join('')}</div>`;bpEl.querySelectorAll('[data-bplv]').forEach(el=>{const lv=Number(el.dataset.bplv);if(bpLv>=lv&&!battlePassClaimed.includes(lv)){el.addEventListener('click',()=>{battlePassClaimed.push(lv);const rw=BATTLE_PASS_REWARDS.find(r=>r.lv===lv);if(rw){if(rw.type==='xp'){awardXp(rw.val,'battlepass');toast('🎁 Battle Pass: +'+rw.val+' XP');}else if(rw.type==='shield'){streakShields=Math.min(3,streakShields+rw.val);toast('🛡️ Streak-Schutz hinzugefügt!');}else if(rw.type==='energy'){energy=Math.min(CFG.ENERGY_MAX,energy+rw.val);toast('⚡ Energie aufgeladen!');}else if(rw.type==='title'){toast('👑 Titel freigeschaltet: '+rw.val);}else{toast('🎁 '+rw.name+' freigeschaltet!');}}save();updateProfile();},{ once:true });}});}
+  if(bpEl){const bpLv=Math.min(20,Math.floor(seasonXp/500));const bpCur=Math.min(20,Math.max(1,bpLv));const bpPct=Math.min(100,(seasonXp%500)/5);const nextSp=(bpLv<20)?(bpLv+1)*500-seasonXp:0;bpEl.innerHTML=`<div class="section-title"><i class="fas fa-ticket-alt"></i> Saison-Pass <span style="font-size:.65rem;color:var(--muted);font-weight:400;margin-left:6px">Level ${bpLv}/20</span></div><div style="height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;margin-bottom:8px"><div style="height:100%;width:${bpPct}%;background:var(--primary);border-radius:3px;transition:width .4s"></div></div><div style="font-size:.68rem;color:var(--muted);margin-bottom:10px">${bpLv<20?nextSp+' XP bis Level '+(bpLv+1):'🏆 Max Level erreicht!'}</div><div id="pvBpScroll" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px">${BATTLE_PASS_REWARDS.map(r=>{const unlocked=bpLv>=r.lv;const claimed=battlePassClaimed.includes(r.lv);return`<div data-bplv="${r.lv}" ${r.lv===bpCur?'id="pvBpCur"':''} style="flex-shrink:0;width:68px;padding:8px 4px;border-radius:12px;background:${unlocked?claimed?'rgba(16,185,129,.15)':'rgba(232,255,71,.1)':'var(--card)'};border:1px solid ${unlocked?claimed?'rgba(16,185,129,.4)':'rgba(232,255,71,.4)':'var(--border)'};text-align:center;cursor:${unlocked&&!claimed?'pointer':'default'}"><div style="font-size:1.2rem">${r.icon}</div><div style="font-size:.58rem;color:${unlocked?'var(--primary)':'var(--muted)'};line-height:1.2;margin:3px 0">${r.name}</div><div style="font-size:.55rem;color:var(--muted)">Lv.${r.lv}</div>${unlocked&&!claimed?`<div style="font-size:.55rem;background:var(--primary);color:#000;border-radius:4px;padding:1px 4px;margin-top:2px;font-weight:700">Abholen</div>`:claimed?'<div style="font-size:.65rem;color:#10b981">✓</div>':''}</div>`;}).join('')}</div>`;bpEl.querySelectorAll('[data-bplv]').forEach(el=>{const lv=Number(el.dataset.bplv);if(bpLv>=lv&&!battlePassClaimed.includes(lv)){el.addEventListener('click',()=>{battlePassClaimed.push(lv);const rw=BATTLE_PASS_REWARDS.find(r=>r.lv===lv);if(rw){if(rw.type==='xp'){awardXp(rw.val,'battlepass');toast('🎁 Battle Pass: +'+rw.val+' XP');}else if(rw.type==='shield'){const g=grantStreakShield(rw.val);toast(g.added>0?(g.xp>0?`🛡️ +${g.added} Flammenschutz · Rest +${g.xp} XP`:'🛡️ Flammenschutz hinzugefügt!'):`🛡️ Schon 3 Flammenschutz – stattdessen +${g.xp} XP`);}else if(rw.type==='terrshield'){const ok=grantTerritoryShield(rw.val||24,'🛡️ Gebiets-Schutz: 24h komplette Immunität aktiv!');if(!ok){const ix=battlePassClaimed.indexOf(lv);if(ix>=0)battlePassClaimed.splice(ix,1);save();updateProfile();return;}}else if(rw.type==='energy'){energy=Math.min(CFG.ENERGY_MAX,energy+rw.val);toast('⚡ Energie aufgeladen!');}else if(rw.type==='title'){toast('👑 Titel freigeschaltet: '+rw.val);}else{toast('🎁 '+rw.name+' freigeschaltet!');}}save();updateProfile();},{ once:true });}});requestAnimationFrame(()=>_centerScroller(document.getElementById('pvBpScroll'),document.getElementById('pvBpCur')));}
   {
     const CAT_META={conq:{name:'Straßen',unit:'Straßen'},km:{name:'Kilometer',unit:'km'},atk:{name:'Angriffe',unit:'Siege'},def:{name:'Vert.',unit:'Vert.'},disc:{name:'Orte',unit:'Orte'},streak:{name:'Streak',unit:'Tage'}};
     const totalEarned=achievements.filter(a=>a.earned).length;
@@ -9286,6 +9644,7 @@ window.initApp=function(){
       toast('Meine Läufe ausgeblendet');
     }
   });
+  $('panelLegendBtn')?.addEventListener('click',function(){toggleMapLegend();});
   /* Panel-Lauf-Buttons */
   $('panelStartBtn')?.addEventListener('click',()=>{startRun();});
   $('panelPauseBtn2')?.addEventListener('click',()=>{isPaused?resumeRun():pauseRun();});
@@ -9372,7 +9731,7 @@ setTimeout(()=>{
       $('onboarding').style.display='flex';document.body.classList.add('onboarding-active');
     }
   },400);
-},2800);
+},3200);
 /* Service Worker registrieren (PWA-Installierbarkeit) */
 if('serviceWorker' in navigator){
   window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));

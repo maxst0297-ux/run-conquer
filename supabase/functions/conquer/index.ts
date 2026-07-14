@@ -72,17 +72,19 @@ Deno.serve(async (req) => {
     if (!v.ok) return json({ error: v.reason }, 400);
     const paceKmh = v.paceKmh;
 
-    // ── GPS-Track -> H3-Zellen; geschlossener Loop -> eingeschlossene Zellen ──
-    const runCells: Set<string> = engine.pathToCells(path);
-    const gap = haversine(path[0], path[path.length - 1]);
-    let enclosed: Set<string> = gap < 60 ? engine.enclosedCells([...path, path[0]]) : new Set();
-    // Sicherheits-Kappung: eine absurd große eingeschlossene Fläche (Spoofing /
-    // Riesen-Loop) würde tausende Zellen und teure Abfragen erzeugen. Res-10-Zelle
-    // ~0,015 km² -> 5000 Zellen ≈ 75 km². Darüber: Umrundung verwerfen.
-    if (enclosed.size > 5000) enclosed = new Set();
+    // ── GPS-Track -> H3-Zellen (+ Tempo je Zelle, #44); Loop -> eingeschlossen ──
+    // path kann [lat,lng,tMs] enthalten (Live-Lauf): dann bekommt jede Zelle das
+    // Tempo zum Durchlauf-Zeitpunkt -> unterschiedliche Angriffs-/Verteidigungs-
+    // werte je Gebiet. Ohne Zeitstempel (Alt-Track) fällt die Engine aufs Global-
+    // Tempo (paceKmh) zurück.
+    const { cells: runCells, cellPace } = engine.pathToCellPace(path) as { cells: Set<string>, cellPace: Map<string, number> };
+    // #36 — es zählen ausschließlich Hexagone, durch die der Lauf physisch führt.
+    // Die eingeschlossene Schleifenfläche wird NICHT mehr beansprucht/gewertet;
+    // Umrundung ist kein Angriff mehr. enclosed bleibt leer (Signatur-Kompatibilität).
+    const enclosed: Set<string> = new Set();
 
     // ── Betroffene Gebiete finden (Zellen + Randnachbarn für Rand-Berührung) ─
-    const candidate = new Set<string>([...runCells, ...enclosed]);
+    const candidate = new Set<string>([...runCells]);
     for (const c of runCells) { try { for (const n of h3.gridDisk(c, 1)) candidate.add(n); } catch (_) { /*noop*/ } }
 
     const svc = createClient(SUPABASE_URL, SERVICE);
@@ -96,6 +98,16 @@ Deno.serve(async (req) => {
       const { data: allCells } = await svc.from('h3_cells').select('cell,territory_id').in('territory_id', terrIds);
       const byT: Record<string, Set<string>> = {};
       for (const r of (allCells || [])) (byT[r.territory_id] ||= new Set()).add(r.cell);
+      // Gebiets-Schutz: shield_until der Gegner-Besitzer laden. Ist er in der Zukunft,
+      // sind ALLE Gebiete dieses Spielers 24h angriffs-immun. Fehlt die Spalte, leer.
+      const shieldByOwner: Record<string, boolean> = {};
+      try {
+        const owners = [...new Set((trows || []).map((t: any) => t.owner).filter((o: string) => o && o !== user.id))];
+        if (owners.length) {
+          const { data: shrows } = await svc.from('profiles').select('id,shield_until').in('id', owners);
+          for (const p of (shrows || [])) { const t = Date.parse(p.shield_until || ''); if (t && t > nowMs) shieldByOwner[p.id] = true; }
+        }
+      } catch (_) { /* Spalte fehlt -> kein Schutz */ }
       const today = new Date().toISOString().slice(0, 10);
       for (const t of (trows || [])) territories.push({
         id: t.id, owner: t.owner, ownerName: t.owner_name,
@@ -103,6 +115,7 @@ Deno.serve(async (req) => {
         // damit Angriffe gegen lange nicht verteidigte Gebiete leichter sind.
         defense: engine.decayedDefense(t.defense, Date.parse(t.updated_at || t.created_at) || nowMs, nowMs),
         dailyAdded: t.daily_defense_added, lastDay: t.last_defense_day,
+        shielded: !!shieldByOwner[t.owner],
         today, cells: byT[t.id] || new Set(),
       });
     }
@@ -116,7 +129,7 @@ Deno.serve(async (req) => {
     if (body.boosted && energy > 0) { applyBoost = true; energy -= 1; }
 
     // ── Engine entscheidet ───────────────────────────────────────────────────
-    const res = engine.resolveRun({ userId: user.id, runCells, enclosed, distanceKm, paceKmh, territories, boosted: applyBoost });
+    const res = engine.resolveRun({ userId: user.id, runCells, enclosed, distanceKm, paceKmh, territories, boosted: applyBoost, cellPace });
 
     // ── Mutationen anwenden (Reihenfolge: delete -> update -> create, damit
     //    Zellen frei sind, bevor sie neu vergeben werden; cell ist global PK) ─
