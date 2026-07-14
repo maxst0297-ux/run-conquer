@@ -1912,7 +1912,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v157';
+const APP_VERSION='v158';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2824,12 +2824,23 @@ function genDailyChallenges(){
   const today=new Date().toDateString();
   if(dailyChalDate===today&&dailyChallenges.length===3)return;
   dailyChalDate=today;
-  const seed=new Date().getDate()+new Date().getMonth()*31+new Date().getFullYear();
-  const pool=[...CHAL_POOL];
-  const selected=[];
-  for(let i=0;i<3;i++){const idx=Math.abs(seed*(i+3)*1013)%pool.length;selected.push({...pool[idx],progress:0,done:false});pool.splice(idx,1);}
-  dailyChallenges=selected;
+  // Feste Daily Quests: 10.000 Schritte, 5 km, 1 Gebiet erobern.
+  dailyChallenges=[
+    {icon:'👟',desc:'10.000 Schritte gehen',key:'steps',target:10000,reward:150,progress:0,done:false},
+    {icon:'🏃',desc:'5 km laufen',key:'distance',target:5,reward:150,progress:0,done:false},
+    {icon:'⚔️',desc:'1 Gebiet erobern',key:'conq',target:1,reward:200,progress:0,done:false},
+  ];
   save();
+}
+/* Schritt-Quest fortschreiben (Schritte fallen ausserhalb von Läufen an). */
+function syncDailyStepsQuest(){
+  const today=new Date().toDateString();
+  if(dailyChalDate!==today)genDailyChallenges();
+  const c=(dailyChallenges||[]).find(x=>x.key==='steps');
+  if(c&&!c.done){
+    c.progress=Math.min(c.target,stepsToday||0);
+    if(c.progress>=c.target){c.done=true;awardXp(c.reward,'daily');toast('🎯 '+c.desc+' · +'+c.reward+' XP');save();}
+  }
 }
 function updateDailyChallenges(rec){
   const today=new Date().toDateString();
@@ -2862,6 +2873,7 @@ function updateDailyChallenges(rec){
 }
 function renderDailyChallenges(){
   genDailyChallenges();
+  try{syncDailyStepsQuest();}catch(e){}
   const el=$('dailyChalDiv');if(!el)return;
   const sb=$('chalStreakBadge');if(sb)sb.textContent=chalStreak>0?`🔥 ${chalStreak}`:'' ;
   el.innerHTML=dailyChallenges.map(c=>{
@@ -4834,7 +4846,7 @@ function initMap(){
      Plattformen). Nur wenn GPS-Einwilligung vorliegt — sonst startet sie, sobald
      der Nutzer im Consent-Dialog zustimmt bzw. einen Lauf startet. */
   if(localStorage.getItem('rc_gps_consent')==='1')ensurePersistentGpsWatch();
-  mapL.on('click',()=>{closeDrawer();clearOwnerHighlight();hideTerrBar();});
+  mapL.on('click',()=>{closeDrawer();resetMapModes();});
   mapL.on('popupclose',clearOwnerHighlight); // Revier-Hervorhebung endet beim Verlassen der Gebiets-Ansicht
   /* Wahrzeichen beim Verschieben nur neu laden, WENN sie eingeblendet sind. */
   mapL.on('moveend',()=>{if(!window._lmEnabled)return;clearTimeout(window._lmMoveTimer);window._lmMoveTimer=setTimeout(loadLandmarks,900);});
@@ -5103,8 +5115,8 @@ function showTerrBar(info){
       <button class="tb-close" onclick="hideTerrBar()" aria-label="Schließen">✕</button>
     </div>
     <div class="tb-chips">
-      ${info.team?`<span class="tb-chip" style="border-color:${info.team.color}66"><span>${info.team.icon}</span> ${esc(info.team.name)}</span>`:'<span class="tb-chip"><span class="l">Fraktion</span> Keine</span>'}
-      <span class="tb-chip"><span class="l">👤</span> ${esc(info.ownerName||'Läufer')}${info.own?' (Du)':''}</span>
+      ${info.team?`<span class="tb-chip" role="button" title="Fraktionskarte anzeigen" onclick="showFactionMap('${info.teamId||info.team.id}')" style="border-color:${info.team.color}66;cursor:pointer"><span>${info.team.icon}</span> ${esc(info.team.name)}</span>`:'<span class="tb-chip"><span class="l">Fraktion</span> Keine</span>'}
+      <span class="tb-chip" role="button" title="Alle Gebiete dieses Spielers" onclick="highlightOwnerFromBar('${(info.owner||'').replace(/'/g,'')}')" style="cursor:pointer"><span class="l">👤</span> ${esc(info.ownerName||'Läufer')}${info.own?' (Du)':''}</span>
       <span class="tb-chip"><span class="l">🛡️</span> ${Math.round(info.def)}/300</span>
       <span class="tb-chip"><span class="l">⏳</span> ${fmtDecay(info.tteMin)}</span>
       <span class="tb-chip"><span class="l">⬡</span> ${info.size} ${info.size===1?'Zelle':'Zellen'}</span>
@@ -5114,6 +5126,31 @@ function showTerrBar(info){
 }
 function hideTerrBar(){const el=$('terrBar');if(el)el.classList.remove('open');}
 window.hideTerrBar=hideTerrBar;
+/* #48 Tap-Modi der Gebiets-Infoleiste. */
+window.highlightOwnerFromBar=function(owner){
+  if(!owner)return;
+  try{highlightOwnerTerr(owner);}catch(e){}
+  // Auf das Revier dieses Spielers zentrieren.
+  try{const pts=[];(_ownerPolys[owner]||[]).forEach(p=>{try{p.getLatLngs&&p.getLatLngs().flat(2).forEach(ll=>pts.push([ll.lat,ll.lng]));}catch(e){}});if(pts.length&&mapL)mapL.fitBounds(pts,{padding:[50,50]});}catch(e){}
+  toast('👤 Alle Gebiete dieses Spielers');
+};
+window.showFactionMap=function(teamId){
+  window._fraktMapMode=true;
+  try{renderH3Territories();}catch(e){}
+  try{if(typeof renderTerr==='function')renderTerr();}catch(e){}
+  const btn=$('panelFraktBtn');if(btn)btn.classList.add('active');
+  const tm=(typeof TEAMS!=='undefined')?TEAMS.find(t=>t.id===teamId):null;
+  toast('🏳️ Fraktionskarte'+(tm?' · '+tm.name:'')+' – tippe die Karte für normale Ansicht');
+};
+/* Karten-Tap = zurück zur normalen Ansicht (Highlight + Fraktionskarte aus). */
+function resetMapModes(){
+  let ch=false;
+  try{clearOwnerHighlight();}catch(e){}
+  if(window._fraktMapMode){window._fraktMapMode=false;const b=$('panelFraktBtn');if(b)b.classList.remove('active');ch=true;}
+  if(ch){try{renderH3Territories();}catch(e){}}
+  hideTerrBar();
+}
+window.resetMapModes=resetMapModes;
 function renderH3Territories(){
   if(!h3Layer||!h3Ready())return;
   h3Layer.clearLayers();
@@ -5157,7 +5194,7 @@ function renderH3Territories(){
     let mp;
     try{mp=h3.cellsToMultiPolygon(renderCells,false);}catch(e){return;}
     // Infos für die Gebiets-Leiste (statt Karten-Sprechblase) einmal pro Gebiet bündeln.
-    const terrInfo={name:territoryName(t),relText:(own?'Dein Gebiet':(ally?'Verbündet':'Feindlich')+(isBot?' · Bot':'')),team,own,ownerName:t.owner_name,def,tteMin,size:cells.length,rar,borderCol};
+    const terrInfo={name:territoryName(t),relText:(own?'Dein Gebiet':(ally?'Verbündet':'Feindlich')+(isBot?' · Bot':'')),team,teamId:effTeamId,owner:t.owner,own,ownerName:t.owner_name,def,tteMin,size:cells.length,rar,borderCol};
     const terrPolys=[]; // Polygone GENAU dieses Gebiets -> beim Klick nur dieses hervorheben
     mp.forEach(poly=>{
       const pl=L.polygon(poly,{color:borderCol,weight:rstyle.weight,dashArray:rstyle.dash||undefined,fillColor,
