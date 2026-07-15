@@ -2046,7 +2046,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v169';
+const APP_VERSION='v170';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -5403,6 +5403,7 @@ window.hideTerrBar=hideTerrBar;
 /* #48 Tap-Modi der Gebiets-Infoleiste. */
 window.highlightOwnerFromBar=function(owner){
   if(!owner)return;
+  window._highlightOwner=owner; // persistent -> überlebt das zoomend-Re-Render (#48-Fix)
   try{highlightOwnerTerr(owner);}catch(e){}
   // Auf das Revier dieses Spielers zentrieren.
   try{const pts=[];(_ownerPolys[owner]||[]).forEach(p=>{try{p.getLatLngs&&p.getLatLngs().flat(2).forEach(ll=>pts.push([ll.lat,ll.lng]));}catch(e){}});if(pts.length&&mapL)mapL.fitBounds(pts,{padding:[50,50]});}catch(e){}
@@ -5419,6 +5420,7 @@ window.showFactionMap=function(teamId){
 /* Karten-Tap = zurück zur normalen Ansicht (Highlight + Fraktionskarte aus). */
 function resetMapModes(){
   let ch=false;
+  window._highlightOwner=null; // #48-Fix: Besitzer-Highlight beenden
   try{clearOwnerHighlight();}catch(e){}
   if(window._fraktMapMode){window._fraktMapMode=false;const b=$('panelFraktBtn');if(b)b.classList.remove('active');ch=true;}
   if(ch){try{renderH3Territories();}catch(e){}}
@@ -5534,6 +5536,11 @@ function renderH3Territories(){
       terrPolys.push(pl);
     });
   });
+  // #48-Fix: persistenter Besitzer-Highlight. Ein durch fitBounds ausgelöstes
+  // zoomend-Re-Render baut die Polygone (und _ownerPolys) neu auf und würde die
+  // Markierung sonst verlieren -> hier nach jedem Render erneut anlegen, damit ALLE
+  // Gebiete des gewählten Spielers markiert bleiben (nicht nur die anfangs nahen).
+  if(window._highlightOwner){try{(_ownerPolys[window._highlightOwner]||[]).forEach(_applyHi);}catch(e){}}
 }
 window.loadH3Territories=loadH3Territories;
 /* Bots serverseitig anstoßen (server-gelockt, meist No-Op). Wird beim App-Start
