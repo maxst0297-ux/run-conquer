@@ -555,8 +555,11 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 
 /* ─── Share Card Editor ─── */
 #shareCardOverlay{position:fixed;inset:0;z-index:9500;background:#0b0f0d;display:none;flex-direction:column}
-#shareCardStage{flex:1;display:grid;place-items:center;overflow:hidden;min-height:0}
-#shareCardScaler{transform-origin:center center}
+#shareCardStage{flex:1;position:relative;overflow:hidden;min-height:0}
+/* Absolut zentriert statt Grid place-items:center — WebKit richtet ein Grid-Item,
+   das breiter als der Container ist (der Scaler ist layout-mäßig 1080px), sonst
+   linksbündig aus, wodurch die skalierte Karte nach rechts aus dem Bild rutscht. */
+#shareCardScaler{position:absolute;top:50%;left:50%;transform-origin:center center}
 .sc-backdrop{position:relative;overflow:hidden;border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.7)}
 .sc-backdrop.checker{background-color:#15151a;background-image:linear-gradient(45deg,#20222b 25%,transparent 25%),linear-gradient(-45deg,#20222b 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#20222b 75%),linear-gradient(-45deg,transparent 75%,#20222b 75%);background-size:40px 40px;background-position:0 0,0 20px,20px -20px,-20px 0}
 #scBdImg{position:absolute;inset:0;background-size:cover;background-position:center;pointer-events:none}
@@ -2069,7 +2072,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v176';
+const APP_VERSION='v177';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3932,7 +3935,7 @@ function scScale(){
   bd.style.width=fmt.w+'px';bd.style.height=fmt.h+'px';
   const s=Math.min((stage.clientWidth-24)/fmt.w,(stage.clientHeight-12)/fmt.h,.82);
   _scViewScale=s;
-  scaler.style.transform='scale('+s+')';
+  scaler.style.transform='translate(-50%,-50%) scale('+s+')';
 }
 
 function scRender(){scUpdateCard();scUpdateBg();scUpdateHero();scScale();scApplyCardTransform();}
