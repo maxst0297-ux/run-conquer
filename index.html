@@ -2072,7 +2072,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v177';
+const APP_VERSION='v178';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3848,7 +3848,7 @@ function downloadCanvas(canvas){
 }
 
 /* ── Share Card Editor ── */
-let _scRec=null,_scAccent='#9B5DE5',_scFormat='Quadrat',_scGlow=1,_scShowMap=true,_scShowFlag=true,_scScrim=false,_scBg='checker',_scBgPhoto=null;
+let _scRec=null,_scAccent='#9B5DE5',_scFormat='Story',_scGlow=1,_scShowMap=true,_scShowFlag=true,_scScrim=false,_scBg='checker',_scBgPhoto=null;
 /* Vordergrund-Template: verschieb-/skalierbar über dem (Foto-)Hintergrund. */
 let _scCardTX=0,_scCardTY=0,_scCardScale=1,_scViewScale=1;
 function scApplyCardTransform(){const c=document.getElementById('rcShareCard');if(c)c.style.transform='translate('+_scCardTX+'px,'+_scCardTY+'px) scale('+_scCardScale+')';}
@@ -3963,7 +3963,7 @@ function scToggle(k){
 function showShareCardEditor(rec){
   _scRec=rec;
   _scAccent=userColor||'#9B5DE5';
-  _scFormat='Quadrat';_scGlow=1;_scShowMap=true;_scShowFlag=true;_scScrim=false;_scBg='checker';
+  _scFormat='Story';_scGlow=1;_scShowMap=true;_scShowFlag=true;_scScrim=false;_scBg='checker';
   _scCardTX=0;_scCardTY=0;_scCardScale=1; // Template-Position/Größe zurücksetzen
   scInitDragResize();
   if(_scBgPhoto){URL.revokeObjectURL(_scBgPhoto);_scBgPhoto=null;}
@@ -3971,17 +3971,7 @@ function showShareCardEditor(rec){
   document.getElementById('scTime').textContent=fmtTime(rec.duration);
   document.getElementById('scPace').textContent=fmtPace(rec.distance,rec.duration);
   document.getElementById('scDist').textContent=(rec.distance/1000).toFixed(2).replace('.',',');
-  // swatches
-  const sw=document.getElementById('scSwatches');
-  if(sw)sw.innerHTML=SC_SWATCHES.map(c=>`<div class="sc-swatch${c===_scAccent?' on':''}" style="background:${c}" data-c="${c}" onclick="scSetAccent('${c}')"></div>`).join('');
-  // color picker
-  const pk=document.getElementById('scColorPicker');
-  if(pk){pk.value=(/^#[0-9a-f]{6}$/i.test(_scAccent))?_scAccent:'#9b5de5';pk.oninput=e=>scSetAccent(e.target.value);}
-  // format buttons
-  document.querySelectorAll('.sc-fmt').forEach(b=>{
-    b.classList.toggle('on',b.dataset.fmt===_scFormat);
-    b.onclick=()=>{_scFormat=b.dataset.fmt;document.querySelectorAll('.sc-fmt').forEach(x=>x.classList.toggle('on',x===b));scRender();};
-  });
+  // Akzentfarbe fix aus Nutzerfarbe (keine Auswahl mehr) · Format fest = Story
   // bg buttons
   document.querySelectorAll('.sc-bg-btn').forEach(b=>{
     b.classList.toggle('on',b.dataset.bg===_scBg);
@@ -9916,19 +9906,7 @@ if('serviceWorker' in navigator){
         <input type="file" id="scPhotoInput" accept="image/*" style="display:none">
       </div>
     </div>
-    <div class="sc-ctrl-row">
-      <span style="font-size:.6rem;color:rgba(255,255,255,.35);letter-spacing:.5px;flex-shrink:0">COL</span>
-      <div id="scSwatches" style="display:flex;gap:6px;flex-wrap:wrap"></div>
-      <label style="position:relative;width:26px;height:26px;border-radius:50%;border:1.5px dashed rgba(255,255,255,.3);cursor:pointer;flex-shrink:0;overflow:hidden;display:grid;place-items:center;font-size:.7rem;color:rgba(255,255,255,.4)">
-        +<input type="color" id="scColorPicker" style="position:absolute;inset:-4px;opacity:0;width:140%;height:140%;cursor:pointer">
-      </label>
-    </div>
     <div class="sc-ctrl-row" style="gap:6px;margin-bottom:8px">
-      <span style="font-size:.6rem;color:rgba(255,255,255,.35);letter-spacing:.5px;flex-shrink:0">FMT</span>
-      <button class="sc-fmt on" data-fmt="Quadrat">Quadrat</button>
-      <button class="sc-fmt" data-fmt="Hochkant">Hochkant</button>
-      <button class="sc-fmt" data-fmt="Story">Story</button>
-      <div style="width:1px;height:20px;background:rgba(255,255,255,.1);flex-shrink:0"></div>
       <div class="sc-tog on" id="scTogMap" onclick="scToggle('map')"><div class="sc-knob"></div><span>Straßen</span></div>
       <div class="sc-tog on" id="scTogFlag" onclick="scToggle('flag')"><div class="sc-knob"></div><span>Flagge</span></div>
       <div class="sc-tog" id="scTogScrim" onclick="scToggle('scrim')"><div class="sc-knob"></div><span>Schatten</span></div>
