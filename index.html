@@ -2051,7 +2051,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v172';
+const APP_VERSION='v173';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -5410,8 +5410,9 @@ window.highlightOwnerFromBar=function(owner){
   if(!owner)return;
   window._highlightOwner=owner; // persistent -> überlebt das zoomend-Re-Render (#48-Fix)
   try{highlightOwnerTerr(owner);}catch(e){}
-  // Auf das Revier dieses Spielers zentrieren.
-  try{const pts=[];(_ownerPolys[owner]||[]).forEach(p=>{try{p.getLatLngs&&p.getLatLngs().flat(2).forEach(ll=>pts.push([ll.lat,ll.lng]));}catch(e){}});if(pts.length&&mapL)mapL.fitBounds(pts,{padding:[50,50]});}catch(e){}
+  // Nur ein Stück herauszoomen (Zentrum halten), damit man mehr der markierten
+  // Gebiete in der Umgebung sieht — NICHT auf alle Gebiete zoomen (das zoomte zu weit raus).
+  try{if(mapL)mapL.setZoom(Math.max(3,mapL.getZoom()-2),{animate:true});}catch(e){}
   toast('👤 Alle Gebiete dieses Spielers');
 };
 window.showFactionMap=function(teamId){
