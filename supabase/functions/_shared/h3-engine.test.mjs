@@ -1,5 +1,5 @@
 import * as h3 from 'h3-js';
-import { createEngine, paceFactor, distanceBonus, runValue, validateRun, decayedDefense, timeToMinMs, DECAY_PER_DAY, pickBotTargets, pickBotCleanup, botAttack, BOT_NEW_DEFENSE } from './h3-engine.mjs';
+import { createEngine, paceFactor, distanceBonus, runValue, validateRun, validateTrack, decayedDefense, timeToMinMs, DECAY_PER_DAY, pickBotTargets, pickBotCleanup, botAttack, BOT_NEW_DEFENSE } from './h3-engine.mjs';
 
 const eng = createEngine(h3);
 let pass = 0, fail = 0;
@@ -195,6 +195,23 @@ ok('validate: 25-km/h-Hardcap', validateRun({ distanceM: 5000, durationS: 600 })
 ok('validate: Cadence 0 bei Tempo -> ungültig', validateRun({ distanceM: 2000, durationS: 600, cadence: 0 }).reason === 'cadence_zero');
 ok('validate: Cadence null -> nicht geprüft (OK)', validateRun({ distanceM: 2000, durationS: 600, cadence: null }).ok === true);
 ok('validate: Cadence 160 -> OK', validateRun({ distanceM: 2000, durationS: 600, cadence: 160 }).ok === true);
+
+// ===== #33 validateTrack: Teleport-/Spoof-Erkennung auf Segment-Ebene =====
+{
+  const A = [48.137, 11.575];
+  // Normaler Lauf: ~50 m in 20 s = 9 km/h -> ok
+  const normal = [[A[0], A[1], 0], [A[0] + 0.00045, A[1], 20000], [A[0] + 0.00090, A[1], 40000]];
+  ok('validateTrack: normaler Lauf ok', validateTrack(normal).ok === true);
+  // Einzelner Teleport: ~1000 m in 10 s = 360 km/h -> ungültig
+  const teleport = [[A[0], A[1], 0], [A[0] + 0.009, A[1], 10000]];
+  const rt = validateTrack(teleport);
+  ok('validateTrack: Teleport -> speed_hardcap', rt.ok === false && rt.reason === 'speed_hardcap', 'r=' + JSON.stringify(rt));
+  // Anhaltend zu schnell: je ~100 m in 10 s = 36 km/h -> > fastFrac -> ungültig
+  const fast = [[A[0], A[1], 0], [A[0] + 0.0009, A[1], 10000], [A[0] + 0.0018, A[1], 20000], [A[0] + 0.0027, A[1], 30000]];
+  ok('validateTrack: anhaltend zu schnell -> ungültig', validateTrack(fast).ok === false);
+  // Ohne Zeitstempel (Alt-Track/Import): NICHT geprüft -> ok
+  ok('validateTrack: ohne Zeitstempel -> ok', validateTrack([[A[0], A[1]], [A[0] + 0.009, A[1]]]).ok === true);
+}
 
 // Lauf durch eigenes Gebiet UND nach außen: Verteidigung steigt + Außen-Pfad
 // wird als neues Gebiet beansprucht (nichts geht verloren).
