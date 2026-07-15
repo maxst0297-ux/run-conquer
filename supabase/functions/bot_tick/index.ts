@@ -15,7 +15,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import * as h3 from 'https://esm.sh/h3-js@4.1.0';
 import {
-  botAttack, decayedDefense,
+  botAttack, decayedDefense, pickBotCleanup,
   BOT_NEW_DEFENSE, BOT_ACTIONS_PER_TICK, BOT_ATK_MIN, BOT_ATK_MAX, BOT_CLAIM_CELLS, BOT_ATTACK_CHANCE,
 } from '../_shared/h3-engine.mjs';
 
@@ -69,6 +69,20 @@ Deno.serve(async (req) => {
     const now = new Date().toISOString();
     const claimedThisTick = new Set<string>();
     const actions: any[] = [];
+
+    // ── Bot-Wachstum begrenzen: die schwächsten (verfallensten) Bot-Gebiete über
+    //    der Obergrenze entfernen (h3_cells cascaden). Verhindert, dass die Welt/DB
+    //    durch endloses Neu-Beanspruchen der Bots unbegrenzt zuwächst. Best-effort.
+    try {
+      const cleanupIds = pickBotCleanup({
+        territories: trows.map((t: any) => ({ id: t.id, owner: t.owner, defense: t.defense, updatedAtMs: Date.parse(t.updated_at) || 0 })),
+        nowMs, botOwnerIds: [...botIdSet],
+      });
+      if (cleanupIds.length) {
+        await svc.from('h3_territories').delete().in('id', cleanupIds);
+        actions.push({ type: 'cleanup', removed: cleanupIds.length });
+      }
+    } catch (_) { /* Aufräumen ist optional */ }
     // Monats-Fraktionspunkte: Bot-Aktionen halten den Saison-Wettkampf lebendig.
     // Fehlt das SQL (rc_add_faction_points), scheitert das leise.
     const monthKey = now.slice(0, 7); // 'YYYY-MM'

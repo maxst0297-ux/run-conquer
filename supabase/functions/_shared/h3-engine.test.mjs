@@ -1,5 +1,5 @@
 import * as h3 from 'h3-js';
-import { createEngine, paceFactor, distanceBonus, runValue, validateRun, decayedDefense, timeToMinMs, DECAY_PER_DAY, pickBotTargets, botAttack, BOT_NEW_DEFENSE } from './h3-engine.mjs';
+import { createEngine, paceFactor, distanceBonus, runValue, validateRun, decayedDefense, timeToMinMs, DECAY_PER_DAY, pickBotTargets, pickBotCleanup, botAttack, BOT_NEW_DEFENSE } from './h3-engine.mjs';
 
 const eng = createEngine(h3);
 let pass = 0, fail = 0;
@@ -238,6 +238,22 @@ ok('timeToMin: def 41 -> 5 Tage', near(timeToMinMs(41, 0, 0) / DAY, (41 - 1) / D
   const now = 0;
   const terrs = [{ id: 'X', owner: 'p', defense: 300, updatedAtMs: 0 }];
   ok('pickBotTargets: nichts Verfallenes -> leer', pickBotTargets({ territories: terrs, nowMs: now }).length === 0);
+}
+
+// ===== #3 Bot-Cap: pickBotCleanup entfernt die schwächsten Bot-Gebiete über cap =====
+{
+  const now = 0, DAY = 86400000;
+  const terrs = [
+    { id: 'B1', owner: 'bot', defense: 300, updatedAtMs: now },          // stark -> behalten
+    { id: 'B2', owner: 'bot', defense: 40,  updatedAtMs: now - 6 * DAY },// verfallen -> weg
+    { id: 'B3', owner: 'bot', defense: 100, updatedAtMs: now - 20 * DAY },// verfallen -> weg
+    { id: 'B4', owner: 'bot', defense: 200, updatedAtMs: now },          // stark -> behalten
+    { id: 'P',  owner: 'player', defense: 1, updatedAtMs: now - 99 * DAY },// Spieler -> NIE anfassen
+  ];
+  const del = pickBotCleanup({ territories: terrs, nowMs: now, botOwnerIds: ['bot'], cap: 2 });
+  ok('pickBotCleanup: schwächste Bot-Gebiete über cap entfernen', del.length === 2 && del.includes('B2') && del.includes('B3') && !del.includes('B1') && !del.includes('B4'), 'del=' + del.join(','));
+  ok('pickBotCleanup: Spieler-Gebiete nie entfernen', !del.includes('P'));
+  ok('pickBotCleanup: unter cap -> leer', pickBotCleanup({ territories: terrs, nowMs: now, botOwnerIds: ['bot'], cap: 10 }).length === 0);
 }
 
 // Bot-Angriff (durchschnittliche Stärke)
