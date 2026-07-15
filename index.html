@@ -2069,7 +2069,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v175';
+const APP_VERSION='v176';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2702,29 +2702,25 @@ window.initGoalsSwipe=initGoalsSwipe;
 function renderRewards(){
   const el=document.getElementById('pvRewards');if(!el)return;
   const days=Object.keys(STREAK_REWARDS).map(Number).sort((a,b)=>a-b);
-  // #51 — "aktuelle" Belohnung = erste noch nicht freigeschaltete (das nächste Ziel),
-  // sonst die letzte. Diese wird nach dem Rendern mittig gescrollt.
-  const curDay=days.find(d=>!streakUnlocks.includes(STREAK_REWARDS[d].id))||days[days.length-1];
+  // Kompaktes Raster: 4 Belohnungen pro Reihe, danach nach unten umbrechend.
   const cards=days.map(day=>{
     const r=STREAK_REWARDS[day];
     const unlocked=streakUnlocks.includes(r.id);
     const active=r.type==='color'?(String(userColor).toLowerCase()===r.value.toLowerCase()):(equipped[r.type]===r.id);
     let ctrl;
-    if(!unlocked)ctrl=`<div style="font-size:.6rem;color:var(--muted);white-space:nowrap;margin-top:8px">🔒 ab Tag ${day}</div>`;
-    else if(active)ctrl=`<div style="font-size:.62rem;color:#10b981;font-weight:700;white-space:nowrap;margin-top:8px">✓ Aktiv</div>`;
-    else ctrl=`<button onclick="window.equipReward('${r.id}')" style="margin-top:8px;background:var(--primary);color:var(--bg);border:none;border-radius:20px;padding:6px 14px;font-size:.66rem;font-weight:700;cursor:pointer;white-space:nowrap;touch-action:manipulation">Anlegen</button>`;
+    if(!unlocked)ctrl=`<div style="font-size:.5rem;color:var(--muted);margin-top:5px">🔒 Tag ${day}</div>`;
+    else if(active)ctrl=`<div style="font-size:.54rem;color:#10b981;font-weight:700;margin-top:5px">✓ Aktiv</div>`;
+    else ctrl=`<button onclick="window.equipReward('${r.id}')" style="margin-top:5px;background:var(--primary);color:var(--bg);border:none;border-radius:12px;padding:3px 8px;font-size:.56rem;font-weight:700;cursor:pointer;touch-action:manipulation">Anlegen</button>`;
     const preview=r.type==='color'
-      ? `<div style="width:46px;height:46px;border-radius:50%;background:${r.value};margin:0 auto;box-shadow:0 0 0 2px var(--border)${active?',0 0 12px '+r.value:''}"></div>`
-      : `<div style="font-size:2rem;height:46px;line-height:46px">${r.icon}</div>`;
-    return `<div ${day===curDay?'id="pvRwCur"':''} style="flex:0 0 auto;width:124px;text-align:center;background:var(--bg2);border:1px solid ${active?'var(--primary)':'var(--border)'};border-radius:16px;padding:14px 10px;opacity:${unlocked?1:.6};scroll-snap-align:start">
+      ? `<div style="width:32px;height:32px;border-radius:50%;background:${r.value};margin:0 auto;box-shadow:0 0 0 2px var(--border)${active?',0 0 10px '+r.value:''}"></div>`
+      : `<div style="font-size:1.5rem;height:32px;line-height:32px">${r.icon}</div>`;
+    return `<div style="text-align:center;background:var(--bg2);border:1px solid ${active?'var(--primary)':'var(--border)'};border-radius:12px;padding:9px 4px;opacity:${unlocked?1:.6};min-width:0">
       ${preview}
-      <div style="font-size:.74rem;font-weight:700;margin-top:8px;line-height:1.2">${r.name}</div>
-      <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px">${REWARD_TYPE_LABEL[r.type]}</div>
+      <div style="font-size:.56rem;font-weight:600;margin-top:5px;line-height:1.15;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${r.name}</div>
       ${ctrl}
     </div>`;
   }).join('');
-  el.innerHTML=`<div class="section-title"><i class="fas fa-gift"></i> Belohnungen <span style="font-size:.62rem;color:var(--muted);font-weight:400;margin-left:auto">${streakUnlocks.length}/${days.length} frei</span></div><div id="pvRewardsScroll" style="display:flex;gap:12px;overflow-x:auto;padding:4px 2px 8px;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity">${cards}</div>`;
-  requestAnimationFrame(()=>_centerScroller(document.getElementById('pvRewardsScroll'),document.getElementById('pvRwCur')));
+  el.innerHTML=`<div class="section-title"><i class="fas fa-gift"></i> Belohnungen <span style="font-size:.62rem;color:var(--muted);font-weight:400;margin-left:auto">${streakUnlocks.length}/${days.length} frei</span></div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${cards}</div>`;
 }
 window.equipReward=equipReward;window.unequipReward=unequipReward;
 /* ── FRAKTIONSSIEGER-MEDAILLON (Design-Handoff „champion-icon") ──────────────
