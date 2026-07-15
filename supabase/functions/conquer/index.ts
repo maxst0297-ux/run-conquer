@@ -12,7 +12,7 @@
    ========================================================================== */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import * as h3 from 'https://esm.sh/h3-js@4.1.0';
-import { createEngine, validateRun } from '../_shared/h3-engine.mjs';
+import { createEngine, validateRun, validateTrack } from '../_shared/h3-engine.mjs';
 
 const engine = createEngine(h3);
 
@@ -70,6 +70,11 @@ Deno.serve(async (req) => {
     // Anti-Cheat (GDS 3.1): Mindestdistanz, 25-km/h-Hardcap, Cadence-Plausibilität.
     const v = validateRun({ distanceM, durationS, cadence });
     if (!v.ok) return json({ error: v.reason }, 400);
+    // Anti-Cheat (#33): Teleport-/Spoof-Erkennung pro Segment über die Fix-Zeitstempel.
+    // Fängt Manipulation ab, die das DURCHSCHNITTS-Tempo versteckt (einzelne Sprünge /
+    // anhaltend zu schnelle Bewegung). Grund 'speed_hardcap' -> bestehende Client-Meldung.
+    const vt = validateTrack(path);
+    if (!vt.ok) return json({ error: vt.reason }, 400);
     const paceKmh = v.paceKmh;
 
     // ── GPS-Track -> H3-Zellen (+ Tempo je Zelle, #44); Loop -> eingeschlossen ──

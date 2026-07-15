@@ -174,6 +174,33 @@ export function haversineM(a, b) {
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
 }
 
+/* Anti-Cheat: Teleport-/Spoof-Erkennung auf SEGMENT-Ebene (#33). Nutzt die
+   Zeitstempel je GPS-Fix ([lat,lng,tMs], #44), die das Durchschnitts-Tempo NICHT
+   zeigt. Ungültig, wenn (a) ein einzelnes Segment schneller als `hardKmh` ist
+   (unmöglicher Sprung) ODER (b) mehr als `fastFrac` der getrackten Distanz über
+   `maxKmh` (25) zurückgelegt wurde (anhaltend zu schnell -> Fahrzeug/Spoof).
+   Fehlen Zeitstempel (Alt-Track/Import), wird NICHT geprüft (ok). Rein + testbar.
+   Rückgabe-Grund 'speed_hardcap' -> nutzt die bestehende Client-Meldung. */
+export function validateTrack(latlngs, { maxKmh = HARD_MAX_KMH, hardKmh = 45, fastFrac = 0.35 } = {}) {
+  let prev = null, trackedDist = 0, fastDist = 0;
+  for (const ll of (latlngs || [])) {
+    const lat = ll[0], lng = ll[1], t = (ll.length > 2 && ll[2] != null) ? +ll[2] : null;
+    if (prev && prev.t != null && t != null && t > prev.t) {
+      const dM = haversineM([prev.lat, prev.lng], [lat, lng]);
+      const dtH = (t - prev.t) / 3600000;
+      if (dtH > 0) {
+        const kmh = (dM / 1000) / dtH;
+        trackedDist += dM;
+        if (kmh > hardKmh) return { ok: false, reason: 'speed_hardcap', kmh };
+        if (kmh > maxKmh) fastDist += dM;
+      }
+    }
+    prev = { lat, lng, t };
+  }
+  if (trackedDist > 0 && fastDist > fastFrac * trackedDist) return { ok: false, reason: 'speed_hardcap' };
+  return { ok: true };
+}
+
 export function createEngine(h3) {
   if (!h3 || !h3.latLngToCell) throw new Error('createEngine: h3-Lib fehlt');
 
