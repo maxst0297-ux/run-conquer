@@ -421,6 +421,23 @@ body.onboarding-active{background:#000}
 .ac-pts{color:var(--primary);font-weight:600}
 
 .empty-state{text-align:center;padding:40px 20px;color:var(--muted)}
+/* ═══ SKELETON-SCREENS (Ladeplatzhalter mit Shimmer, theme-adaptiv) ═══
+   Spiegelt die echte Zeilen-Struktur (.list-row), damit beim Daten-Eintreffen
+   kein Layout-Sprung entsteht. Farben via color-mix aus --text -> passt sich
+   automatisch an helle/dunkle Themes an. */
+:root{--skel-base:color-mix(in srgb, var(--text, #fff) 9%, transparent);--skel-hi:color-mix(in srgb, var(--text, #fff) 20%, transparent)}
+.skel{position:relative;overflow:hidden;background:var(--skel-base);border-radius:6px}
+.skel::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,var(--skel-hi),transparent);animation:skelShimmer 1.25s ease-in-out infinite}
+@keyframes skelShimmer{100%{transform:translateX(100%)}}
+.skel-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.skel-av{width:34px;height:34px;border-radius:50%;flex:0 0 auto}
+.skel-txt{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0}
+.skel-l1{height:11px;width:58%}
+.skel-l2{height:9px;width:38%}
+.skel-meta{width:44px;height:14px;flex:0 0 auto;border-radius:6px}
+.skel-card{height:88px;border-radius:16px;margin-bottom:10px}
+.skel-block{border-radius:10px}
+@media (prefers-reduced-motion:reduce){.skel::after{animation:none;opacity:.5}}
 .empty-state i{font-size:2.5rem;margin-bottom:12px;display:block;opacity:.3}
 .empty-state p{font-size:.85rem}
 
@@ -2026,7 +2043,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v166';
+const APP_VERSION='v167';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2339,6 +2356,24 @@ function _toastNext(){
   setTimeout(()=>{toastEl.style.opacity=0;setTimeout(_toastNext,220);},hold);
 }
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+/* Skeleton-Ladeplatzhalter: n Zeilen im .list-row-Layout (Avatar + 2 Textzeilen +
+   Meta). Ersetzt "⏳ Lädt…"-Texte, damit Inhalte nach der Skeleton-Screen-Methode
+   laden. rcSkelProfile: Platzhalter für Profil-Popups. */
+function rcSkel(n=6){
+  n=Math.max(1,Math.min(12,n|0));
+  let r='';
+  for(let i=0;i<n;i++)r+='<div class="skel-row"><div class="skel skel-av"></div><div class="skel-txt"><div class="skel skel-l1"></div><div class="skel skel-l2"></div></div><div class="skel skel-meta"></div></div>';
+  return r;
+}
+function rcSkelProfile(){
+  return '<div style="padding:8px 4px 4px"><div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">'
+    +'<div class="skel" style="width:64px;height:64px;border-radius:50%;flex:0 0 auto"></div>'
+    +'<div style="flex:1;display:flex;flex-direction:column;gap:8px"><div class="skel skel-block" style="height:16px;width:55%"></div><div class="skel skel-block" style="height:11px;width:35%"></div></div></div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:14px">'
+    +'<div class="skel skel-card" style="flex:1"></div><div class="skel skel-card" style="flex:1"></div><div class="skel skel-card" style="flex:1"></div></div>'
+    +rcSkel(4)+'</div>';
+}
+window.rcSkel=rcSkel;
 function beep(f,d=.1){try{const c=new(window.AudioContext||window.webkitAudioContext)();if(c.state==='suspended')c.resume();const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=f;g.gain.value=.08;o.start();o.stop(c.currentTime+d);}catch(e){}}
 function vib(ms){if(navigator.vibrate)navigator.vibrate(ms)}
 function showBoostInfo(){toast('⚡ Boosts verdoppeln deine Punkte für einen Lauf. Du erhältst '+CFG.ENERGY_MAX+' neue Boosts pro Woche.');}
@@ -3087,7 +3122,7 @@ function renderClubCommunity(){
     </div>
     <span style="font-family:'Bebas Neue',sans-serif;font-size:.85rem;background:rgba(var(--primary-rgb),.12);color:var(--primary);border:1px solid rgba(var(--primary-rgb),.25);border-radius:8px;padding:3px 9px;cursor:pointer;flex-shrink:0" onclick="navigator.clipboard?.writeText('${code}').then(()=>toast('📋 Code kopiert')).catch(()=>toast('Code: ${code}'))">${code}</span>
   </div>
-  <div id="clubCommMemberList"><div style="padding:10px;text-align:center;color:var(--muted);font-size:.75rem">⏳ Lade Mitglieder…</div></div>`;
+  <div id="clubCommMemberList">${rcSkel(5)}</div>`;
   if(!sb)return;
   sb.from('profiles').select('user_id,player_name,user_avatar,user_color,points,total_km,streak_days,total_conquered').eq('club_code',userClub.code).order('points',{ascending:false}).limit(25)
     .then(({data,error})=>{
@@ -3505,7 +3540,7 @@ function updateSettingsBadge(){
 
 /* ── FRAKTION MITGLIEDER ── */
 async function loadFraktionMembers(teamId,container){
-  container.innerHTML='<div style="padding:12px;text-align:center;color:var(--muted);font-size:.78rem">⏳ Lade Mitglieder…</div>';
+  container.innerHTML=rcSkel(6);
   if(!sb){container.innerHTML='<div style="padding:12px;color:var(--muted);font-size:.75rem;text-align:center">Keine Verbindung</div>';return;}
   try{
     const{data,error}=await sb.from('profiles').select('player_name,user_avatar,user_color,points,total_km,total_conquered').eq('user_team',teamId).order('points',{ascending:false}).limit(15);
@@ -3524,7 +3559,7 @@ async function loadFraktionMembers(teamId,container){
 
 /* ── CLUB MITGLIEDER ── */
 async function loadClubMembers(clubCode,container){
-  container.innerHTML='<div style="padding:10px;text-align:center;color:var(--muted);font-size:.75rem">⏳ Lade Mitglieder…</div>';
+  container.innerHTML=rcSkel(6);
   if(!sb){container.innerHTML='<div style="padding:10px;color:var(--muted);font-size:.75rem;text-align:center">Keine Verbindung</div>';return;}
   try{
     const{data,error}=await sb.from('profiles').select('player_name,user_avatar,user_color,points,total_km,streak_days,total_conquered').eq('club_code',clubCode).order('points',{ascending:false}).limit(20);
@@ -3545,7 +3580,7 @@ async function showPublicProfile(p){
   document.getElementById('pubProfileOverlay')?.remove();
   const ov=document.createElement('div');ov.id='pubProfileOverlay';
   ov.style.cssText='position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center';
-  ov.innerHTML=`<div style="width:100%;max-width:480px;background:var(--card);border-radius:24px 24px 0 0;padding:34px 20px calc(34px + env(safe-area-inset-bottom));text-align:center"><div style="color:var(--muted);font-size:.85rem">⏳ Profil wird geladen…</div></div>`;
+  ov.innerHTML=`<div style="width:100%;max-width:480px;background:var(--card);border-radius:24px 24px 0 0;padding:34px 20px calc(34px + env(safe-area-inset-bottom));text-align:center">${rcSkelProfile()}</div>`;
   ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
   document.body.appendChild(ov);
   /* Vollständiges Profil laden – die Sichtbarkeit (öffentlich/privat) bestimmt,
@@ -6577,7 +6612,7 @@ function renderStravaPanel(){
 }
 async function loadStravaActivitiesUI(){
   const list=$('stravaActList');if(!list)return;
-  list.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted)">⏳ Lädt…</div>';
+  list.innerHTML=rcSkel(5);
   try{
     const r=await fetch('https://www.strava.com/api/v3/athlete/activities?per_page=25',
       {headers:{Authorization:`Bearer ${stravaToken}`}});
@@ -6746,7 +6781,7 @@ async function renderFriends(){
   const addRow=`<div style="display:flex;gap:8px;margin-bottom:10px"><input type="text" id="friendSearchInput" class="modal-input" placeholder="Name suchen…" style="flex:1;font-size:.8rem"><button class="btn btn-p" id="friendSearchBtn" style="padding:6px 12px;flex-shrink:0"><i class="fas fa-search"></i></button></div>`;
   let html=addRow;
   if(friends.length===0){html+=emptyStateHtml('fa-user-friends','Noch keine Freunde — gemeinsam läuft es sich besser.<br>Such oben nach einem Namen oder stöbere durch die Spieler.','🔍 Spieler entdecken','rcGoDiscover()');}
-  else{html+='<div style="display:flex;flex-direction:column;gap:6px" id="friendsRankList"><div style="padding:8px;text-align:center;color:var(--muted);font-size:.75rem">⏳ Lade…</div></div>';}
+  else{html+='<div style="display:flex;flex-direction:column;gap:6px" id="friendsRankList">'+rcSkel(4)+'</div>';}
   el.innerHTML=html;
   document.getElementById('friendSearchBtn')?.addEventListener('click',async()=>{
     const name=(document.getElementById('friendSearchInput')?.value||'').trim();if(name.length<2)return;
@@ -6768,7 +6803,7 @@ async function renderClubWars(){
   const allClubs=JSON.parse(localStorage.getItem('rc_clubs_db')||'{}');
   const clubCodes=Object.keys(allClubs);
   if(!clubCodes.length){el.innerHTML=emptyStateHtml('fa-shield-alt','Noch keine Club-Duelle.<br>Gründe deinen eigenen Club oder tritt einem bei — dann zählt jede Woche.','🛡️ Club gründen / beitreten','rcGoClub()');return;}
-  el.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:6px">⏳ Lade Club-Daten…</div>';
+  el.innerHTML=rcSkel(4);
   try{
     const{data}=await sb.from('profiles').select('player_name,points,club_code').in('club_code',clubCodes.slice(0,20));
     const wars={};
@@ -6786,7 +6821,7 @@ async function discoverySearch(){
   const raw=(document.getElementById('discSearchInput')?.value||'').trim();
   const dl=document.getElementById('discList');
   if(raw.length<2){if(dl)dl.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:8px">Mind. 2 Zeichen oder eine Spieler-Nummer eingeben.</div>';return;}
-  if(dl)dl.innerHTML='<div style="padding:8px;text-align:center;color:var(--muted);font-size:.75rem">⏳ Suche…</div>';
+  if(dl)dl.innerHTML=rcSkel(4);
   const isNum=/^\d{3,}$/.test(raw);
   try{
     let q=sb.from('profiles').select('id,user_id,player_name,user_avatar,user_color,points,total_km,user_team,player_number');
@@ -6802,7 +6837,7 @@ async function discoverySearch(){
 }
 async function renderPlayerDiscovery(){
   const el=$('playerDiscoveryList');if(!el)return;
-  el.innerHTML=`<div style="display:flex;gap:8px;margin-bottom:10px"><input type="text" id="discSearchInput" class="modal-input" placeholder="Name oder Spieler-Nummer…" style="flex:1;font-size:.8rem"><button class="btn btn-p" id="discSearchBtn" style="padding:6px 14px;flex-shrink:0"><i class="fas fa-search"></i></button></div><div style="font-size:.62rem;color:var(--muted);margin:-4px 0 8px">👥 Bis zu 10 Spieler in deiner Nähe · oder oben per Nummer suchen</div><div id="discList"><div style="padding:10px;text-align:center;color:var(--muted);font-size:.78rem">⏳ Lade…</div></div>`;
+  el.innerHTML=`<div style="display:flex;gap:8px;margin-bottom:10px"><input type="text" id="discSearchInput" class="modal-input" placeholder="Name oder Spieler-Nummer…" style="flex:1;font-size:.8rem"><button class="btn btn-p" id="discSearchBtn" style="padding:6px 14px;flex-shrink:0"><i class="fas fa-search"></i></button></div><div style="font-size:.62rem;color:var(--muted);margin:-4px 0 8px">👥 Bis zu 10 Spieler in deiner Nähe · oder oben per Nummer suchen</div><div id="discList">${rcSkel(6)}</div>`;
   document.getElementById('discSearchBtn')?.addEventListener('click',discoverySearch);
   document.getElementById('discSearchInput')?.addEventListener('keydown',e=>{if(e.key==='Enter')discoverySearch();});
   // Initialliste: bis zu 10 Spieler in der Nähe (nach Gebiets-Entfernung zum
@@ -6876,7 +6911,7 @@ async function openPlayerCard(uid,name){
   if(!sb||!uid)return;
   const ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;z-index:9900;background:rgba(0,0,0,.75);display:flex;align-items:flex-end;justify-content:center;padding:0';
-  ov.innerHTML=`<div style="width:100%;max-width:480px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:22px 22px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom,0px));-webkit-overflow-scrolling:touch"><div id="pcBody"><div style="text-align:center;color:var(--muted);padding:30px">⏳ Lade Profil…</div></div></div>`;
+  ov.innerHTML=`<div style="width:100%;max-width:480px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:22px 22px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom,0px));-webkit-overflow-scrolling:touch"><div id="pcBody">${rcSkelProfile()}</div></div>`;
   ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
   document.body.appendChild(ov);
   try{
@@ -6952,7 +6987,7 @@ window.openPlayerCard=openPlayerCard;
 /* CLUB DISCOVERY */
 async function renderClubDiscovery(){
   const el=$('clubDiscoveryList');if(!el)return;
-  el.innerHTML='<div style="padding:10px;text-align:center;color:var(--muted);font-size:.78rem">⏳ Lade Clubs…</div>';
+  el.innerHTML=rcSkel(6);
   try{
     if(!sb)throw new Error('no sb');
     const{data}=await sb.from('profiles').select('player_name,points,club_code').not('club_code','is',null).order('points',{ascending:false}).limit(100);
@@ -7212,6 +7247,7 @@ window.claimEvent=async function(eid){
 async function renderFactionWar(){
   const el=$('teamRankList');
   if(!el)return;
+  el.innerHTML=rcSkel(4); // Skeleton während der Fraktions-Aggregation lädt
   let stats,isLive=false;const monthXp={};
   try{
     if(!sb)throw 0;
@@ -7368,7 +7404,7 @@ async function renderLeaderboard(){
   if(!lb)return;
   initLbTabs();
   const medals=['🥇','🥈','🥉'];
-  lb.innerHTML='<div style="padding:12px;color:var(--muted);font-size:.8rem;text-align:center">⏳ Lade Rangliste…</div>';
+  lb.innerHTML=rcSkel(8);
   try{
     if(!sb||!sbUserId)throw new Error('no sb');
     if(lbScope==='local'){
@@ -7839,10 +7875,10 @@ function renderAdminTab(tab){
   document.querySelectorAll('[data-atab]').forEach(b=>b.classList.toggle('active',b.dataset.atab===tab));
   const body=$('adminTabBody');if(!body)return;
   if(tab==='users'){
-    body.innerHTML='<div style="padding:12px;color:var(--muted);font-size:.8rem;text-align:center">⏳ Lade Sportler…</div>';
+    body.innerHTML=rcSkel(6);
     loadAdminUsers();
   } else if(tab==='support'){
-    body.innerHTML='<div style="padding:12px;color:var(--muted);font-size:.8rem;text-align:center">⏳ Lade Nachrichten…</div>';
+    body.innerHTML=rcSkel(6);
     loadAdminMessages();
   } else if(tab==='charts'){
     body.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px"><div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center"><canvas id="adminWeekChart" height="80"></canvas><div style="font-size:.6rem;color:var(--muted);margin-top:4px">Wochenaktivität</div></div><div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center"><canvas id="adminTerrChart" height="80"></canvas><div style="font-size:.6rem;color:var(--muted);margin-top:4px">Gebiete</div></div></div><div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px;margin-bottom:8px"><canvas id="adminRadarChart" height="110"></canvas><div style="font-size:.6rem;color:var(--muted);text-align:center;margin-top:4px">Fitness-Radar</div></div><div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px"><canvas id="adminLineChart" height="70"></canvas><div style="font-size:.6rem;color:var(--muted);text-align:center;margin-top:4px">30-Tage Aktivität</div></div>`;
@@ -8064,7 +8100,7 @@ async function loadAdminSupportMsgs(container){
   supportVisitTs=Date.now();
   localStorage.setItem('rc_sup_visit_'+userId,supportVisitTs);
   updateDmBadge();
-  el.innerHTML='<div style="padding:16px;color:var(--muted);font-size:.8rem;text-align:center">⏳ Lade…</div>';
+  el.innerHTML=rcSkel(6);
   try{
     if(!sb)throw new Error('Keine Verbindung');
     const{data,error}=await sb.from('support_messages').select('*').order('created_at',{ascending:false}).limit(100);
@@ -8228,7 +8264,7 @@ async function deleteSupportMsg(id){
 /* DM-Konversationsliste */
 async function loadDmConvList(container){
   const el=container||$('inboxBody');if(!el)return;
-  el.innerHTML='<div style="padding:16px;color:var(--muted);font-size:.8rem;text-align:center">⏳ Lade Chats…</div>';
+  el.innerHTML=rcSkel(6);
   try{
     if(!sb||!userId)throw new Error('Keine Verbindung');
     const{data,error}=await sb.from('direct_messages').select('*').or(`from_uid.eq.${userId},to_uid.eq.${userId}`).order('created_at',{ascending:false}).limit(300);
