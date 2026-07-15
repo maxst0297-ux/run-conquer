@@ -130,6 +130,24 @@ export function pickBotTargets({ territories, nowMs, maxDef = BOT_TAKE_DEF_MAX, 
   return cand.slice(0, limit).map(c => c.id);
 }
 
+// ── Bot-Aufräumen: begrenzt das unbegrenzte Wachstum der Bot-Gebiete ──
+// Bots beanspruchen jeden Tick neue Zellen; ohne Obergrenze füllt sich Welt/DB
+// endlos. Liefert die IDs der Bot-Gebiete, die WEG sollen: die schwächsten
+// (am stärksten verfallenen) über der Obergrenze `cap`. Spieler-Gebiete werden
+// NIE angefasst (deren Verfall ist gewolltes Gameplay). Rein + testbar.
+export const BOT_TERR_CAP = 1000; // max. gleichzeitige Bot-Gebiete weltweit
+export function pickBotCleanup({ territories, nowMs = 0, botOwnerIds = [], cap = BOT_TERR_CAP } = {}) {
+  const bots = new Set(botOwnerIds);
+  const botTerr = [];
+  for (const t of (territories || [])) {
+    if (!bots.has(t.owner)) continue;
+    botTerr.push({ id: t.id, def: decayedDefense(t.defense, t.updatedAtMs || 0, nowMs) });
+  }
+  if (botTerr.length <= cap) return [];
+  botTerr.sort((a, b) => a.def - b.def); // schwächste/verfallenste zuerst
+  return botTerr.slice(0, botTerr.length - cap).map(c => c.id);
+}
+
 // ── Anti-Cheat-Regeln (GDS 3.1) — server-autoritativ, ohne Geo-Abhängigkeit ──
 export const MIN_DIST_M = 150;
 export const HARD_MAX_KMH = 25;   // > Rad/Auto -> Lauf ungültig
@@ -486,7 +504,7 @@ export function createEngine(h3) {
     // engine.X(...) auf, daher MÜSSEN sie im Objekt liegen (sonst
     // "engine.decayedDefense is not a function" zur Laufzeit).
     paceFactor, distanceBonus, runValue, clampDefense,
-    decayedDefense, timeToMinMs, botAttack, pickBotTargets,
+    decayedDefense, timeToMinMs, botAttack, pickBotTargets, pickBotCleanup,
     RES, DEF_MIN, DEF_MAX, CAPTURE_BONUS, DAILY_BUILD_CAP, OWN_BUILD_MIN_PER_KM,
     NEGLECT_CAPTURE_DEF, DECAY_PER_DAY, ENERGY_BOOST, ENERGY_PER_WEEK,
   };
