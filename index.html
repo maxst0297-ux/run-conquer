@@ -2046,7 +2046,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v170';
+const APP_VERSION='v171';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -7079,8 +7079,20 @@ function updateCommunity(){
   const _myTerr=(h3Territories||[]).filter(t=>t.owner===userId).length;
   if(_myTerr>0)dynNews.push({icon:'🗺️',txt:`Du hältst aktuell ${_myTerr} ${_myTerr===1?'Gebiet':'Gebiete'}`,t:'jetzt'});
   if(streakDays>1)dynNews.push({icon:'🔥',txt:`${streakDays} Tage Streak – bleib dran!`,t:'jetzt'});
-  const _news=[...liveNews,...dynNews].slice(0,5);
-  $('newsList').innerHTML=_news.length?_news.map(n=>`<div class="list-row"><span class="row-icon">${n.icon}</span><span class="row-txt">${esc(n.txt)}</span><span class="row-meta">${n.t}</span></div>`).join(''):'<div class="muted" style="padding:8px;font-size:.78rem">Noch keine Aktivität – starte einen Lauf!</div>';
+  // #34 — Verfall-Warnung als antippbarer Eintrag: springt zum gefährdetsten Gebiet.
+  let threat=null;
+  if(shieldUntil<=Date.now()){
+    let cnt=0,soonest=Infinity,soonestId='',soonestName='';
+    for(const t of (h3Territories||[])){
+      if(t.owner!==userId)continue;
+      const m=h3MinsToOne(t.defense,t.updated_at);
+      if(m>0&&m<24*60){cnt++;if(m<soonest){soonest=m;soonestId=t.id;soonestName=territoryName(t);}}
+    }
+    if(cnt){const hrs=Math.max(1,Math.round(soonest/60));
+      threat={icon:'⏳',txt:`${cnt===1?'1 Gebiet droht':cnt+' Gebiete drohen'} zu verfallen · „${soonestName}" in ~${hrs} h`,t:'Achtung',click:`window.flyTo('${String(soonestId).replace(/'/g,'')}')`};}
+  }
+  const _news=[...(threat?[threat]:[]),...liveNews,...dynNews].slice(0,5);
+  $('newsList').innerHTML=_news.length?_news.map(n=>`<div class="list-row"${n.click?` style="cursor:pointer" onclick="${n.click}"`:''}><span class="row-icon">${n.icon}</span><span class="row-txt">${esc(n.txt)}</span><span class="row-meta"${n.t==='Achtung'?' style="color:#ff9f1c"':''}>${n.t}</span></div>`).join(''):'<div class="muted" style="padding:8px;font-size:.78rem">Noch keine Aktivität – starte einen Lauf!</div>';
   $('recordsList').innerHTML=[['🏃','Längster Lauf',fmtDist(Math.max(0,...history.map(r=>r.distance)))],['⚔️','Gebiete erobert',totalConquered],['📐','Größtes Gebiet',Math.round(Math.max(0,...territories.filter(t=>t.owner===userId).map(t=>t.area||0)))+' m²'],['🔥','Streak',streakDays+' Tage']].map(([i,l,v])=>`<div class="list-row"><span class="row-icon">${i}</span><span class="row-txt">${l}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary)">${v}</span></div>`).join('');
   renderEvents();
   /* renderSocialFeed/renderPlayerDiscovery NUR im .then, wenn der Follow-Status
