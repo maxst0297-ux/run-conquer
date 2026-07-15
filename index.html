@@ -2072,7 +2072,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v179';
+const APP_VERSION='v180';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -7208,59 +7208,24 @@ function playLikeAnimation(t){
   requestAnimationFrame(animSparks);
 }
 
-function playApplauseAnimation(){
-  const COLS=['#e8ff47','#ff6b6b','#74c0fc','#69db7c','#ffa94d','#f783ac','#da77f2','#ff922b'];
-  const ov=document.createElement('div');
-  ov.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden';
-  document.body.appendChild(ov);
-  const W=window.innerWidth,H=window.innerHeight,cx=W/2,cy=H*.44;
-  /* confetti */
-  for(let i=0;i<55;i++){
-    const s=document.createElement('span');
-    const tx=(Math.random()-.5)*W*.9,ty=-(Math.random()*H*.55+80);
-    const rot=(Math.random()-.5)*720;
-    const delay=(Math.random()*.18).toFixed(3);
-    const dur=(.9+Math.random()*.8).toFixed(2);
-    const col=COLS[i%COLS.length];
-    const w=5+Math.random()*9,h=3+Math.random()*5;
-    s.style.cssText=`position:absolute;left:${cx+(Math.random()-.5)*60}px;top:${cy}px;width:${w}px;height:${h}px;background:${col};border-radius:2px;--tx:${tx}px;--ty:${ty}px;--rot:${rot}deg;animation:confettiFly ${dur}s cubic-bezier(.25,.46,.45,.94) ${delay}s both`;
-    ov.appendChild(s);
-  }
-  /* hands */
-  const HANDS=['👏','🙌','👐','🤲','👏','🙌','👏','👐','👏'];
-  HANDS.forEach((em,i)=>{
-    const s=document.createElement('span');
-    const delay=(.08+i*.09).toFixed(2);
-    s.style.cssText=`position:absolute;font-size:${36+Math.random()*22}px;left:${cx+(i-4)*48+(Math.random()-.5)*20}px;top:${cy-20}px;display:inline-block;transform-origin:center bottom;animation:handPop 1.4s cubic-bezier(.34,1.56,.64,1) ${delay}s both`;
-    s.textContent=em;
-    ov.appendChild(s);
-  });
-  /* BRAVO text */
-  const bravo=document.createElement('div');
-  bravo.style.cssText=`position:absolute;left:50%;top:${cy-80}px;transform:translateX(-50%);font-family:'Bebas Neue',sans-serif;font-size:2.8rem;color:#e8ff47;text-shadow:0 0 20px #e8ff47,0 0 40px #e8ff47;white-space:nowrap;animation:bravoIn 2.2s ease forwards .1s`;
-  bravo.textContent='BRAVO! 👏';
-  ov.appendChild(bravo);
-  setTimeout(()=>ov.remove(),2600);
-}
 const _actLikes={};
 window.applaudActivity=function(idx){
   const key='act_'+idx;
   const ukey='rc_applauded_'+key+'_'+userId;
   /* Once per user per activity */
-  if(localStorage.getItem(ukey)){toast('Du hast bereits applaudiert!');return;}
+  if(localStorage.getItem(ukey)){toast('Gefällt dir bereits');return;}
   if(!_actLikes[key])_actLikes[key]=(parseInt(localStorage.getItem('rc_likes_'+key)||'0'));
   _actLikes[key]++;
   localStorage.setItem('rc_likes_'+key,_actLikes[key]);
   localStorage.setItem(ukey,'1');
-  playApplauseAnimation();
-  /* Update button to show count */
+  /* Nur Like — keine Konfetti-/Klatsch-Animation mehr. */
   const btn=document.getElementById('apBtn_'+idx);
   if(btn){
     btn.innerHTML=aiIcon('thumbsup',{play:true})+' '+_actLikes[key];
     btn.style.borderColor='var(--primary)';btn.style.color='var(--primary)';
     btn.disabled=true;btn.style.opacity='0.7';
   }
-  toast('👍 Applaus!');
+  toast('👍 Gefällt mir');
 };
 
 /* ── EVENTS (echt, serverseitig) ──
@@ -7575,7 +7540,7 @@ function renderSocialFeed(){
   });
   $('followerList').innerHTML=feedItems.map(f=>{
     const lk=parseInt(localStorage.getItem('rc_likes_act_'+f.id)||'0');
-    return`<div class="list-row" style="flex-direction:column;align-items:stretch;gap:8px"><div style="display:flex;align-items:center;gap:10px"><span class="row-icon">${f.av}</span><div class="row-txt"><b>${esc(f.name)}</b> ${f.txt}</div><span class="row-meta">${f.t}</span></div><button id="apBtn_${f.id}" onclick="window.applaudActivity('${f.id}')" style="align-self:flex-end;background:none;border:1px solid ${lk?'var(--primary)':'var(--border)'};border-radius:20px;padding:3px 12px;font-size:.7rem;color:${lk?'var(--primary)':'var(--muted)'};cursor:pointer;margin-top:2px">${lk?aiIcon('thumbsup',{})+' '+lk:aiIcon('thumbsup',{})+' Applaudieren'}</button></div>`;
+    return`<div class="list-row" style="flex-direction:column;align-items:stretch;gap:8px"><div style="display:flex;align-items:center;gap:10px"><span class="row-icon">${f.av}</span><div class="row-txt"><b>${esc(f.name)}</b> ${f.txt}</div><span class="row-meta">${f.t}</span></div><button id="apBtn_${f.id}" onclick="window.applaudActivity('${f.id}')" style="align-self:flex-end;background:none;border:1px solid ${lk?'var(--primary)':'var(--border)'};border-radius:20px;padding:3px 12px;font-size:.7rem;color:${lk?'var(--primary)':'var(--muted)'};cursor:pointer;margin-top:2px">${lk?aiIcon('thumbsup',{})+' '+lk:aiIcon('thumbsup',{})+' Gefällt mir'}</button></div>`;
   }).join('');
 }
 
@@ -9744,9 +9709,18 @@ window.initApp=function(){
     if(window._showFollowOnly){
       const fset=new Set((typeof followedUsers!=='undefined'?followedUsers:[]).map(u=>u.uid));
       const mine=h3Territories.filter(t=>fset.has(t.owner));
+      // Nur minimal rauszoomen (nicht auf ALLE Gebiete fitten): auf das nächste
+      // Gefolgten-Gebiet zentrieren und zwei Stufen rauszoomen.
       const pts=[];
       mine.forEach(t=>(t.cells||[]).forEach(c=>{try{const ll=h3.cellToLatLng(c);pts.push([ll[0],ll[1]]);}catch(e){}}));
-      if(pts.length&&mapL)mapL.fitBounds(pts,{padding:[40,40]});
+      if(pts.length&&mapL){
+        try{
+          const c=mapL.getCenter();
+          let best=pts[0],bd=Infinity;
+          for(const p of pts){const dd=(p[0]-c.lat)*(p[0]-c.lat)+(p[1]-c.lng)*(p[1]-c.lng);if(dd<bd){bd=dd;best=p;}}
+          mapL.setView(best,Math.max(3,mapL.getZoom()-2),{animate:true});
+        }catch(e){}
+      }
       toast(mine.length?('👥 Gebiete deiner Follower · '+mine.length):'👥 Noch keine Gebiete von Gefolgten in der Nähe');
     }else{toast('Alle Gebiete sichtbar');}
   });
