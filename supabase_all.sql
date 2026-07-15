@@ -2087,6 +2087,8 @@ create table if not exists public.app_logs (
 );
 
 -- Längen kappen (Schutz gegen versehentliche Riesen-Payloads / Missbrauch)
+-- Idempotent: bestehende Constraint zuerst entfernen, dann neu anlegen.
+alter table public.app_logs drop constraint if exists app_logs_message_len;
 alter table public.app_logs
   add constraint app_logs_message_len check (char_length(message) <= 2000) not valid;
 do $$ begin
@@ -2383,10 +2385,18 @@ declare
   tbl text;
 begin
   for tbl in
+    -- Nur EIGENE Tabellen: von Extensions eingebrachte Tabellen (z.B. PostGIS
+    -- public.spatial_ref_sys) gehören dem Superuser -> alter würde mit
+    -- "must be owner of table" (42501) scheitern.
     select tablename from pg_tables
     where schemaname = 'public'
+      and tableowner = current_user
   loop
-    execute format('alter table public.%I enable row level security', tbl);
+    begin
+      execute format('alter table public.%I enable row level security', tbl);
+    exception when others then
+      null; -- nicht alterbare/fremde Tabellen still überspringen
+    end;
   end loop;
 end;
 $$;
