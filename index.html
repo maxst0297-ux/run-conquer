@@ -2046,7 +2046,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v168';
+const APP_VERSION='v169';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -5239,7 +5239,33 @@ async function loadH3Territories(){
     // Einmal-Guard erst setzen, wenn der Nutzer WIRKLICH eingeloggt ist (sonst
     // würde ein früher Lade-Aufruf mit userId='user' das Update dauerhaft abschalten).
     if(!window._terrDiffDone && userId && userId!=='user'){window._terrDiffDone=true;try{checkTerritoryChanges();}catch(e){}}
+    // #34 — Verfall-Warnung: einmal pro Sitzung prüfen, ob eigene Gebiete bald
+    // durch Vernachlässigung fallen (Angriffs-Alarme laufen bereits über Breaches).
+    if(!window._decayAlertDone && userId && userId!=='user'){window._decayAlertDone=true;try{checkDecayAlerts();}catch(e){}}
   }catch(e){logError&&logError('h3_load',e);}
+}
+/* #34 — Verfall-Alarm: warnt vor Gebieten, die bald auf Verteidigung 1 fallen
+   (also demnächst von jedem Überläufer/Bot erobert werden können). Nutzt die
+   Lazy-Decay-Rechnung. Übersprungen, wenn eigener Gebiets-Schutz aktiv ist.
+   Meldung als In-App-Toast + System-Benachrichtigung (feuert nur im Hintergrund
+   und nur wenn der Nutzer Benachrichtigungen erlaubt hat). */
+function checkDecayAlerts(){
+  if(!userId||userId==='user')return;
+  if(shieldUntil>Date.now())return; // eigene Gebiete gerade komplett geschützt
+  const THREAT_MIN=24*60; // Warnung ab „fällt in < 24 h"
+  let cnt=0,soonest=Infinity,soonestName='';
+  for(const t of (h3Territories||[])){
+    if(t.owner!==userId)continue;
+    const m=h3MinsToOne(t.defense,t.updated_at);
+    if(m>0 && m<THREAT_MIN){cnt++;if(m<soonest){soonest=m;soonestName=territoryName(t);}}
+  }
+  if(!cnt)return;
+  const hrs=Math.max(1,Math.round(soonest/60));
+  const body=cnt===1
+    ? `„${soonestName}" verfällt in ~${hrs} h – lauf vorbei und verteidige!`
+    : `${cnt} Gebiete verfallen bald (frühestes „${soonestName}" in ~${hrs} h) – lauf vorbei!`;
+  try{pushSystemNotif('⏳ Revier verfällt',body);}catch(e){}
+  toast('⏳ '+(cnt===1?'1 Gebiet droht':cnt+' Gebiete drohen')+' zu verfallen – lauf vorbei zum Verteidigen!');
 }
 /* #39 — Gebiets-Veränderungen seit dem letzten Besuch.
    Snapshot = wirksame (verfallene) Verteidigung je eigenem Gebiet + Zeitstempel.
