@@ -237,7 +237,104 @@
 </svg>`;
   }
 
+  /* renderRoute — zeichnet die ECHTE gelaufene GPS-Strecke als offenen
+     Linienzug (Trace, wie Strava/Nike). `points` = lokale XY (Meter,
+     unverzerrt). Formtreu: einheitlicher Scale (kein Strecken auf die Box),
+     runde Joins/Caps, geschichteter Glow + weißer Kern für Kontrast,
+     Start-/Ziel-Marker. */
+  function renderRoute(opts) {
+    opts = opts || {};
+    const W = opts.width || 1080;
+    const H = opts.height || 900;
+    const accent = opts.accent || '#9B5DE5';
+    const rgb = rgbOf(accent);
+    const glow = opts.glow == null ? 1 : opts.glow;
+    const showFlag = opts.showFlag !== false;
+    const showGrid = opts.showMap !== false;
+    const pts = (opts.points && opts.points.length > 1) ? opts.points : null;
+    if (!pts) return renderTerritory(opts);        // Fallback: keine echte Strecke
+    const id = 'r' + Math.random().toString(36).slice(2, 8);
+
+    // ── formtreu einpassen (Aspect Ratio erhalten) ──
+    let minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
+    for (const [x, y] of pts) {
+      if (x < minX) minX = x; if (x > maxX) maxX = x;
+      if (y < minY) minY = y; if (y > maxY) maxY = y;
+    }
+    const bw = (maxX - minX) || 1, bh = (maxY - minY) || 1;
+    const pad = Math.max(W, H) * 0.13;
+    const scale = Math.min((W - pad * 2) / bw, (H - pad * 2) / bh);
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    const ox = W / 2, oy = H / 2;
+    const T = p => [ (p[0] - cx) * scale + ox, (p[1] - cy) * scale + oy ];
+    const scr = pts.map(T);
+    const d = 'M ' + scr.map(p => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' L ');
+    const start = scr[0], end = scr[scr.length - 1];
+    const lw = Math.max(7, Math.min(W, H) * 0.016);
+
+    // ── dezentes Referenz-Raster (optional, Karten-Gefühl) ──
+    let grid = '';
+    if (showGrid) {
+      const step = Math.max(W, H) / 9;
+      let gl = '';
+      for (let gx = ((ox % step) + step) % step; gx < W; gx += step)
+        gl += `<line x1="${gx.toFixed(1)}" y1="0" x2="${gx.toFixed(1)}" y2="${H}"/>`;
+      for (let gy = ((oy % step) + step) % step; gy < H; gy += step)
+        gl += `<line x1="0" y1="${gy.toFixed(1)}" x2="${W}" y2="${gy.toFixed(1)}"/>`;
+      grid = `<g stroke="rgba(255,255,255,.05)" stroke-width="1.4">${gl}</g>`;
+    }
+
+    // ── Marker: Start (weiß) + Ziel (Akzent, opt. Fähnchen) ──
+    const mr = lw * 1.35;
+    let startM =
+      `<circle cx="${start[0].toFixed(1)}" cy="${start[1].toFixed(1)}" r="${(mr + 3).toFixed(1)}" fill="#0b0f0d"/>` +
+      `<circle cx="${start[0].toFixed(1)}" cy="${start[1].toFixed(1)}" r="${mr.toFixed(1)}" fill="#fff"/>` +
+      `<circle cx="${start[0].toFixed(1)}" cy="${start[1].toFixed(1)}" r="${(mr * 0.5).toFixed(1)}" fill="${accent}"/>`;
+    let endM;
+    if (showFlag) {
+      const ph = Math.max(58, lw * 4.2), pw = Math.max(4, lw * 0.42), fw = ph * 0.5;
+      endM =
+        `<g filter="url(#${id}-flagsh)">` +
+        `<circle cx="${end[0].toFixed(1)}" cy="${end[1].toFixed(1)}" r="${(pw * 1.6).toFixed(1)}" fill="${accent}"/>` +
+        `<rect x="${(end[0] - pw / 2).toFixed(1)}" y="${(end[1] - ph).toFixed(1)}" width="${pw.toFixed(1)}" height="${ph.toFixed(1)}" rx="${(pw / 2).toFixed(1)}" fill="#fff"/>` +
+        `<path d="M ${(end[0] + pw / 2).toFixed(1)} ${(end[1] - ph).toFixed(1)} ` +
+        `q ${(fw * 0.5).toFixed(1)} ${(ph * 0.07).toFixed(1)} ${fw.toFixed(1)} 0 ` +
+        `q ${(-fw * 0.18).toFixed(1)} ${(ph * 0.14).toFixed(1)} 0 ${(ph * 0.28).toFixed(1)} ` +
+        `q ${(-fw * 0.5).toFixed(1)} ${(ph * 0.07).toFixed(1)} ${(-fw).toFixed(1)} 0 Z" fill="${accent}"/>` +
+        `</g>`;
+    } else {
+      endM =
+        `<circle cx="${end[0].toFixed(1)}" cy="${end[1].toFixed(1)}" r="${(mr + 3).toFixed(1)}" fill="#0b0f0d"/>` +
+        `<circle cx="${end[0].toFixed(1)}" cy="${end[1].toFixed(1)}" r="${mr.toFixed(1)}" fill="${accent}"/>` +
+        `<circle cx="${end[0].toFixed(1)}" cy="${end[1].toFixed(1)}" r="${(mr * 0.5).toFixed(1)}" fill="#fff"/>`;
+    }
+
+    return `
+<svg viewBox="0 0 ${W} ${H}" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" fill="none" style="overflow:visible">
+  <defs>
+    <filter id="${id}-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="${(3 + glow * 6).toFixed(1)}"/>
+    </filter>
+    <filter id="${id}-flagsh" x="-60%" y="-60%" width="220%" height="220%">
+      <feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+  ${grid}
+  <!-- Glow-Aura hinter der Route -->
+  <path d="${d}" stroke="${accent}" stroke-width="${(lw * 2.1).toFixed(1)}" stroke-linejoin="round" stroke-linecap="round" opacity="${(0.45 + glow * 0.15).toFixed(2)}" filter="url(#${id}-glow)"/>
+  <!-- dunkle Fassung für Kontrast auf hellen Hintergründen -->
+  <path d="${d}" stroke="rgba(0,0,0,.35)" stroke-width="${(lw * 1.5).toFixed(1)}" stroke-linejoin="round" stroke-linecap="round"/>
+  <!-- Hauptlinie -->
+  <path d="${d}" stroke="${accent}" stroke-width="${lw.toFixed(1)}" stroke-linejoin="round" stroke-linecap="round"/>
+  <!-- heller Kern -->
+  <path d="${d}" stroke="#fff" stroke-width="${(lw * 0.32).toFixed(1)}" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>
+  ${startM}
+  ${endM}
+</svg>`;
+  }
+
   global.RC = global.RC || {};
   global.RC.renderTerritory = renderTerritory;
+  global.RC.renderRoute = renderRoute;
   global.RC.generateTerritory = generateTerritory;
 })(window);
