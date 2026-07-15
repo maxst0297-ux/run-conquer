@@ -425,6 +425,9 @@ body.onboarding-active{background:#000}
    Spiegelt die echte Zeilen-Struktur (.list-row), damit beim Daten-Eintreffen
    kein Layout-Sprung entsteht. Farben via color-mix aus --text -> passt sich
    automatisch an helle/dunkle Themes an. */
+/* Fallback (ältere iOS/WebViews ohne color-mix): neutrales Halbtransparent,
+   danach die theme-adaptive color-mix-Variante (überschreibt, wo unterstützt). */
+:root{--skel-base:rgba(150,150,150,.15);--skel-hi:rgba(150,150,150,.30)}
 :root{--skel-base:color-mix(in srgb, var(--text, #fff) 9%, transparent);--skel-hi:color-mix(in srgb, var(--text, #fff) 20%, transparent)}
 .skel{position:relative;overflow:hidden;background:var(--skel-base);border-radius:6px}
 .skel::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,var(--skel-hi),transparent);animation:skelShimmer 1.25s ease-in-out infinite}
@@ -2043,7 +2046,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v167';
+const APP_VERSION='v168';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -5232,8 +5235,10 @@ async function loadH3Territories(){
     renderH3Territories();
     updateStatsUI&&updateStatsUI();
     // #39 — Re-Login-Update: einmal pro Sitzung nach dem ersten Laden vergleichen,
-    // was seit dem letzten Besuch mit den eigenen Gebieten passiert ist.
-    if(!window._terrDiffDone){window._terrDiffDone=true;try{checkTerritoryChanges();}catch(e){}}
+    // was seit dem letzten Besuch mit den eigenen Gebieten passiert ist. Den
+    // Einmal-Guard erst setzen, wenn der Nutzer WIRKLICH eingeloggt ist (sonst
+    // würde ein früher Lade-Aufruf mit userId='user' das Update dauerhaft abschalten).
+    if(!window._terrDiffDone && userId && userId!=='user'){window._terrDiffDone=true;try{checkTerritoryChanges();}catch(e){}}
   }catch(e){logError&&logError('h3_load',e);}
 }
 /* #39 — Gebiets-Veränderungen seit dem letzten Besuch.
