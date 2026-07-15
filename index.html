@@ -440,7 +440,12 @@ body.onboarding-active{background:#000}
 .skel-meta{width:44px;height:14px;flex:0 0 auto;border-radius:6px}
 .skel-card{height:88px;border-radius:16px;margin-bottom:10px}
 .skel-block{border-radius:10px}
-@media (prefers-reduced-motion:reduce){.skel::after{animation:none;opacity:.5}}
+/* Micro-Flicker-Schutz: Skeletons blenden erst nach ~150 ms ein. Kommen die Daten
+   schneller (Cache/schnelles Netz), wird das innerHTML vorher ersetzt und der
+   Platzhalter erscheint nie -> kein störendes Aufblitzen. */
+.skel,.skel-row{opacity:0;animation:skelIn .18s ease .15s forwards}
+@keyframes skelIn{to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.skel::after{animation:none;opacity:.5}.skel,.skel-row{animation:none;opacity:1}}
 .empty-state i{font-size:2.5rem;margin-bottom:12px;display:block;opacity:.3}
 .empty-state p{font-size:.85rem}
 
@@ -2046,7 +2051,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v171';
+const APP_VERSION='v172';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
