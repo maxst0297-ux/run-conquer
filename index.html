@@ -2072,7 +2072,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v178';
+const APP_VERSION='v179';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3899,12 +3899,11 @@ function scUpdateHero(){
   const el=document.getElementById('scHero');if(!el||typeof RC==='undefined')return;
   const fmt=SC_FMTS[_scFormat]||SC_FMTS.Quadrat;
   const localPts=scPathToXY(_scRec?.path);
-  el.innerHTML=RC.renderTerritory({
-    points:localPts||undefined,
-    seed:localPts?undefined:(typeof (_scRec?.date)==='number'?_scRec.date%997:42),
-    accent:_scAccent,width:fmt.w,height:Math.round(fmt.h*0.52),
-    glow:_scGlow,showMap:_scShowMap,showFlag:_scShowFlag
-  });
+  const common={accent:_scAccent,width:fmt.w,height:Math.round(fmt.h*0.52),glow:_scGlow,showMap:_scShowMap,showFlag:_scShowFlag};
+  // Echte GPS-Strecke als Linienzug; nur ohne echte Strecke stilisierter Fallback.
+  el.innerHTML=(localPts&&localPts.length>1&&RC.renderRoute)
+    ? RC.renderRoute({...common,points:localPts})
+    : RC.renderTerritory({...common,seed:(typeof (_scRec?.date)==='number'?_scRec.date%997:42)});
 }
 
 function scUpdateCard(){
