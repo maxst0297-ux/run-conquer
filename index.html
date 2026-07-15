@@ -2051,7 +2051,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v173';
+const APP_VERSION='v174';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -5009,6 +5009,9 @@ function initMap(){
   /* Neues H3-System: additiv rendern (leer bis zum Cutover), bei Zoomwechsel
      neu aggregieren. */
   mapL.on('zoomend',()=>{try{renderH3Territories();}catch(e){}});
+  // #4 Beim Pannen (debounced) neu zeichnen, damit das Viewport-Culling die neu
+  // ins Bild gekommenen Gebiete nachzeichnet.
+  mapL.on('moveend',()=>{clearTimeout(window._h3MoveTimer);window._h3MoveTimer=setTimeout(()=>{try{renderH3Territories();}catch(e){}},250);});
   setTimeout(loadH3Territories,900);
   /* Bots beiläufig anstoßen: nimmt (server-gelockt, meist No-Op) vernachlässigte
      Gebiete ein; danach die Karte mit dem neuen Stand aktualisieren. */
@@ -5488,6 +5491,10 @@ function renderH3Territories(){
   clearOwnerHighlight();_ownerPolys={};
   const z=mapL?mapL.getZoom():15;
   const aggRes=z<12?7:(z<14?9:10); // grob bei weitem Zoom, exakt beim Reinzoomen
+  // #4 Viewport-Culling: nur Gebiete im (um 50% gepolsterten) Sichtfeld zeichnen.
+  // Die Daten bleiben vollständig im Speicher (Statistik/Verfall/Highlight lesen
+  // h3Territories) — hier wird nur das teure Polygon-Zeichnen auf Sichtbares begrenzt.
+  const _vb=(mapL&&mapL.getBounds)?mapL.getBounds().pad(0.5):null;
   h3Territories.forEach(t=>{
     const cells=t.cells||[];
     if(!cells.length)return;
@@ -5495,6 +5502,15 @@ function renderH3Territories(){
     if(window._showOwnOnly&&!own)return; // Panel-Filter „Eigene Gebiete": Fremde ausblenden
     // Panel-Filter „Follower": nur Gebiete der Spieler zeigen, denen ich folge.
     if(window._showFollowOnly&&!(typeof followedUsers!=='undefined'&&followedUsers.some(u=>u.uid===t.owner)))return;
+    // Nur zeichnen, wenn eine Repräsentativ-Zelle (Anfang/Mitte/Ende) im Sichtfeld
+    // liegt — mehrere Punkte, damit große Gebiete am Rand nicht fälschlich wegfallen.
+    if(_vb){
+      let _vis=false;
+      for(const _ci of [0,cells.length>>1,cells.length-1]){
+        try{const _ll=h3.cellToLatLng(cells[_ci]);if(_vb.contains([_ll[0],_ll[1]])){_vis=true;break;}}catch(e){}
+      }
+      if(!_vis)return;
+    }
     const def=h3Decayed(t.defense,t.updated_at); // wirksame (verfallene) Verteidigung
     const strPct=Math.min(1,def/300);
     let fillColor=own?userColor:'#ff3333';
