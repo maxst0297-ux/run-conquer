@@ -1241,6 +1241,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <div class="rc-dd-item" data-stab="theme" role="menuitem"><span class="dd-emoji">🎨</span> Design</div>
       <div class="rc-dd-item" data-stab="fraktion" role="menuitem"><span class="dd-emoji">⚔️</span> Fraktion</div>
       <div class="rc-dd-item" data-stab="club" role="menuitem"><span class="dd-emoji">🏰</span> Club</div>
+      <div class="rc-dd-item" data-stab="freunde" role="menuitem"><span class="dd-emoji">🔍</span> Freunde finden</div>
       <div class="rc-dd-item" data-stab="spiel" role="menuitem"><span class="dd-emoji">🎮</span> Spiel</div>
       <div class="rc-dd-item" data-stab="datenschutz" role="menuitem"><span class="dd-emoji">🔒</span> Datenschutz</div>
       <div class="rc-dd-item" data-stab="hilfe" role="menuitem"><span class="dd-emoji">❓</span> Hilfe</div>
@@ -1505,10 +1506,10 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <div class="comm-card"><h3><i class="fas fa-crown"></i> Wöchentliche Power-Rankings</h3><div id="powerRankList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-user-friends"></i> Freunde</h3><div id="friendsList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-shield-alt"></i> Fraktions-Krieg <span style="font-size:.62rem;color:var(--muted);font-weight:400">— alle Spieler</span></h3><div id="teamRankList"></div></div>
-      <div class="comm-card"><h3><i class="fas fa-khanda"></i> Club Wars <span style="font-size:.62rem;color:var(--muted);font-weight:400">— diese Woche</span></h3><div id="clubWarsList"></div></div>
-      <div class="comm-card" id="clubCommunityCard"><h3><i class="fas fa-users-cog"></i> Clubs</h3><div id="clubCommunityList"></div></div>
-      <div class="comm-card" id="playerDiscoveryCard"><h3><i class="fas fa-compass"></i> Spieler entdecken</h3><div id="playerDiscoveryList"></div></div>
-      <div class="comm-card" id="clubDiscoveryCard"><h3><i class="fas fa-search"></i> Clubs entdecken</h3><div id="clubDiscoveryList"></div></div>
+      <div class="comm-card"><h3><i class="fas fa-khanda"></i> Clubs</h3>
+        <div id="clubHubMineLine" style="font-size:.72rem;color:var(--muted);margin-bottom:10px"></div>
+        <button class="btn btn-p" style="width:100%" onclick="openClubHub()"><i class="fas fa-trophy"></i> Top-Clubs &amp; Mitglieder</button>
+      </div>
       <div class="comm-card"><h3><i class="fas fa-map-marked-alt"></i> Größte Gebiete</h3><div id="bigTerrList"></div></div>
       <div class="comm-card">
         <h3><i class="fas fa-location-arrow"></i> Nächste Gebiete</h3>
@@ -1752,6 +1753,17 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <button class="stab-btn" data-stab="hilfe">Hilfe</button>
     </div>
     <div id="settingsBody"></div>
+  </div>
+</div>
+
+<!-- CLUB HUB MODAL: Top-Clubs (Gesamt-XP) -> Mitglieder -> Clubs entdecken -->
+<div id="clubHubModal" class="modal" style="display:none">
+  <div class="modal-card" style="max-width:440px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div class="modal-title" style="margin-bottom:0"><i class="fas fa-khanda"></i> CLUBS</div>
+      <button class="btn" onclick="closeClubHub()" style="width:auto;padding:6px 14px">✕</button>
+    </div>
+    <div id="clubHubBody"></div>
   </div>
 </div>
 
@@ -2072,7 +2084,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v181';
+const APP_VERSION='v182';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2969,7 +2981,7 @@ function renderNotifPanel(){
   $('notifList').innerHTML=notifications.length?notifications.map(n=>{
     const d=new Date(n.time);const diff=Math.round((Date.now()-n.time)/60000);
     const t=diff<1?'gerade':diff<60?`${diff} Min.`:diff<1440?`${Math.floor(diff/60)} Std.`:`${d.getDate()}. ${MONTHS[d.getMonth()]}`;
-    return`<div class="notif-row${n.read?'':' unread'}" onclick="window.markNotifRead(${n.id})"><span class="notif-icon">${n.icon}</span><span class="notif-text">${n.text}</span><span class="notif-time">${t}</span></div>`;
+    return`<div class="notif-row${n.read?'':' unread'}" onclick="window.markNotifRead(${n.id})"><span class="notif-icon">${esc(n.icon)}</span><span class="notif-text">${esc(n.text)}</span><span class="notif-time">${t}</span></div>`;
   }).join(''):'<div style="padding:20px;text-align:center;color:var(--muted);font-size:.8rem">Keine Benachrichtigungen</div>';
 }
 window.markNotifRead=function(id){const n=notifications.find(n=>n.id===id);if(n)n.read=true;updateNotifBadge();renderNotifPanel();};
@@ -3623,7 +3635,7 @@ async function showPublicProfile(p){
   /* Vollständiges Profil laden – die Sichtbarkeit (öffentlich/privat) bestimmt,
      welche Felder Fremde sehen. Erst laden, DANN rendern (kein Info-Flackern). */
   let full=null;
-  if(sb&&p.user_id){try{const{data}=await sb.from('profiles').select('user_id,player_name,user_avatar,user_color,points,total_km,total_conquered,total_runs,streak_days,user_team,club_code,bio,profile_public').eq('user_id',p.user_id).maybeSingle();full=data;}catch(e){}}
+  if(sb&&p.user_id){try{const{data}=await sb.from('profiles').select('user_id,player_name,user_avatar,user_avatar_img,user_color,points,total_km,total_conquered,total_runs,streak_days,user_team,club_code,bio,profile_public').eq('user_id',p.user_id).maybeSingle();full=data;}catch(e){}}
   if(!document.getElementById('pubProfileOverlay'))return; // während des Ladens geschlossen
   const d=Object.assign({},p,full||{});
   const col=d.user_color||'#e8ff47';
@@ -3641,7 +3653,7 @@ async function showPublicProfile(p){
     <div style="width:38px;height:4px;background:var(--border);border-radius:4px;margin:12px auto 14px"></div>
     <div style="padding:0 20px 24px">
       <div style="text-align:center">
-        <div style="width:76px;height:76px;border-radius:50%;background:${esc(col)}22;border:3px solid ${esc(col)};display:flex;align-items:center;justify-content:center;font-size:2rem;margin:0 auto;position:relative">${esc(d.user_avatar||'🏃')}<span style="position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);background:var(--primary);color:var(--bg);font-size:.55rem;font-weight:800;padding:2px 9px;border-radius:10px;white-space:nowrap">LV ${lv.lv}</span></div>
+        <div style="width:76px;height:76px;border-radius:50%;background:${esc(col)}22;border:3px solid ${esc(col)};display:flex;align-items:center;justify-content:center;font-size:2rem;margin:0 auto;position:relative">${d.user_avatar_img?`<img src="${esc(d.user_avatar_img)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block">`:esc(d.user_avatar||'🏃')}<span style="position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);background:var(--primary);color:var(--bg);font-size:.55rem;font-weight:800;padding:2px 9px;border-radius:10px;white-space:nowrap">LV ${lv.lv}</span></div>
         <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:.5px;margin-top:14px">${esc(d.player_name||'Läufer')}</div>
         ${canSeeAll&&d.bio?`<div style="font-size:.8rem;color:var(--muted);font-style:italic;margin-top:3px">„${esc(d.bio)}“</div>`:''}
         <div style="font-size:.8rem;color:var(--muted);margin-top:8px"><b style="color:var(--text)" id="ppFollowers">–</b> Follower &nbsp;·&nbsp; <b style="color:var(--text)" id="ppFollowing">–</b> folgt</div>
@@ -3665,6 +3677,10 @@ async function showPublicProfile(p){
         <div><div style="font-size:.8rem;font-weight:700">Globale Rangliste</div><div style="font-size:.62rem;color:var(--muted)">nach Punkten</div></div>
         <div style="margin-left:auto;font-size:.8rem;color:var(--muted)">${d.streak_days||0} Tage 🔥</div>
       </div>
+      <div style="margin-top:16px">
+        <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🏃 Letzte Läufe</div>
+        <div id="ppRunsList">${rcSkel(3)}</div>
+      </div>
       ${canMsg?`<button class="btn" id="pubProfMsgBtn" style="width:100%;margin-top:12px"><i class="fas fa-paper-plane"></i> Nachricht schreiben</button>`:''}
     </div>`;
   }else{
@@ -3687,6 +3703,23 @@ async function showPublicProfile(p){
   if(canMsg)document.getElementById('pubProfMsgBtn')?.addEventListener('click',()=>{ov.remove();const im=$('inboxModal');if(im)im.style.display='flex';openDmThread(d.user_id,d.player_name||'Läufer');});
   if(canSeeAll&&sb&&d.user_id){try{const{count:ahead}=await sb.from('profiles').select('id',{count:'exact',head:true}).gt('points',d.points||0);const rEl=document.getElementById('ppRank');if(rEl)rEl.textContent='#'+((ahead||0)+1);}catch(e){}}
   if(sb&&d.user_id){try{const{data:fc,error:fe}=await sb.rpc('rc_follow_counts',{uid:d.user_id});const c=Array.isArray(fc)?fc[0]:fc;const f=document.getElementById('ppFollowers'),g=document.getElementById('ppFollowing');if(!fe&&c){if(f)f.textContent=c.followers??0;if(g)g.textContent=c.following??0;}else{if(f)f.textContent='0';if(g)g.textContent='0';}}catch(e){const f=document.getElementById('ppFollowers'),g=document.getElementById('ppFollowing');if(f)f.textContent='0';if(g)g.textContent='0';}}
+  // Läufe des Spielers: nur wenn sichtbar (eigenes/öffentliches Profil ODER
+  // bestätigter Follow — die Follow-Annahme IST die Einwilligung). Quelle ist
+  // die PATHLOSE View public_runs (Distanz/Zeit/Datum/XP): die exakte GPS-Route
+  // bleibt bewusst privat (Wohnort-Schutz), auch gegenüber Followern.
+  if(canSeeAll&&sb&&d.user_id){(async()=>{
+    const el=document.getElementById('ppRunsList');if(!el)return;
+    try{
+      const{data:rns}=await sb.from('public_runs').select('*').eq('user_id',d.user_id).order('created_at',{ascending:false}).limit(8);
+      const list=(rns||[]).filter(Boolean);
+      if(!list.length){el.innerHTML='<div style="color:var(--muted);font-size:.72rem;padding:6px">Noch keine Läufe.</div>';return;}
+      el.innerHTML=list.map(r=>{
+        const dt=new Date(r.created_at);const ds=isNaN(dt)?'':dt.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'});
+        const km=((r.distance||0)/1000).toFixed(2).replace('.',',');const mins=Math.round((r.duration||0)/60);
+        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:.76rem"><span style="color:var(--muted);width:46px;flex-shrink:0">${ds}</span><span style="flex:1;font-weight:600">${km} km</span><span style="color:var(--muted)">${mins} Min</span><span style="color:var(--primary);width:48px;text-align:right;flex-shrink:0">+${r.points||0}</span></div>`;
+      }).join('');
+    }catch(e){if(el)el.innerHTML='<div style="color:var(--muted);font-size:.72rem;padding:6px">Läufe nicht verfügbar</div>';}
+  })();}
 }
 
 /* ── ERSTANMELDUNGS-ONBOARDING ── */
@@ -5328,6 +5361,13 @@ function checkTerritoryChanges(){
   const minsAgo=(Date.now()-(snap.ts||Date.now()))/60000;
   if(minsAgo<30)return;                 // schnelle Reloads nicht stören
   if(lost===0&&defended===0)return;     // nichts Nennenswertes -> ruhig bleiben
+  // Zusammengefasst ins Benachrichtigungs-Center: verteidigt / verloren / Angriffe.
+  try{
+    if(defended)addNotif('🛡️',defended+(defended===1?' Gebiet':' Gebiete')+' verteidigt');
+    if(lost)addNotif('⚔️',lost+(lost===1?' Gebiet':' Gebiete')+' verloren');
+    const attacks=lost+defended;
+    if(attacks)addNotif('💥',attacks+(attacks===1?' Angriff':' Angriffe')+' auf deine Gebiete');
+  }catch(e){}
   showTerritoryUpdate({lost,held,defended,minsAgo});
 }
 function _agoLabel(mins){
@@ -6968,8 +7008,11 @@ function renderDiscoveryList(players){
       const{uid,name,av,st}=btn.dataset;
       if(st==='accepted'||st==='pending_out'){await cancelOrUnfollow(uid,name);renderDiscoveryList(players);}
       else if(st==='pending_in'){
-        const card=$('followReqCard');
-        if(card){card.scrollIntoView({behavior:'smooth',block:'center'});card.style.outline='2px solid var(--primary)';setTimeout(()=>{card.style.outline='';},1200);}
+        // Discovery liegt jetzt im Settings-Modal — erst schließen und zu
+        // Community wechseln, sonst liegt #followReqCard hinter dem Overlay.
+        if(typeof closeAllModals==='function')closeAllModals();
+        setView('community');
+        setTimeout(()=>{const card=$('followReqCard');if(card){card.scrollIntoView({behavior:'smooth',block:'center'});card.style.outline='2px solid var(--primary)';setTimeout(()=>{card.style.outline='';},1200);}},350);
       }
       else{await sendFollowRequest(uid,name,av);renderDiscoveryList(players);}
     });
@@ -7108,8 +7151,67 @@ window.joinClubFromDisc=function(code,name){
   if(!allClubs[code])allClubs[code]={code,name};
   userClub={code,name:allClubs[code].name||name,wappen:allClubs[code].wappen||{},foundedAt:allClubs[code].foundedAt||Date.now()};
   localStorage.setItem('rc_clubs_db',JSON.stringify(allClubs));
-  saveProfile();toast('🏰 Beigetreten: '+name);renderClubDiscovery();
+  saveProfile();toast('🏰 Beigetreten: '+name);renderClubDiscovery();renderTopClubs(document.getElementById('topClubsList'));
 };
+
+/* ═══ CLUB HUB ═══
+   Ein Ort für Clubs: Top-Clubs nach Gesamt-XP der Mitglieder → antippen zeigt
+   die Mitglieder → darin die Club-Entdeckung/Suche. Aggregiert Clubs aus
+   profiles.club_code (Summe der points = Gesamt-XP). */
+async function renderTopClubs(el){
+  if(!el)return;
+  el.innerHTML=rcSkel(6);
+  try{
+    if(!sb)throw new Error('no sb');
+    const{data}=await sb.from('profiles').select('player_name,points,club_code').not('club_code','is',null).order('points',{ascending:false}).limit(300);
+    const clubs={};
+    (data||[]).forEach(p=>{if(!p.club_code)return;if(!clubs[p.club_code])clubs[p.club_code]={code:p.club_code,members:0,totalPts:0};clubs[p.club_code].members++;clubs[p.club_code].totalPts+=p.points||0;});
+    const localClubs=JSON.parse(localStorage.getItem('rc_clubs_db')||'{}');
+    Object.values(localClubs).forEach(lc=>{if(!lc||!lc.code)return;if(!clubs[lc.code])clubs[lc.code]={code:lc.code,members:0,totalPts:0};if(lc.name)clubs[lc.code].name=lc.name;if(lc.wappen)clubs[lc.code].wappen=lc.wappen;});
+    if(userClub&&userClub.code&&!clubs[userClub.code])clubs[userClub.code]={code:userClub.code,members:1,totalPts:points,name:userClub.name,wappen:userClub.wappen};
+    const sorted=Object.values(clubs).sort((a,b)=>b.totalPts-a.totalPts).slice(0,20);
+    if(!sorted.length){el.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:8px">Noch keine Clubs bekannt</div>';return;}
+    const ranks=['🥇','🥈','🥉'];
+    el.innerHTML=sorted.map((c,ci)=>{
+      const isMine=userClub?.code===c.code;
+      const wHtml=(c.wappen&&Object.keys(c.wappen).length)?`<div style="width:34px;height:34px;flex-shrink:0">${crestSVG(c.wappen,34)}</div>`:`<div style="width:34px;height:34px;border-radius:50%;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0">🛡️</div>`;
+      return `<div class="topclub-row" data-ci="${ci}" style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:${ci<3?'var(--primary)':'var(--muted)'};width:24px;text-align:center;flex-shrink:0">${ranks[ci]||(ci+1)+'.'}</div>
+        ${wHtml}
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.82rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name||c.code)}${isMine?' ✦':''}</div>
+          <div style="font-size:.63rem;color:var(--muted)">${c.members} ${c.members===1?'Mitglied':'Mitglieder'}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0"><div style="font-family:'Bebas Neue',sans-serif;color:var(--primary);font-size:.95rem">${c.totalPts.toLocaleString()}</div><div style="font-size:.5rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Gesamt-XP</div></div>
+        <i class="fas fa-chevron-right" style="color:var(--muted);font-size:.6rem;flex-shrink:0"></i>
+      </div>`;
+    }).join('');
+    el.querySelectorAll('.topclub-row').forEach(r=>r.addEventListener('click',()=>{const c=sorted[+r.dataset.ci];if(c)openClubDetail(c.code,c.name||c.code);}));
+  }catch(e){el.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:8px">Top-Clubs nicht verfügbar</div>';}
+}
+function renderClubHubMain(){
+  const b=document.getElementById('clubHubBody');if(!b)return;
+  b.innerHTML=`
+    <div class="set-hd">🏆 Top Clubs · Gesamt-XP</div>
+    <div id="topClubsList">${rcSkel(6)}</div>
+    <div class="set-hd" style="margin-top:20px">🔍 Clubs entdecken</div>
+    <div style="font-size:.62rem;color:var(--muted);margin:-4px 0 8px">Tritt einem Club per Code bei — oder gründe deinen eigenen in den Einstellungen.</div>
+    <div id="clubDiscoveryList">${rcSkel(4)}</div>
+    ${userClub?'':`<button class="btn btn-p" style="width:100%;margin-top:12px" onclick="closeClubHub();openSettingsAt('club')">🏰 Eigenen Club gründen / beitreten</button>`}`;
+  try{renderTopClubs(document.getElementById('topClubsList'));}catch(e){}
+  try{renderClubDiscovery();}catch(e){}
+}
+window.openClubDetail=function(code,name){
+  const b=document.getElementById('clubHubBody');if(!b)return;
+  b.innerHTML=`<button onclick="renderClubHubMain()" style="margin-bottom:12px;background:none;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:7px 14px;font-size:.8rem;cursor:pointer;touch-action:manipulation">‹ Top Clubs</button>
+    <div class="set-hd">${esc(name||code)} · Mitglieder</div>
+    <div style="font-size:.62rem;color:var(--muted);margin:-4px 0 8px">Club-Code: <b style="color:var(--primary)">${esc(code)}</b></div>
+    <div id="clubDetailMembers">${rcSkel(6)}</div>`;
+  const c=document.getElementById('clubDetailMembers');if(c)loadClubMembers(code,c);
+};
+window.openClubHub=function(){const m=document.getElementById('clubHubModal');if(!m)return;m.style.display='flex';renderClubHubMain();};
+window.closeClubHub=function(){const m=document.getElementById('clubHubModal');if(m)m.style.display='none';};
+window.renderClubHubMain=renderClubHubMain;
 /* COMMUNITY */
 function updateCommunity(){
   /* Echte, dynamische News statt Fake-Meldungen: aus tatsächlichem Spielstand. */
@@ -7139,15 +7241,13 @@ function updateCommunity(){
   /* renderSocialFeed/renderPlayerDiscovery NUR im .then, wenn der Follow-Status
      frisch geladen ist — der frühere synchrone Doppelaufruf rendert mit
      veraltetem followedUsers und flackert. */
-  loadFollowState().then(()=>{renderLeaderboard();renderFollowRequests();renderSocialFeed();renderPlayerDiscovery();});
+  loadFollowState().then(()=>{renderLeaderboard();renderFollowRequests();renderSocialFeed();});
   renderPowerRankings();
-  renderClubCommunity();
   // Freunde
   renderFriends();
-  // Club Wars
-  renderClubWars();
-  // Club Discovery (Spieler-Discovery läuft im loadFollowState-.then oben)
-  renderClubDiscovery();
+  // Club: nur die Zeile in der Karte; Top-Clubs/Mitglieder/Entdecken im Club-Hub (openClubHub).
+  const _chl=document.getElementById('clubHubMineLine');
+  if(_chl)_chl.innerHTML=userClub?('Dein Club: <b style="color:var(--primary)">'+esc(userClub.name)+'</b>'):'Noch in keinem Club — tippe zum Entdecken.';
   // Fraktion-Rangliste
   renderFactionWar();
   /* Größte Gebiete: aus h3Territories (die haben Zellen). Größe = Zellenzahl. */
@@ -7513,8 +7613,8 @@ async function renderLeaderboard(){
 /* Empty-States mit Handlung: leere Listen sind für Neu-Nutzer eine Sackgasse —
    jeder Leerzustand bekommt einen Knopf zur nächsten sinnvollen Aktion. */
 window.rcGoDiscover=function(){
-  setView('community');
-  setTimeout(()=>{const c=$('playerDiscoveryCard');if(c&&c.style.display!=='none')c.scrollIntoView({behavior:'smooth',block:'center'});else $('friendsList')?.scrollIntoView({behavior:'smooth',block:'center'});},350);
+  // "Spieler entdecken" liegt jetzt in Einstellungen → Freunde finden.
+  if(typeof openSettingsAt==='function')openSettingsAt('freunde');
 };
 window.rcGoClub=function(){openSettingsAt('club');};
 function emptyStateHtml(icon,text,btnLabel,onclick){
@@ -7602,7 +7702,13 @@ function renderSettingsTab(tab){
   const body=$('settingsBody');
   /* Slide-in beim Tab-Wechsel (Inhalt wird synchron gesetzt, Klasse per rAF). */
   if(body){body.classList.remove('slide-in');requestAnimationFrame(()=>body.classList.add('slide-in'));}
-  if(tab==='profil'){
+  if(tab==='freunde'){
+    // "Freunde finden": Spieler-Discovery (Suche nach Name/Nummer + Umkreis) —
+    // von Community hierher verlagert. renderPlayerDiscovery baut alles in
+    // #playerDiscoveryList selbst auf.
+    body.innerHTML='<div id="playerDiscoveryList"></div>';
+    try{renderPlayerDiscovery();}catch(e){}
+  } else if(tab==='profil'){
     const pnum=playerNumberDisplay();
     body.innerHTML=`<div class="field"><label>Name</label><input type="text" id="setName" class="modal-input" value="${esc(playerName||'')}"></div>
     <div class="field"><label>Deine Spieler-Nummer</label>
@@ -8132,9 +8238,17 @@ async function declineFollowRequest(reqId,name){
     await loadFollowState();renderFollowRequests();updateDmBadge();
   }catch(e){toast('❌ '+e.message);}
 }
+let _notifiedFollowReq=new Set();
 function renderFollowRequests(){
   const card=$('followReqCard'),list=$('followReqList');
   if(!card||!list)return;
+  // Follower-Anfragen auch im Benachrichtigungs-Center melden (einmal je Anfrage).
+  try{
+    (followIncoming||[]).forEach(r=>{
+      const k=String(r.id);
+      if(!_notifiedFollowReq.has(k)){_notifiedFollowReq.add(k);addNotif('👤',(r.requester_name||'Jemand')+' möchte dir folgen');}
+    });
+  }catch(e){}
   if(!followIncoming.length){card.style.display='none';return;}
   card.style.display='';
   list.innerHTML=followIncoming.map(r=>`<div class="list-row" style="gap:8px">
@@ -9003,6 +9117,7 @@ function renderSettingsHome(){
       ${settingsRow('✏️','Beschreibung (Bio)',userBio?esc(userBio):'Schreibe etwas über dich','bio')}
       ${settingsRow('🏳️','Fraktion','Deine Community & Farbe','fraktion')}
       ${settingsRow('🏰','Club','Gründe oder tritt einem Club bei','club')}
+      ${settingsRow('🔍','Freunde finden','Spieler suchen & entdecken','freunde')}
     </div>
     ${H('Ziele, Rekorde &amp; Verlauf')}
     <div class="set-group">
