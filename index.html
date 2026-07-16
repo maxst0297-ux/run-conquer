@@ -955,8 +955,8 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .hero-line{font-family:'Bebas Neue',sans-serif;font-size:2.2rem;letter-spacing:1.5px;
   color:var(--text);margin:6px 0 4px;line-height:1}
 .hero-body-txt{font-size:.86rem;color:var(--muted);max-width:230px;margin-bottom:0;line-height:1.45}
-.hero-row{display:flex;gap:12px;align-items:center;margin-top:18px;position:relative;z-index:2}
-.hero-start-btn{flex:1;border:none;border-radius:16px;padding:16px;
+.hero-row{display:flex;gap:12px;align-items:center;margin-top:18px;position:relative;z-index:2;flex-wrap:wrap}
+.hero-start-btn{flex:1 1 100%;border:none;border-radius:16px;padding:16px;
   background:var(--primary);color:var(--bg);font-family:'Bebas Neue',sans-serif;
   font-size:1.35rem;letter-spacing:2px;cursor:pointer;display:flex;align-items:center;
   justify-content:center;gap:10px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
@@ -964,7 +964,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
   transition:transform var(--motion-fast)}
 .hero-start-btn:active{transform:scale(.97)}
 .hero-energy-pill,.hero-shield-pill{background:rgba(var(--primary-rgb),.08);border:1px solid rgba(var(--primary-rgb),.2);
-  border-radius:12px;padding:10px 14px;text-align:center;min-width:72px;cursor:pointer;flex-shrink:0;transition:box-shadow .2s,border-color .2s,background .2s}
+  border-radius:12px;padding:9px 10px;text-align:center;min-width:0;cursor:pointer;flex:1 1 0;transition:box-shadow .2s,border-color .2s,background .2s}
 .hero-energy-pill.armed,.stat-card.armed{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary),0 0 14px rgba(var(--primary-rgb),.35)}
 .hero-energy-pill.armed{background:rgba(var(--primary-rgb),.16)}
 @keyframes boostFlash{0%{box-shadow:0 0 0 1px var(--primary),0 0 0 rgba(var(--primary-rgb),.7)}25%{box-shadow:0 0 0 2px var(--primary),0 0 28px 8px rgba(var(--primary-rgb),.9)}100%{box-shadow:0 0 0 1px var(--primary),0 0 14px rgba(var(--primary-rgb),.35)}}
@@ -1359,9 +1359,13 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
             <div class="he-v" id="heroEnergyVal">⚡3</div>
             <div class="he-l" id="heroEnergyLbl">Energie</div>
           </div>
-          <div class="hero-shield-pill" onclick="showShieldInfo()" title="Streak-Schutz">
+          <div class="hero-shield-pill" onclick="showShieldInfo()" title="Streak-Schutz (Flamme)">
             <div class="he-v" id="heroShieldVal">🛡️0</div>
-            <div class="he-l">Schutz</div>
+            <div class="he-l">Serie</div>
+          </div>
+          <div class="hero-shield-pill" id="terrShieldPill" onclick="activateTerritoryShield()" title="Gebiets-Schutz aktivieren (24h keine Gebiete verlieren)">
+            <div class="he-v" id="heroTerrShieldVal">🗺️0</div>
+            <div class="he-l">Gebiet</div>
           </div>
         </div>
       </div>
@@ -1996,6 +2000,7 @@ let profilePublic=true; // Standard: öffentlich (alle Infos ohne Follow sichtba
 let pushEnabled=false;  // Push-/System-Benachrichtigungen an?
 let lastNameChangeDate=''; // "YYYY-MM" – Name nur 1×/Monat änderbar
 let dailyLoginDate='',dailyLoginStreak=0,streakShields=0,recentQuoteIds=[];
+let terrShields=0; // Gebiets-Schutz-Inventar (24h Immunität, manuell aktivierbar)
 /* Freigeschaltete Streak-Belohnungen (IDs) + aktuell angelegte Kosmetik. */
 let streakUnlocks=[],equipped={};
 let selectedTitle=''; // im Profil angezeigter Titel (aus verdienten Titeln wählbar)
@@ -2003,23 +2008,37 @@ let userBirthday='';  // 'MM-TT' für Geburtstags-Gebietsschutz
 let shieldUntil=0;    // lokaler Anzeige-Timestamp des aktiven Gebiets-Schutzes
 /* Gebiets-Schutz gewähren (24h Angriffs-Immunität). Serverseitig via rc_grant_shield;
    lokal nur für die Anzeige gespiegelt. */
+/* Gebiets-Schutz gewähren = ins INVENTAR legen (max 3, Überschuss -> +100 XP).
+   Wird NICHT mehr automatisch aktiviert — der Spieler aktiviert einen Schutz
+   selbst über activateTerritoryShield() (Anzahl + Aktivierung sichtbar in der
+   Hero-Leiste). */
 function grantTerritoryShield(hours,msg,opts){
   opts=opts||{};
-  // #51 — Gebiets-Schutz-Belohnung nur EINMAL pro Saison (Monat). Gilt für alle
-  // Belohnungs-Quellen (Battle-Pass, Geburtstag, Monatssieg). Bereits vergeben ->
-  // abgelehnt, damit man ihn nicht mehrfach im selben Monat stapeln kann.
-  if(opts.seasonLimited!==false){
-    const k='rc_terrshield_season_'+userId;const seasonKey=new Date().toISOString().slice(0,7);
-    if(localStorage.getItem(k)===seasonKey){toast('🛡️ Gebiets-Schutz gibt es nur einmal pro Saison – diesen Monat schon erhalten.');return false;}
-    localStorage.setItem(k,seasonKey);
-  }
-  const h=Math.max(1,Math.min(48,hours||24));
+  let added=0,xp=0;
+  if((terrShields||0)<3){terrShields=(terrShields||0)+1;added=1;} else {xp=100;awardXp(100,'terrshield_overflow');}
+  if(msg)toast(msg);
+  else if(added)toast('🗺️ Gebiets-Schutz erhalten – jederzeit aktivierbar (Anzahl: '+terrShields+')');
+  else toast('🗺️ Schon 3 Gebiets-Schutz – stattdessen +100 XP');
+  try{updateBoostUI&&updateBoostUI();}catch(e){}
+  try{updateProfile&&updateProfile();}catch(e){}
+  return true; // Belohnung immer erfolgreich (Inventar) -> kein Rollback nötig
+}
+/* Einen Gebiets-Schutz aus dem Inventar aktivieren: 24h komplette Immunität. */
+function activateTerritoryShield(){
+  if((terrShields||0)<=0){toast('🗺️ Kein Gebiets-Schutz im Inventar. Gibt es u.a. über den Saison-Pass.');return false;}
+  if(shieldUntil>Date.now()){const hrs=Math.ceil((shieldUntil-Date.now())/3600000);toast('🛡️ Gebiets-Schutz ist bereits aktiv · noch '+hrs+'h');return false;}
+  if(!confirm('Einen Gebiets-Schutz aktivieren?\n\n24 Stunden lang verlierst du KEINE Gebiete. Verbleibend danach: '+(terrShields-1)))return false;
+  terrShields--;
+  const h=24;
   try{sb&&sb.rpc('rc_grant_shield',{hours:h}).then(()=>{},()=>{});}catch(e){}
   shieldUntil=Math.max(shieldUntil,Date.now()+h*3600000);
-  if(msg)toast(msg);
+  try{save&&save();}catch(e){}
+  toast('🛡️ Gebiets-Schutz aktiviert · 24h komplette Immunität');
+  try{updateBoostUI&&updateBoostUI();}catch(e){}
   try{updateProfile&&updateProfile();}catch(e){}
   return true;
 }
+window.activateTerritoryShield=activateTerritoryShield;
 /* #51 — Flammenschutz (Serien-Schutz) gewähren: max 3 besitzbar. Jeder darüber
    hinausgehende (der 4.+) wird stattdessen in +100 XP umgewandelt. */
 function grantStreakShield(n){
@@ -2036,7 +2055,7 @@ function checkBirthdayShield(){
   const key='rc_bday_shield_'+userId+'_'+n.getFullYear();
   if(localStorage.getItem(key))return;
   localStorage.setItem(key,'1');
-  grantTerritoryShield(24,'🎂 Alles Gute! 24h Gebiets-Schutz aktiviert.');
+  grantTerritoryShield(24,'🎂 Alles Gute! Ein Gebiets-Schutz landet in deinem Inventar – aktiviere ihn, wann du willst.');
 }
 /* Monate, in denen die eigene Fraktion die meisten Punkte hatte ("YYYY-MM"). */
 let factionWins=[];
@@ -2083,7 +2102,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v185';
+const APP_VERSION='v186';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2436,6 +2455,11 @@ function updateBoostUI(){
   const stat=$('energyVal');if(stat){stat.textContent='⚡'+energy+'/'+CFG.ENERGY_MAX;const card=stat.closest&&stat.closest('.stat-card');if(card)card.classList.toggle('armed',armed);}
   const sv=$('heroShieldVal');if(sv)sv.textContent='🛡️'+(streakShields||0);
   const sp=document.querySelector('.hero-shield-pill');if(sp)sp.classList.toggle('has-shield',(streakShields||0)>0);
+  // Gebiets-Schutz-Pill: Anzahl + Zustand (aktiv = geschützt, sonst Anzahl im Inventar).
+  const tv=$('heroTerrShieldVal');const tp=$('terrShieldPill');
+  const tActive=shieldUntil>Date.now();
+  if(tv)tv.textContent=tActive?('🛡️'+Math.ceil((shieldUntil-Date.now())/3600000)+'h'):('🗺️'+(terrShields||0));
+  if(tp){tp.classList.toggle('has-shield',tActive||(terrShields||0)>0);tp.title=tActive?'Gebiets-Schutz aktiv – 24h keine Gebiete verlieren':((terrShields||0)>0?'Gebiets-Schutz aktivieren (24h keine Gebiete verlieren)':'Kein Gebiets-Schutz – u.a. über den Saison-Pass erhältlich');}
 }
 /* Info zum Streak-Schutz (durch tägliches Login verdient, schützt die Serie). */
 function showShieldInfo(){
@@ -2582,7 +2606,7 @@ function debounce(fn,w){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn
 const syncProfileDebounced=debounce(syncProfile,1000);
 
 /* PERSIST */
-function save(){localStateTs=Date.now();localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,energyWeek,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,lastRunDate,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered,registeredAt,starterQuestsDone,starterQuestFlags,heatPersonalOnly,dailyChallenges,dailyChalDate,chalStreak,lastChalDoneDate,dailyLoginDate,dailyLoginStreak,streakShields,recentQuoteIds,weeklyChals,weekChalKey,personalRecords,battlePassClaimed,totalRaids,totalBoosts,weeklyAchsDone,seasonXp,totalElevation,totalCuts,bestRank,natureVisited,localStateTs}));if(typeof syncProfileDebounced==='function')syncProfileDebounced();}
+function save(){localStateTs=Date.now();localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,energyWeek,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,lastRunDate,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered,registeredAt,starterQuestsDone,starterQuestFlags,heatPersonalOnly,dailyChallenges,dailyChalDate,chalStreak,lastChalDoneDate,dailyLoginDate,dailyLoginStreak,streakShields,terrShields,recentQuoteIds,weeklyChals,weekChalKey,personalRecords,battlePassClaimed,totalRaids,totalBoosts,weeklyAchsDone,seasonXp,totalElevation,totalCuts,bestRank,natureVisited,localStateTs}));if(typeof syncProfileDebounced==='function')syncProfileDebounced();}
 /* Crash-resiliente Lauf-Persistenz: Pfad liegt sonst nur im RAM und ginge bei
    App-Kill/Crash mitten im Lauf komplett verloren. Wird alle ~12s gespiegelt,
    beim nächsten Boot per checkOrphanedRun() angeboten. */
@@ -2619,7 +2643,7 @@ function checkOrphanedRun(){
 function load(){
   try{
     const d=JSON.parse(localStorage.getItem('rc_v4_'+userId));
-    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;lastRunDate=d.lastRunDate||'';stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;registeredAt=d.registeredAt||Date.now();starterQuestsDone=d.starterQuestsDone||[];starterQuestFlags=d.starterQuestFlags||{profileOpened:false};heatPersonalOnly=d.heatPersonalOnly||false;dailyChallenges=d.dailyChallenges||[];dailyChalDate=d.dailyChalDate||'';chalStreak=d.chalStreak||0;lastChalDoneDate=d.lastChalDoneDate||'';dailyLoginDate=d.dailyLoginDate||'';dailyLoginStreak=d.dailyLoginStreak||0;streakShields=d.streakShields||0;recentQuoteIds=d.recentQuoteIds||[];weeklyChals=d.weeklyChals||[];weekChalKey=d.weekChalKey||'';personalRecords=d.personalRecords||{};battlePassClaimed=d.battlePassClaimed||[];totalRaids=d.totalRaids||0;totalBoosts=d.totalBoosts||0;weeklyAchsDone=d.weeklyAchsDone||0;seasonXp=d.seasonXp||0;totalElevation=d.totalElevation||0;totalCuts=d.totalCuts||0;bestRank=(d.bestRank!=null?d.bestRank:null);natureVisited=d.natureVisited||[];localStateTs=d.localStateTs||0;/* invasions: serverseitig (rc_sync_breaches), nicht mehr aus localStorage */}
+    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;lastRunDate=d.lastRunDate||'';stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;registeredAt=d.registeredAt||Date.now();starterQuestsDone=d.starterQuestsDone||[];starterQuestFlags=d.starterQuestFlags||{profileOpened:false};heatPersonalOnly=d.heatPersonalOnly||false;dailyChallenges=d.dailyChallenges||[];dailyChalDate=d.dailyChalDate||'';chalStreak=d.chalStreak||0;lastChalDoneDate=d.lastChalDoneDate||'';dailyLoginDate=d.dailyLoginDate||'';dailyLoginStreak=d.dailyLoginStreak||0;streakShields=d.streakShields||0;terrShields=d.terrShields||0;recentQuoteIds=d.recentQuoteIds||[];weeklyChals=d.weeklyChals||[];weekChalKey=d.weekChalKey||'';personalRecords=d.personalRecords||{};battlePassClaimed=d.battlePassClaimed||[];totalRaids=d.totalRaids||0;totalBoosts=d.totalBoosts||0;weeklyAchsDone=d.weeklyAchsDone||0;seasonXp=d.seasonXp||0;totalElevation=d.totalElevation||0;totalCuts=d.totalCuts||0;bestRank=(d.bestRank!=null?d.bestRank:null);natureVisited=d.natureVisited||[];localStateTs=d.localStateTs||0;/* invasions: serverseitig (rc_sync_breaches), nicht mehr aus localStorage */}
   }catch(e){logError('state_load',e);/* korrupter Blob -> Defaults; Cloud-Sync stellt wieder her */}
   // Rival territories werden nach erstem GPS-Fix generiert (locationfound)
   if(!quests.length)genQuests();
@@ -3030,6 +3054,22 @@ const BATTLE_PASS_REWARDS=[
   {lv:19,icon:'🗺️',name:'Marker: Goldener Stern',type:'marker',val:'goldstar'},
   {lv:20,icon:'🏆',name:'Titel: Unaufhaltsam',type:'title',val:'Unaufhaltsam'},
 ];
+/* Saison-Pass-XP-Schwellen. Level 1–15 flach 500 XP/Stufe; ab Level 16 wird es
+   bewusst teurer (Endgame-Grind): Zuwachs = 500 + (lv-15)*200 XP. */
+const SP_BASE=500;
+const SP_THRESH=(function(){const t=[0];for(let lv=1;lv<=20;lv++){const inc=lv<16?SP_BASE:(SP_BASE+(lv-15)*200);t[lv]=t[lv-1]+inc;}return t;})();
+/* {lv, cur (XP-Schwelle des aktuellen Levels), nextThr (nächste Schwelle),
+   pct (Fortschritt im aktuellen Level), next (XP bis nächstes Level)}. */
+function spInfo(xp){
+  xp=Math.max(0,xp||0);
+  let lv=0;for(let i=1;i<=20;i++){if(xp>=SP_THRESH[i])lv=i;else break;}
+  const cur=SP_THRESH[lv]||0;
+  const nextThr=lv<20?SP_THRESH[lv+1]:cur;
+  const span=Math.max(1,nextThr-cur);
+  const pct=lv<20?Math.min(100,Math.round((xp-cur)/span*100)):100;
+  const next=lv<20?Math.max(0,nextThr-xp):0;
+  return{lv,cur,nextThr,pct,next};
+}
 function genWeeklyChallenges(){const wk=getWeekKey();if(weekChalKey===wk&&weeklyChals.length===4)return;weekChalKey=wk;const seed=new Date().getDate()+new Date().getMonth()*31;const pool=[...WEEKLY_POOL];const sel=[];for(let i=0;i<4;i++){const idx=Math.abs(seed*(i+7)*1009)%pool.length;sel.push({...pool[idx],progress:0,done:false});pool.splice(idx,1);}weeklyChals=sel;save();}
 function updateWeeklyChallenges(rec){const wk=getWeekKey();if(weekChalKey!==wk)genWeeklyChallenges();weeklyChals.forEach(c=>{if(c.done)return;const prev=c.progress||0;if(c.key==='km')c.progress=Math.min(c.target,prev+rec.distance/1000);else if(c.key==='runs')c.progress=Math.min(c.target,prev+1);else if(c.key==='conq'&&rec.conquered)c.progress=Math.min(c.target,prev+1);else if(c.key==='def'&&rec.defended)c.progress=Math.min(c.target,prev+1);else if(c.key==='lm')c.progress=Math.min(c.target,capturedLandmarks.length);if(!c.done&&c.progress>=c.target){c.done=true;weeklyAchsDone++;awardXp(c.reward,'weekly');runNote('🎯 Wochen-Challenge: '+c.desc+' +'+c.reward+' XP');}});save();}
 function trackPersonalRecords(rec,totalPts,area){const pr=personalRecords;let newPR=false;if(!pr.longestRun||rec.distance>pr.longestRun.dist){pr.longestRun={dist:rec.distance,date:rec.date};newPR=true;}if(rec.splits&&rec.splits.length&&(!pr.fastestKm||rec.splits[0].splitSecs<pr.fastestKm.secs)){pr.fastestKm={secs:rec.splits[0].splitSecs,date:rec.date};newPR=true;}if(!pr.mostXp||totalPts>pr.mostXp.pts){pr.mostXp={pts:totalPts,date:rec.date};newPR=true;}if(!pr.mostArea||area>pr.mostArea.area){pr.mostArea={area,date:rec.date};newPR=true;}if(newPR)toast('🏆 Neue Persönliche Bestleistung!');}
@@ -7845,6 +7885,9 @@ function renderSettingsTab(tab){
     /* Gebietsfarbe wählen: Standard-Palette + über Belohnungen freigeschaltete Farben.
        Setzt userColor -> färbt Hexagone, Standort-Marker und Profil. */
     const _allCols=[...COLORS];streakUnlocks.forEach(id=>{const r=REWARD_BY_ID[id];if(r&&r.type==='color'&&!_allCols.includes(r.value))_allCols.push(r.value);});
+    // Fix: über den Saison-Pass abgeholte Farben ebenfalls freischalten (wurden
+    // bisher beim Abholen nur gemeldet, aber nie in die Palette aufgenommen).
+    (BATTLE_PASS_REWARDS||[]).forEach(r=>{if(r&&r.type==='color'&&(battlePassClaimed||[]).includes(r.lv)&&!_allCols.includes(r.value))_allCols.push(r.value);});
     body.insertAdjacentHTML('afterbegin',`<div style="margin-bottom:18px"><div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🎨 Gebietsfarbe</div><div style="display:flex;gap:10px;flex-wrap:wrap">${_allCols.map(c=>{const sel=String(userColor).toLowerCase()===c.toLowerCase();return `<button class="col-pick-btn" data-col="${c}" style="width:40px;height:40px;border-radius:50%;background:${c};border:3px solid ${sel?'#fff':'transparent'};box-shadow:0 0 0 1px var(--border)${sel?',0 0 12px '+c:''};cursor:pointer;touch-action:manipulation"></button>`;}).join('')}</div><div style="font-size:.62rem;color:var(--muted);margin-top:7px">Farbe deiner Gebiete auf der Karte & deines Standort-Markers.</div></div><div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🌗 Erscheinungsbild</div>`);
     body.querySelectorAll('.col-pick-btn').forEach(btn=>btn.addEventListener('click',()=>{userColor=btn.dataset.col;saveProfile();if(typeof renderH3Territories==='function')renderH3Territories();if(typeof renderTerr==='function')renderTerr();try{if(userMarker&&mapL)userMarker.setIcon(mkUserIcon());}catch(e){}if(typeof updateProfile==='function')updateProfile();renderSettingsTab('theme');toast('🎨 Gebietsfarbe gesetzt');}));
     body.querySelectorAll('.theme-pick-btn').forEach(btn=>{btn.addEventListener('click',()=>{applyTheme(btn.dataset.tid);saveProfile();renderSettingsTab('theme');});});
@@ -9001,7 +9044,7 @@ function updateProfile(){
   $('pvPRs').innerHTML=[['⚡','Schnellster km',fastKmFmt+'/km'],['📏','Längster Lauf',fmtDist(pr.longestRun?.dist||bd)],['🗺️','Größtes Gebiet',Math.round(pr.mostArea?.area||ba)+' m²'],['🏆','Meiste XP/Lauf',pr.mostXp?'+'+pr.mostXp.pts:'--'],['🔥','kcal gesamt',history.reduce((s,r)=>s+(r.kcal||0),0)+' kcal'],['⚔️','Gebiete erobert',totalConquered]].map(([i,l,v])=>`<div class="pr-row"><span class="pr-icon">${i}</span><span class="pr-label">${l}</span><span class="pr-val">${v}</span></div>`).join('');
   // Battle Pass
   const bpEl=document.getElementById('pvBattlePass');
-  if(bpEl){const bpLv=Math.min(20,Math.floor(seasonXp/500));const bpCur=Math.min(20,Math.max(1,bpLv));const bpPct=Math.min(100,(seasonXp%500)/5);const nextSp=(bpLv<20)?(bpLv+1)*500-seasonXp:0;bpEl.innerHTML=`<div class="section-title"><i class="fas fa-ticket-alt"></i> Saison-Pass <span style="font-size:.65rem;color:var(--muted);font-weight:400;margin-left:6px">Level ${bpLv}/20</span></div><div style="height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;margin-bottom:8px"><div style="height:100%;width:${bpPct}%;background:var(--primary);border-radius:3px;transition:width .4s"></div></div><div style="font-size:.68rem;color:var(--muted);margin-bottom:10px">${bpLv<20?nextSp+' XP bis Level '+(bpLv+1):'🏆 Max Level erreicht!'}</div><div id="pvBpScroll" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px">${BATTLE_PASS_REWARDS.map(r=>{const unlocked=bpLv>=r.lv;const claimed=battlePassClaimed.includes(r.lv);return`<div data-bplv="${r.lv}" ${r.lv===bpCur?'id="pvBpCur"':''} style="flex-shrink:0;width:68px;padding:8px 4px;border-radius:12px;background:${unlocked?claimed?'rgba(16,185,129,.15)':'rgba(232,255,71,.1)':'var(--card)'};border:1px solid ${unlocked?claimed?'rgba(16,185,129,.4)':'rgba(232,255,71,.4)':'var(--border)'};text-align:center;cursor:${unlocked&&!claimed?'pointer':'default'}"><div style="font-size:1.2rem">${r.icon}</div><div style="font-size:.58rem;color:${unlocked?'var(--primary)':'var(--muted)'};line-height:1.2;margin:3px 0">${r.name}</div><div style="font-size:.55rem;color:var(--muted)">Lv.${r.lv}</div>${unlocked&&!claimed?`<div style="font-size:.55rem;background:var(--primary);color:#000;border-radius:4px;padding:1px 4px;margin-top:2px;font-weight:700">Abholen</div>`:claimed?'<div style="font-size:.65rem;color:#10b981">✓</div>':''}</div>`;}).join('')}</div>`;bpEl.querySelectorAll('[data-bplv]').forEach(el=>{const lv=Number(el.dataset.bplv);if(bpLv>=lv&&!battlePassClaimed.includes(lv)){el.addEventListener('click',()=>{battlePassClaimed.push(lv);const rw=BATTLE_PASS_REWARDS.find(r=>r.lv===lv);if(rw){if(rw.type==='xp'){awardXp(rw.val,'battlepass');toast('🎁 Battle Pass: +'+rw.val+' XP');}else if(rw.type==='shield'){const g=grantStreakShield(rw.val);toast(g.added>0?(g.xp>0?`🛡️ +${g.added} Flammenschutz · Rest +${g.xp} XP`:'🛡️ Flammenschutz hinzugefügt!'):`🛡️ Schon 3 Flammenschutz – stattdessen +${g.xp} XP`);}else if(rw.type==='terrshield'){const ok=grantTerritoryShield(rw.val||24,'🛡️ Gebiets-Schutz: 24h komplette Immunität aktiv!');if(!ok){const ix=battlePassClaimed.indexOf(lv);if(ix>=0)battlePassClaimed.splice(ix,1);save();updateProfile();return;}}else if(rw.type==='energy'){energy=Math.min(CFG.ENERGY_MAX,energy+rw.val);toast('⚡ Energie aufgeladen!');}else if(rw.type==='title'){toast('👑 Titel freigeschaltet: '+rw.val);}else{toast('🎁 '+rw.name+' freigeschaltet!');}}save();updateProfile();},{ once:true });}});requestAnimationFrame(()=>_centerScroller(document.getElementById('pvBpScroll'),document.getElementById('pvBpCur')));}
+  if(bpEl){const _sp=spInfo(seasonXp);const bpLv=_sp.lv;const bpCur=Math.min(20,Math.max(1,bpLv));const bpPct=_sp.pct;const nextSp=_sp.next;bpEl.innerHTML=`<div class="section-title"><i class="fas fa-ticket-alt"></i> Saison-Pass <span style="font-size:.65rem;color:var(--muted);font-weight:400;margin-left:6px">Level ${bpLv}/20</span></div><div style="height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;margin-bottom:8px"><div style="height:100%;width:${bpPct}%;background:var(--primary);border-radius:3px;transition:width .4s"></div></div><div style="font-size:.68rem;color:var(--muted);margin-bottom:10px">${bpLv<20?nextSp+' XP bis Level '+(bpLv+1):'🏆 Max Level erreicht!'}</div><div id="pvBpScroll" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px">${BATTLE_PASS_REWARDS.map(r=>{const unlocked=bpLv>=r.lv;const claimed=battlePassClaimed.includes(r.lv);return`<div data-bplv="${r.lv}" ${r.lv===bpCur?'id="pvBpCur"':''} style="flex-shrink:0;width:68px;padding:8px 4px;border-radius:12px;background:${unlocked?claimed?'rgba(16,185,129,.15)':'rgba(232,255,71,.1)':'var(--card)'};border:1px solid ${unlocked?claimed?'rgba(16,185,129,.4)':'rgba(232,255,71,.4)':'var(--border)'};text-align:center;cursor:${unlocked&&!claimed?'pointer':'default'}"><div style="font-size:1.2rem">${r.icon}</div><div style="font-size:.58rem;color:${unlocked?'var(--primary)':'var(--muted)'};line-height:1.2;margin:3px 0">${r.name}</div><div style="font-size:.55rem;color:var(--muted)">Lv.${r.lv}</div>${unlocked&&!claimed?`<div style="font-size:.55rem;background:var(--primary);color:#000;border-radius:4px;padding:1px 4px;margin-top:2px;font-weight:700">Abholen</div>`:claimed?'<div style="font-size:.65rem;color:#10b981">✓</div>':''}</div>`;}).join('')}</div>`;bpEl.querySelectorAll('[data-bplv]').forEach(el=>{const lv=Number(el.dataset.bplv);if(bpLv>=lv&&!battlePassClaimed.includes(lv)){el.addEventListener('click',()=>{battlePassClaimed.push(lv);const rw=BATTLE_PASS_REWARDS.find(r=>r.lv===lv);if(rw){if(rw.type==='xp'){awardXp(rw.val,'battlepass');toast('🎁 Battle Pass: +'+rw.val+' XP');}else if(rw.type==='shield'){const g=grantStreakShield(rw.val);toast(g.added>0?(g.xp>0?`🛡️ +${g.added} Flammenschutz · Rest +${g.xp} XP`:'🛡️ Flammenschutz hinzugefügt!'):`🛡️ Schon 3 Flammenschutz – stattdessen +${g.xp} XP`);}else if(rw.type==='terrshield'){grantTerritoryShield(rw.val||24,'🗺️ Gebiets-Schutz erhalten – aktiviere ihn jederzeit über die Hero-Leiste (Feld „Gebiet").');}else if(rw.type==='energy'){energy=Math.min(CFG.ENERGY_MAX,energy+rw.val);toast('⚡ Energie aufgeladen!');}else if(rw.type==='title'){toast('👑 Titel freigeschaltet: '+rw.val);}else if(rw.type==='color'){toast('🎨 Farbe freigeschaltet – wählbar unter Einstellungen → Design → Gebietsfarbe.');}else{toast('🎁 '+rw.name+' freigeschaltet!');}}save();updateProfile();},{ once:true });}});requestAnimationFrame(()=>_centerScroller(document.getElementById('pvBpScroll'),document.getElementById('pvBpCur')));}
   {
     const CAT_META={conq:{name:'Straßen',unit:'Straßen'},km:{name:'Kilometer',unit:'km'},atk:{name:'Angriffe',unit:'Siege'},def:{name:'Vert.',unit:'Vert.'},disc:{name:'Orte',unit:'Orte'},streak:{name:'Streak',unit:'Tage'}};
     const totalEarned=achievements.filter(a=>a.earned).length;
