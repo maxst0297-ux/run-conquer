@@ -1241,7 +1241,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <div class="rc-dd-item" data-stab="theme" role="menuitem"><span class="dd-emoji">🎨</span> Design</div>
       <div class="rc-dd-item" data-stab="fraktion" role="menuitem"><span class="dd-emoji">⚔️</span> Fraktion</div>
       <div class="rc-dd-item" data-stab="club" role="menuitem"><span class="dd-emoji">🏰</span> Club</div>
-      <div class="rc-dd-item" data-stab="freunde" role="menuitem"><span class="dd-emoji">🔍</span> Freunde finden</div>
+      <div class="rc-dd-item" data-stab="freunde" role="menuitem"><span class="dd-emoji">🔍</span> Spieler finden</div>
       <div class="rc-dd-item" data-stab="spiel" role="menuitem"><span class="dd-emoji">🎮</span> Spiel</div>
       <div class="rc-dd-item" data-stab="datenschutz" role="menuitem"><span class="dd-emoji">🔒</span> Datenschutz</div>
       <div class="rc-dd-item" data-stab="hilfe" role="menuitem"><span class="dd-emoji">❓</span> Hilfe</div>
@@ -1504,7 +1504,6 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <div class="comm-card"><h3><i class="fas fa-bolt"></i> Live-Aktivität</h3><div id="followerList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-medal"></i> Rangliste</h3><div class="lb-tabs" id="lbTabs"><button class="lb-tab active" data-scope="local">📍 Umkreis 20 km</button><button class="lb-tab" data-scope="world">🌍 Weltweit</button></div><div id="leaderboardList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-crown"></i> Wöchentliche Power-Rankings</h3><div id="powerRankList"></div></div>
-      <div class="comm-card"><h3><i class="fas fa-user-friends"></i> Freunde</h3><div id="friendsList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-shield-alt"></i> Fraktions-Krieg <span style="font-size:.62rem;color:var(--muted);font-weight:400">— alle Spieler</span></h3><div id="teamRankList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-khanda"></i> Clubs</h3>
         <div id="clubHubMineLine" style="font-size:.72rem;color:var(--muted);margin-bottom:10px"></div>
@@ -2084,7 +2083,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v184';
+const APP_VERSION='v185';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3681,6 +3680,10 @@ async function showPublicProfile(p){
         <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🏃 Letzte Läufe</div>
         <div id="ppRunsList">${rcSkel(3)}</div>
       </div>
+      ${(isMe||st==='accepted')?`<div style="margin-top:16px">
+        <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🗺️ Gebiete</div>
+        <div id="ppTerrList">${rcSkel(3)}</div>
+      </div>`:''}
       ${canMsg?`<button class="btn" id="pubProfMsgBtn" style="width:100%;margin-top:12px"><i class="fas fa-paper-plane"></i> Nachricht schreiben</button>`:''}
     </div>`;
   }else{
@@ -3723,8 +3726,24 @@ async function showPublicProfile(p){
         // Antippbar -> Lauf-Hexagone auf der (leeren) Karte, genau wie eigene.
         return `<div class="ppRunRow" data-idx="${i}" style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)${hasHex?';cursor:pointer;-webkit-tap-highlight-color:transparent':''}"><div style="width:40px;height:40px;border-radius:9px;background:var(--bg2);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:${hasHex?'var(--primary)':'var(--muted)'};font-size:1rem">⬡</div><div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600">${km} km</div><div style="font-size:.63rem;color:var(--muted)">${mins} Min${ds?' · '+ds:''}${hasHex?' · auf Karte ansehen':''}</div></div><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif;font-size:.9rem;flex-shrink:0">+${r.points||0}</span>${hasHex?'<i class="fas fa-chevron-right" style="color:var(--muted);font-size:.6rem;flex-shrink:0"></i>':''}</div>`;
       }).join('');
-      el.querySelectorAll('.ppRunRow').forEach(row=>{const r=list[+row.dataset.idx];if(r&&Array.isArray(r.cells)&&r.cells.length){row.addEventListener('click',()=>{try{showRunHexOnMap(r.cells,((r.distance||0)/1000).toFixed(2).replace('.',',')+' km',_ownCol);}catch(e){}});}});
+      el.querySelectorAll('.ppRunRow').forEach(row=>{const r=list[+row.dataset.idx];if(r&&Array.isArray(r.cells)&&r.cells.length){row.addEventListener('click',()=>{try{showRunHexOnMap(r.cells,'LAUF · '+((r.distance||0)/1000).toFixed(2).replace('.',',')+' km',_ownCol);}catch(e){}});}});
     }catch(e){if(el)el.innerHTML='<div style="color:var(--muted);font-size:.72rem;padding:6px">Läufe nicht verfügbar</div>';}
+  })();}
+  // Gebiete des Spielers — nur für bestätigte Follower (bzw. eigenes Profil).
+  // Tap auf ein Gebiet -> dessen H3-Hexagone auf der leeren Karte (wie beim Lauf).
+  if((isMe||st==='accepted')&&sb&&d.user_id){(async()=>{
+    const el=document.getElementById('ppTerrList');if(!el)return;
+    const col=d.user_color||'#e8ff47';
+    try{
+      const{data:terrs}=await sb.from('h3_territories_full').select('*').eq('owner',d.user_id).limit(80);
+      const list=(terrs||[]).filter(t=>t&&Array.isArray(t.cells)&&t.cells.length).sort((a,b)=>b.cells.length-a.cells.length).slice(0,25);
+      if(!list.length){el.innerHTML='<div style="color:var(--muted);font-size:.72rem;padding:6px">Noch keine Gebiete.</div>';return;}
+      el.innerHTML=list.map((t,i)=>{
+        const nm=territoryName(t);const n=t.cells.length;
+        return `<div class="ppTerrRow" data-idx="${i}" style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent"><div style="width:40px;height:40px;border-radius:9px;background:var(--bg2);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:1rem">⬡</div><div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(nm)}</div><div style="font-size:.63rem;color:var(--muted)">${n} ${n===1?'Zelle':'Zellen'} · auf Karte ansehen</div></div><i class="fas fa-chevron-right" style="color:var(--muted);font-size:.6rem;flex-shrink:0"></i></div>`;
+      }).join('');
+      el.querySelectorAll('.ppTerrRow').forEach(row=>{const t=list[+row.dataset.idx];if(t)row.addEventListener('click',()=>{try{showRunHexOnMap(t.cells,territoryName(t),col);}catch(e){}});});
+    }catch(e){if(el)el.innerHTML='<div style="color:var(--muted);font-size:.72rem;padding:6px">Gebiete nicht verfügbar</div>';}
   })();}
 }
 
@@ -6353,7 +6372,7 @@ window.showRunHexOnMap=function(cells,title,color){
   ov.style.cssText='position:fixed;inset:0;z-index:9800;background:#0e1512';
   ov.innerHTML='<div id="routeMapDiv" style="position:absolute;inset:0;background:#0e1512"></div>'
     +'<button id="routeMapClose" style="position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);right:12px;z-index:2;background:var(--card);border:1px solid var(--border);border-radius:12px;color:var(--text);padding:8px 14px;font-size:.85rem;cursor:pointer">✕ Schließen</button>'
-    +'<div style="position:absolute;top:calc(env(safe-area-inset-top,0px) + 14px);left:14px;z-index:2;font-family:\'Bebas Neue\',sans-serif;letter-spacing:2px;color:#fff;font-size:1.1rem;text-shadow:0 1px 4px #000">LAUF · '+esc(title||'')+'</div>';
+    +'<div style="position:absolute;top:calc(env(safe-area-inset-top,0px) + 14px);left:14px;z-index:2;font-family:\'Bebas Neue\',sans-serif;letter-spacing:2px;color:#fff;font-size:1.1rem;text-shadow:0 1px 4px #000">'+esc(title||'')+'</div>';
   document.body.appendChild(ov);
   let rm=null;
   document.getElementById('routeMapClose').onclick=()=>{try{rm&&rm.remove();}catch(e){}ov.remove();};
@@ -7306,8 +7325,6 @@ function updateCommunity(){
      veraltetem followedUsers und flackert. */
   loadFollowState().then(()=>{renderLeaderboard();renderFollowRequests();renderSocialFeed();});
   renderPowerRankings();
-  // Freunde
-  renderFriends();
   // Club: nur die Zeile in der Karte; Top-Clubs/Mitglieder/Entdecken im Club-Hub (openClubHub).
   const _chl=document.getElementById('clubHubMineLine');
   if(_chl)_chl.innerHTML=userClub?('Dein Club: <b style="color:var(--primary)">'+esc(userClub.name)+'</b>'):'Noch in keinem Club — tippe zum Entdecken.';
@@ -9180,7 +9197,7 @@ function renderSettingsHome(){
       ${settingsRow('✏️','Beschreibung (Bio)',userBio?esc(userBio):'Schreibe etwas über dich','bio')}
       ${settingsRow('🏳️','Fraktion','Deine Community & Farbe','fraktion')}
       ${settingsRow('🏰','Club','Gründe oder tritt einem Club bei','club')}
-      ${settingsRow('🔍','Freunde finden','Spieler suchen & entdecken','freunde')}
+      ${settingsRow('🔍','Spieler finden','Nach Name oder Nummer suchen & folgen','freunde')}
     </div>
     ${H('Ziele, Rekorde &amp; Verlauf')}
     <div class="set-group">
