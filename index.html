@@ -455,6 +455,10 @@ body.onboarding-active{background:#000}
 .comm-banner-title{position:relative;z-index:1;font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:3px;color:var(--primary);text-shadow:0 0 20px rgba(var(--primary-rgb),.5);display:flex;align-items:center;gap:8px;padding:0 16px;height:100%}
 .comm-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px}
 .comm-card h3{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:2px;color:var(--primary);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+/* Community|Klub Umschalter (Segmented Control, sticky). */
+.comm-seg{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px 0 10px;margin-bottom:6px;background:var(--bg);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.comm-seg-btn{border:1px solid var(--border);background:var(--card);color:var(--muted);border-radius:12px;padding:11px 8px;font-family:'Poppins',sans-serif;font-weight:700;font-size:.82rem;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:background .18s,color .18s,border-color .18s}
+.comm-seg-btn.active{background:var(--primary);color:var(--bg);border-color:var(--primary)}
 .list-row{padding:10px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;animation:fadeRow .3s ease}
 /* Ziele-Swipe (Daily Quests / Belohnungen / Events) im Profil */
 .qtabs{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:12px}
@@ -1501,23 +1505,29 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         </svg>
         <div class="comm-banner-title"><i class="fas fa-globe-europe"></i> Community</div>
       </div>
-      <div class="comm-card" id="followReqCard" style="display:none"><h3><i class="fas fa-user-plus"></i> Follower-Anfragen</h3><div id="followReqList"></div></div>
+      <div class="comm-seg" id="commSeg">
+        <button class="comm-seg-btn active" data-cv="community" type="button">🌍 Community</button>
+        <button class="comm-seg-btn" data-cv="klub" type="button">🏰 Klub</button>
+      </div>
+      <div id="commViewCommunity">
       <div class="comm-card"><h3><i class="fas fa-newspaper"></i> Aktuelle News</h3><div id="newsList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-calendar-day"></i> Events</h3><div id="eventsList"></div></div>
-      <div class="comm-card"><h3><i class="fas fa-trophy"></i> Deine Rekorde</h3><div id="recordsList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-bolt"></i> Live-Aktivität</h3><div id="followerList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-medal"></i> Rangliste</h3><div class="lb-tabs" id="lbTabs"><button class="lb-tab active" data-scope="local">📍 Umkreis 20 km</button><button class="lb-tab" data-scope="world">🌍 Weltweit</button></div><div id="leaderboardList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-crown"></i> Wöchentliche Power-Rankings</h3><div id="powerRankList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-shield-alt"></i> Fraktions-Krieg <span style="font-size:.62rem;color:var(--muted);font-weight:400">— alle Spieler</span></h3><div id="teamRankList"></div></div>
-      <div class="comm-card"><h3><i class="fas fa-khanda"></i> Clubs</h3>
-        <div id="clubHubMineLine" style="font-size:.72rem;color:var(--muted);margin-bottom:10px"></div>
-        <button class="btn btn-p" style="width:100%" onclick="openClubHub()"><i class="fas fa-trophy"></i> Top-Clubs &amp; Mitglieder</button>
-      </div>
       <div class="comm-card"><h3><i class="fas fa-map-marked-alt"></i> Größte Gebiete</h3><div id="bigTerrList"></div></div>
       <div class="comm-card">
         <h3><i class="fas fa-location-arrow"></i> Nächste Gebiete</h3>
         <div id="nearTerrList"></div>
         <button class="btn btn-p" id="showNearBtn" style="width:100%;margin-top:10px"><i class="fas fa-map"></i> Gebiet anzeigen</button>
+      </div>
+      </div><!-- /commViewCommunity -->
+
+      <div id="commViewKlub" style="display:none">
+        <div class="comm-card"><h3><i class="fas fa-khanda"></i> Dein Klub</h3><div id="clubCommunityList"></div></div>
+        <div class="comm-card"><h3><i class="fas fa-bolt"></i> Klub-Aktivität <span style="font-size:.62rem;color:var(--muted);font-weight:400">— wer gerade läuft</span></h3><div id="klubActivityList"></div></div>
+        <div class="comm-card"><h3><i class="fas fa-search"></i> Clubs entdecken</h3><div id="clubDiscoveryList"></div></div>
       </div>
     </div>
 
@@ -2103,7 +2113,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v187';
+const APP_VERSION='v188';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -7134,11 +7144,9 @@ function renderDiscoveryList(players){
       const{uid,name,av,st}=btn.dataset;
       if(st==='accepted'||st==='pending_out'){await cancelOrUnfollow(uid,name);renderDiscoveryList(players);}
       else if(st==='pending_in'){
-        // Discovery liegt jetzt im Settings-Modal — erst schließen und zu
-        // Community wechseln, sonst liegt #followReqCard hinter dem Overlay.
+        // Follower-Anfragen liegen jetzt im Posteingang -> dort öffnen.
         if(typeof closeAllModals==='function')closeAllModals();
-        setView('community');
-        setTimeout(()=>{const card=$('followReqCard');if(card){card.scrollIntoView({behavior:'smooth',block:'center'});card.style.outline='2px solid var(--primary)';setTimeout(()=>{card.style.outline='';},1200);}},350);
+        const im=$('inboxModal');if(im){im.style.display='flex';try{loadInbox();}catch(e){}}
       }
       else{await sendFollowRequest(uid,name,av);renderDiscoveryList(players);}
     });
@@ -7277,7 +7285,9 @@ window.joinClubFromDisc=function(code,name){
   if(!allClubs[code])allClubs[code]={code,name};
   userClub={code,name:allClubs[code].name||name,wappen:allClubs[code].wappen||{},foundedAt:allClubs[code].foundedAt||Date.now()};
   localStorage.setItem('rc_clubs_db',JSON.stringify(allClubs));
-  saveProfile();toast('🏰 Beigetreten: '+name);renderClubDiscovery();renderTopClubs(document.getElementById('topClubsList'));
+  saveProfile();toast('🏰 Beigetreten: '+name);
+  try{renderKlubView&&renderKlubView();}catch(e){renderClubDiscovery();}
+  try{renderTopClubs&&renderTopClubs(document.getElementById('topClubsList'));}catch(e){}
 };
 
 /* ═══ CLUB HUB ═══
@@ -7339,7 +7349,58 @@ window.openClubHub=function(){const m=document.getElementById('clubHubModal');if
 window.closeClubHub=function(){const m=document.getElementById('clubHubModal');if(m)m.style.display='none';};
 window.renderClubHubMain=renderClubHubMain;
 /* COMMUNITY */
+/* ── Community | Klub Umschalter (Segmented Control) ── */
+let _commView='community';
+const _commScroll={community:0,klub:0};
+function _commScrollEl(){return document.getElementById('communityView');}
+function switchCommView(v){
+  if(v!=='community'&&v!=='klub')return;
+  const sc=_commScrollEl();
+  if(sc)_commScroll[_commView]=sc.scrollTop;           // Scroll der alten Ansicht merken
+  _commView=v;
+  document.querySelectorAll('#commSeg .comm-seg-btn').forEach(b=>b.classList.toggle('active',b.dataset.cv===v));
+  const c=document.getElementById('commViewCommunity'),k=document.getElementById('commViewKlub');
+  if(c)c.style.display=(v==='community')?'':'none';
+  if(k)k.style.display=(v==='klub')?'':'none';
+  try{if(navigator.vibrate)navigator.vibrate(8);}catch(e){}
+  if(v==='klub'){try{renderKlubView();}catch(e){}}
+  if(sc)requestAnimationFrame(()=>{sc.scrollTop=_commScroll[v]||0;}); // Scroll der Zielansicht wiederherstellen
+}
+window.switchCommView=switchCommView;
+function _wireCommSeg(){
+  const seg=document.getElementById('commSeg');if(!seg||seg._wired)return;seg._wired=true;
+  seg.querySelectorAll('.comm-seg-btn').forEach(b=>b.addEventListener('click',()=>switchCommView(b.dataset.cv)));
+}
+/* Klub-Ansicht: eigener Klub (Header + Mitglieder), Live-Aktivität der Mitglieder,
+   Clubs entdecken. Wiederverwendung von renderClubCommunity/renderClubDiscovery. */
+function renderKlubView(){
+  try{renderClubCommunity();}catch(e){}
+  try{renderKlubActivity(document.getElementById('klubActivityList'));}catch(e){}
+  try{renderClubDiscovery();}catch(e){}
+}
+window.renderKlubView=renderKlubView;
+async function renderKlubActivity(el){
+  if(!el)return;
+  if(!userClub||!sb){el.innerHTML='<div class="muted" style="padding:8px;font-size:.78rem">Tritt einem Klub bei, um die Live-Aktivität deiner Mitglieder zu sehen.</div>';return;}
+  el.innerHTML=rcSkel(4);
+  try{
+    const{data:members}=await sb.from('profiles').select('user_id,id,player_name,user_color').eq('club_code',userClub.code).limit(60);
+    const ids=(members||[]).map(m=>m.user_id||m.id).filter(Boolean);
+    if(!ids.length){el.innerHTML='<div class="muted" style="padding:8px;font-size:.78rem">Noch keine Mitglieder.</div>';return;}
+    const{data:runs}=await sb.from('public_runs').select('user_id,player_name,distance,duration,points,created_at').in('user_id',ids).order('created_at',{ascending:false}).limit(12);
+    const list=(runs||[]).filter(Boolean);
+    if(!list.length){el.innerHTML='<div class="muted" style="padding:8px;font-size:.78rem">Noch keine Läufe im Klub — sei die/der Erste!</div>';return;}
+    el.innerHTML=list.map(r=>{
+      const diff=Math.round((Date.now()-new Date(r.created_at).getTime())/60000);
+      const t=isNaN(diff)?'':(diff<1?'gerade':diff<60?('vor '+diff+' Min.'):diff<1440?('vor '+Math.floor(diff/60)+' Std.'):('vor '+Math.floor(diff/1440)+' T'));
+      const km=((r.distance||0)/1000).toFixed(2).replace('.',',');const mins=Math.round((r.duration||0)/60);
+      return `<div class="list-row" style="gap:8px"><span class="row-icon">🏃</span><div class="row-txt"><b>${esc(r.player_name||'Läufer')}</b> · ${km} km in ${mins} Min · +${r.points||0} XP</div><span class="row-meta">${t}</span></div>`;
+    }).join('');
+  }catch(e){el.innerHTML='<div class="muted" style="padding:8px;font-size:.78rem">Klub-Aktivität nicht verfügbar.</div>';}
+}
+window.renderKlubActivity=renderKlubActivity;
 function updateCommunity(){
+  _wireCommSeg();
   /* Echte, dynamische News statt Fake-Meldungen: aus tatsächlichem Spielstand. */
   const liveNews=botActivities.slice(0,4).map(a=>{const diff=Math.round((Date.now()-a.time)/60000);const t=diff<1?'gerade':diff<60?`vor ${diff} Min.`:`vor ${Math.floor(diff/60)} Std.`;return{icon:'🏃',txt:a.text,t};});
   const dynNews=[];
@@ -7361,7 +7422,8 @@ function updateCommunity(){
   }
   const _news=[...(threat?[threat]:[]),...liveNews,...dynNews].slice(0,5);
   $('newsList').innerHTML=_news.length?_news.map(n=>`<div class="list-row"${n.click?` style="cursor:pointer" onclick="${n.click}"`:''}><span class="row-icon">${n.icon}</span><span class="row-txt">${esc(n.txt)}</span><span class="row-meta"${n.t==='Achtung'?' style="color:#ff9f1c"':''}>${n.t}</span></div>`).join(''):'<div class="muted" style="padding:8px;font-size:.78rem">Noch keine Aktivität – starte einen Lauf!</div>';
-  $('recordsList').innerHTML=[['🏃','Längster Lauf',fmtDist(Math.max(0,...history.map(r=>r.distance)))],['⚔️','Gebiete erobert',totalConquered],['📐','Größtes Gebiet',Math.round(Math.max(0,...territories.filter(t=>t.owner===userId).map(t=>t.area||0)))+' m²'],['🔥','Streak',streakDays+' Tage']].map(([i,l,v])=>`<div class="list-row"><span class="row-icon">${i}</span><span class="row-txt">${l}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary)">${v}</span></div>`).join('');
+  // "Deine Rekorde" wurde aus Community entfernt (steht im Profil unter
+  // "Persönliche Bestleistungen").
   // Events werden hier in Community gerendert (Karte oben).
   try{renderEvents();}catch(e){}
   /* renderSocialFeed/renderPlayerDiscovery NUR im .then, wenn der Follow-Status
@@ -7369,9 +7431,9 @@ function updateCommunity(){
      veraltetem followedUsers und flackert. */
   loadFollowState().then(()=>{renderLeaderboard();renderFollowRequests();renderSocialFeed();});
   renderPowerRankings();
-  // Club: nur die Zeile in der Karte; Top-Clubs/Mitglieder/Entdecken im Club-Hub (openClubHub).
-  const _chl=document.getElementById('clubHubMineLine');
-  if(_chl)_chl.innerHTML=userClub?('Dein Club: <b style="color:var(--primary)">'+esc(userClub.name)+'</b>'):'Noch in keinem Club — tippe zum Entdecken.';
+  // Klub-Ansicht (Umschalter Community|Klub) wird lazy gerendert; falls sie
+  // gerade aktiv ist, hier mit aktualisieren.
+  if(_commView==='klub'){try{renderKlubView();}catch(e){}}
   // Fraktion-Rangliste
   renderFactionWar();
   /* Größte Gebiete: aus h3Territories (die haben Zellen). Größe = Zellenzahl. */
@@ -7663,8 +7725,9 @@ function _lbWire(lb){
       const {uid,name,av,st}=btn.dataset;
       if(st==='accepted'||st==='pending_out'){await cancelOrUnfollow(uid,name);renderLeaderboard();}
       else if(st==='pending_in'){
-        const card=$('followReqCard');
-        if(card){card.scrollIntoView({behavior:'smooth',block:'center'});card.style.outline='2px solid var(--primary)';setTimeout(()=>{card.style.outline='';},1200);}
+        // Follower-Anfragen liegen jetzt im Posteingang -> dort öffnen.
+        if(typeof closeAllModals==='function')closeAllModals();
+        const im=$('inboxModal');if(im){im.style.display='flex';try{loadInbox();}catch(e){}}
       }
       else{await sendFollowRequest(uid,name,av);renderLeaderboard();}
     });
@@ -8367,17 +8430,18 @@ async function declineFollowRequest(reqId,name){
 }
 let _notifiedFollowReq=new Set();
 function renderFollowRequests(){
-  const card=$('followReqCard'),list=$('followReqList');
-  if(!card||!list)return;
-  // Follower-Anfragen auch im Benachrichtigungs-Center melden (einmal je Anfrage).
+  // Notif-Meldung je Anfrage (einmal) — läuft immer, damit man Anfragen mitbekommt.
   try{
     (followIncoming||[]).forEach(r=>{
       const k=String(r.id);
       if(!_notifiedFollowReq.has(k)){_notifiedFollowReq.add(k);addNotif('👤',(r.requester_name||'Jemand')+' möchte dir folgen');}
     });
   }catch(e){}
-  if(!followIncoming.length){card.style.display='none';return;}
-  card.style.display='';
+  // Darstellung jetzt im Posteingang (verschoben aus Community).
+  const wrap=document.getElementById('inboxFollowReq'),list=document.getElementById('inboxFollowReqList');
+  if(!wrap||!list)return;
+  if(!(followIncoming&&followIncoming.length)){wrap.style.display='none';return;}
+  wrap.style.display='';
   list.innerHTML=followIncoming.map(r=>`<div class="list-row" style="gap:8px">
     <span class="row-icon">👤</span>
     <div class="row-txt"><b>${esc(r.requester_name||'Unbekannt')}</b> möchte dir folgen</div>
@@ -8483,22 +8547,29 @@ async function loadAdminSupportMsgs(container){
 async function loadInbox(){
   const body=$('inboxBody');if(!body)return;
   activeDmThread=null;
+  // Follower-Anfragen ganz oben (aus Community hierher verschoben), darunter der
+  // eigentliche Postfach-Inhalt (Admin: Tabs, sonst DM-Liste).
+  body.innerHTML='<div id="inboxFollowReq" style="display:none;margin-bottom:14px"><div class="set-hd" style="margin-top:0"><i class="fas fa-user-plus"></i> Follower-Anfragen</div><div id="inboxFollowReqList"></div></div><div id="inboxMain"></div>';
+  const main=document.getElementById('inboxMain');
+  try{await loadFollowState();}catch(e){}
+  try{renderFollowRequests();}catch(e){}
+  try{updateDmBadge();}catch(e){}
   if(isAdmin){
-    body.innerHTML=`<div style="display:flex;gap:6px;margin-bottom:12px;flex-shrink:0">
+    main.innerHTML=`<div style="display:flex;gap:6px;margin-bottom:12px;flex-shrink:0">
       <button class="stab-btn active" data-itab="support" style="font-size:.73rem">📨 Support</button>
       <button class="stab-btn" data-itab="dms" style="font-size:.73rem">💬 Direktnachrichten</button>
     </div><div id="inboxTabBody" style="overflow-y:auto;flex:1"></div>`;
     const switchTab=tab=>{
-      body.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.itab===tab));
+      main.querySelectorAll('.stab-btn').forEach(b=>b.classList.toggle('active',b.dataset.itab===tab));
       const tc=document.getElementById('inboxTabBody');
       if(tc){tc.classList.remove('slide-in');requestAnimationFrame(()=>tc.classList.add('slide-in'));}
       if(tab==='support')loadAdminSupportMsgs(tc);
       else loadDmConvList(tc);
     };
-    body.querySelectorAll('.stab-btn').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.itab)));
+    main.querySelectorAll('.stab-btn').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.itab)));
     loadAdminSupportMsgs(document.getElementById('inboxTabBody'));
   } else {
-    loadDmConvList(body);
+    loadDmConvList(main);
   }
 }
 
