@@ -2084,7 +2084,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v183';
+const APP_VERSION='v184';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3715,14 +3715,15 @@ async function showPublicProfile(p){
       const{data:rns}=await sb.rpc('rc_profile_runs',{target:d.user_id}).limit(8);
       const list=(rns||[]).filter(Boolean);
       if(!list.length){el.innerHTML='<div style="color:var(--muted);font-size:.72rem;padding:6px">Noch keine Läufe.</div>';return;}
+      const _ownCol=d.user_color||'#e8ff47';
       el.innerHTML=list.map((r,i)=>{
         const dt=new Date(r.created_at);const ds=isNaN(dt)?'':dt.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'});
         const km=((r.distance||0)/1000).toFixed(2).replace('.',',');const mins=Math.round((r.duration||0)/60);
         const hasHex=Array.isArray(r.cells)&&r.cells.length;
-        const thumb=hasHex?`<canvas id="ppHex-${i}" width="72" height="72" style="width:46px;height:46px;border-radius:9px;background:var(--bg2);flex-shrink:0"></canvas>`:`<div style="width:46px;height:46px;border-radius:9px;background:var(--bg2);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:.9rem">⬡</div>`;
-        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">${thumb}<div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600">${km} km</div><div style="font-size:.63rem;color:var(--muted)">${mins} Min${ds?' · '+ds:''}</div></div><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif;font-size:.9rem;flex-shrink:0">+${r.points||0}</span></div>`;
+        // Antippbar -> Lauf-Hexagone auf der (leeren) Karte, genau wie eigene.
+        return `<div class="ppRunRow" data-idx="${i}" style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)${hasHex?';cursor:pointer;-webkit-tap-highlight-color:transparent':''}"><div style="width:40px;height:40px;border-radius:9px;background:var(--bg2);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:${hasHex?'var(--primary)':'var(--muted)'};font-size:1rem">⬡</div><div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600">${km} km</div><div style="font-size:.63rem;color:var(--muted)">${mins} Min${ds?' · '+ds:''}${hasHex?' · auf Karte ansehen':''}</div></div><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif;font-size:.9rem;flex-shrink:0">+${r.points||0}</span>${hasHex?'<i class="fas fa-chevron-right" style="color:var(--muted);font-size:.6rem;flex-shrink:0"></i>':''}</div>`;
       }).join('');
-      list.forEach((r,i)=>{if(Array.isArray(r.cells)&&r.cells.length){const c=document.getElementById('ppHex-'+i);if(c){try{drawHexCells(c,r.cells);}catch(e){}}}});
+      el.querySelectorAll('.ppRunRow').forEach(row=>{const r=list[+row.dataset.idx];if(r&&Array.isArray(r.cells)&&r.cells.length){row.addEventListener('click',()=>{try{showRunHexOnMap(r.cells,((r.distance||0)/1000).toFixed(2).replace('.',',')+' km',_ownCol);}catch(e){}});}});
     }catch(e){if(el)el.innerHTML='<div style="color:var(--muted);font-size:.72rem;padding:6px">Läufe nicht verfügbar</div>';}
   })();}
 }
@@ -6341,6 +6342,31 @@ window.showRouteOnMap=function(rec){
     setTimeout(()=>{try{rm.invalidateSize();rm.fitBounds(ll,{padding:[50,50]});}catch(e){}},120);
   }catch(e){toast('Karte konnte nicht geladen werden');}
 }
+/* Lauf eines anderen (Follower) als Hexagone auf der leeren Karte — genau wie
+   man die eigenen Hexagone sieht: echte H3-Zellen als Leaflet-Polygone, keine
+   Verzerrung, kein Skalier-Thumbnail. Speist sich aus runs.cells (grob, Res 10). */
+window.showRunHexOnMap=function(cells,title,color){
+  if(!Array.isArray(cells)||!cells.length){toast('Keine Hexagone gespeichert');return;}
+  if(!window.h3||!window.h3.cellToBoundary){toast('Karte nicht verfügbar');return;}
+  document.getElementById('routeMapOv')?.remove();
+  const ov=document.createElement('div');ov.id='routeMapOv';
+  ov.style.cssText='position:fixed;inset:0;z-index:9800;background:#0e1512';
+  ov.innerHTML='<div id="routeMapDiv" style="position:absolute;inset:0;background:#0e1512"></div>'
+    +'<button id="routeMapClose" style="position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);right:12px;z-index:2;background:var(--card);border:1px solid var(--border);border-radius:12px;color:var(--text);padding:8px 14px;font-size:.85rem;cursor:pointer">✕ Schließen</button>'
+    +'<div style="position:absolute;top:calc(env(safe-area-inset-top,0px) + 14px);left:14px;z-index:2;font-family:\'Bebas Neue\',sans-serif;letter-spacing:2px;color:#fff;font-size:1.1rem;text-shadow:0 1px 4px #000">LAUF · '+esc(title||'')+'</div>';
+  document.body.appendChild(ov);
+  let rm=null;
+  document.getElementById('routeMapClose').onclick=()=>{try{rm&&rm.remove();}catch(e){}ov.remove();};
+  const col=color||userColor||'#e8ff47';
+  try{
+    rm=L.map('routeMapDiv',{zoomControl:true,attributionControl:false});
+    const allLL=[];
+    cells.forEach(c=>{try{const b=window.h3.cellToBoundary(c,false);if(b&&b.length){L.polygon(b,{color:col,weight:1.5,opacity:.9,fillColor:col,fillOpacity:.35,lineJoin:'round'}).addTo(rm);b.forEach(v=>allLL.push([v[0],v[1]]));}}catch(e){}});
+    if(!allLL.length){toast('Karte konnte nicht geladen werden');return;}
+    rm.fitBounds(allLL,{padding:[50,50]});
+    setTimeout(()=>{try{rm.invalidateSize();rm.fitBounds(allLL,{padding:[50,50]});}catch(e){}},120);
+  }catch(e){toast('Karte konnte nicht geladen werden');}
+};
 /* Vergangenen Lauf im gleichen Modal wie nach dem Lauf anzeigen (alle Werte +
    Punkte + Splits). Session-Bilanz/Hinweise werden neutralisiert, damit keine
    Werte des letzten Live-Laufs hineinrutschen; Titel zeigt das Lauf-Datum. */
