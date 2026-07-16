@@ -1958,9 +1958,16 @@ drop policy if exists "runs_select_own" on public.runs;
 create policy "runs_select_own"
   on public.runs for select using (auth.uid() = user_id);
 
+-- Grobe H3-Zellen des Laufs (Res 10). NICHT in die weltlesbare public_runs-View
+-- geben — grobe Standortdaten sollen nur kontrolliert sichtbar sein. Ausgeliefert
+-- werden sie über rc_profile_runs() (unten), gegated auf Besitzer / öffentliches
+-- Profil / akzeptierten Follower. Die exakte GPS-Route (path) bleibt owner-only.
+alter table public.runs add column if not exists cells jsonb;
+
 -- Öffentliche, pathlose Sicht. security_invoker=off (Default) -> die View läuft
 -- mit den Rechten ihres Owners und umgeht damit die owner-only-RLS der
--- Basistabelle; sie gibt bewusst NUR die unkritischen Felder heraus (kein path).
+-- Basistabelle; sie gibt bewusst NUR die unkritischen Felder heraus (kein path,
+-- keine cells).
 drop view if exists public.public_runs;
 create view public.public_runs as
   select id, user_id, player_name, distance, duration, points,
@@ -1968,6 +1975,34 @@ create view public.public_runs as
     from public.runs;
 
 grant select on public.public_runs to anon, authenticated;
+
+-- Läufe eines Profils inkl. grober Hexagon-Zellen, sichtbarkeits-gegated:
+-- nur der Besitzer, öffentliche Profile oder AKZEPTIERTE Follower bekommen sie.
+-- (Strikter als public_runs, das Stats auch für private Profile herausgibt.)
+-- security definer + fixer search_path; die WHERE-Klausel erzwingt die Sichtbarkeit.
+create or replace function public.rc_profile_runs(target uuid)
+returns table(id uuid, distance float8, duration integer, points integer, cells jsonb, created_at timestamptz)
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select r.id, r.distance, r.duration, r.points, r.cells, r.created_at
+  from public.runs r
+  where r.user_id = target
+    and (
+      auth.uid() = target
+      or exists (select 1 from public.profiles p where p.id = target and coalesce(p.profile_public, true) = true)
+      or exists (
+        select 1 from public.follow_requests f
+        where f.requester_uid = auth.uid() and f.target_uid = target and f.status = 'accepted'
+      )
+    )
+  order by r.created_at desc
+  limit 20;
+$$;
+revoke all on function public.rc_profile_runs(uuid) from public;
+grant execute on function public.rc_profile_runs(uuid) to authenticated, anon;
 
 
 -- ############################################################################

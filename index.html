@@ -2084,7 +2084,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v182';
+const APP_VERSION='v183';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2312,7 +2312,7 @@ async function syncRun(rec){
     const{error}=await sb.from('runs').upsert({
       id:rec.id,user_id:sbUserId,player_name:playerName,distance:rec.distance,duration:rec.duration,
       points:rec.pts,kcal:rec.kcal||0,conquered:rec.conquered||false,defended:rec.defended||false,
-      path:rec.path||null
+      path:rec.path||null,cells:rec.cells||null
     },{onConflict:'id'});
     if(error)throw error;
     return true;
@@ -3710,14 +3710,19 @@ async function showPublicProfile(p){
   if(canSeeAll&&sb&&d.user_id){(async()=>{
     const el=document.getElementById('ppRunsList');if(!el)return;
     try{
-      const{data:rns}=await sb.from('public_runs').select('*').eq('user_id',d.user_id).order('created_at',{ascending:false}).limit(8);
+      // Gegated: rc_profile_runs liefert Läufe+Hexagone nur an Besitzer /
+      // öffentliches Profil / akzeptierten Follower (serverseitig erzwungen).
+      const{data:rns}=await sb.rpc('rc_profile_runs',{target:d.user_id}).limit(8);
       const list=(rns||[]).filter(Boolean);
       if(!list.length){el.innerHTML='<div style="color:var(--muted);font-size:.72rem;padding:6px">Noch keine Läufe.</div>';return;}
-      el.innerHTML=list.map(r=>{
+      el.innerHTML=list.map((r,i)=>{
         const dt=new Date(r.created_at);const ds=isNaN(dt)?'':dt.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'});
         const km=((r.distance||0)/1000).toFixed(2).replace('.',',');const mins=Math.round((r.duration||0)/60);
-        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:.76rem"><span style="color:var(--muted);width:46px;flex-shrink:0">${ds}</span><span style="flex:1;font-weight:600">${km} km</span><span style="color:var(--muted)">${mins} Min</span><span style="color:var(--primary);width:48px;text-align:right;flex-shrink:0">+${r.points||0}</span></div>`;
+        const hasHex=Array.isArray(r.cells)&&r.cells.length;
+        const thumb=hasHex?`<canvas id="ppHex-${i}" width="72" height="72" style="width:46px;height:46px;border-radius:9px;background:var(--bg2);flex-shrink:0"></canvas>`:`<div style="width:46px;height:46px;border-radius:9px;background:var(--bg2);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:.9rem">⬡</div>`;
+        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">${thumb}<div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600">${km} km</div><div style="font-size:.63rem;color:var(--muted)">${mins} Min${ds?' · '+ds:''}</div></div><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif;font-size:.9rem;flex-shrink:0">+${r.points||0}</span></div>`;
       }).join('');
+      list.forEach((r,i)=>{if(Array.isArray(r.cells)&&r.cells.length){const c=document.getElementById('ppHex-'+i);if(c){try{drawHexCells(c,r.cells);}catch(e){}}}});
     }catch(e){if(el)el.innerHTML='<div style="color:var(--muted);font-size:.72rem;padding:6px">Läufe nicht verfügbar</div>';}
   })();}
 }
@@ -5733,6 +5738,35 @@ async function connectBT(){
 function calcKcal(m,s){const spd=(m/1000)/(s/3600),met=spd<8?6:spd>12?12:8;return Math.round(met*70*(s/3600))}
 
 /* MINI-MAP */
+/* Zeichnet die H3-Hexagone eines Laufs (aus runs.cells) formtreu in ein Canvas.
+   Grobkörnige Zellen (Res 10) statt exakter Route -> Wohnort-schonend. */
+function drawHexCells(canvas,cells){
+  if(!canvas||!window.h3||!window.h3.cellToBoundary||!Array.isArray(cells)||!cells.length)return false;
+  const polys=[];
+  for(const c of cells){try{const b=window.h3.cellToBoundary(c,false);if(b&&b.length)polys.push(b);}catch(e){}}
+  if(!polys.length)return false;
+  let mnLat=Infinity,mxLat=-Infinity,mnLng=Infinity,mxLng=-Infinity;
+  polys.forEach(b=>b.forEach(v=>{const la=v[0],ln=v[1];if(la<mnLat)mnLat=la;if(la>mxLat)mxLat=la;if(ln<mnLng)mnLng=ln;if(ln>mxLng)mxLng=ln;}));
+  const ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;
+  const light=isLightTheme();
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle=light?'#EDE7E4':'#0d3d2c';ctx.fillRect(0,0,W,H);
+  const pad=6,rL=(mxLat-mnLat)||1e-4,rG=(mxLng-mnLng)||1e-4;
+  const sc=Math.min((W-pad*2)/rG,(H-pad*2)/rL);
+  const oX=(W-rG*sc)/2,oY=(H-rL*sc)/2;
+  const tx=ln=>oX+(ln-mnLng)*sc, ty=la=>H-oY-(la-mnLat)*sc;
+  const pCol=(getComputedStyle(document.body).getPropertyValue('--primary').trim())||'#9B5DE5';
+  ctx.lineWidth=1;ctx.lineJoin='round';
+  polys.forEach(b=>{
+    ctx.beginPath();
+    b.forEach((v,i)=>{const x=tx(v[1]),y=ty(v[0]);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});
+    ctx.closePath();
+    ctx.globalAlpha=0.28;ctx.fillStyle=pCol;ctx.fill();
+    ctx.globalAlpha=0.9;ctx.strokeStyle=pCol;ctx.stroke();
+  });
+  ctx.globalAlpha=1;
+  return true;
+}
 function drawMiniMap(canvas,pts){
   if(!canvas||!pts||pts.length<2)return;
   const ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;
@@ -6027,7 +6061,10 @@ async function finalizeRun(elapsed){
   if(streakDays>1)runNote(`🔥 Streak ×${streakMul.toFixed(1)} · +${kmXP} km-XP`);
   const kcal=calcKcal(dist,elapsed);
   const elevGain=Math.round(runElevGain);
-  const rec={id:(crypto.randomUUID?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2))),synced:false,date:Date.now(),distance:dist,area,pts:res.pts,path:path.filter((_,i)=>i%3===0),conquered:res.conquered,defended:res.defended,duration:elapsed,gap,kcal,avgHR:heartRate,splits:[...kmSplits],elevation:elevGain};
+  // Grobe H3-Zellen (Res 10) des Laufs — grobkörnig (Wohnort-schonend) und daher
+  // via public_runs öffentlich teilbar (im Gegensatz zur exakten Route).
+  const _runCells=(window.h3&&window.h3.latLngToCell&&Array.isArray(path)&&path.length)?[...new Set(path.map(p=>{try{return window.h3.latLngToCell(p[0],p[1],10);}catch(e){return null;}}).filter(Boolean))].slice(0,800):null;
+  const rec={id:(crypto.randomUUID?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2))),synced:false,date:Date.now(),distance:dist,area,pts:res.pts,path:path.filter((_,i)=>i%3===0),cells:_runCells,conquered:res.conquered,defended:res.defended,duration:elapsed,gap,kcal,avgHR:heartRate,splits:[...kmSplits],elevation:elevGain};
   history.push(rec);if(history.length>500)history.shift();
   totalKm+=dist/1000;if(res.conquered)totalConquered++;if(res.defended)totalDefended++;
   totalElevation+=elevGain; // Höhenmeter für „Höhenstürmer"
