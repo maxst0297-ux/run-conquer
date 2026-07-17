@@ -1976,6 +1976,29 @@ create view public.public_runs as
 
 grant select on public.public_runs to anon, authenticated;
 
+-- ============================================================================
+-- Benannte Rivalen: Log, WER (welcher Bot) einem Spieler Felder genommen hat.
+-- Wird von der Edge Function bot_tick per service_role befuellt; der Spieler
+-- liest nur seine eigenen Angriffe. Idempotent.
+-- ============================================================================
+create table if not exists public.bot_attacks (
+  id         uuid primary key default gen_random_uuid(),
+  target_uid uuid not null references public.profiles(id) on delete cascade,
+  bot_id     uuid,
+  bot_name   text,
+  bot_color  text,
+  cells      integer not null default 1,
+  created_at timestamptz not null default now()
+);
+create index if not exists bot_attacks_target_idx on public.bot_attacks(target_uid, created_at desc);
+alter table public.bot_attacks enable row level security;
+-- SELECT: nur der betroffene Spieler sieht seine Angriffe.
+drop policy if exists "bot_attacks_select_own" on public.bot_attacks;
+create policy "bot_attacks_select_own" on public.bot_attacks
+  for select using (auth.uid() = target_uid);
+-- INSERT: bewusst KEINE Policy -> nur service_role (bot_tick) darf schreiben.
+grant select on public.bot_attacks to authenticated;
+
 -- Läufe eines Profils inkl. grober Hexagon-Zellen, sichtbarkeits-gegated:
 -- nur der Besitzer, öffentliche Profile oder AKZEPTIERTE Follower bekommen sie.
 -- (Strikter als public_runs, das Stats auch für private Profile herausgibt.)

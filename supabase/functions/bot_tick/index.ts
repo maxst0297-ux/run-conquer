@@ -113,6 +113,7 @@ Deno.serve(async (req) => {
       if (doAttack && !botIdSet.has(anchor.owner) && !shielded.has(anchor.owner)) {
         // Angriff auf ein Spielergebiet — mittlere Stärke, unabhängig vom Wert.
         // (Geschützte Spieler werden übersprungen.)
+        const targetUid = anchor.owner; // Ziel-Spieler VOR der Übernahme merken
         const def = decayedDefense(anchor.defense, Date.parse(anchor.updated_at) || nowMs, nowMs);
         const strength = BOT_ATK_MIN + Math.random() * (BOT_ATK_MAX - BOT_ATK_MIN);
         const r = botAttack(def, strength);
@@ -124,6 +125,15 @@ Deno.serve(async (req) => {
           }).eq('id', anchor.id);
           anchor.owner = bot.id;
           actions.push({ type: 'attack_take', id: anchor.id, bot: bot.player_name });
+          // Benannter Rivale: Angriff protokollieren, damit der Spieler sieht,
+          // WER ihm Felder genommen hat ("Roter Wolf hat dir X Felder genommen").
+          // Fehlt die Tabelle bot_attacks, scheitert es leise.
+          try {
+            await svc.from('bot_attacks').insert({
+              target_uid: targetUid, bot_id: bot.id, bot_name: bot.player_name,
+              bot_color: bot.user_color, cells: anchorCells.length,
+            });
+          } catch (_) { /* Tabelle fehlt -> egal */ }
           await addFactionPts(bot.user_team, strength);
           // Bot-Eroberung zählt für die Fraktions-Kontrolle (kumulativ, wie bei Spielern).
           try { await svc.rpc('rc_bump_conquered', { uid: bot.id, n: 1 }); } catch (_) { /* noop */ }

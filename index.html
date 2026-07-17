@@ -2114,7 +2114,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v190';
+const APP_VERSION='v191';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -5377,7 +5377,7 @@ async function loadH3Territories(){
     // was seit dem letzten Besuch mit den eigenen Gebieten passiert ist. Den
     // Einmal-Guard erst setzen, wenn der Nutzer WIRKLICH eingeloggt ist (sonst
     // würde ein früher Lade-Aufruf mit userId='user' das Update dauerhaft abschalten).
-    if(!window._terrDiffDone && userId && userId!=='user'){window._terrDiffDone=true;try{checkTerritoryChanges();}catch(e){}}
+    if(!window._terrDiffDone && userId && userId!=='user'){window._terrDiffDone=true;try{checkTerritoryChanges();}catch(e){}try{checkBotRivalAttacks();}catch(e){}}
     // #34 — Verfall-Warnung: einmal pro Sitzung prüfen, ob eigene Gebiete bald
     // durch Vernachlässigung fallen (Angriffs-Alarme laufen bereits über Breaches).
     if(!window._decayAlertDone && userId && userId!=='user'){window._decayAlertDone=true;try{checkDecayAlerts();}catch(e){}}
@@ -5424,6 +5424,27 @@ function saveTerritorySnapshot(){
   if(!userId||userId==='user')return;
   try{localStorage.setItem(_terrSnapKey(),JSON.stringify({ts:Date.now(),terr:_ownedDefMap()}));}catch(e){}
 }
+/* Benannte Rivalen: liest neue Bot-Angriffe (bot_attacks) und meldet, WER dir
+   Felder genommen hat — "⚔️ Roter Wolf hat dir X Felder genommen". Dedup über
+   lokalen Zeitstempel; stumm, falls die Tabelle (noch) fehlt. */
+async function checkBotRivalAttacks(){
+  if(!sb||!userId||userId==='user')return;
+  const key='rc_botatk_seen_'+userId;
+  let seen=0;try{seen=parseInt(localStorage.getItem(key)||'0',10)||0;}catch(e){}
+  try{
+    const{data,error}=await sb.from('bot_attacks').select('bot_name,cells,created_at').eq('target_uid',userId).order('created_at',{ascending:false}).limit(30);
+    if(error)return;
+    const rows=(data||[]).filter(r=>{const ts=new Date(r.created_at).getTime();return isFinite(ts)&&ts>seen;});
+    if(!rows.length)return;
+    let maxTs=seen;const byBot={};
+    rows.forEach(r=>{const ts=new Date(r.created_at).getTime();if(ts>maxTs)maxTs=ts;const k=r.bot_name||'Ein Rivale';byBot[k]=(byBot[k]||0)+(r.cells||1);});
+    try{localStorage.setItem(key,String(maxTs));}catch(e){}
+    const parts=Object.entries(byBot).sort((a,b)=>b[1]-a[1]);
+    parts.forEach(([name,cells])=>{try{addNotif('⚔️',name+' hat dir '+cells+(cells===1?' Feld':' Felder')+' genommen – hol sie dir zurück');}catch(e){}});
+    const top=parts[0];if(top)toast('⚔️ '+top[0]+' hat dir '+top[1]+(top[1]===1?' Feld':' Felder')+' genommen!');
+  }catch(e){}
+}
+window.checkBotRivalAttacks=checkBotRivalAttacks;
 function checkTerritoryChanges(){
   if(!userId||userId==='user')return;
   let snap=null;try{snap=JSON.parse(localStorage.getItem(_terrSnapKey()));}catch(e){}
