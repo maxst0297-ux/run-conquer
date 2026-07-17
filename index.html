@@ -2113,7 +2113,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v188';
+const APP_VERSION='v189';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -5458,8 +5458,10 @@ function showTerritoryUpdate({lost,held,defended,minsAgo}){
   const old=$('terrUpdateOverlay');if(old)old.remove();
   const rows=[];
   if(defended)rows.push(['🛡️','#22c55e',defended+(defended===1?' Gebiet':' Gebiete')+' verteidigt','Angriff überstanden, weiterhin deins']);
-  if(lost)rows.push(['⚔️','#ff4d6d',lost+(lost===1?' Gebiet':' Gebiete')+' verloren','Von anderen erobert – du kannst zurückschlagen']);
+  if(lost)rows.push(['⚔️','#ff4d6d',lost+(lost===1?' Gebiet':' Gebiete')+' verloren','Von anderen erobert – in einem Lauf zurückholbar']);
   if(held)rows.push(['🔵','var(--primary)',held+(held===1?' Gebiet':' Gebiete')+' gehalten','Seit deinem letzten Besuch behauptet']);
+  // Comeback-Hook: bei Verlust/Angriff ein klarer Handlungsaufruf statt nur "Weiter".
+  const _comeback=(lost>0||defended>0);
   const ov=document.createElement('div');
   ov.id='terrUpdateOverlay';
   ov.style.cssText='position:fixed;inset:0;z-index:4000;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)';
@@ -5470,13 +5472,33 @@ function showTerritoryUpdate({lost,held,defended,minsAgo}){
       <span style="font-size:1.4rem;line-height:1">${ic}</span>
       <div style="min-width:0"><div style="font-weight:700;font-size:.9rem;color:${col}">${ti}</div><div style="font-size:.68rem;color:var(--muted)">${su}</div></div>
     </div>`).join('')}
-    <button onclick="closeTerritoryUpdate()" class="btn btn-p" style="width:100%;margin-top:6px">Weiter</button>
+    ${_comeback
+      ?`<button onclick="comebackStrikeBack()" class="btn btn-p" style="width:100%;margin-top:6px">🎯 Zur Karte – zurückschlagen</button>
+        <button onclick="closeTerritoryUpdate()" class="btn" style="width:100%;margin-top:8px">Später</button>`
+      :`<button onclick="closeTerritoryUpdate()" class="btn btn-p" style="width:100%;margin-top:6px">Weiter</button>`}
   </div>`;
   ov.addEventListener('click',e=>{if(e.target===ov)closeTerritoryUpdate();});
   document.body.appendChild(ov);
 }
 function closeTerritoryUpdate(){const o=$('terrUpdateOverlay');if(o)o.remove();}
 window.closeTerritoryUpdate=closeTerritoryUpdate;
+/* Comeback-Hook: Verlust/Angriff als Einladung — direkt zur Karte + zum
+   gefährdetsten eigenen Gebiet fliegen, damit man sofort weiß, wo man laufen soll. */
+function comebackStrikeBack(){
+  closeTerritoryUpdate();
+  try{setView('map');}catch(e){}
+  try{
+    let soonest=Infinity,soonestId='';
+    for(const t of (h3Territories||[])){
+      if(t.owner!==userId)continue;
+      const m=h3MinsToOne(t.defense,t.updated_at);
+      if(m>0&&m<soonest){soonest=m;soonestId=t.id;}
+    }
+    if(soonestId&&window.flyTo)setTimeout(()=>{try{window.flyTo(soonestId);}catch(e){}},450);
+  }catch(e){}
+  toast('🎯 Lauf los und hol dir deine Felder zurück!');
+}
+window.comebackStrikeBack=comebackStrikeBack;
 /* Lazy-Decay im Client: gleiche Rate wie in der Engine (DECAY_PER_DAY=8). Die
    wirksame Verteidigung (und die Dauer, bis sie 1 erreicht) wird live aus dem
    Zeitstempel der letzten Änderung berechnet. */
