@@ -1516,6 +1516,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <div class="comm-card"><h3><i class="fas fa-medal"></i> Rangliste</h3><div class="lb-tabs" id="lbTabs"><button class="lb-tab active" data-scope="local">📍 Umkreis 20 km</button><button class="lb-tab" data-scope="world">🌍 Weltweit</button></div><div id="leaderboardList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-crown"></i> Wöchentliche Power-Rankings</h3><div id="powerRankList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-shield-alt"></i> Fraktions-Krieg <span style="font-size:.62rem;color:var(--muted);font-weight:400">— alle Spieler</span></h3><div id="teamRankList"></div></div>
+      <div class="comm-card"><h3><i class="fas fa-city"></i> Deine Region <span style="font-size:.62rem;color:var(--muted);font-weight:400">— wer hier kontrolliert</span></h3><div id="regionControlList"></div></div>
       <div class="comm-card"><h3><i class="fas fa-map-marked-alt"></i> Größte Gebiete</h3><div id="bigTerrList"></div></div>
       <div class="comm-card">
         <h3><i class="fas fa-location-arrow"></i> Nächste Gebiete</h3>
@@ -2113,7 +2114,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v189';
+const APP_VERSION='v190';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -7458,6 +7459,7 @@ function updateCommunity(){
   if(_commView==='klub'){try{renderKlubView();}catch(e){}}
   // Fraktion-Rangliste
   renderFactionWar();
+  try{renderRegionControl();}catch(e){}
   /* Größte Gebiete: aus h3Territories (die haben Zellen). Größe = Zellenzahl. */
   const _bt=[...(h3Territories||[])].sort((a,b)=>((b.cells?b.cells.length:0)-(a.cells?a.cells.length:0))).slice(0,5);
   $('bigTerrList').innerHTML=_bt.map(t=>{const own=t.owner===userId;const bot=h3IsBot(t.owner);const n=t.cells?t.cells.length:0;return `<div class="list-row" style="cursor:pointer" onclick="window.flyTo('${t.id}')"><div class="terr-dot" style="background:${own?userColor:(t.owner_color||'#ff6666')}"></div><span class="row-txt">${esc(territoryName(t))}</span><span class="muted" style="font-size:.72rem">${n} ${n===1?'Zelle':'Zellen'}</span><span class="terr-owner" style="color:${own?'var(--primary)':'var(--red)'}">${own?'Deins':(bot?'Bot':'Feind')}</span></div>`;}).join('')||'<div class="muted" style="padding:8px">Keine Gebiete</div>';
@@ -7608,6 +7610,58 @@ window.claimEvent=async function(eid){
    zeigen. Dadurch wird der Fraktionskampf zu einer echten Meta-Ebene zwischen
    allen Spielern. Bei fehlendem Supabase/Offline greift eine lokale
    Schätzung, damit die Karte nie leer/kaputt ist. */
+/* ── Lokale Fraktions-Kontrolle ("Deine Region") ──
+   Aggregiert die geladenen H3-Gebiete nach Eltern-Hexagon auf 3 Ebenen
+   (Nachbarschaft Res 8, Stadtteil Res 7, Stadt Res 5) und zeigt je Ebene die
+   Fraktions-Kontrolle in % + deinen persönlichen Anteil. Rein clientseitig aus
+   h3Territories (spiegelt die geladenen/nahen Gebiete). */
+function _regionTeamOf(t){
+  if(t.owner===userId)return userTeam||null;
+  if(t.owner_team)return t.owner_team;
+  if(typeof h3IsBot==='function'&&h3IsBot(t.owner)&&typeof _botTeamFor==='function')return _botTeamFor(t.owner);
+  return null;
+}
+function renderRegionControl(){
+  const el=document.getElementById('regionControlList');if(!el)return;
+  if(!window.h3||!window.h3.latLngToCell||!window.h3.cellToParent){el.innerHTML='<div class="muted" style="padding:8px;font-size:.78rem">Karte lädt…</div>';return;}
+  const loc=userMarker?userMarker.getLatLng():(lastKnownLoc&&typeof lastKnownLoc.lat==='number'?{lat:lastKnownLoc.lat,lng:lastKnownLoc.lng}:null);
+  if(!loc){el.innerHTML='<div class="muted" style="padding:8px;font-size:.78rem">Standort aktivieren, um deine Region zu sehen.</div>';return;}
+  let myCell;try{myCell=window.h3.latLngToCell(loc.lat,loc.lng,10);}catch(e){el.innerHTML='';return;}
+  const LEVELS=[{res:8,name:'Nachbarschaft'},{res:7,name:'Stadtteil'},{res:5,name:'Stadt'}];
+  const terr=h3Territories||[];
+  const rows=LEVELS.map(L=>{
+    let myParent;try{myParent=window.h3.cellToParent(myCell,L.res);}catch(e){return null;}
+    const byTeam={};let total=0,mine=0;
+    for(const t of terr){
+      const tm=_regionTeamOf(t);const own=t.owner===userId;
+      for(const c of (t.cells||[])){
+        let p;try{p=window.h3.cellToParent(c,L.res);}catch(e){continue;}
+        if(p!==myParent)continue;
+        total++;if(own)mine++;
+        const k=tm||'none';byTeam[k]=(byTeam[k]||0)+1;
+      }
+    }
+    return{L,byTeam,total,mine};
+  }).filter(Boolean);
+  const anyData=rows.some(r=>r.total>0);
+  if(!anyData){el.innerHTML='<div class="muted" style="padding:8px;font-size:.78rem">Noch keine erfassten Gebiete in deiner Nähe — lauf los und erobere die ersten Felder!</div>';return;}
+  el.innerHTML=rows.map(r=>{
+    const{L,byTeam,total,mine}=r;
+    if(!total)return `<div style="margin-bottom:12px"><div style="font-size:.72rem;color:var(--muted);margin-bottom:3px">${L.name}</div><div style="font-size:.72rem;color:var(--muted)">Noch frei — hol dir die ersten Felder.</div></div>`;
+    const entries=Object.entries(byTeam).sort((a,b)=>b[1]-a[1]);
+    const [leadKey,leadN]=entries[0];
+    const leadTeam=(typeof TEAMS!=='undefined')?TEAMS.find(t=>t.id===leadKey):null;
+    const leadPct=Math.round(leadN/total*100);
+    const myTeamN=userTeam?(byTeam[userTeam]||0):0;const myTeamPct=Math.round(myTeamN/total*100);
+    const segs=entries.slice(0,5).map(([k,n])=>{const tm=(typeof TEAMS!=='undefined')?TEAMS.find(t=>t.id===k):null;const col=tm?tm.color:'#8891a0';return `<div style="width:${(n/total*100).toFixed(1)}%;background:${col}"></div>`;}).join('');
+    return `<div style="margin-bottom:13px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:.72rem;margin-bottom:4px"><span style="color:var(--muted)">${L.name}</span><span>${leadTeam?leadTeam.icon+' '+esc(leadTeam.name):'Ohne Fraktion'} · ${leadPct}%</span></div>
+      <div style="display:flex;height:9px;border-radius:5px;overflow:hidden;background:var(--card)">${segs}</div>
+      <div style="font-size:.62rem;color:var(--muted);margin-top:4px">Dein Anteil: ${mine} ${mine===1?'Feld':'Felder'}${userTeam&&leadKey!==userTeam?' · deine Fraktion '+myTeamPct+'%':''}</div>
+    </div>`;
+  }).join('');
+}
+window.renderRegionControl=renderRegionControl;
 async function renderFactionWar(){
   const el=$('teamRankList');
   if(!el)return;
