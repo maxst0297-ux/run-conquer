@@ -1,5 +1,5 @@
 import * as h3 from 'h3-js';
-import { createEngine, paceFactor, distanceBonus, runValue, validateRun, validateTrack, decayedDefense, timeToMinMs, DECAY_PER_DAY, pickBotTargets, pickBotCleanup, botAttack, BOT_NEW_DEFENSE } from './h3-engine.mjs';
+import { createEngine, paceFactor, distanceBonus, runValue, validateRun, validateTrack, decayedDefense, timeToMinMs, DECAY_PER_DAY, pickBotTargets, pickBotCleanup, botAttack, BOT_NEW_DEFENSE, neutralPaceFactor, neutralClaimPoints, FAIR_CELLS_PER_KM } from './h3-engine.mjs';
 
 const eng = createEngine(h3);
 let pass = 0, fail = 0;
@@ -25,6 +25,24 @@ ok('bonus 15 ->50', distanceBonus(15) === 50);
 ok('runValue 10km@13 atk =140', near(runValue(10, 13, 'atk'), 140), '=' + runValue(10, 13, 'atk'));
 // 5 km @ 9 km/h def: 5*10 + 0 = 50
 ok('runValue 5km@9 def =50', near(runValue(5, 9, 'def'), 50));
+
+// ---------- Pillar #4: Dichte-faire Neutral-Claim-Punkte ----------
+ok('FAIR_CELLS_PER_KM = 10', FAIR_CELLS_PER_KM === 10);
+ok('npf <6 -> 0.5', near(neutralPaceFactor(5), 0.5));
+ok('npf 8 -> 0.75 (Rampe)', near(neutralPaceFactor(8), 0.75));
+ok('npf 10 -> 1.2 (Bonuszone)', near(neutralPaceFactor(10), 1.2));
+ok('npf 14 -> 1.2', near(neutralPaceFactor(14), 1.2));
+ok('npf 22 -> 0.48', near(neutralPaceFactor(22), 0.48, 1e-9));
+ok('npf 25 -> 0.21', near(neutralPaceFactor(25), 0.21, 1e-9));
+ok('npf >25 -> 0', neutralPaceFactor(26) === 0);
+// Dichte-Deckel: 25 Zellen auf 1 km @22 -> min(25,10)*0.48 = 4.8 -> 5 (vorher 25!)
+ok('claim Stadt-Farmer 25z/1km@22 -> 5', neutralClaimPoints(25, 1, 22) === 5, '=' + neutralClaimPoints(25, 1, 22));
+// Waldläufer: 9 Zellen auf 1 km @12 -> 9*1.2 = 10.8 -> 11 (vorher 9)
+ok('claim Wald 9z/1km@12 -> 11', neutralClaimPoints(9, 1, 12) === 11, '=' + neutralClaimPoints(9, 1, 12));
+// Deckel greift erst oberhalb FAIR_CELLS_PER_KM×km (8 < 10 -> unverändert außer Pace)
+ok('claim unter Deckel 8z/1km@12 -> 10', neutralClaimPoints(8, 1, 12) === Math.round(8 * 1.2));
+// Längerer Lauf hebt den Deckel: 25 Zellen auf 3 km @12 -> min(25,30)=25 *1.2 -> 30
+ok('claim 25z/3km@12 -> 30 (Deckel hebt sich)', neutralClaimPoints(25, 3, 12) === 30, '=' + neutralClaimPoints(25, 3, 12));
 
 // ---------- Geometrie-Setup (echtes H3, Res 10) ----------
 const center = h3.latLngToCell(48.137, 11.575, 10);
