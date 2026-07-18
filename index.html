@@ -2139,7 +2139,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v194';
+const APP_VERSION='v195';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -5263,7 +5263,7 @@ function initMap(){
      Plattformen). Nur wenn GPS-Einwilligung vorliegt — sonst startet sie, sobald
      der Nutzer im Consent-Dialog zustimmt bzw. einen Lauf startet. */
   if(localStorage.getItem('rc_gps_consent')==='1')ensurePersistentGpsWatch();
-  mapL.on('click',()=>{closeDrawer();resetMapModes();});
+  mapL.on('click',()=>{closeDrawer();resetMapModes();try{clearMapHighlight();}catch(e){}});
   mapL.on('popupclose',clearOwnerHighlight); // Revier-Hervorhebung endet beim Verlassen der Gebiets-Ansicht
   /* Wahrzeichen beim Verschieben nur neu laden, WENN sie eingeblendet sind. */
   mapL.on('moveend',()=>{if(!window._lmEnabled)return;clearTimeout(window._lmMoveTimer);window._lmMoveTimer=setTimeout(loadLandmarks,900);});
