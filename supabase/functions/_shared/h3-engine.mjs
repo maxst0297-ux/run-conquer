@@ -430,8 +430,11 @@ export function createEngine(h3) {
        updates : { id, defense, dailyAdded?, lastDay?, setCells? }  (setCells = neue Zell-Liste)
        deletes : [territoryId]   (vollständig erobert -> gelöscht, Zellen wandern in ein create)
        creates : { owner, cells[], defense, neutral? }  (neues Gebiet des Angreifers) */
-  function resolveRun({ userId, runCells, enclosed, distanceKm, paceKmh, territories, boosted, cellPace }) {
+  function resolveRun({ userId, runCells, enclosed, distanceKm, paceKmh, territories, boosted, defBoost, cellPace }) {
     const boostMul = boosted ? (1 + ENERGY_BOOST) : 1;
+    // Bollwerk-Boost (max. 1 pro Lauf, client-asserted wie der Energie-Boost):
+    // +50 % Verteidigung auf die in diesem Lauf gebauten/eroberten Zellen.
+    const defMul = defBoost ? 1.5 : 1;
     // Global-Tempo als Reporting-/Fallback-Wert (out.atkPts/defPts, sowie überall
     // dort, wo kein Zell-Tempo vorliegt — z.B. Alt-Tracks ohne Zeitstempel).
     const atkPts = runValue(distanceKm, paceKmh, 'atk') * boostMul;
@@ -468,7 +471,7 @@ export function createEngine(h3) {
         // tempo-unabhängigem Mindestwert je km, damit auch langsames Durchlaufen
         // des eigenen Gebiets verstärkt.
         const ownDefPts = runValue(distanceKm, localPace(cells), 'def');
-        const buildPoints = Math.max(ownDefPts, distanceKm * OWN_BUILD_MIN_PER_KM);
+        const buildPoints = Math.max(ownDefPts, distanceKm * OWN_BUILD_MIN_PER_KM) * defMul;
         const rb = resolveDefenseBuild({ ownDefense: t.defense, coverFrac, buildPoints, dailyAlready: already });
         if (rb.built > 0) {
           out.updates.push({ id: t.id, own: true, defense: rb.defense, dailyAdded: rb.dailyAfter, lastDay: t.today });
@@ -488,13 +491,13 @@ export function createEngine(h3) {
       if (ra.mode === 'none') continue;
       if (ra.conquered && ra.defenderCells.length === 0) {
         out.deletes.push(t.id);
-        out.creates.push({ owner: userId, cells: ra.attackerCells, defense: ra.attackerDefense });
+        out.creates.push({ owner: userId, cells: ra.attackerCells, defense: ra.attackerDefense * defMul });
         ra.attackerCells.forEach(c => claimed.add(c));
         out.events.push({ type: 'conquered', id: t.id, cells: ra.attackerCells.length });
         out.playerPoints += Math.round(tAtk);
       } else if (ra.conquered && ra.cutOff) {
         out.updates.push({ id: t.id, defense: ra.defenderDefense, setCells: ra.defenderCells });
-        out.creates.push({ owner: userId, cells: ra.attackerCells, defense: ra.attackerDefense });
+        out.creates.push({ owner: userId, cells: ra.attackerCells, defense: ra.attackerDefense * defMul });
         ra.attackerCells.forEach(c => claimed.add(c));
         out.events.push({ type: 'cut', id: t.id, got: ra.attackerCells.length });
         out.playerPoints += Math.round(tAtk);

@@ -1371,6 +1371,10 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
             <div class="he-v" id="heroTerrShieldVal">🗺️0</div>
             <div class="he-l">Gebiet</div>
           </div>
+          <div class="hero-shield-pill" id="bollwerkPill" onclick="toggleBollwerk()" title="Bollwerk aktivieren: nächster Lauf +50% Verteidigung auf deine Felder">
+            <div class="he-v" id="heroBollwerkVal">🛡️0</div>
+            <div class="he-l">Bollwerk</div>
+          </div>
         </div>
       </div>
 
@@ -2012,6 +2016,7 @@ let pushEnabled=false;  // Push-/System-Benachrichtigungen an?
 let lastNameChangeDate=''; // "YYYY-MM" – Name nur 1×/Monat änderbar
 let dailyLoginDate='',dailyLoginStreak=0,streakShields=0,recentQuoteIds=[];
 let terrShields=0; // Gebiets-Schutz-Inventar (24h Immunität, manuell aktivierbar)
+let boostBollwerk=0,bollwerkArmed=false; // Bollwerk-Boost (max 3): nächster Lauf +50% Verteidigung
 /* Freigeschaltete Streak-Belohnungen (IDs) + aktuell angelegte Kosmetik. */
 let streakUnlocks=[],equipped={};
 let selectedTitle=''; // im Profil angezeigter Titel (aus verdienten Titeln wählbar)
@@ -2050,6 +2055,16 @@ function activateTerritoryShield(){
   return true;
 }
 window.activateTerritoryShield=activateTerritoryShield;
+/* Bollwerk-Boost aktivieren/abschalten (für den nächsten Lauf): +50% Verteidigung
+   auf die in dem Lauf gebauten/eroberten Zellen. Verbraucht 1 Bollwerk beim Lauf. */
+function toggleBollwerk(){
+  if(bollwerkArmed){bollwerkArmed=false;toast('Bollwerk deaktiviert');}
+  else if((boostBollwerk||0)>0){bollwerkArmed=true;toast('🛡️ Bollwerk aktiv – dein nächster Lauf gibt +50% Verteidigung');}
+  else{toast('🛡️ Kein Bollwerk – gibt es für abgeschlossene Wochen-Challenges.');return;}
+  try{save&&save();}catch(e){}
+  try{updateBoostUI&&updateBoostUI();}catch(e){}
+}
+window.toggleBollwerk=toggleBollwerk;
 /* #51 — Flammenschutz (Serien-Schutz) gewähren: max 3 besitzbar. Jeder darüber
    hinausgehende (der 4.+) wird stattdessen in +100 XP umgewandelt. */
 function grantStreakShield(n){
@@ -2114,7 +2129,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v191';
+const APP_VERSION='v192';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2472,6 +2487,10 @@ function updateBoostUI(){
   const tActive=shieldUntil>Date.now();
   if(tv)tv.textContent=tActive?('🛡️'+Math.ceil((shieldUntil-Date.now())/3600000)+'h'):('🗺️'+(terrShields||0));
   if(tp){tp.classList.toggle('has-shield',tActive||(terrShields||0)>0);tp.title=tActive?'Gebiets-Schutz aktiv – 24h keine Gebiete verlieren':((terrShields||0)>0?'Gebiets-Schutz aktivieren (24h keine Gebiete verlieren)':'Kein Gebiets-Schutz – u.a. über den Saison-Pass erhältlich');}
+  // Bollwerk-Pill: aktiv (AN) oder Anzahl im Inventar.
+  const bv=$('heroBollwerkVal');const bp=$('bollwerkPill');
+  if(bv)bv.textContent=bollwerkArmed?'🛡️AN':('🛡️'+(boostBollwerk||0));
+  if(bp){bp.classList.toggle('has-shield',bollwerkArmed||(boostBollwerk||0)>0);bp.title=bollwerkArmed?'Bollwerk aktiv – nächster Lauf +50% Verteidigung (tippen zum Abschalten)':((boostBollwerk||0)>0?'Bollwerk aktivieren: nächster Lauf +50% Verteidigung':'Kein Bollwerk – für abgeschlossene Wochen-Challenges');}
 }
 /* Info zum Streak-Schutz (durch tägliches Login verdient, schützt die Serie). */
 function showShieldInfo(){
@@ -2618,7 +2637,7 @@ function debounce(fn,w){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn
 const syncProfileDebounced=debounce(syncProfile,1000);
 
 /* PERSIST */
-function save(){localStateTs=Date.now();localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,energyWeek,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,lastRunDate,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered,registeredAt,starterQuestsDone,starterQuestFlags,heatPersonalOnly,dailyChallenges,dailyChalDate,chalStreak,lastChalDoneDate,dailyLoginDate,dailyLoginStreak,streakShields,terrShields,recentQuoteIds,weeklyChals,weekChalKey,personalRecords,battlePassClaimed,bpClaimMigrated,totalRaids,totalBoosts,weeklyAchsDone,seasonXp,totalElevation,totalCuts,bestRank,natureVisited,localStateTs}));if(typeof syncProfileDebounced==='function')syncProfileDebounced();}
+function save(){localStateTs=Date.now();localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,energyWeek,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,lastRunDate,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered,registeredAt,starterQuestsDone,starterQuestFlags,heatPersonalOnly,dailyChallenges,dailyChalDate,chalStreak,lastChalDoneDate,dailyLoginDate,dailyLoginStreak,streakShields,terrShields,boostBollwerk,bollwerkArmed,recentQuoteIds,weeklyChals,weekChalKey,personalRecords,battlePassClaimed,bpClaimMigrated,totalRaids,totalBoosts,weeklyAchsDone,seasonXp,totalElevation,totalCuts,bestRank,natureVisited,localStateTs}));if(typeof syncProfileDebounced==='function')syncProfileDebounced();}
 /* Crash-resiliente Lauf-Persistenz: Pfad liegt sonst nur im RAM und ginge bei
    App-Kill/Crash mitten im Lauf komplett verloren. Wird alle ~12s gespiegelt,
    beim nächsten Boot per checkOrphanedRun() angeboten. */
@@ -2655,7 +2674,7 @@ function checkOrphanedRun(){
 function load(){
   try{
     const d=JSON.parse(localStorage.getItem('rc_v4_'+userId));
-    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;lastRunDate=d.lastRunDate||'';stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;registeredAt=d.registeredAt||Date.now();starterQuestsDone=d.starterQuestsDone||[];starterQuestFlags=d.starterQuestFlags||{profileOpened:false};heatPersonalOnly=d.heatPersonalOnly||false;dailyChallenges=d.dailyChallenges||[];dailyChalDate=d.dailyChalDate||'';chalStreak=d.chalStreak||0;lastChalDoneDate=d.lastChalDoneDate||'';dailyLoginDate=d.dailyLoginDate||'';dailyLoginStreak=d.dailyLoginStreak||0;streakShields=d.streakShields||0;terrShields=d.terrShields||0;recentQuoteIds=d.recentQuoteIds||[];weeklyChals=d.weeklyChals||[];weekChalKey=d.weekChalKey||'';personalRecords=d.personalRecords||{};battlePassClaimed=d.battlePassClaimed||[];bpClaimMigrated=d.bpClaimMigrated||false;totalRaids=d.totalRaids||0;totalBoosts=d.totalBoosts||0;weeklyAchsDone=d.weeklyAchsDone||0;seasonXp=d.seasonXp||0;totalElevation=d.totalElevation||0;totalCuts=d.totalCuts||0;bestRank=(d.bestRank!=null?d.bestRank:null);natureVisited=d.natureVisited||[];localStateTs=d.localStateTs||0;/* invasions: serverseitig (rc_sync_breaches), nicht mehr aus localStorage */}
+    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;lastRunDate=d.lastRunDate||'';stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;registeredAt=d.registeredAt||Date.now();starterQuestsDone=d.starterQuestsDone||[];starterQuestFlags=d.starterQuestFlags||{profileOpened:false};heatPersonalOnly=d.heatPersonalOnly||false;dailyChallenges=d.dailyChallenges||[];dailyChalDate=d.dailyChalDate||'';chalStreak=d.chalStreak||0;lastChalDoneDate=d.lastChalDoneDate||'';dailyLoginDate=d.dailyLoginDate||'';dailyLoginStreak=d.dailyLoginStreak||0;streakShields=d.streakShields||0;terrShields=d.terrShields||0;boostBollwerk=d.boostBollwerk||0;bollwerkArmed=!!d.bollwerkArmed;recentQuoteIds=d.recentQuoteIds||[];weeklyChals=d.weeklyChals||[];weekChalKey=d.weekChalKey||'';personalRecords=d.personalRecords||{};battlePassClaimed=d.battlePassClaimed||[];bpClaimMigrated=d.bpClaimMigrated||false;totalRaids=d.totalRaids||0;totalBoosts=d.totalBoosts||0;weeklyAchsDone=d.weeklyAchsDone||0;seasonXp=d.seasonXp||0;totalElevation=d.totalElevation||0;totalCuts=d.totalCuts||0;bestRank=(d.bestRank!=null?d.bestRank:null);natureVisited=d.natureVisited||[];localStateTs=d.localStateTs||0;/* invasions: serverseitig (rc_sync_breaches), nicht mehr aus localStorage */}
   }catch(e){logError('state_load',e);/* korrupter Blob -> Defaults; Cloud-Sync stellt wieder her */}
   // Rival territories werden nach erstem GPS-Fix generiert (locationfound)
   if(!quests.length)genQuests();
@@ -3086,7 +3105,7 @@ function spInfo(xp){
   return{lv,cur,nextThr,pct,next};
 }
 function genWeeklyChallenges(){const wk=getWeekKey();if(weekChalKey===wk&&weeklyChals.length===4)return;weekChalKey=wk;const seed=new Date().getDate()+new Date().getMonth()*31;const pool=[...WEEKLY_POOL];const sel=[];for(let i=0;i<4;i++){const idx=Math.abs(seed*(i+7)*1009)%pool.length;sel.push({...pool[idx],progress:0,done:false});pool.splice(idx,1);}weeklyChals=sel;save();}
-function updateWeeklyChallenges(rec){const wk=getWeekKey();if(weekChalKey!==wk)genWeeklyChallenges();weeklyChals.forEach(c=>{if(c.done)return;const prev=c.progress||0;if(c.key==='km')c.progress=Math.min(c.target,prev+rec.distance/1000);else if(c.key==='runs')c.progress=Math.min(c.target,prev+1);else if(c.key==='conq'&&rec.conquered)c.progress=Math.min(c.target,prev+1);else if(c.key==='def'&&rec.defended)c.progress=Math.min(c.target,prev+1);else if(c.key==='lm')c.progress=Math.min(c.target,capturedLandmarks.length);if(!c.done&&c.progress>=c.target){c.done=true;weeklyAchsDone++;awardXp(c.reward,'weekly');runNote('🎯 Wochen-Challenge: '+c.desc+' +'+c.reward+' XP');}});save();}
+function updateWeeklyChallenges(rec){const wk=getWeekKey();if(weekChalKey!==wk)genWeeklyChallenges();weeklyChals.forEach(c=>{if(c.done)return;const prev=c.progress||0;if(c.key==='km')c.progress=Math.min(c.target,prev+rec.distance/1000);else if(c.key==='runs')c.progress=Math.min(c.target,prev+1);else if(c.key==='conq'&&rec.conquered)c.progress=Math.min(c.target,prev+1);else if(c.key==='def'&&rec.defended)c.progress=Math.min(c.target,prev+1);else if(c.key==='lm')c.progress=Math.min(c.target,capturedLandmarks.length);if(!c.done&&c.progress>=c.target){c.done=true;weeklyAchsDone++;awardXp(c.reward,'weekly');runNote('🎯 Wochen-Challenge: '+c.desc+' +'+c.reward+' XP');if((boostBollwerk||0)<3){boostBollwerk=(boostBollwerk||0)+1;runNote('🛡️ Bollwerk-Boost erhalten ('+boostBollwerk+'/3) – vor einem Lauf aktivieren für +50% Verteidigung.');}}});save();}
 function trackPersonalRecords(rec,totalPts,area){const pr=personalRecords;let newPR=false;if(!pr.longestRun||rec.distance>pr.longestRun.dist){pr.longestRun={dist:rec.distance,date:rec.date};newPR=true;}if(rec.splits&&rec.splits.length&&(!pr.fastestKm||rec.splits[0].splitSecs<pr.fastestKm.secs)){pr.fastestKm={secs:rec.splits[0].splitSecs,date:rec.date};newPR=true;}if(!pr.mostXp||totalPts>pr.mostXp.pts){pr.mostXp={pts:totalPts,date:rec.date};newPR=true;}if(!pr.mostArea||area>pr.mostArea.area){pr.mostArea={area,date:rec.date};newPR=true;}if(newPR)toast('🏆 Neue Persönliche Bestleistung!');}
 function generateRunCard(rec,runPath){const cv=document.createElement('canvas');cv.width=360;cv.height=640;const ctx=cv.getContext('2d');const tm=TEAMS.find(t=>t.id===userTeam)||{color:'#e8ff47',icon:'🏃',name:''};const col=tm.color||'#e8ff47';const g=ctx.createLinearGradient(0,0,0,640);g.addColorStop(0,'#09090f');g.addColorStop(1,'#1a1a2e');ctx.fillStyle=g;ctx.fillRect(0,0,360,640);ctx.fillStyle=col+'22';ctx.fillRect(0,0,360,200);ctx.font='bold 13px sans-serif';ctx.fillStyle=col;ctx.textAlign='left';ctx.fillText('RUNCONQUER',20,32);ctx.font='11px sans-serif';ctx.fillStyle='rgba(255,255,255,.4)';ctx.fillText(new Date(rec.date).toLocaleDateString('de'),20,50);ctx.font='54px serif';ctx.textAlign='center';ctx.fillText(tm.icon||'🏃',180,130);ctx.font='bold 20px sans-serif';ctx.fillStyle='#fff';ctx.textAlign='center';ctx.fillText(playerName||'Läufer',180,162);ctx.strokeStyle=col+'44';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(20,178);ctx.lineTo(340,178);ctx.stroke();const stats=[['DISTANZ',fmtDist(rec.distance)],['ZEIT',fmtTime(rec.duration)],['PACE',fmtPace(rec.distance,rec.duration)],['PUNKTE','+'+rec.pts]];stats.forEach((s,i)=>{const x=i%2===0?90:270,y=220+Math.floor(i/2)*100;ctx.font='10px sans-serif';ctx.fillStyle='rgba(255,255,255,.4)';ctx.textAlign='center';ctx.fillText(s[0],x,y-12);ctx.font='bold 28px sans-serif';ctx.fillStyle=col;ctx.fillText(s[1],x,y+18);});if(runPath&&runPath.length>1){const lats=runPath.map(p=>p[0]),lngs=runPath.map(p=>p[1]);const minLat=Math.min(...lats),maxLat=Math.max(...lats),minLng=Math.min(...lngs),maxLng=Math.max(...lngs);const pw=280,ph=150,px=40,py=440;const lrng=maxLat-minLat||0.001,lgrng=maxLng-minLng||0.001;const sc=Math.min(pw/lgrng,ph/lrng)*0.82;const cx0=(minLng+maxLng)/2,cy0=(minLat+maxLat)/2;ctx.strokeStyle=col;ctx.lineWidth=3;ctx.lineCap='round';ctx.lineJoin='round';ctx.shadowColor=col;ctx.shadowBlur=8;ctx.beginPath();runPath.forEach((p,i)=>{const cx=px+pw/2+(p[1]-cx0)*sc,cy=py+ph/2-(p[0]-cy0)*sc;i===0?ctx.moveTo(cx,cy):ctx.lineTo(cx,cy);});ctx.stroke();ctx.shadowBlur=0;const sp=runPath[0],ep=runPath[runPath.length-1];ctx.fillStyle='#10b981';ctx.beginPath();ctx.arc(px+pw/2+(sp[1]-cx0)*sc,py+ph/2-(sp[0]-cy0)*sc,5,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ef4444';ctx.beginPath();ctx.arc(px+pw/2+(ep[1]-cx0)*sc,py+ph/2-(ep[0]-cy0)*sc,5,0,Math.PI*2);ctx.fill();}ctx.font='9px sans-serif';ctx.fillStyle='rgba(255,255,255,.2)';ctx.textAlign='center';ctx.fillText('runconquer.app',180,630);return cv;}
 function shareRunCard(rec,runPath){const cv=generateRunCard(rec,runPath);cv.toBlob(blob=>{if(navigator.share&&blob){const f=new File([blob],'run.png',{type:'image/png'});navigator.share({files:[f],title:'Mein Lauf bei RunConquer'}).catch(()=>{const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='runconquer-lauf.png';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);});return;}const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='runconquer-lauf.png';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);},'image/png');}
@@ -6213,6 +6232,9 @@ async function finalizeRun(elapsed){
   })();
   /* Reservierter Boost gilt als verbraucht (Energie wurde bei Aktivierung gebucht). */
   if(boostArmed){boostArmed=false;try{localStorage.setItem('rc_boostarmed','0');}catch(e){}}
+  // Bollwerk verbraucht: wurde er für diesen Lauf mitgesendet, 1 abziehen + abschalten.
+  if(bollwerkArmed&&(boostBollwerk||0)>0){boostBollwerk=Math.max(0,(boostBollwerk||0)-1);bollwerkArmed=false;runNote('🛡️ Bollwerk eingesetzt – deine Felder sind +50% stärker verteidigt.');}
+  else if(bollwerkArmed){bollwerkArmed=false;}
   _collectingRunNotes=false;
   statusTxt.textContent='Bereit';save();updateUI();showPostRun(rec);
   setTimeout(triggerBotTick,1500); // Bots reagieren auf frisch eroberte Gebiete
@@ -6293,7 +6315,7 @@ async function processConquest(np,area,d,boosted=false,isImport=false,durationS=
     const r=await sb.functions.invoke('conquer',{body:{
       path:runPath.map(p=>p.length>2&&p[2]!=null?[p[0],p[1],p[2]]:[p[0],p[1]]),
       distanceM:d,durationS:durationS||0,cadence,
-      playerName,userColor,userTeam,boosted:!!boosted,
+      playerName,userColor,userTeam,boosted:!!boosted,defBoost:(!isImport&&typeof bollwerkArmed!=='undefined'&&!!bollwerkArmed&&(boostBollwerk||0)>0),
       // Für die serverseitige km-XP-Berechnung (Server klammert die Werte hart).
       weeklyKm:getWeeklyKm(),streakDays
     }});
