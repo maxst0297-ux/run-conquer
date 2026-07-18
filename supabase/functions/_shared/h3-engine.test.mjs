@@ -1,5 +1,5 @@
 import * as h3 from 'h3-js';
-import { createEngine, paceFactor, distanceBonus, runValue, validateRun, validateTrack, decayedDefense, timeToMinMs, DECAY_PER_DAY, pickBotTargets, pickBotCleanup, botAttack, BOT_NEW_DEFENSE, neutralPaceFactor, neutralClaimPoints, FAIR_CELLS_PER_KM } from './h3-engine.mjs';
+import { createEngine, paceFactor, distanceBonus, runValue, validateRun, validateTrack, decayedDefense, timeToMinMs, DECAY_PER_DAY, pickBotTargets, pickBotCleanup, botAttack, BOT_NEW_DEFENSE, neutralPaceFactor, neutralClaimPoints, FAIR_CELLS_PER_KM, homeDecayRate, HOME_DECAY_PER_DAY } from './h3-engine.mjs';
 
 const eng = createEngine(h3);
 let pass = 0, fail = 0;
@@ -43,6 +43,30 @@ ok('claim Wald 9z/1km@12 -> 11', neutralClaimPoints(9, 1, 12) === 11, '=' + neut
 ok('claim unter Deckel 8z/1km@12 -> 10', neutralClaimPoints(8, 1, 12) === Math.round(8 * 1.2));
 // Längerer Lauf hebt den Deckel: 25 Zellen auf 3 km @12 -> min(25,30)=25 *1.2 -> 30
 ok('claim 25z/3km@12 -> 30 (Deckel hebt sich)', neutralClaimPoints(25, 3, 12) === 30, '=' + neutralClaimPoints(25, 3, 12));
+
+// ---------- Pillar #2: Heimatkern (langsamerer Verfall) ----------
+const _now = 1_000_000_000_000; // fixer now-Stempel (kein Date.now im Test)
+const _d = (n) => _now - n * 86400000;
+ok('homeRate: normal ohne Heimat = 8', homeDecayRate(false, _d(1), _now) === 8);
+ok('homeRate: Heimat + aktiv (5d) = 4', homeDecayRate(true, _d(5), _now) === HOME_DECAY_PER_DAY);
+ok('homeRate: Heimat + aktiv (30d Grenze) = 4', homeDecayRate(true, _d(30), _now) === 4);
+ok('homeRate: Heimat + inaktiv (31d) -> 8 (Zementierung fällt)', homeDecayRate(true, _d(31), _now) === 8);
+ok('homeRate: Heimat ohne last_active -> 8', homeDecayRate(true, 0, _now) === 8);
+// Verfall über 10 Tage: normal 100-80=20; Heimat aktiv 100-40=60
+ok('decay 100def/10d normal = 20', near(decayedDefense(100, _d(10), _now), 20));
+ok('decay 100def/10d @rate4 (Heimat) = 60', near(decayedDefense(100, _d(10), _now, 4), 60));
+// timeToMin: 100 def @rate4 -> (100-1)/4 Tage
+ok('timeToMin skaliert mit Rate', near(timeToMinMs(100, _now, _now, 4), (99 / 4) * 86400000));
+// pickBotTargets: aktiver Heimatkern (def-effektiv > maxDef) wird NICHT genommen,
+// ein normales Gebiet mit gleicher gespeicherter Verteidigung aber schon.
+const _botPick = pickBotTargets({
+  territories: [
+    { id: 'HOME', owner: 'u1', defense: 50, updatedAtMs: _d(10), isHome: true,  ownerLastActiveMs: _d(2) }, // aktiv: 50-10*4=10 (>5 -> verschont)
+    { id: 'NORM', owner: 'u2', defense: 50, updatedAtMs: _d(10), isHome: false },                           // normal: 50-10*8 -> 1 (<=5 -> genommen)
+  ], nowMs: _now, botOwnerIds: [],
+});
+ok('pickBotTargets: normales Gebiet genommen', _botPick.includes('NORM'));
+ok('pickBotTargets: aktiver Heimatkern verschont', !_botPick.includes('HOME'));
 
 // ---------- Geometrie-Setup (echtes H3, Res 10) ----------
 const center = h3.latLngToCell(48.137, 11.575, 10);

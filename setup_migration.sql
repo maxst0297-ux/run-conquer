@@ -76,3 +76,48 @@ grant execute on function public.rc_profile_runs(uuid) to authenticated, anon;
 -- Der Schalter „Gebiete sichtbar" blendet gezielt die GEBIETS-LISTE im Profil für
 -- Follower aus (clientseitig über profiles.show_territories) – die Karte bleibt
 -- fürs Gameplay unverändert.
+
+-- 4) HEIMATKERN (Pillar #2): markiertes Gebiet verfällt halb so schnell (4/Tag),
+--    solange der Besitzer < 30 Tage aktiv war (updated_at); danach voller Verfall.
+alter table public.h3_territories
+  add column if not exists is_home_core boolean not null default false;
+alter table public.profiles
+  add column if not exists home_core_set_at timestamptz;
+create unique index if not exists h3_territories_one_home_per_owner
+  on public.h3_territories(owner) where is_home_core;
+-- View neu erzeugen, damit is_home_core (t.*) für den Client sichtbar wird.
+drop view if exists public.h3_territories_full;
+create view public.h3_territories_full as
+  select t.*,
+         coalesce(array_agg(c.cell) filter (where c.cell is not null), '{}') as cells
+    from public.h3_territories t
+    left join public.h3_cells c on c.territory_id = t.id
+   group by t.id;
+grant select on public.h3_territories_full to anon, authenticated;
+create or replace function public.rc_set_home_core(terr_id uuid)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid   uuid := auth.uid();
+  v_owner uuid;
+  v_last  timestamptz;
+begin
+  if v_uid is null then return 'unauthenticated'; end if;
+  select owner into v_owner from public.h3_territories where id = terr_id;
+  if v_owner is null then return 'not_found'; end if;
+  if v_owner <> v_uid then return 'not_owner'; end if;
+  select home_core_set_at into v_last from public.profiles where id = v_uid;
+  if v_last is not null and v_last > now() - interval '7 days' then
+    return 'cooldown';
+  end if;
+  update public.h3_territories set is_home_core = false where owner = v_uid and is_home_core;
+  update public.h3_territories set is_home_core = true  where id = terr_id;
+  update public.profiles set home_core_set_at = now() where id = v_uid;
+  return 'ok';
+end;
+$$;
+revoke all on function public.rc_set_home_core(uuid) from public;
+grant execute on function public.rc_set_home_core(uuid) to authenticated;
