@@ -72,6 +72,30 @@ export function runValue(distanceKm, paceKmh, kind) {
   return distanceKm * paceFactor(paceKmh, kind) + distanceBonus(distanceKm);
 }
 
+// ── Pillar #4: Dichte-faire Wertung des NEUTRAL-CLAIMs ──────────────────────
+// Freie Zellen zu beanspruchen gab bisher +1 Punkt PRO Hexagon. Das ist (a)
+// dichte-abhängig (Stadt = viele kleine Res-10-Zellen/km) und (b) ohne Tempo-
+// Check „drive-by"-farmbar. Zwei Stellschrauben machen es fair:
+//   1) Dichte-Deckel: höchstens FAIR_CELLS_PER_KM Zellen je gelaufenem km zählen
+//      für die PUNKTE (die Fläche/Gebiete bleiben unangetastet).
+//   2) Tempo-Gate: Trapez-Faktor, der zügiges Laufen (10–14 km/h) belohnt und
+//      Geh- bzw. Fahrtempo abstraft.
+export const FAIR_CELLS_PER_KM = 10; // Res-10 (~114 m Zentrum-zu-Zentrum): ~8–9 Zellen/km bei gerader Linie -> 10 als fairer Deckel
+export function neutralPaceFactor(paceKmh) {
+  const v = paceKmh || 0;
+  if (v < 6)  return 0.5;                  // Gehtempo / GPS-Drift
+  if (v < 10) return 0.5 + (v - 6) * 0.125; // Jogging-Einstieg: 6->0.5 … 10->1.0
+  if (v <= 14) return 1.2;                 // Bonus-Zone: zügiges Laufen
+  if (v <= 25) return 1.2 - (v - 14) * 0.09; // Abfall: 14->1.2 … 25->~0.21 (Rad/Auto)
+  return 0;                                // über Hardcap
+}
+// Dichte-faire Punkte für `cellCount` neu beanspruchte Zellen auf `distanceKm`
+// bei `paceKmh`. Rein + testbar.
+export function neutralClaimPoints(cellCount, distanceKm, paceKmh) {
+  const capped = Math.min(cellCount, Math.max(0, distanceKm) * FAIR_CELLS_PER_KM);
+  return Math.round(capped * neutralPaceFactor(paceKmh));
+}
+
 export function clampDefense(v) {
   return Math.max(DEF_MIN, Math.min(DEF_MAX, v));
 }
@@ -522,7 +546,9 @@ export function createEngine(h3) {
       const initDef = clampDefense(20 + Math.floor(distanceKm * 10));
       out.creates.push({ owner: userId, cells: neutral, defense: initDef, neutral: true });
       out.events.push({ type: 'neutral_claim', cells: neutral.length });
-      out.playerPoints += neutral.length;
+      // Pillar #4 — dichte-faire, tempo-geprüfte Punkte (Fläche oben bleibt gleich).
+      // Tempo = lokales Zell-Tempo über die neu beanspruchten Zellen (wie #44).
+      out.playerPoints += neutralClaimPoints(neutral.length, distanceKm, localPace(neutral));
     }
     return out;
   }
@@ -534,8 +560,9 @@ export function createEngine(h3) {
     // engine.X(...) auf, daher MÜSSEN sie im Objekt liegen (sonst
     // "engine.decayedDefense is not a function" zur Laufzeit).
     paceFactor, distanceBonus, runValue, clampDefense,
+    neutralPaceFactor, neutralClaimPoints,
     decayedDefense, timeToMinMs, botAttack, pickBotTargets, pickBotCleanup,
     RES, DEF_MIN, DEF_MAX, CAPTURE_BONUS, DAILY_BUILD_CAP, OWN_BUILD_MIN_PER_KM,
-    NEGLECT_CAPTURE_DEF, DECAY_PER_DAY, ENERGY_BOOST, ENERGY_PER_WEEK,
+    NEGLECT_CAPTURE_DEF, DECAY_PER_DAY, ENERGY_BOOST, ENERGY_PER_WEEK, FAIR_CELLS_PER_KM,
   };
 }
