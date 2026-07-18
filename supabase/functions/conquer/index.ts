@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
     if (body.boosted && energy > 0) { applyBoost = true; energy -= 1; }
 
     // ── Engine entscheidet ───────────────────────────────────────────────────
-    const res = engine.resolveRun({ userId: user.id, runCells, enclosed, distanceKm, paceKmh, territories, boosted: applyBoost, cellPace });
+    const res = engine.resolveRun({ userId: user.id, runCells, enclosed, distanceKm, paceKmh, territories, boosted: applyBoost, defBoost: !!body.defBoost, cellPace });
 
     // ── Mutationen anwenden (Reihenfolge: delete -> update -> create, damit
     //    Zellen frei sind, bevor sie neu vergeben werden; cell ist global PK) ─
