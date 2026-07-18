@@ -1553,7 +1553,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <div id="pvClubChip" style="display:none;margin:6px auto 0;width:fit-content;max-width:min(280px,80vw);font-size:.72rem;font-weight:700;color:var(--primary);background:rgba(var(--primary-rgb),.12);border:1px solid rgba(var(--primary-rgb),.3);border-radius:20px;padding:4px 13px;cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" onclick="showMyClubPopup()"></div>
         <div class="pv-bio" id="pvBio" onclick="editBio()" title="Beschreibung bearbeiten" style="margin:4px auto 0;max-width:280px;font-size:.8rem;color:var(--muted);cursor:pointer;font-style:italic"></div>
         <div class="pv-rank" id="pvRank" style="display:none;margin:6px auto 0;width:fit-content;font-size:.72rem;font-weight:700;color:var(--primary);background:rgba(var(--primary-rgb),.12);border:1px solid rgba(var(--primary-rgb),.32);border-radius:20px;padding:4px 12px"></div>
-        <div id="pvFollowers" style="display:none;margin:8px auto 0;font-size:.75rem;color:var(--muted)"></div>
+        <div id="pvFollowers" onclick="showFollowListPopup('followers')" style="display:none;margin:8px auto 0;font-size:.75rem;color:var(--muted);cursor:pointer;-webkit-tap-highlight-color:transparent"></div>
         <div class="pv-since" id="pvSince">Noch kein Lauf</div>
         <div style="margin-top:14px;width:100%;max-width:268px;margin-left:auto;margin-right:auto">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
@@ -2139,7 +2139,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v196';
+const APP_VERSION='v197';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3351,6 +3351,61 @@ window.showMyClubPopup=function(){
         </div>`;}).join('');
       list.forEach((p,i)=>{const row=mEl.querySelector(`[data-idx="${i}"]`);if(row)row.addEventListener('click',()=>{ov.remove();showPublicProfile(p);});});
     });
+};
+
+/* Follower-/„Ich folge"-Liste: Tap auf die Follower-Zahl im Profil öffnet ein
+   Bottom-Sheet mit zwei Reitern. Follower = jemand folgt DIR (target_uid=ich,
+   accepted); Ich folge = du folgst jemandem (requester_uid=ich, accepted).
+   Tap auf einen Eintrag -> dessen Profil. */
+window.showFollowListPopup=function(tab){
+  tab=(tab==='following')?'following':'followers';
+  document.getElementById('followListOverlay')?.remove();
+  const ov=document.createElement('div');ov.id='followListOverlay';
+  ov.style.cssText='position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center';
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+  const seg=(id,label)=>`<button data-fltab="${id}" style="flex:1;padding:9px 6px;border:none;border-radius:10px;background:${tab===id?'var(--primary)':'transparent'};color:${tab===id?'#000':'var(--muted)'};font-family:'Poppins',sans-serif;font-weight:600;font-size:.8rem;cursor:pointer">${label}</button>`;
+  ov.innerHTML=`<div style="width:100%;max-width:480px;max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--card);border-radius:24px 24px 0 0;padding:0 0 max(env(safe-area-inset-bottom),16px)">
+    <div style="position:sticky;top:0;background:var(--card);z-index:2;padding:16px 18px 10px;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div style="flex:1;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:.5px">Verbindungen</div>
+        <button onclick="document.getElementById('followListOverlay')?.remove()" style="background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:11px;padding:6px 12px;font-size:.95rem;cursor:pointer">✕</button>
+      </div>
+      <div style="display:flex;gap:6px;background:var(--bg2);border-radius:12px;padding:4px">${seg('followers','Follower')}${seg('following','Ich folge')}</div>
+    </div>
+    <div id="followListBody" style="padding:10px 18px">${rcSkel(5)}</div>
+  </div>`;
+  document.body.appendChild(ov);
+  ov.querySelectorAll('[data-fltab]').forEach(b=>b.addEventListener('click',()=>{const t=b.dataset.fltab;if(t!==tab){ov.remove();showFollowListPopup(t);}}));
+  if(!sb||!userId){const b=document.getElementById('followListBody');if(b)b.innerHTML='<div style="padding:14px;color:var(--muted);font-size:.78rem;text-align:center">Nicht verbunden.</div>';return;}
+  (async()=>{
+    const body=document.getElementById('followListBody');if(!body)return;
+    try{
+      const{data,error}=await sb.from('follow_requests').select('requester_uid,requester_name,target_uid,target_name,status').or(`requester_uid.eq.${userId},target_uid.eq.${userId}`).eq('status','accepted');
+      if(error){body.innerHTML='<div style="padding:14px;color:var(--muted);font-size:.78rem;text-align:center">Liste nicht verfügbar.</div>';return;}
+      const rows=data||[];
+      const people=(tab==='followers')
+        ? rows.filter(r=>r.target_uid===userId).map(r=>({uid:r.requester_uid,name:r.requester_name}))
+        : rows.filter(r=>r.requester_uid===userId).map(r=>({uid:r.target_uid,name:r.target_name}));
+      if(!document.getElementById('followListOverlay'))return;
+      if(!people.length){
+        body.innerHTML='<div style="padding:20px 10px;color:var(--muted);font-size:.8rem;text-align:center">'+(tab==='followers'?'Noch keine Follower. Teile deine Spieler-Nummer, damit dir andere folgen können.':'Du folgst noch niemandem. Über Einstellungen → Spieler finden kannst du andere suchen.')+'</div>';
+        return;
+      }
+      // Profile anreichern (Avatar/Farbe) — ein Query.
+      const uids=[...new Set(people.map(p=>p.uid).filter(Boolean))];
+      const meta={};
+      try{const{data:profs}=await sb.from('profiles').select('user_id,player_name,user_avatar,user_color,points').in('user_id',uids);for(const p of (profs||[]))meta[p.user_id]=p;}catch(e){}
+      if(!document.getElementById('followListOverlay'))return;
+      body.innerHTML=people.map((p,i)=>{
+        const m=meta[p.uid]||{};const col=m.user_color||'#e8ff47';const nm=m.player_name||p.name||'Läufer';
+        return `<div class="fl-row" data-idx="${i}" style="display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent">
+          <div style="width:40px;height:40px;border-radius:50%;background:${esc(col)}22;border:2px solid ${esc(col)}66;display:flex;align-items:center;justify-content:center;font-size:1.15rem;flex-shrink:0">${esc(m.user_avatar||'🏃')}</div>
+          <div style="flex:1;min-width:0"><div style="font-size:.86rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(nm)}</div><div style="font-size:.62rem;color:var(--muted)">${(m.points||0).toLocaleString('de-DE')} Punkte</div></div>
+          <i class="fas fa-chevron-right" style="color:var(--muted);font-size:.6rem;flex-shrink:0"></i>
+        </div>`;}).join('');
+      people.forEach((p,i)=>{const row=body.querySelector(`[data-idx="${i}"]`);if(row)row.addEventListener('click',()=>{ov.remove();showPublicProfile({user_id:p.uid,player_name:(meta[p.uid]&&meta[p.uid].player_name)||p.name});});});
+    }catch(e){if(body)body.innerHTML='<div style="padding:14px;color:var(--muted);font-size:.78rem;text-align:center">Liste nicht verfügbar.</div>';}
+  })();
 };
 
 /* ── SAISON ── */
@@ -9326,7 +9381,7 @@ async function updateProfileRank(){
   try{
     const{data:fc}=await sb.rpc('rc_follow_counts',{uid:userId});
     const c=Array.isArray(fc)?fc[0]:fc;const fe=$('pvFollowers');
-    if(fe&&c){fe.innerHTML='<b style="color:var(--text)">'+(c.followers??0)+'</b> Follower &nbsp;·&nbsp; <b style="color:var(--text)">'+(c.following??0)+'</b> folgt';fe.style.display='';}
+    if(fe&&c){fe.innerHTML='<b style="color:var(--text)">'+(c.followers??0)+'</b> Follower &nbsp;·&nbsp; <b style="color:var(--text)">'+(c.following??0)+'</b> folgt <span style="color:var(--primary);font-weight:700">›</span>';fe.style.display='';}
   }catch(e){}
 }
 function updateProfile(){
@@ -9334,7 +9389,7 @@ function updateProfile(){
   syncStreakUnlocks();
   updateProfileRank();
   $('pvAvatar').innerHTML=avatarHTML(54);$('pvName').textContent=playerName;
-  {const ccEl=$('pvClubChip');if(ccEl){if(userClub&&userClub.name){ccEl.style.display='block';ccEl.innerHTML='🏰 '+esc(userClub.name);}else{ccEl.style.display='none';}}}
+  {const ccEl=$('pvClubChip');if(ccEl){if(userClub&&userClub.name){ccEl.style.display='block';ccEl.setAttribute('onclick','showMyClubPopup()');ccEl.innerHTML='🏰 '+esc(userClub.name);}else{ccEl.style.display='block';ccEl.setAttribute('onclick',"openSettingsAt('club')");ccEl.innerHTML='🏰 Klub beitreten';}}}
   const _bioEl=$('pvBio');if(_bioEl)_bioEl.textContent=userBio?('„'+userBio+'“'):'➕ Beschreibung hinzufügen';
   const banner=$('pvBanner');banner.style.background=`linear-gradient(135deg,${userColor}44,${userColor}11,var(--bg2))`;banner.style.borderColor=userColor+'55';
   /* Angelegte Belohnungen anwenden: Banner + Profilrahmen (Ring am Avatar). */
