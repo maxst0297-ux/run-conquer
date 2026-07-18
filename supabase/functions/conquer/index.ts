@@ -106,23 +106,34 @@ Deno.serve(async (req) => {
       // Gebiets-Schutz: shield_until der Gegner-Besitzer laden. Ist er in der Zukunft,
       // sind ALLE Gebiete dieses Spielers 24h angriffs-immun. Fehlt die Spalte, leer.
       const shieldByOwner: Record<string, boolean> = {};
+      // Heimatkern (#2): Besitzer-Aktivität (updated_at) laden -> homeDecayRate.
+      const activeByOwner: Record<string, number> = {};
       try {
         const owners = [...new Set((trows || []).map((t: any) => t.owner).filter((o: string) => o && o !== user.id))];
         if (owners.length) {
-          const { data: shrows } = await svc.from('profiles').select('id,shield_until').in('id', owners);
-          for (const p of (shrows || [])) { const t = Date.parse(p.shield_until || ''); if (t && t > nowMs) shieldByOwner[p.id] = true; }
+          const { data: shrows } = await svc.from('profiles').select('id,shield_until,updated_at').in('id', owners);
+          for (const p of (shrows || [])) {
+            const t = Date.parse(p.shield_until || ''); if (t && t > nowMs) shieldByOwner[p.id] = true;
+            const a = Date.parse(p.updated_at || ''); if (a) activeByOwner[p.id] = a;
+          }
         }
-      } catch (_) { /* Spalte fehlt -> kein Schutz */ }
+      } catch (_) { /* Spalte fehlt -> kein Schutz / normaler Verfall */ }
       const today = new Date().toISOString().slice(0, 10);
-      for (const t of (trows || [])) territories.push({
-        id: t.id, owner: t.owner, ownerName: t.owner_name,
-        // Lazy-Decay: die wirksame Verteidigung wird aus updated_at berechnet,
-        // damit Angriffe gegen lange nicht verteidigte Gebiete leichter sind.
-        defense: engine.decayedDefense(t.defense, Date.parse(t.updated_at || t.created_at) || nowMs, nowMs),
-        dailyAdded: t.daily_defense_added, lastDay: t.last_defense_day,
-        shielded: !!shieldByOwner[t.owner],
-        today, cells: byT[t.id] || new Set(),
-      });
+      for (const t of (trows || [])) {
+        // Der laufende Spieler ist JETZT aktiv; sonst updated_at des Besitzers.
+        const ownerActive = t.owner === user.id ? nowMs : activeByOwner[t.owner];
+        const rate = engine.homeDecayRate(!!t.is_home_core, ownerActive, nowMs);
+        territories.push({
+          id: t.id, owner: t.owner, ownerName: t.owner_name,
+          // Lazy-Decay: die wirksame Verteidigung wird aus updated_at berechnet,
+          // damit Angriffe gegen lange nicht verteidigte Gebiete leichter sind.
+          // Heimatkern verfällt halb so schnell (solange Besitzer aktiv).
+          defense: engine.decayedDefense(t.defense, Date.parse(t.updated_at || t.created_at) || nowMs, nowMs, rate),
+          dailyAdded: t.daily_defense_added, lastDay: t.last_defense_day,
+          shielded: !!shieldByOwner[t.owner],
+          today, cells: byT[t.id] || new Set(),
+        });
+      }
     }
 
     // ── Energie (server-autoritativ): 3 Boosts/Woche, +10% Angriff ───────────

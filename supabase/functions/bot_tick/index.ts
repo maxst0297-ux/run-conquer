@@ -15,7 +15,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import * as h3 from 'https://esm.sh/h3-js@4.1.0';
 import {
-  botAttack, decayedDefense, pickBotCleanup,
+  botAttack, decayedDefense, homeDecayRate, pickBotCleanup,
   BOT_NEW_DEFENSE, BOT_ACTIONS_PER_TICK, BOT_ATK_MIN, BOT_ATK_MAX, BOT_CLAIM_CELLS, BOT_ATTACK_CHANCE,
 } from '../_shared/h3-engine.mjs';
 
@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
     const botIdSet = new Set(bots.map((b: any) => b.id));
     const randBot = () => bots[Math.floor(Math.random() * bots.length)];
 
-    const { data: trows } = await svc.from('h3_territories').select('id,owner,defense,updated_at');
+    const { data: trows } = await svc.from('h3_territories').select('id,owner,defense,updated_at,is_home_core');
     if (!trows || !trows.length) return json({ ok: true, actions: [], note: 'empty world' });
     const { data: crows } = await svc.from('h3_cells').select('cell,territory_id');
 
@@ -96,13 +96,18 @@ Deno.serve(async (req) => {
     const anchors = playerTerr.length ? playerTerr : trows;
     // Gebiets-Schutz: Spieler mit shield_until in der Zukunft sind angriffs-immun.
     const shielded = new Set<string>();
+    // Heimatkern (#2): Besitzer-Aktivität (updated_at) -> langsamerer Verfall.
+    const activeByOwner: Record<string, number> = {};
     try {
       const owners = [...new Set(playerTerr.map((t: any) => t.owner).filter(Boolean))];
       if (owners.length) {
-        const { data: shrows } = await svc.from('profiles').select('id,shield_until').in('id', owners);
-        for (const p of (shrows || [])) { const tm = Date.parse(p.shield_until || ''); if (tm && tm > nowMs) shielded.add(p.id); }
+        const { data: shrows } = await svc.from('profiles').select('id,shield_until,updated_at').in('id', owners);
+        for (const p of (shrows || [])) {
+          const tm = Date.parse(p.shield_until || ''); if (tm && tm > nowMs) shielded.add(p.id);
+          const a = Date.parse(p.updated_at || ''); if (a) activeByOwner[p.id] = a;
+        }
       }
-    } catch (_) { /* Spalte fehlt -> kein Schutz */ }
+    } catch (_) { /* Spalte fehlt -> kein Schutz / normaler Verfall */ }
 
     for (let i = 0; i < BOT_ACTIONS_PER_TICK && anchors.length; i++) {
       const anchor: any = anchors[Math.floor(Math.random() * anchors.length)];
@@ -114,7 +119,8 @@ Deno.serve(async (req) => {
         // Angriff auf ein Spielergebiet — mittlere Stärke, unabhängig vom Wert.
         // (Geschützte Spieler werden übersprungen.)
         const targetUid = anchor.owner; // Ziel-Spieler VOR der Übernahme merken
-        const def = decayedDefense(anchor.defense, Date.parse(anchor.updated_at) || nowMs, nowMs);
+        const rate = homeDecayRate(!!anchor.is_home_core, activeByOwner[anchor.owner], nowMs);
+        const def = decayedDefense(anchor.defense, Date.parse(anchor.updated_at) || nowMs, nowMs, rate);
         const strength = BOT_ATK_MIN + Math.random() * (BOT_ATK_MAX - BOT_ATK_MIN);
         const r = botAttack(def, strength);
         const bot = randBot();

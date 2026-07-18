@@ -104,14 +104,27 @@ export function clampDefense(v) {
 // Lazy-Decay: kein Scheduler nötig. Aus dem Zeitstempel der letzten Änderung
 // wird die aktuell wirksame Verteidigung berechnet (beim Lesen wie beim Kampf).
 export const DECAY_PER_DAY = 8; // Punkte/Tag — zentrale Stellschraube fürs Tempo
-export function decayedDefense(defense, updatedAtMs, nowMs) {
+// ── Pillar #2: Heimatkern ──────────────────────────────────────────────────
+// Das als Heimatkern markierte Gebiet verfällt halb so schnell (4/Tag statt 8) —
+// ABER nur, solange der Besitzer in den letzten 30 Tagen aktiv war. Danach
+// (Zementierungs-Schutz) springt der Verfall rückwirkend zurück auf 8/Tag, die
+// „Festung" eines Dauer-Inaktiven fällt also doch. Rein + testbar.
+export const HOME_DECAY_PER_DAY = 4;
+export const HOME_ACTIVE_WINDOW_MS = 30 * 86400000; // 30 Tage
+export function homeDecayRate(isHome, ownerLastActiveMs, nowMs) {
+  if (isHome && ownerLastActiveMs && (nowMs - ownerLastActiveMs) <= HOME_ACTIVE_WINDOW_MS) {
+    return HOME_DECAY_PER_DAY;
+  }
+  return DECAY_PER_DAY;
+}
+export function decayedDefense(defense, updatedAtMs, nowMs, ratePerDay = DECAY_PER_DAY) {
   const days = Math.max(0, (nowMs - updatedAtMs) / 86400000);
-  return Math.max(DEF_MIN, (defense || DEF_MIN) - days * DECAY_PER_DAY);
+  return Math.max(DEF_MIN, (defense || DEF_MIN) - days * ratePerDay);
 }
 // Verbleibende Zeit (ms), bis die Verteidigung DEF_MIN erreicht.
-export function timeToMinMs(defense, updatedAtMs, nowMs) {
-  const cur = decayedDefense(defense, updatedAtMs, nowMs);
-  return Math.max(0, ((cur - DEF_MIN) / DECAY_PER_DAY) * 86400000);
+export function timeToMinMs(defense, updatedAtMs, nowMs, ratePerDay = DECAY_PER_DAY) {
+  const cur = decayedDefense(defense, updatedAtMs, nowMs, ratePerDay);
+  return Math.max(0, ((cur - DEF_MIN) / ratePerDay) * 86400000);
 }
 
 // ── Energie-Boost: erhöht den Angriff eines Laufs um 10% ──
@@ -147,7 +160,7 @@ export function pickBotTargets({ territories, nowMs, maxDef = BOT_TAKE_DEF_MAX, 
   const cand = [];
   for (const t of (territories || [])) {
     if (bots.has(t.owner)) continue; // gehört schon einem Bot
-    const def = decayedDefense(t.defense, t.updatedAtMs || 0, nowMs);
+    const def = decayedDefense(t.defense, t.updatedAtMs || 0, nowMs, homeDecayRate(t.isHome, t.ownerLastActiveMs, nowMs));
     if (def <= maxDef) cand.push({ id: t.id, def });
   }
   cand.sort((a, b) => a.def - b.def); // schwächste zuerst
@@ -561,8 +574,9 @@ export function createEngine(h3) {
     // "engine.decayedDefense is not a function" zur Laufzeit).
     paceFactor, distanceBonus, runValue, clampDefense,
     neutralPaceFactor, neutralClaimPoints,
-    decayedDefense, timeToMinMs, botAttack, pickBotTargets, pickBotCleanup,
+    decayedDefense, timeToMinMs, homeDecayRate, botAttack, pickBotTargets, pickBotCleanup,
     RES, DEF_MIN, DEF_MAX, CAPTURE_BONUS, DAILY_BUILD_CAP, OWN_BUILD_MIN_PER_KM,
     NEGLECT_CAPTURE_DEF, DECAY_PER_DAY, ENERGY_BOOST, ENERGY_PER_WEEK, FAIR_CELLS_PER_KM,
+    HOME_DECAY_PER_DAY, HOME_ACTIVE_WINDOW_MS,
   };
 }

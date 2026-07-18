@@ -2139,7 +2139,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v195';
+const APP_VERSION='v196';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -5671,6 +5671,12 @@ function highlightOwnerTerr(owner){clearOwnerHighlight();(_ownerPolys[owner]||[]
 function showTerrBar(info){
   const el=$('terrBar');if(!el||!info)return;
   const rar=info.rar;
+  // Heimatkern-Chip: eigenes Gebiet -> markieren/anzeigen; fremdes -> nur Hinweis.
+  const homeChip = info.own
+    ? (info.isHome
+        ? `<span class="tb-chip" title="Dein Heimatkern – verfällt halb so schnell" style="border-color:#ffd70066;color:#ffd700">🏠 Heimatkern</span>`
+        : `<span class="tb-chip" role="button" title="Als Heimatkern festlegen (verfällt halb so schnell)" onclick="setHomeCore('${(info.id||'').replace(/'/g,'')}')" style="cursor:pointer">🏠 Als Heimatkern</span>`)
+    : (info.isHome ? `<span class="tb-chip" title="Heimatkern des Besitzers – verfällt langsamer" style="color:#ffd700">🏠 Heimatkern</span>` : '');
   el.innerHTML=`<div class="tb-top">
       <span class="tb-dot" style="color:${info.borderCol};background:${info.borderCol}"></span>
       <span class="tb-name">${esc(info.name||'Gebiet')}</span>
@@ -5684,11 +5690,27 @@ function showTerrBar(info){
       <span class="tb-chip"><span class="l">⏳</span> ${fmtDecay(info.tteMin)}</span>
       <span class="tb-chip"><span class="l">⬡</span> ${info.size} ${info.size===1?'Zelle':'Zellen'}</span>
       <span class="tb-chip" style="color:${RARITY_COLORS[rar]||'var(--text)'}">${RARITY_LABELS[rar]||''}</span>
+      ${homeChip}
     </div>`;
   el.classList.add('open');
 }
 function hideTerrBar(){const el=$('terrBar');if(el)el.classList.remove('open');}
 window.hideTerrBar=hideTerrBar;
+/* Pillar #2 — ein eigenes Gebiet als Heimatkern festlegen (halb so schneller
+   Verfall). Server erzwingt Eigentum, 1-pro-Spieler und 7-Tage-Cooldown. */
+window.setHomeCore=async function(terrId){
+  if(!terrId)return;
+  if(!sb){toast('Nicht verbunden');return;}
+  try{
+    const{data,error}=await sb.rpc('rc_set_home_core',{terr_id:terrId});
+    if(error){toast('🏠 Heimatkern noch nicht verfügbar – bitte SQL (heimatkern_migration.sql) einspielen.');return;}
+    if(data==='ok'){toast('🏠 Heimatkern gesetzt – dieses Gebiet verfällt nur noch halb so schnell.');hideTerrBar();try{await loadH3Territories();}catch(e){}try{renderH3Territories();}catch(e){}}
+    else if(data==='cooldown'){toast('🏠 Heimatkern lässt sich nur alle 7 Tage wechseln.');}
+    else if(data==='not_owner'){toast('Nur eigene Gebiete können Heimatkern werden.');}
+    else if(data==='not_found'){toast('Gebiet nicht gefunden.');}
+    else{toast('🏠 Heimatkern-Wechsel gerade nicht möglich.');}
+  }catch(e){toast('🏠 Heimatkern noch nicht verfügbar – bitte SQL einspielen.');}
+};
 /* #48 Tap-Modi der Gebiets-Infoleiste. */
 window.highlightOwnerFromBar=function(owner){
   if(!owner)return;
@@ -5830,7 +5852,7 @@ function renderH3Territories(){
     let mp;
     try{mp=h3.cellsToMultiPolygon(renderCells,false);}catch(e){return;}
     // Infos für die Gebiets-Leiste (statt Karten-Sprechblase) einmal pro Gebiet bündeln.
-    const terrInfo={name:territoryName(t),relText:(own?'Dein Gebiet':(ally?'Verbündet':'Feindlich')+(isBot?' · Bot':'')),team,teamId:effTeamId,owner:t.owner,own,ownerName:t.owner_name,def,tteMin,size:cells.length,rar,borderCol};
+    const terrInfo={id:t.id,isHome:!!t.is_home_core,name:territoryName(t),relText:(own?'Dein Gebiet':(ally?'Verbündet':'Feindlich')+(isBot?' · Bot':'')),team,teamId:effTeamId,owner:t.owner,own,ownerName:t.owner_name,def,tteMin,size:cells.length,rar,borderCol};
     const terrPolys=[]; // Polygone GENAU dieses Gebiets -> beim Klick nur dieses hervorheben
     mp.forEach(poly=>{
       const pl=L.polygon(poly,{color:borderCol,weight:rstyle.weight,dashArray:rstyle.dash||undefined,fillColor,
