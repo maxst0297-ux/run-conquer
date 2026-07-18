@@ -791,6 +791,14 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .map-panel-btn:active{transform:scale(.97)}
 #mapLegend{position:absolute;left:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);z-index:520;width:min(230px,calc(100vw - 90px));max-height:52vh;overflow-y:auto;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px 13px;box-shadow:0 8px 30px rgba(0,0,0,.4);-webkit-backdrop-filter:blur(16px) saturate(150%);backdrop-filter:blur(16px) saturate(150%);display:none;font-family:'Poppins',sans-serif}
 #mapLegend.open{display:block}
+/* Highlight-Leiste auf der Karte (Region-/Follower-Gebiete leuchtend hervorgehoben) */
+#mapHiliteBar{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);left:50%;transform:translateX(-50%) translateY(-160%);z-index:540;display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:8px 8px 8px 15px;box-shadow:0 8px 26px rgba(0,0,0,.45);-webkit-backdrop-filter:blur(16px) saturate(150%);backdrop-filter:blur(16px) saturate(150%);opacity:0;transition:transform .32s var(--ease-out),opacity .32s;max-width:88vw}
+#mapHiliteBar.open{transform:translateX(-50%) translateY(0);opacity:1}
+#mapHiliteBar .mhb-txt{font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:'Poppins',sans-serif}
+#mapHiliteBar .mhb-txt b{color:var(--primary);font-family:'Bebas Neue',sans-serif;letter-spacing:.5px;font-weight:400}
+#mapHiliteBar .mhb-x{background:var(--card);border:1px solid var(--border);color:var(--text);font-size:.95rem;line-height:1;cursor:pointer;padding:6px 11px;border-radius:11px;flex-shrink:0}
+.hex-glow{animation:hexGlowPulse 1.9s ease-in-out infinite}
+@keyframes hexGlowPulse{0%,100%{opacity:.82}50%{opacity:1}}
 #mapLegend h4{margin:0 0 8px;font-size:.72rem;letter-spacing:1px;text-transform:uppercase;color:var(--primary);display:flex;align-items:center;justify-content:space-between}
 #mapLegend .lg-close{cursor:pointer;color:var(--muted);font-size:.9rem;padding:2px 4px}
 #mapLegend .lg-sec{font-size:.58rem;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:9px 0 4px}
@@ -1337,7 +1345,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         </div>
         <div class="map-panel-sep"></div>
         <button class="map-panel-btn active" id="panelTerrBtn"><i class="fas fa-map"></i> Gebiete</button>
-        <button class="map-panel-btn active" id="panelLmBtn"><i class="fas fa-star"></i> Wahrzeichen</button>
+        <button class="map-panel-btn" id="panelLmBtn"><i class="fas fa-star"></i> Wahrzeichen</button>
         <button class="map-panel-btn" id="panelFraktBtn"><i class="fas fa-flag"></i> Fraktionskarte</button>
         <button class="map-panel-btn" id="panelOwnTerrBtn"><i class="fas fa-map-marker-alt"></i> Eigene Gebiete</button>
         <button class="map-panel-btn" id="panelFollowBtn"><i class="fas fa-user-friends"></i> Follower</button>
@@ -1542,6 +1550,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <span class="pv-edit" id="pvEditBtn"><i class="fas fa-pen"></i> Bearbeiten</span>
         <div class="pv-avatar" id="pvAvatar">🏃</div>
         <div class="pv-name" id="pvName">Läufer</div>
+        <div id="pvClubChip" style="display:none;margin:6px auto 0;width:fit-content;max-width:min(280px,80vw);font-size:.72rem;font-weight:700;color:var(--primary);background:rgba(var(--primary-rgb),.12);border:1px solid rgba(var(--primary-rgb),.3);border-radius:20px;padding:4px 13px;cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" onclick="showMyClubPopup()"></div>
         <div class="pv-bio" id="pvBio" onclick="editBio()" title="Beschreibung bearbeiten" style="margin:4px auto 0;max-width:280px;font-size:.8rem;color:var(--muted);cursor:pointer;font-style:italic"></div>
         <div class="pv-rank" id="pvRank" style="display:none;margin:6px auto 0;width:fit-content;font-size:.72rem;font-weight:700;color:var(--primary);background:rgba(var(--primary-rgb),.12);border:1px solid rgba(var(--primary-rgb),.32);border-radius:20px;padding:4px 12px"></div>
         <div id="pvFollowers" style="display:none;margin:8px auto 0;font-size:.75rem;color:var(--muted)"></div>
@@ -2012,6 +2021,7 @@ let prevLevelCache=1;
 let userClub=null;           // {code,name,icon,foundedAt}
 let lastFraktionChangeDate=''; // "YYYY-MM" when fraktion was last changed
 let profilePublic=true; // Standard: öffentlich (alle Infos ohne Follow sichtbar)
+let showRuns=true,showTerritories=true; // Privatsphäre: dürfen andere (Follower) deine Läufe / Gebiete im Profil sehen
 let pushEnabled=false;  // Push-/System-Benachrichtigungen an?
 let lastNameChangeDate=''; // "YYYY-MM" – Name nur 1×/Monat änderbar
 let dailyLoginDate='',dailyLoginStreak=0,streakShields=0,recentQuoteIds=[];
@@ -2129,7 +2139,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v193';
+const APP_VERSION='v194';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2247,6 +2257,10 @@ async function syncProfile(){
       profile_public:profilePublic,total_runs:history.length
     },{onConflict:'id'});
     if(e1)throw e1;
+    // Privatsphäre-Flags separat & best-effort: die Spalten show_runs/
+    // show_territories existieren evtl. erst nach privacy_migration.sql. Ein
+    // Fehler (Spalte fehlt) wird bewusst ignoriert und bricht den Sync NICHT.
+    try{await sb.from('profiles').update({show_runs:showRuns,show_territories:showTerritories}).eq('id',sbUserId);}catch(_){}
     // game_data (u.a. GPS-Lauf-Historie) bewusst NICHT auf profiles: die
     // SELECT-Policy dort ist öffentlich (für die Rangliste), profile_private
     // ist per RLS nur für den Besitzer lesbar.
@@ -2701,7 +2715,7 @@ function applyTheme(name){
 }
 function saveProfile(){
   const theme=getActiveTheme();
-  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,friends,streakUnlocks,equipped,userBio,profilePublic,pushEnabled,lastNameChangeDate,WEEKLY_GOAL,DAILY_GOAL_KM,MONTHLY_GOAL,factionWins,selectedTitle,userBirthday}));
+  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,friends,streakUnlocks,equipped,userBio,profilePublic,showRuns,showTerritories,pushEnabled,lastNameChangeDate,WEEKLY_GOAL,DAILY_GOAL_KM,MONTHLY_GOAL,factionWins,selectedTitle,userBirthday}));
   $('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;
   const hi=$('hdrHi');if(hi)hi.textContent='Hallo, '+(playerName||'Läufer');
   // Update theme-color meta for Android status bar
@@ -2710,7 +2724,7 @@ function saveProfile(){
   syncProfileDebounced();
 }
 function loadProfile(){
-  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';friends=p.friends||[];streakUnlocks=p.streakUnlocks||[];equipped=p.equipped||{};userBio=p.userBio||'';factionWins=p.factionWins||[];selectedTitle=p.selectedTitle||'';userBirthday=p.userBirthday||'';profilePublic=p.profilePublic!==false;pushEnabled=!!p.pushEnabled;lastNameChangeDate=p.lastNameChangeDate||'';if(p.WEEKLY_GOAL>0)WEEKLY_GOAL=p.WEEKLY_GOAL;if(p.DAILY_GOAL_KM>0)DAILY_GOAL_KM=p.DAILY_GOAL_KM;if(p.MONTHLY_GOAL>0)MONTHLY_GOAL=p.MONTHLY_GOAL;const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
+  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';friends=p.friends||[];streakUnlocks=p.streakUnlocks||[];equipped=p.equipped||{};userBio=p.userBio||'';factionWins=p.factionWins||[];selectedTitle=p.selectedTitle||'';userBirthday=p.userBirthday||'';profilePublic=p.profilePublic!==false;showRuns=p.showRuns!==false;showTerritories=p.showTerritories!==false;pushEnabled=!!p.pushEnabled;lastNameChangeDate=p.lastNameChangeDate||'';if(p.WEEKLY_GOAL>0)WEEKLY_GOAL=p.WEEKLY_GOAL;if(p.DAILY_GOAL_KM>0)DAILY_GOAL_KM=p.DAILY_GOAL_KM;if(p.MONTHLY_GOAL>0)MONTHLY_GOAL=p.MONTHLY_GOAL;const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
   return false;
 }
 /* ── STREAK-BELOHNUNGEN (Inventar) ──────────────────────────────────────────
@@ -3253,9 +3267,9 @@ function renderClubCommunity(){
       const list=data||[];
       if(!memberListEl)return;
       if(error||!list.length){memberListEl.innerHTML='<div style="padding:10px;color:var(--muted);font-size:.75rem;text-align:center">Noch keine Mitglieder — teile deinen Club-Code!</div>';return;}
-      const totalKmAll=list.reduce((s,p)=>s+(p.total_km||0),0);
+      const totalPtsAll=list.reduce((s,p)=>s+(p.points||0),0);
       const totalTerrAll=list.reduce((s,p)=>s+(p.total_conquered||0),0);
-      if(statsEl)statsEl.textContent=`${list.length} Mitglieder · ${totalKmAll.toFixed(0)} km · ${totalTerrAll} Gebiete`;
+      if(statsEl)statsEl.innerHTML=`<b style="color:var(--primary)">${totalPtsAll.toLocaleString('de-DE')} Punkte</b> · <b>${totalTerrAll} Gebiete</b> · ${list.length} Mitglieder`;
       const ranks=['🥇','🥈','🥉'];
       memberListEl.innerHTML=list.map((p,i)=>{
         const isMe=p.user_id===userId;
@@ -3280,6 +3294,64 @@ function renderClubCommunity(){
       });
     });
 }
+
+/* Klub-Popup: Tap auf den Klubnamen im Profil -> Bottom-Sheet mit Wappen,
+   Kurzinfos (gegründet, Code, Gesamtpunkte/-gebiete aller Mitglieder) und der
+   swipebaren Mitgliederliste (Tap auf ein Mitglied -> dessen Profil). */
+window.showMyClubPopup=function(){
+  if(!userClub){try{openSettingsAt('club');}catch(e){}return;}
+  document.getElementById('myClubOverlay')?.remove();
+  const ov=document.createElement('div');ov.id='myClubOverlay';
+  ov.style.cssText='position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center';
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+  const wappenHtml=userClub.wappen?crestSVG(userClub.wappen,56):`<div style="font-size:2.6rem">${userClub.icon||'🛡️'}</div>`;
+  const founded=userClub.foundedAt?new Date(userClub.foundedAt).toLocaleDateString('de'):'';
+  const code=userClub.code||'';
+  ov.innerHTML=`<div style="width:100%;max-width:480px;max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--card);border-radius:24px 24px 0 0;padding:0 0 max(env(safe-area-inset-bottom),16px)">
+    <div style="position:sticky;top:0;background:var(--card);z-index:2;display:flex;align-items:center;gap:12px;padding:18px 18px 12px;border-bottom:1px solid var(--border)">
+      <div style="flex-shrink:0">${wappenHtml}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(userClub.name)}</div>
+        <div id="myClubStats" style="font-size:.66rem;color:var(--muted);margin-top:2px">Lade Mitglieder…</div>
+      </div>
+      <button onclick="document.getElementById('myClubOverlay')?.remove()" style="flex-shrink:0;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:11px;padding:6px 12px;font-size:.95rem;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:14px 18px">
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <div style="flex:1;background:var(--bg2);border-radius:14px;padding:12px;text-align:center"><div id="myClubPts" style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--primary)">–</div><div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Gesamtpunkte</div></div>
+        <div style="flex:1;background:var(--bg2);border-radius:14px;padding:12px;text-align:center"><div id="myClubTerr" style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--primary)">–</div><div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Gebiete</div></div>
+      </div>
+      <div style="font-size:.7rem;color:var(--muted);margin-bottom:12px;text-align:center">Gegründet ${founded||'—'} · Code <b style="color:var(--text);cursor:pointer" onclick="navigator.clipboard?.writeText('${code}').then(()=>toast('📋 Code kopiert')).catch(()=>{})">${esc(code)}</b></div>
+      <div style="font-size:.66rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Mitglieder</div>
+      <div id="myClubMembers">${rcSkel(5)}</div>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  if(!sb)return;
+  sb.from('profiles').select('user_id,player_name,user_avatar,user_color,points,total_km,streak_days,total_conquered').eq('club_code',userClub.code).order('points',{ascending:false}).limit(50)
+    .then(({data,error})=>{
+      if(!document.getElementById('myClubOverlay'))return;
+      const list=data||[];
+      const totalPts=list.reduce((s,p)=>s+(p.points||0),0);
+      const totalTerr=list.reduce((s,p)=>s+(p.total_conquered||0),0);
+      const ptsEl=document.getElementById('myClubPts'),terrEl=document.getElementById('myClubTerr'),stEl=document.getElementById('myClubStats'),mEl=document.getElementById('myClubMembers');
+      if(ptsEl)ptsEl.textContent=totalPts.toLocaleString('de-DE');
+      if(terrEl)terrEl.textContent=totalTerr;
+      if(stEl)stEl.textContent=`${list.length} Mitglied${list.length===1?'':'er'}`;
+      if(!mEl)return;
+      if(error||!list.length){mEl.innerHTML='<div style="padding:10px;color:var(--muted);font-size:.75rem;text-align:center">Noch keine Mitglieder — teile deinen Club-Code!</div>';return;}
+      const ranks=['🥇','🥈','🥉'];
+      mEl.innerHTML=list.map((p,i)=>{const isMe=p.user_id===userId;const col=p.user_color||'#e8ff47';
+        return `<div class="myclub-row" data-idx="${i}" style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:${i<3?'var(--primary)':'var(--muted)'};width:22px;text-align:center;flex-shrink:0">${ranks[i]||(i+1)+'.'}</div>
+          <div style="width:38px;height:38px;border-radius:50%;background:${esc(col)}22;border:2px solid ${esc(col)}66;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">${esc(p.user_avatar||'🏃')}</div>
+          <div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600;color:${isMe?'var(--primary)':'var(--text)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.player_name||'Läufer')}${isMe?' ✦':''}</div><div style="font-size:.63rem;color:var(--muted);margin-top:1px">${(p.total_km||0).toFixed(1)} km · ${p.total_conquered||0} Gebiete · ${p.streak_days||0}🔥</div></div>
+          <div style="font-family:'Bebas Neue',sans-serif;color:var(--primary);font-size:.95rem;flex-shrink:0">${p.points||0}</div>
+          <i class="fas fa-chevron-right" style="color:var(--muted);font-size:.6rem;flex-shrink:0"></i>
+        </div>`;}).join('');
+      list.forEach((p,i)=>{const row=mEl.querySelector(`[data-idx="${i}"]`);if(row)row.addEventListener('click',()=>{ov.remove();showPublicProfile(p);});});
+    });
+};
 
 /* ── SAISON ── */
 function checkSeasonRollover(){
@@ -3708,7 +3780,12 @@ async function showPublicProfile(p){
   /* Vollständiges Profil laden – die Sichtbarkeit (öffentlich/privat) bestimmt,
      welche Felder Fremde sehen. Erst laden, DANN rendern (kein Info-Flackern). */
   let full=null;
-  if(sb&&p.user_id){try{const{data}=await sb.from('profiles').select('user_id,player_name,user_avatar,user_avatar_img,user_color,points,total_km,total_conquered,total_runs,streak_days,user_team,club_code,bio,profile_public').eq('user_id',p.user_id).maybeSingle();full=data;}catch(e){}}
+  if(sb&&p.user_id){try{
+    const cols='user_id,player_name,user_avatar,user_avatar_img,user_color,points,total_km,total_conquered,total_runs,streak_days,user_team,club_code,bio,profile_public';
+    let{data,error}=await sb.from('profiles').select(cols+',show_runs,show_territories').eq('user_id',p.user_id).maybeSingle();
+    if(error){const r2=await sb.from('profiles').select(cols).eq('user_id',p.user_id).maybeSingle();data=r2.data;} // Spalten evtl. vor Migration nicht vorhanden
+    full=data;
+  }catch(e){}}
   if(!document.getElementById('pubProfileOverlay'))return; // während des Ladens geschlossen
   const d=Object.assign({},p,full||{});
   const col=d.user_color||'#e8ff47';
@@ -3716,6 +3793,9 @@ async function showPublicProfile(p){
   const st=isMe?null:followStatus(d.user_id);
   const isPublic=d.profile_public!==false; // Standard: öffentlich
   const canSeeAll=isMe||isPublic||st==='accepted';
+  // Privatsphäre: Besitzer kann Läufe/Gebiete für andere ausblenden (Standard: sichtbar).
+  const canSeeRuns=isMe||d.show_runs!==false;
+  const canSeeTerr=isMe||d.show_territories!==false;
   const lv=getLvlProg(d.points||0);
   const team=(d.user_team&&typeof TEAMS!=='undefined')?TEAMS.find(t=>t.id===d.user_team):null;
   const followLabel=st==='accepted'?'✓ Verbunden':st==='pending_out'?'⏳ Angefragt':st==='pending_in'?'👤 Anfrage beantworten':'+ Folgen';
@@ -3786,6 +3866,7 @@ async function showPublicProfile(p){
   // bleibt bewusst privat (Wohnort-Schutz), auch gegenüber Followern.
   if(canSeeAll&&sb&&d.user_id){(async()=>{
     const el=document.getElementById('ppRunsList');if(!el)return;
+    if(!canSeeRuns){el.innerHTML='<div style="color:var(--muted);font-size:.72rem;padding:6px">🔒 Läufe sind ausgeblendet.</div>';return;}
     try{
       // Gegated: rc_profile_runs liefert Läufe+Hexagone nur an Besitzer /
       // öffentliches Profil / akzeptierten Follower (serverseitig erzwungen).
@@ -3800,13 +3881,14 @@ async function showPublicProfile(p){
         // Antippbar -> Lauf-Hexagone auf der (leeren) Karte, genau wie eigene.
         return `<div class="ppRunRow" data-idx="${i}" style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)${hasHex?';cursor:pointer;-webkit-tap-highlight-color:transparent':''}"><div style="width:40px;height:40px;border-radius:9px;background:var(--bg2);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:${hasHex?'var(--primary)':'var(--muted)'};font-size:1rem">⬡</div><div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600">${km} km</div><div style="font-size:.63rem;color:var(--muted)">${mins} Min${ds?' · '+ds:''}${hasHex?' · auf Karte ansehen':''}</div></div><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif;font-size:.9rem;flex-shrink:0">+${r.points||0}</span>${hasHex?'<i class="fas fa-chevron-right" style="color:var(--muted);font-size:.6rem;flex-shrink:0"></i>':''}</div>`;
       }).join('');
-      el.querySelectorAll('.ppRunRow').forEach(row=>{const r=list[+row.dataset.idx];if(r&&Array.isArray(r.cells)&&r.cells.length){row.addEventListener('click',()=>{try{showRunHexOnMap(r.cells,'LAUF · '+((r.distance||0)/1000).toFixed(2).replace('.',',')+' km',_ownCol);}catch(e){}});}});
+      el.querySelectorAll('.ppRunRow').forEach(row=>{const r=list[+row.dataset.idx];if(r&&Array.isArray(r.cells)&&r.cells.length){row.addEventListener('click',()=>{try{showCellsOnMainMap(r.cells,{title:'LAUF · '+((r.distance||0)/1000).toFixed(2).replace('.',',')+' km',subtitle:(d.player_name||'Läufer'),color:_ownCol});}catch(e){}});}});
     }catch(e){if(el)el.innerHTML='<div style="color:var(--muted);font-size:.72rem;padding:6px">Läufe nicht verfügbar</div>';}
   })();}
   // Gebiete des Spielers — nur für bestätigte Follower (bzw. eigenes Profil).
   // Tap auf ein Gebiet -> dessen H3-Hexagone auf der leeren Karte (wie beim Lauf).
   if((isMe||st==='accepted')&&sb&&d.user_id){(async()=>{
     const el=document.getElementById('ppTerrList');if(!el)return;
+    if(!canSeeTerr){el.innerHTML='<div style="color:var(--muted);font-size:.72rem;padding:6px">🔒 Gebiete sind ausgeblendet.</div>';return;}
     const col=d.user_color||'#e8ff47';
     try{
       const{data:terrs}=await sb.from('h3_territories_full').select('*').eq('owner',d.user_id).limit(80);
@@ -3816,7 +3898,7 @@ async function showPublicProfile(p){
         const nm=territoryName(t);const n=t.cells.length;
         return `<div class="ppTerrRow" data-idx="${i}" style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent"><div style="width:40px;height:40px;border-radius:9px;background:var(--bg2);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:1rem">⬡</div><div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(nm)}</div><div style="font-size:.63rem;color:var(--muted)">${n} ${n===1?'Zelle':'Zellen'} · auf Karte ansehen</div></div><i class="fas fa-chevron-right" style="color:var(--muted);font-size:.6rem;flex-shrink:0"></i></div>`;
       }).join('');
-      el.querySelectorAll('.ppTerrRow').forEach(row=>{const t=list[+row.dataset.idx];if(t)row.addEventListener('click',()=>{try{showRunHexOnMap(t.cells,territoryName(t),col);}catch(e){}});});
+      el.querySelectorAll('.ppTerrRow').forEach(row=>{const t=list[+row.dataset.idx];if(t)row.addEventListener('click',()=>{try{showCellsOnMainMap(t.cells,{title:territoryName(t),subtitle:(d.player_name||'Läufer'),color:col});}catch(e){}});});
     }catch(e){if(el)el.innerHTML='<div style="color:var(--muted);font-size:.72rem;padding:6px">Gebiete nicht verfügbar</div>';}
   })();}
 }
@@ -5153,7 +5235,7 @@ function initMap(){
   setTiles();
   terrLayer=L.layerGroup().addTo(mapL);
   h3Layer=L.layerGroup().addTo(mapL);
-  landmarkLayer=L.layerGroup().addTo(mapL);window._lmEnabled=true; // Kirchen standardmäßig sichtbar
+  landmarkLayer=L.layerGroup().addTo(mapL);window._lmEnabled=false; // Wahrzeichen standardmäßig AUS (nur Gebiete an; über Karten-Reiter zuschaltbar)
   invasionLayer=L.layerGroup().addTo(mapL);
   renderInvasions();
   /* Neues H3-System: additiv rendern (leer bis zum Cutover), bei Zoomwechsel
@@ -5166,9 +5248,8 @@ function initMap(){
   /* Bots beiläufig anstoßen: nimmt (server-gelockt, meist No-Op) vernachlässigte
      Gebiete ein; danach die Karte mit dem neuen Stand aktualisieren. */
   setTimeout(triggerBotTick,2500);
-  /* Kirchen im aktuellen Ausschnitt laden; beim Verschieben werden die umliegenden
-     automatisch nachgeladen (mapL.on('moveend'…) weiter unten). */
-  setTimeout(loadLandmarks,800);
+  /* Wahrzeichen NICHT automatisch laden — erst wenn der Nutzer den Reiter „Wahrzeichen"
+     einschaltet (window._lmEnabled). Standard: nur Gebiete sichtbar. */
   mapL.locate({setView:true,maxZoom:16,enableHighAccuracy:true});
   mapL.on('locationfound',e=>{
     if(!userMarker)userMarker=L.marker(e.latlng,{icon:mkUserIcon()}).addTo(mapL);
@@ -5598,7 +5679,7 @@ function showTerrBar(info){
     </div>
     <div class="tb-chips">
       ${info.team?`<span class="tb-chip" role="button" title="Fraktionskarte anzeigen" onclick="showFactionMap('${info.teamId||info.team.id}')" style="border-color:${info.team.color}66;cursor:pointer"><span>${info.team.icon}</span> ${esc(info.team.name)}</span>`:'<span class="tb-chip"><span class="l">Fraktion</span> Keine</span>'}
-      <span class="tb-chip" role="button" title="Alle Gebiete dieses Spielers" onclick="highlightOwnerFromBar('${(info.owner||'').replace(/'/g,'')}')" style="cursor:pointer"><span class="l">👤</span> ${esc(info.ownerName||'Läufer')}${info.own?' (Du)':''}</span>
+      <span class="tb-chip" role="button" title="Profil dieses Spielers ansehen" onclick="openTerrOwnerProfile('${(info.owner||'').replace(/'/g,'')}')" style="cursor:pointer"><span class="l">👤</span> ${esc(info.ownerName||'Läufer')}${info.own?' (Du)':''}</span>
       <span class="tb-chip"><span class="l">🛡️</span> ${Math.round(info.def)}/300</span>
       <span class="tb-chip"><span class="l">⏳</span> ${fmtDecay(info.tteMin)}</span>
       <span class="tb-chip"><span class="l">⬡</span> ${info.size} ${info.size===1?'Zelle':'Zellen'}</span>
@@ -5617,6 +5698,14 @@ window.highlightOwnerFromBar=function(owner){
   // Gebiete in der Umgebung sieht — NICHT auf alle Gebiete zoomen (das zoomte zu weit raus).
   try{if(mapL)mapL.setZoom(Math.max(3,mapL.getZoom()-2),{animate:true});}catch(e){}
   toast('👤 Alle Gebiete dieses Spielers');
+};
+/* Tap auf den Besitzer-Namen in der Gebiets-Infoleiste -> dessen Profil-Popup
+   (bei eigenem Gebiet -> eigenes Profil). */
+window.openTerrOwnerProfile=function(owner){
+  if(!owner)return;
+  try{hideTerrBar();}catch(e){}
+  if(owner===userId){try{setView('profile');}catch(e){}return;}
+  try{showPublicProfile({user_id:owner});}catch(e){}
 };
 window.showFactionMap=function(teamId){
   window._fraktMapMode=true;
@@ -6484,6 +6573,76 @@ window.showRouteOnMap=function(rec){
 /* Lauf eines anderen (Follower) als Hexagone auf der leeren Karte — genau wie
    man die eigenen Hexagone sieht: echte H3-Zellen als Leaflet-Polygone, keine
    Verzerrung, kein Skalier-Thumbnail. Speist sich aus runs.cells (grob, Res 10). */
+/* ── Gemeinsamer Highlight-Mechanismus auf der HAUPT-Karte ──────────────────
+   Zeichnet H3-Zellen als leuchtenden Umriss (eigener Layer, unabhängig von den
+   normalen Gebiets-Layern). Eine Leiste oben zeigt den Titel; erst das ✕ dort
+   beendet das Leuchten (bewusst NICHT beim normalen Karten-Tap). */
+function _ensureHiliteLayer(){
+  if(!mapL)return null;
+  if(!window._hiliteLayer){try{window._hiliteLayer=L.layerGroup().addTo(mapL);}catch(e){return null;}}
+  return window._hiliteLayer;
+}
+function clearMapHighlight(){
+  try{window._hiliteLayer&&window._hiliteLayer.clearLayers();}catch(e){}
+  const bar=document.getElementById('mapHiliteBar');if(bar)bar.classList.remove('open');
+}
+window.clearMapHighlight=clearMapHighlight;
+function _showHiliteBar(title,sub){
+  const mv=document.getElementById('mapView');if(!mv)return;
+  let bar=document.getElementById('mapHiliteBar');
+  if(!bar){bar=document.createElement('div');bar.id='mapHiliteBar';mv.appendChild(bar);}
+  bar.innerHTML=`<span class="mhb-txt"><b>${esc(title||'')}</b>${sub?' · '+esc(sub):''}</span><button class="mhb-x" onclick="clearMapHighlight()" aria-label="Leuchten beenden">✕</button>`;
+  requestAnimationFrame(()=>bar.classList.add('open'));
+}
+/* Zeichnet die Zellen leuchtend (Halo + kräftige Kante). fillOp klein = eher Umriss. */
+function _hiliteCells(cells,color,fillOp){
+  const layer=_ensureHiliteLayer();if(!layer||!window.h3||!window.h3.cellToBoundary)return[];
+  const col=color||'#00e5ff';const pts=[];
+  cells.forEach(c=>{try{const b=window.h3.cellToBoundary(c,false);if(!b||!b.length)return;
+    L.polygon(b,{color:col,weight:9,opacity:.16,fill:false,lineJoin:'round',interactive:false}).addTo(layer); // Halo
+    L.polygon(b,{color:col,weight:2.6,opacity:.95,fillColor:col,fillOpacity:(fillOp==null?.28:fillOp),lineJoin:'round',className:'hex-glow',interactive:false}).addTo(layer);
+    b.forEach(v=>pts.push([v[0],v[1]]));
+  }catch(e){}});
+  return pts;
+}
+/* Beliebige Zellen (Lauf/Gebiet eines Spielers) auf der echten Karte zeigen. */
+window.showCellsOnMainMap=function(cells,opts){
+  opts=opts||{};
+  if(!Array.isArray(cells)||!cells.length){toast('Keine Hexagone gespeichert');return;}
+  document.getElementById('pubProfileOverlay')?.remove();
+  try{closeAllModals();}catch(e){}
+  try{if(typeof initMap==='function')initMap();}catch(e){}
+  try{setView('map');}catch(e){}
+  let tries=0;
+  const go=()=>{
+    if((!mapL||!window.h3||!window.h3.cellToBoundary)&&tries++<40){setTimeout(go,150);return;}
+    clearMapHighlight();
+    const pts=_hiliteCells(cells,opts.color,opts.fillOp==null?.30:opts.fillOp);
+    if(pts.length){try{mapL.fitBounds(pts,{padding:[60,60],maxZoom:16});}catch(e){}}
+    _showHiliteBar(opts.title||'Gebiet',opts.subtitle);
+    setTimeout(()=>{try{mapL.invalidateSize();if(pts.length)mapL.fitBounds(pts,{padding:[60,60],maxZoom:16});}catch(e){}},220);
+  };
+  setTimeout(go,60);
+};
+/* „Deine Region" antippen -> Eltern-Zelle (Res 8/7/5) als leuchtenden Umriss. */
+window.showRegionOnMap=function(res,name){
+  const loc=userMarker?userMarker.getLatLng():(lastKnownLoc&&typeof lastKnownLoc.lat==='number'?{lat:lastKnownLoc.lat,lng:lastKnownLoc.lng}:null);
+  if(!loc){toast('📍 Standort aktivieren, um deine Region zu sehen');return;}
+  let parent;try{parent=window.h3.cellToParent(window.h3.latLngToCell(loc.lat,loc.lng,10),res);}catch(e){toast('Region nicht verfügbar');return;}
+  try{closeAllModals();}catch(e){}
+  try{if(typeof initMap==='function')initMap();}catch(e){}
+  try{setView('map');}catch(e){}
+  let tries=0;
+  const go=()=>{
+    if((!mapL||!window.h3||!window.h3.cellToBoundary)&&tries++<40){setTimeout(go,150);return;}
+    clearMapHighlight();
+    const pts=_hiliteCells([parent],'#00e5ff',.08); // Umriss der Region, sehr leichte Füllung
+    if(pts.length){try{mapL.fitBounds(pts,{padding:[46,46]});}catch(e){}}
+    _showHiliteBar(name||'Region','deine Umgebung');
+    setTimeout(()=>{try{mapL.invalidateSize();if(pts.length)mapL.fitBounds(pts,{padding:[46,46]});}catch(e){}},220);
+  };
+  setTimeout(go,60);
+};
 window.showRunHexOnMap=function(cells,title,color){
   if(!Array.isArray(cells)||!cells.length){toast('Keine Hexagone gespeichert');return;}
   if(!window.h3||!window.h3.cellToBoundary){toast('Karte nicht verfügbar');return;}
@@ -7690,19 +7849,20 @@ function renderRegionControl(){
   if(!anyData){el.innerHTML='<div class="muted" style="padding:8px;font-size:.78rem">Noch keine erfassten Gebiete in deiner Nähe — lauf los und erobere die ersten Felder!</div>';return;}
   el.innerHTML=rows.map(r=>{
     const{L,byTeam,total,mine}=r;
-    if(!total)return `<div style="margin-bottom:12px"><div style="font-size:.72rem;color:var(--muted);margin-bottom:3px">${L.name}</div><div style="font-size:.72rem;color:var(--muted)">Noch frei — hol dir die ersten Felder.</div></div>`;
+    if(!total)return `<div class="region-row" data-res="${L.res}" data-name="${esc(L.name)}" style="margin-bottom:12px;cursor:pointer;-webkit-tap-highlight-color:transparent"><div style="font-size:.72rem;color:var(--muted);margin-bottom:3px">${L.name} <span style="color:var(--primary);font-weight:600">›</span></div><div style="font-size:.72rem;color:var(--muted)">Noch frei — hol dir die ersten Felder.</div></div>`;
     const entries=Object.entries(byTeam).sort((a,b)=>b[1]-a[1]);
     const [leadKey,leadN]=entries[0];
     const leadTeam=(typeof TEAMS!=='undefined')?TEAMS.find(t=>t.id===leadKey):null;
     const leadPct=Math.round(leadN/total*100);
     const myTeamN=userTeam?(byTeam[userTeam]||0):0;const myTeamPct=Math.round(myTeamN/total*100);
     const segs=entries.slice(0,5).map(([k,n])=>{const tm=(typeof TEAMS!=='undefined')?TEAMS.find(t=>t.id===k):null;const col=tm?tm.color:'#8891a0';return `<div style="width:${(n/total*100).toFixed(1)}%;background:${col}"></div>`;}).join('');
-    return `<div style="margin-bottom:13px">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:.72rem;margin-bottom:4px"><span style="color:var(--muted)">${L.name}</span><span>${leadTeam?leadTeam.icon+' '+esc(leadTeam.name):'Ohne Fraktion'} · ${leadPct}%</span></div>
+    return `<div class="region-row" data-res="${L.res}" data-name="${esc(L.name)}" style="margin-bottom:13px;cursor:pointer;-webkit-tap-highlight-color:transparent">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:.72rem;margin-bottom:4px"><span style="color:var(--muted)">${L.name} <span style="color:var(--primary);font-weight:600">›</span></span><span>${leadTeam?leadTeam.icon+' '+esc(leadTeam.name):'Ohne Fraktion'} · ${leadPct}%</span></div>
       <div style="display:flex;height:9px;border-radius:5px;overflow:hidden;background:var(--card)">${segs}</div>
-      <div style="font-size:.62rem;color:var(--muted);margin-top:4px">Dein Anteil: ${mine} ${mine===1?'Feld':'Felder'}${userTeam&&leadKey!==userTeam?' · deine Fraktion '+myTeamPct+'%':''}</div>
+      <div style="font-size:.62rem;color:var(--muted);margin-top:4px">Dein Anteil: ${mine} ${mine===1?'Feld':'Felder'}${userTeam&&leadKey!==userTeam?' · deine Fraktion '+myTeamPct+'%':''} · <span style="color:var(--primary)">auf Karte zeigen</span></div>
     </div>`;
   }).join('');
+  el.querySelectorAll('.region-row').forEach(row=>{row.addEventListener('click',()=>{try{showRegionOnMap(Number(row.dataset.res),row.dataset.name);}catch(e){}});});
 }
 window.renderRegionControl=renderRegionControl;
 async function renderFactionWar(){
@@ -9152,6 +9312,7 @@ function updateProfile(){
   syncStreakUnlocks();
   updateProfileRank();
   $('pvAvatar').innerHTML=avatarHTML(54);$('pvName').textContent=playerName;
+  {const ccEl=$('pvClubChip');if(ccEl){if(userClub&&userClub.name){ccEl.style.display='block';ccEl.innerHTML='🏰 '+esc(userClub.name);}else{ccEl.style.display='none';}}}
   const _bioEl=$('pvBio');if(_bioEl)_bioEl.textContent=userBio?('„'+userBio+'“'):'➕ Beschreibung hinzufügen';
   const banner=$('pvBanner');banner.style.background=`linear-gradient(135deg,${userColor}44,${userColor}11,var(--bg2))`;banner.style.borderColor=userColor+'55';
   /* Angelegte Belohnungen anwenden: Banner + Profilrahmen (Ring am Avatar). */
@@ -9428,6 +9589,14 @@ function toggleProfilePublic(){
   profilePublic=!profilePublic;saveProfile();if(typeof syncProfileDebounced==='function')syncProfileDebounced();renderSettingsHome();
   toast(profilePublic?'🌐 Profil ist jetzt öffentlich':'🔒 Profil ist jetzt privat – Fremde sehen nur Name, Follower, Fraktion, Club, Läufe & Gebiete');
 }
+function toggleShowRuns(){
+  showRuns=!showRuns;saveProfile();if(typeof syncProfileDebounced==='function')syncProfileDebounced();renderSettingsHome();
+  toast(showRuns?'🏃 Deine Läufe sind für Follower sichtbar':'🔒 Deine Läufe sind jetzt verborgen');
+}
+function toggleShowTerritories(){
+  showTerritories=!showTerritories;saveProfile();if(typeof syncProfileDebounced==='function')syncProfileDebounced();renderSettingsHome();
+  toast(showTerritories?'🗺️ Deine Gebiete sind für Follower sichtbar':'🔒 Deine Gebiete sind jetzt verborgen');
+}
 function renderSettingsHome(){
   const body=$('settingsBody');if(!body)return;
   const tabs=document.getElementById('settingsTabs');if(tabs)tabs.style.display='none';
@@ -9453,6 +9622,11 @@ function renderSettingsHome(){
       ${settingsToggleRow('🔔','Push-Benachrichtigungen',pushEnabled?'An':'Aus',pushEnabled,'push')}
       ${settingsToggleRow('🌐','Öffentliches Profil',profilePublic?'Alle Infos sichtbar':'Privat – nur Basisdaten',profilePublic,'public')}
     </div>
+    ${H('Privatsphäre')}
+    <div class="set-group">
+      ${settingsToggleRow('🏃','Läufe sichtbar',showRuns?'Follower sehen deine Läufe':'Deine Läufe sind verborgen',showRuns,'showruns')}
+      ${settingsToggleRow('🗺️','Gebiete sichtbar',showTerritories?'Follower sehen deine Gebiete':'Deine Gebiete sind verborgen',showTerritories,'showterr')}
+    </div>
     ${H('App &amp; Hilfe')}
     <div class="set-group">
       ${settingsRow('🎮','Spiel-Einstellungen','Einheiten & Spieloptionen','spiel')}
@@ -9466,6 +9640,8 @@ function renderSettingsHome(){
     const tg=r.dataset.toggle;
     if(tg==='push'){togglePush();return;}
     if(tg==='public'){toggleProfilePublic();return;}
+    if(tg==='showruns'){toggleShowRuns();return;}
+    if(tg==='showterr'){toggleShowTerritories();return;}
     const a=r.dataset.action;if(!a)return;
     if(a==='bio')editBio();
     else if(a==='ach'||a==='fitness'||a==='calendar'){closeAllModals();openDrawer(a);}
