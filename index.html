@@ -2139,7 +2139,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v198';
+const APP_VERSION='v199';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -8313,8 +8313,8 @@ function renderSettingsTab(tab){
     const _allCols=[...COLORS];streakUnlocks.forEach(id=>{const r=REWARD_BY_ID[id];if(r&&r.type==='color'&&!_allCols.includes(r.value))_allCols.push(r.value);});
     // Fix: über den Saison-Pass abgeholte Farben ebenfalls freischalten (wurden
     // bisher beim Abholen nur gemeldet, aber nie in die Palette aufgenommen).
-    (BATTLE_PASS_REWARDS||[]).forEach(r=>{if(r&&r.type==='color'&&(battlePassClaimed||[]).includes(r.lv)&&!_allCols.includes(r.value))_allCols.push(r.value);});
-    body.insertAdjacentHTML('afterbegin',`<div style="margin-bottom:18px"><div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🎨 Gebietsfarbe</div><div style="display:flex;gap:10px;flex-wrap:wrap">${_allCols.map(c=>{const sel=String(userColor).toLowerCase()===c.toLowerCase();return `<button class="col-pick-btn" data-col="${c}" style="width:40px;height:40px;border-radius:50%;background:${c};border:3px solid ${sel?'#fff':'transparent'};box-shadow:0 0 0 1px var(--border)${sel?',0 0 12px '+c:''};cursor:pointer;touch-action:manipulation"></button>`;}).join('')}</div><div style="font-size:.62rem;color:var(--muted);margin-top:7px">Farbe deiner Gebiete auf der Karte & deines Standort-Markers.</div></div><div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🌗 Erscheinungsbild</div>`);
+    (BATTLE_PASS_REWARDS||[]).forEach(r=>{const cv=r&&(r.val||r.value);if(r&&r.type==='color'&&cv&&(battlePassClaimed||[]).includes(r.lv)&&!_allCols.includes(cv))_allCols.push(cv);});
+    body.insertAdjacentHTML('afterbegin',`<div style="margin-bottom:18px"><div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🎨 Gebietsfarbe</div><div style="display:flex;gap:10px;flex-wrap:wrap">${_allCols.filter(Boolean).map(c=>{const sel=String(userColor).toLowerCase()===String(c).toLowerCase();return `<button class="col-pick-btn" data-col="${c}" style="width:40px;height:40px;border-radius:50%;background:${c};border:3px solid ${sel?'#fff':'transparent'};box-shadow:0 0 0 1px var(--border)${sel?',0 0 12px '+c:''};cursor:pointer;touch-action:manipulation"></button>`;}).join('')}</div><div style="font-size:.62rem;color:var(--muted);margin-top:7px">Farbe deiner Gebiete auf der Karte & deines Standort-Markers.</div></div><div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🌗 Erscheinungsbild</div>`);
     body.querySelectorAll('.col-pick-btn').forEach(btn=>btn.addEventListener('click',()=>{userColor=btn.dataset.col;saveProfile();if(typeof renderH3Territories==='function')renderH3Territories();if(typeof renderTerr==='function')renderTerr();try{if(userMarker&&mapL)userMarker.setIcon(mkUserIcon());}catch(e){}if(typeof updateProfile==='function')updateProfile();renderSettingsTab('theme');toast('🎨 Gebietsfarbe gesetzt');}));
     body.querySelectorAll('.theme-pick-btn').forEach(btn=>{btn.addEventListener('click',()=>{applyTheme(btn.dataset.tid);saveProfile();renderSettingsTab('theme');});});
   } else if(tab==='fraktion'){
