@@ -2099,7 +2099,6 @@ let weeklyChals=[],weekChalKey='';
 let personalRecords={};
 let battlePassClaimed=[];
 let bpClaimMigrated=false; // einmalige Migration nach Reward-Umnummerierung
-let friends=[];
 let totalRaids=0,totalBoosts=0,weeklyAchsDone=0,seasonXp=0;
 /* Echtes Tracking für Erfolge, die bisher genähert waren:
    totalElevation = summierte Höhenmeter (GPS-Höhe, nur Anstiege),
@@ -2139,7 +2138,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v200';
+const APP_VERSION='v201';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2715,7 +2714,7 @@ function applyTheme(name){
 }
 function saveProfile(){
   const theme=getActiveTheme();
-  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,friends,streakUnlocks,equipped,userBio,profilePublic,showRuns,showTerritories,pushEnabled,lastNameChangeDate,WEEKLY_GOAL,DAILY_GOAL_KM,MONTHLY_GOAL,factionWins,selectedTitle,userBirthday}));
+  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,streakUnlocks,equipped,userBio,profilePublic,showRuns,showTerritories,pushEnabled,lastNameChangeDate,WEEKLY_GOAL,DAILY_GOAL_KM,MONTHLY_GOAL,factionWins,selectedTitle,userBirthday}));
   $('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;
   const hi=$('hdrHi');if(hi)hi.textContent='Hallo, '+(playerName||'Läufer');
   // Update theme-color meta for Android status bar
@@ -2724,7 +2723,7 @@ function saveProfile(){
   syncProfileDebounced();
 }
 function loadProfile(){
-  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';friends=p.friends||[];streakUnlocks=p.streakUnlocks||[];equipped=p.equipped||{};userBio=p.userBio||'';factionWins=p.factionWins||[];selectedTitle=p.selectedTitle||'';userBirthday=p.userBirthday||'';profilePublic=p.profilePublic!==false;showRuns=p.showRuns!==false;showTerritories=p.showTerritories!==false;pushEnabled=!!p.pushEnabled;lastNameChangeDate=p.lastNameChangeDate||'';if(p.WEEKLY_GOAL>0)WEEKLY_GOAL=p.WEEKLY_GOAL;if(p.DAILY_GOAL_KM>0)DAILY_GOAL_KM=p.DAILY_GOAL_KM;if(p.MONTHLY_GOAL>0)MONTHLY_GOAL=p.MONTHLY_GOAL;const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
+  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';streakUnlocks=p.streakUnlocks||[];equipped=p.equipped||{};userBio=p.userBio||'';factionWins=p.factionWins||[];selectedTitle=p.selectedTitle||'';userBirthday=p.userBirthday||'';profilePublic=p.profilePublic!==false;showRuns=p.showRuns!==false;showTerritories=p.showTerritories!==false;pushEnabled=!!p.pushEnabled;lastNameChangeDate=p.lastNameChangeDate||'';if(p.WEEKLY_GOAL>0)WEEKLY_GOAL=p.WEEKLY_GOAL;if(p.DAILY_GOAL_KM>0)DAILY_GOAL_KM=p.DAILY_GOAL_KM;if(p.MONTHLY_GOAL>0)MONTHLY_GOAL=p.MONTHLY_GOAL;const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
   return false;
 }
 /* ── STREAK-BELOHNUNGEN (Inventar) ──────────────────────────────────────────
@@ -7397,28 +7396,6 @@ function renderGarminPanel(){
   });
 }
 
-/* FREUNDE */
-async function renderFriends(){
-  const el=$('friendsList');if(!el)return;
-  const addRow=`<div style="display:flex;gap:8px;margin-bottom:10px"><input type="text" id="friendSearchInput" class="modal-input" placeholder="Name suchen…" style="flex:1;font-size:.8rem"><button class="btn btn-p" id="friendSearchBtn" style="padding:6px 12px;flex-shrink:0"><i class="fas fa-search"></i></button></div>`;
-  let html=addRow;
-  if(friends.length===0){html+=emptyStateHtml('fa-user-friends','Noch keine Freunde — gemeinsam läuft es sich besser.<br>Such oben nach einem Namen oder stöbere durch die Spieler.','🔍 Spieler entdecken','rcGoDiscover()');}
-  else{html+='<div style="display:flex;flex-direction:column;gap:6px" id="friendsRankList">'+rcSkel(4)+'</div>';}
-  el.innerHTML=html;
-  document.getElementById('friendSearchBtn')?.addEventListener('click',async()=>{
-    const name=(document.getElementById('friendSearchInput')?.value||'').trim();if(name.length<2)return;
-    try{const{data}=await sb.from('profiles').select('id,player_name,points').ilike('player_name','%'+name+'%').limit(5);
-    if(!data?.length){toast('Spieler nicht gefunden');return;}
-    const r=data[0];if(r.id===sbUserId){toast('Das bist du 😄');return;}
-    if(friends.some(f=>f.uid===r.id)){toast('Bereits befreundet');return;}
-    friends.push({uid:r.id,name:r.player_name||name});saveProfile();toast('✅ '+r.player_name+' hinzugefügt!');renderFriends();}catch(e){toast('Suche fehlgeschlagen');}
-  });
-  if(friends.length&&sb){
-    try{const{data}=await sb.from('profiles').select('id,player_name,points,user_team').in('id',friends.map(f=>f.uid));
-    const ranked=(data||[]).sort((a,b)=>(b.points||0)-(a.points||0));
-    const rl=document.getElementById('friendsRankList');
-    if(rl)rl.innerHTML=ranked.map((f,i)=>{const tm=TEAMS.find(t=>t.id===f.user_team);return`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)"><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--muted);width:20px">${i+1}</span><div style="width:32px;height:32px;border-radius:50%;background:${tm?tm.color+'22':'var(--card)'};display:flex;align-items:center;justify-content:center;font-size:.9rem">${tm?tm.icon:'👤'}</div><span style="flex:1;font-size:.82rem">${esc(f.player_name||'?')}</span><span style="font-family:'Bebas Neue',sans-serif;color:var(--primary)">${f.points||0} Pts</span><button class="btn" style="padding:3px 8px;font-size:.62rem;color:var(--muted);border-color:var(--muted)" onclick="friends=friends.filter(x=>x.uid!=='${f.id}');saveProfile();renderFriends()">✕</button></div>`;}).join('')||'<div style="color:var(--muted);font-size:.75rem;padding:8px">Freunde-Daten nicht verfügbar</div>';}catch(e){}}
-}
 /* CLUB WARS */
 async function renderClubWars(){
   const el=$('clubWarsList');if(!el)return;
