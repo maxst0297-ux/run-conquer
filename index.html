@@ -2139,7 +2139,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v199';
+const APP_VERSION='v200';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3322,12 +3322,44 @@ window.showMyClubPopup=function(){
         <div style="flex:1;background:var(--bg2);border-radius:14px;padding:12px;text-align:center"><div id="myClubTerr" style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--primary)">–</div><div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Gebiete</div></div>
       </div>
       <div style="font-size:.7rem;color:var(--muted);margin-bottom:12px;text-align:center">Gegründet ${founded||'—'} · Code <b style="color:var(--text);cursor:pointer" onclick="navigator.clipboard?.writeText('${code}').then(()=>toast('📋 Code kopiert')).catch(()=>{})">${esc(code)}</b></div>
+      <div id="myClubDescWrap" style="background:var(--bg2);border-radius:14px;padding:12px 13px;margin-bottom:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:.6rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)">Beschreibung</span>
+          <button id="myClubDescEdit" style="background:none;border:none;color:var(--primary);font-size:.68rem;cursor:pointer;padding:2px 4px">✏️ bearbeiten</button>
+        </div>
+        <div id="myClubDescText" style="font-size:.78rem;color:var(--muted);line-height:1.5;white-space:pre-wrap">Lade…</div>
+      </div>
       <div style="font-size:.66rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Mitglieder</div>
       <div id="myClubMembers">${rcSkel(5)}</div>
     </div>
   </div>`;
   document.body.appendChild(ov);
   if(!sb)return;
+  // Klub-Beschreibung laden + bearbeitbar machen (Server-Tabelle clubs).
+  let _clubDesc='';
+  const _renderDesc=()=>{const dt=document.getElementById('myClubDescText');if(!dt)return;dt.textContent=_clubDesc||'Noch keine Beschreibung. Tippe „✏️ bearbeiten", um eine hinzuzufügen.';dt.style.color=_clubDesc?'var(--text)':'var(--muted)';};
+  (async()=>{try{const{data}=await sb.from('clubs').select('description').eq('code',userClub.code).maybeSingle();_clubDesc=(data&&data.description)||'';}catch(e){}_renderDesc();})();
+  document.getElementById('myClubDescEdit')?.addEventListener('click',()=>{
+    const wrap=document.getElementById('myClubDescWrap');if(!wrap||wrap.querySelector('textarea'))return;
+    const dt=document.getElementById('myClubDescText');if(dt)dt.style.display='none';
+    const ta=document.createElement('textarea');ta.value=_clubDesc;ta.maxLength=500;ta.rows=4;ta.placeholder='Beschreibe deinen Klub…';
+    ta.style.cssText='width:100%;box-sizing:border-box;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:inherit;font-size:.8rem;padding:8px;resize:vertical';
+    const bar=document.createElement('div');bar.style.cssText='display:flex;gap:8px;margin-top:8px';
+    bar.innerHTML='<button id="mcdSave" style="flex:1;background:var(--primary);color:#000;border:none;border-radius:9px;padding:7px;font-weight:700;font-size:.76rem;cursor:pointer">Speichern</button><button id="mcdCancel" style="background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:7px 12px;font-size:.76rem;cursor:pointer">Abbrechen</button>';
+    wrap.appendChild(ta);wrap.appendChild(bar);try{ta.focus();}catch(e){}
+    const _done=()=>{ta.remove();bar.remove();if(dt)dt.style.display='';_renderDesc();};
+    bar.querySelector('#mcdCancel').onclick=_done;
+    bar.querySelector('#mcdSave').onclick=async()=>{
+      const val=ta.value.trim().slice(0,500);const btn=bar.querySelector('#mcdSave');btn.textContent='…';btn.disabled=true;
+      try{const{data,error}=await sb.rpc('rc_set_club_description',{desc_text:val});
+        if(error){toast('🏰 Beschreibung noch nicht verfügbar – bitte SQL (club_desc_migration.sql) einspielen.');}
+        else if(data==='ok'){_clubDesc=val;toast('🏰 Beschreibung gespeichert');}
+        else if(data==='no_club'){toast('Du bist in keinem Klub.');}
+        else{toast('🏰 Speichern gerade nicht möglich.');}
+      }catch(e){toast('🏰 Beschreibung noch nicht verfügbar – bitte SQL einspielen.');}
+      _done();
+    };
+  });
   sb.from('profiles').select('user_id,player_name,user_avatar,user_color,points,total_km,streak_days,total_conquered').eq('club_code',userClub.code).order('points',{ascending:false}).limit(50)
     .then(({data,error})=>{
       if(!document.getElementById('myClubOverlay'))return;
@@ -3936,7 +3968,7 @@ async function showPublicProfile(p){
         // Antippbar -> Lauf-Hexagone auf der (leeren) Karte, genau wie eigene.
         return `<div class="ppRunRow" data-idx="${i}" style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)${hasHex?';cursor:pointer;-webkit-tap-highlight-color:transparent':''}"><div style="width:40px;height:40px;border-radius:9px;background:var(--bg2);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:${hasHex?'var(--primary)':'var(--muted)'};font-size:1rem">⬡</div><div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600">${km} km</div><div style="font-size:.63rem;color:var(--muted)">${mins} Min${ds?' · '+ds:''}${hasHex?' · auf Karte ansehen':''}</div></div><span style="color:var(--primary);font-family:'Bebas Neue',sans-serif;font-size:.9rem;flex-shrink:0">+${r.points||0}</span>${hasHex?'<i class="fas fa-chevron-right" style="color:var(--muted);font-size:.6rem;flex-shrink:0"></i>':''}</div>`;
       }).join('');
-      el.querySelectorAll('.ppRunRow').forEach(row=>{const r=list[+row.dataset.idx];if(r&&Array.isArray(r.cells)&&r.cells.length){row.addEventListener('click',()=>{try{showCellsOnMainMap(r.cells,{title:'LAUF · '+((r.distance||0)/1000).toFixed(2).replace('.',',')+' km',subtitle:(d.player_name||'Läufer'),color:_ownCol});}catch(e){}});}});
+      el.querySelectorAll('.ppRunRow').forEach(row=>{const r=list[+row.dataset.idx];if(r&&Array.isArray(r.cells)&&r.cells.length){row.addEventListener('click',()=>{try{showHexPopup(r.cells,'LAUF · '+((r.distance||0)/1000).toFixed(2).replace('.',',')+' km',_ownCol);}catch(e){}});}});
     }catch(e){if(el)el.innerHTML='<div style="color:var(--muted);font-size:.72rem;padding:6px">Läufe nicht verfügbar</div>';}
   })();}
   // Gebiete des Spielers — nur für bestätigte Follower (bzw. eigenes Profil).
@@ -3953,7 +3985,7 @@ async function showPublicProfile(p){
         const nm=territoryName(t);const n=t.cells.length;
         return `<div class="ppTerrRow" data-idx="${i}" style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent"><div style="width:40px;height:40px;border-radius:9px;background:var(--bg2);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:1rem">⬡</div><div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(nm)}</div><div style="font-size:.63rem;color:var(--muted)">${n} ${n===1?'Zelle':'Zellen'} · auf Karte ansehen</div></div><i class="fas fa-chevron-right" style="color:var(--muted);font-size:.6rem;flex-shrink:0"></i></div>`;
       }).join('');
-      el.querySelectorAll('.ppTerrRow').forEach(row=>{const t=list[+row.dataset.idx];if(t)row.addEventListener('click',()=>{try{showCellsOnMainMap(t.cells,{title:territoryName(t),subtitle:(d.player_name||'Läufer'),color:col});}catch(e){}});});
+      el.querySelectorAll('.ppTerrRow').forEach(row=>{const t=list[+row.dataset.idx];if(t)row.addEventListener('click',()=>{try{showHexPopup(t.cells,territoryName(t),col);}catch(e){}});});
     }catch(e){if(el)el.innerHTML='<div style="color:var(--muted);font-size:.72rem;padding:6px">Gebiete nicht verfügbar</div>';}
   })();}
 }
@@ -6686,6 +6718,37 @@ function _hiliteCells(cells,color,fillOp){
   return pts;
 }
 /* Beliebige Zellen (Lauf/Gebiet eines Spielers) auf der echten Karte zeigen. */
+/* Lauf/Gebiet als eigenes Fenster-Popup: NUR diese Hexagone auf echter Karte
+   (CARTO-Tiles), nicht Vollbild, ✕ zum Schließen. Eigene, isolierte Leaflet-
+   Instanz -> zeigt keine anderen/aktuellen Gebiete. */
+window.showHexPopup=function(cells,title,color){
+  if(!Array.isArray(cells)||!cells.length){toast('Keine Hexagone gespeichert');return;}
+  if(!window.h3||!window.h3.cellToBoundary||typeof L==='undefined'){toast('Karte nicht verfügbar');return;}
+  document.getElementById('hexPopupOv')?.remove();
+  const ov=document.createElement('div');ov.id='hexPopupOv';
+  ov.style.cssText='position:fixed;inset:0;z-index:9700;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box';
+  ov.innerHTML=`<div style="width:92vw;max-width:520px;height:72vh;max-height:660px;background:var(--card);border-radius:20px;overflow:hidden;position:relative;box-shadow:0 14px 44px rgba(0,0,0,.55);animation:modalIn .26s var(--ease-out)">
+    <div style="position:absolute;top:10px;left:13px;z-index:2;font-family:'Bebas Neue',sans-serif;letter-spacing:1.5px;color:#fff;font-size:1rem;text-shadow:0 1px 5px #000;max-width:68%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(title||'')}</div>
+    <button id="hexPopupClose" aria-label="Schließen" style="position:absolute;top:8px;right:8px;z-index:2;background:var(--card);border:1px solid var(--border);border-radius:11px;color:var(--text);padding:6px 12px;font-size:.9rem;cursor:pointer">✕</button>
+    <div id="hexPopupMap" style="position:absolute;inset:0;background:#0e1512"></div>
+  </div>`;
+  document.body.appendChild(ov);
+  const col=color||userColor||'#e8ff47';
+  let hm=null;
+  const close=()=>{try{hm&&hm.remove();}catch(e){}ov.remove();};
+  ov.addEventListener('click',e=>{if(e.target===ov)close();});
+  document.getElementById('hexPopupClose').onclick=close;
+  try{
+    hm=L.map('hexPopupMap',{zoomControl:true,attributionControl:false});
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{}).addTo(hm);
+    const grp=L.featureGroup();
+    cells.forEach(c=>{try{const b=window.h3.cellToBoundary(c,false);if(b&&b.length)L.polygon(b,{color:col,weight:1.5,opacity:.95,fillColor:col,fillOpacity:.4,lineJoin:'round'}).addTo(grp);}catch(e){}});
+    grp.addTo(hm);
+    const bounds=grp.getBounds();
+    if(bounds&&bounds.isValid())hm.fitBounds(bounds,{padding:[30,30],maxZoom:16});else{hm.setView([48.137,11.575],13);}
+    setTimeout(()=>{try{hm.invalidateSize();if(bounds&&bounds.isValid())hm.fitBounds(bounds,{padding:[30,30],maxZoom:16});}catch(e){}},180);
+  }catch(e){toast('Karte konnte nicht geladen werden');}
+};
 window.showCellsOnMainMap=function(cells,opts){
   opts=opts||{};
   if(!Array.isArray(cells)||!cells.length){toast('Keine Hexagone gespeichert');return;}
