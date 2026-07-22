@@ -2139,7 +2139,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v206';
+const APP_VERSION='v207';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3338,9 +3338,11 @@ window.showMyClubPopup=function(){
       <button onclick="document.getElementById('myClubOverlay')?.remove()" style="flex-shrink:0;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:11px;padding:6px 12px;font-size:.95rem;cursor:pointer">✕</button>
     </div>
     <div style="padding:14px 18px">
-      <div style="display:flex;gap:8px;margin-bottom:14px">
-        <div style="flex:1;background:var(--bg2);border-radius:14px;padding:12px;text-align:center"><div id="myClubPts" style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--primary)">–</div><div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Gesamtpunkte</div></div>
-        <div style="flex:1;background:var(--bg2);border-radius:14px;padding:12px;text-align:center"><div id="myClubTerr" style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--primary)">–</div><div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Gebiete</div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+        <div style="background:var(--bg2);border-radius:14px;padding:11px;text-align:center"><div id="myClubPts" style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--primary)">0</div><div style="font-size:.56rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Gesamtpunkte</div></div>
+        <div style="background:var(--bg2);border-radius:14px;padding:11px;text-align:center"><div id="myClubRuns" style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--primary)">0</div><div style="font-size:.56rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Läufe</div></div>
+        <div style="background:var(--bg2);border-radius:14px;padding:11px;text-align:center"><div id="myClubKm" style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--primary)">0</div><div style="font-size:.56rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Kilometer</div></div>
+        <div style="background:var(--bg2);border-radius:14px;padding:11px;text-align:center"><div id="myClubTerr" style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--primary)">0</div><div style="font-size:.56rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Gebiete</div></div>
       </div>
       <div style="font-size:.7rem;color:var(--muted);margin-bottom:12px;text-align:center">Gegründet ${founded||'—'} · Code <b style="color:var(--text);cursor:pointer" onclick="navigator.clipboard?.writeText('${code}').then(()=>toast('📋 Code kopiert')).catch(()=>{})">${esc(code)}</b></div>
       <div id="myClubDescWrap" style="background:var(--bg2);border-radius:14px;padding:12px 13px;margin-bottom:14px">
@@ -3391,9 +3393,13 @@ window.showMyClubPopup=function(){
     list=list||[];
     const totalPts=list.reduce((s,p)=>s+(p.points||0),0);
     const totalTerr=list.reduce((s,p)=>s+(p.total_conquered||0),0);
-    const ptsEl=document.getElementById('myClubPts'),terrEl=document.getElementById('myClubTerr'),stEl=document.getElementById('myClubStats'),mEl=document.getElementById('myClubMembers');
+    const totalKm=list.reduce((s,p)=>s+(p.total_km||0),0);
+    const totalRuns=list.reduce((s,p)=>s+(p.total_runs||0),0);
+    const ptsEl=document.getElementById('myClubPts'),terrEl=document.getElementById('myClubTerr'),kmEl=document.getElementById('myClubKm'),runsEl=document.getElementById('myClubRuns'),stEl=document.getElementById('myClubStats'),mEl=document.getElementById('myClubMembers');
     if(ptsEl)ptsEl.textContent=totalPts.toLocaleString('de-DE');
     if(terrEl)terrEl.textContent=totalTerr;
+    if(kmEl)kmEl.textContent=(Math.round(totalKm*10)/10).toLocaleString('de-DE');
+    if(runsEl)runsEl.textContent=totalRuns.toLocaleString('de-DE');
     if(stEl)stEl.textContent=`${list.length} Mitglied${list.length===1?'':'er'}`+(_amLeader?' · 👑 du führst':'');
     if(!mEl)return;
     if(error||!list.length){mEl.innerHTML='<div style="padding:10px;color:var(--muted);font-size:.75rem;text-align:center">Noch keine Mitglieder — teile deinen Club-Code!</div>';return;}
@@ -3450,8 +3456,11 @@ window.showMyClubPopup=function(){
         wrap.appendChild(wb);
       }
     }
-    // Mitglieder laden + rendern (mit Kick-Buttons für den Anführer).
-    try{const{data,error}=await sb.from('profiles').select('user_id,player_name,user_avatar,user_color,points,total_km,streak_days,total_conquered').eq('club_code',userClub.code).order('points',{ascending:false}).limit(50);
+    // Mitglieder laden + rendern (mit Kick-Buttons für den Anführer). total_runs
+    // ist evtl. (vor Migration) nicht vorhanden -> dann ohne diese Spalte laden.
+    try{
+      let{data,error}=await sb.from('profiles').select('user_id,player_name,user_avatar,user_color,points,total_km,total_runs,streak_days,total_conquered').eq('club_code',userClub.code).order('points',{ascending:false}).limit(50);
+      if(error){const r2=await sb.from('profiles').select('user_id,player_name,user_avatar,user_color,points,total_km,streak_days,total_conquered').eq('club_code',userClub.code).order('points',{ascending:false}).limit(50);data=r2.data;error=r2.error;}
       _renderMembers(data||[],error);
     }catch(e){_renderMembers([],e);}
   })();
