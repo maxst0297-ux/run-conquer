@@ -461,6 +461,10 @@ body.onboarding-active{background:#000}
 .comm-seg-btn.active{background:var(--primary);color:var(--bg);border-color:var(--primary)}
 .list-row{padding:10px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;animation:fadeRow .3s ease}
 /* Ziele-Swipe (Daily Quests / Belohnungen / Events) im Profil */
+.pv-hub-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pv-hub-btn{display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:15px 6px;font-size:.72rem;font-family:'Poppins',sans-serif;font-weight:600;color:var(--text);cursor:pointer;transition:background var(--motion-base),border-color var(--motion-base);-webkit-tap-highlight-color:transparent;text-align:center}
+.pv-hub-btn:active{background:rgba(var(--primary-rgb),.1);border-color:rgba(var(--primary-rgb),.45)}
+.pv-hub-ico{font-size:1.55rem;line-height:1}
 .qtabs{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:12px}
 .qtab{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:10px;padding:8px 4px;font-size:.72rem;font-family:'Poppins',sans-serif;cursor:pointer;text-align:center;transition:background var(--motion-base),color var(--motion-base),border-color var(--motion-base);-webkit-user-select:none;user-select:none}
 .qtab.active{background:rgba(var(--primary-rgb),.1);color:var(--primary);border-color:rgba(var(--primary-rgb),.4);font-weight:600}
@@ -1579,24 +1583,15 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <p style="font-size:13px;color:rgba(255,255,255,.5);margin:0 0 16px;line-height:1.5">Starte deinen ersten Lauf und erobere dein erstes Gebiet.</p>
         <button class="btn btn-p" onclick="setView('start')" style="max-width:220px;margin:0 auto;display:flex;justify-content:center">Jetzt loslegen →</button>
       </div>
-      <div class="section-card" id="pvDailyStreak" style="display:none"></div>
       <div class="section-card" id="pvFactionWins" style="display:none"></div>
-      <!-- Ziele-Swipe: Daily Quests / Belohnungen (per Wisch oder Tab wechseln).
-           Events liegen jetzt in Community. -->
-      <div class="section-card" id="pvGoalsSwipe">
-        <div class="qtabs">
-          <button class="qtab active" data-qp="0" type="button">Quests</button>
-          <button class="qtab" data-qp="1" type="button">Belohnungen</button>
-        </div>
-        <div class="qswipe" id="qSwipe">
-          <div class="qpanel">
-            <div class="sec-hd" style="margin-top:0"><i class="fas fa-fire"></i> Tägliche Challenges<span id="chalStreakBadge" style="margin-left:auto;font-size:.7rem;font-family:'Bebas Neue',sans-serif;color:var(--primary)"></span></div>
-            <div id="dailyChalDiv"></div>
-          </div>
-          <div class="qpanel"><div id="pvRewards"></div></div>
+      <!-- Quests · Season-Pass · Belohnungen: drei Buttons -> je ein Popup. -->
+      <div class="section-card" id="pvHub">
+        <div class="pv-hub-row">
+          <button class="pv-hub-btn" type="button" onclick="showProfileHub('quests')"><span class="pv-hub-ico">🎯</span>Quests</button>
+          <button class="pv-hub-btn" type="button" onclick="showProfileHub('pass')"><span class="pv-hub-ico">🎫</span>Season-Pass</button>
+          <button class="pv-hub-btn" type="button" onclick="showProfileHub('rewards')"><span class="pv-hub-ico">🎁</span>Belohnungen</button>
         </div>
       </div>
-      <div class="section-card" id="pvBattlePass"></div>
       <div class="section-card">
         <div class="section-title"><i class="fas fa-layer-group"></i> Spielsystem</div>
         <div id="lvlBreakdown"></div>
@@ -2138,7 +2133,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v201';
+const APP_VERSION='v202';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3388,6 +3383,32 @@ window.showMyClubPopup=function(){
    Bottom-Sheet mit zwei Reitern. Follower = jemand folgt DIR (target_uid=ich,
    accepted); Ich folge = du folgst jemandem (requester_uid=ich, accepted).
    Tap auf einen Eintrag -> dessen Profil. */
+/* Profil-Hub: die drei Buttons (Quests · Season-Pass · Belohnungen) öffnen je
+   ein Bottom-Sheet. Es injiziert die bekannten Container-IDs und lässt
+   updateProfile() sie über die vorhandene Render-Logik füllen. */
+window.showProfileHub=function(which){
+  const meta={
+    quests:{t:'🎯 Quests',html:'<div class="sec-hd" style="margin-top:0"><i class="fas fa-fire"></i> Tägliche Challenges<span id="chalStreakBadge" style="margin-left:auto;font-size:.7rem;font-family:\'Bebas Neue\',sans-serif;color:var(--primary)"></span></div><div id="dailyChalDiv"></div>'},
+    pass:{t:'🎫 Season-Pass',html:'<div id="pvBattlePass"></div>'},
+    rewards:{t:'🎁 Belohnungen',html:'<div id="pvRewards"></div>'}
+  }[which];
+  if(!meta)return;
+  document.getElementById('profileHubOverlay')?.remove();
+  const ov=document.createElement('div');ov.id='profileHubOverlay';
+  ov.style.cssText='position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center';
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+  ov.innerHTML=`<div style="width:100%;max-width:480px;max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--card);border-radius:24px 24px 0 0;padding:0 0 max(env(safe-area-inset-bottom),16px)">
+    <div style="position:sticky;top:0;background:var(--card);z-index:2;display:flex;align-items:center;gap:10px;padding:16px 18px 12px;border-bottom:1px solid var(--border)">
+      <div style="flex:1;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:.5px">${meta.t}</div>
+      <button onclick="document.getElementById('profileHubOverlay')?.remove()" style="background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:11px;padding:6px 12px;font-size:.95rem;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:14px 18px">${meta.html}</div>
+  </div>`;
+  document.body.appendChild(ov);
+  // Füllt die injizierten Container über die bestehende Profil-Render-Logik
+  // (renderDailyChallenges / renderRewards / Season-Pass-Block).
+  try{updateProfile();}catch(e){}
+};
 window.showFollowListPopup=function(tab){
   tab=(tab==='following')?'following':'followers';
   document.getElementById('followListOverlay')?.remove();
