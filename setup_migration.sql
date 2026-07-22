@@ -138,27 +138,73 @@ create policy "clubs_select_all" on public.clubs for select using (true);
 -- Schreiben: bewusst KEINE direkte INSERT/UPDATE-Policy -> nur über die RPC.
 grant select on public.clubs to anon, authenticated;
 
--- RPC: setzt die Beschreibung des Klubs des aufrufenden Mitglieds. Legt die
--- clubs-Zeile bei Bedarf an (Insert-or-Update). security definer.
+-- KLUB-ANFÜHRER (Founder): siehe club_admin_migration.sql. Nur der Anführer darf
+-- Beschreibung/Wappen ändern und Mitglieder entfernen.
+alter table public.clubs add column if not exists founder_uid uuid;
+alter table public.clubs add column if not exists wappen      jsonb;
+
+-- RPC: setzt die Beschreibung — nur Anführer (bzw. erster Claim). security definer.
 create or replace function public.rc_set_club_description(desc_text text)
-returns text
-language plpgsql
-security definer
-set search_path = public
-as $$
+returns text language plpgsql security definer set search_path = public as $$
 declare
-  v_uid  uuid := auth.uid();
-  v_code text;
+  v_uid     uuid := auth.uid();
+  v_code    text;
+  v_founder uuid;
 begin
   if v_uid is null then return 'unauthenticated'; end if;
   select club_code into v_code from public.profiles where id = v_uid;
   if v_code is null or v_code = '' then return 'no_club'; end if;
-  insert into public.clubs(code, description, updated_at)
-    values (v_code, left(coalesce(desc_text,''), 500), now())
-  on conflict (code) do update
-    set description = left(coalesce(excluded.description,''), 500), updated_at = now();
+  insert into public.clubs(code) values (v_code) on conflict (code) do nothing;
+  update public.clubs set founder_uid = v_uid where code = v_code and founder_uid is null;
+  select founder_uid into v_founder from public.clubs where code = v_code;
+  if v_founder is distinct from v_uid then return 'not_leader'; end if;
+  update public.clubs set description = left(coalesce(desc_text,''), 500), updated_at = now() where code = v_code;
   return 'ok';
-end;
-$$;
+end; $$;
 revoke all on function public.rc_set_club_description(text) from public;
 grant execute on function public.rc_set_club_description(text) to authenticated;
+
+-- RPC: setzt das Wappen — nur Anführer (erster Claim = Gründer bei Neugründung).
+create or replace function public.rc_set_club_wappen(w jsonb)
+returns text language plpgsql security definer set search_path = public as $$
+declare
+  v_uid     uuid := auth.uid();
+  v_code    text;
+  v_founder uuid;
+begin
+  if v_uid is null then return 'unauthenticated'; end if;
+  select club_code into v_code from public.profiles where id = v_uid;
+  if v_code is null or v_code = '' then return 'no_club'; end if;
+  insert into public.clubs(code) values (v_code) on conflict (code) do nothing;
+  update public.clubs set founder_uid = v_uid where code = v_code and founder_uid is null;
+  select founder_uid into v_founder from public.clubs where code = v_code;
+  if v_founder is distinct from v_uid then return 'not_leader'; end if;
+  update public.clubs set wappen = w, updated_at = now() where code = v_code;
+  return 'ok';
+end; $$;
+revoke all on function public.rc_set_club_wappen(jsonb) from public;
+grant execute on function public.rc_set_club_wappen(jsonb) to authenticated;
+
+-- RPC: entfernt ein Mitglied — nur Anführer, Ziel muss Mitglied desselben Klubs sein.
+create or replace function public.rc_kick_member(target uuid)
+returns text language plpgsql security definer set search_path = public as $$
+declare
+  v_uid     uuid := auth.uid();
+  v_code    text;
+  v_founder uuid;
+  v_n       int;
+begin
+  if v_uid is null then return 'unauthenticated'; end if;
+  if target is null then return 'bad_target'; end if;
+  if target = v_uid then return 'cannot_kick_self'; end if;
+  select club_code into v_code from public.profiles where id = v_uid;
+  if v_code is null or v_code = '' then return 'no_club'; end if;
+  select founder_uid into v_founder from public.clubs where code = v_code;
+  if v_founder is distinct from v_uid then return 'not_leader'; end if;
+  update public.profiles set club_code = null where id = target and club_code = v_code;
+  get diagnostics v_n = row_count;
+  if v_n = 0 then return 'not_member'; end if;
+  return 'ok';
+end; $$;
+revoke all on function public.rc_kick_member(uuid) from public;
+grant execute on function public.rc_kick_member(uuid) to authenticated;
