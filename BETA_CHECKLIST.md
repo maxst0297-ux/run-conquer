@@ -7,17 +7,19 @@ Selbstständige Anleitung, um **Runners Conquer** in einen Beta-Test zu bringen
 
 ## 0) 🔴 PRE-FLIGHT — Blocker (VOR jedem Beta erledigen)
 
-- [ ] **RLS-Sicherheitslücke schließen.** Supabase-Advisor meldete
-      `rls_disabled_in_public` (eine Tabelle ohne Row-Level-Security = öffentlich
-      les-/schreibbar). Betroffene Tabelle(n) finden:
+- [x] **RLS-Advisor geklärt — HARMLOS.** Der Advisor-Fund `rls_disabled_in_public`
+      betraf einzig **`spatial_ref_sys`** — eine PostGIS-**System­tabelle** mit nur
+      öffentlichen Koordinatensystem-Definitionen (EPSG), **keine Nutzerdaten**.
+      RLS lässt sich dort nicht setzen (`ERROR 42501: must be owner of table
+      spatial_ref_sys` — gehört der Extension, nicht dem Projekt). Das ist der
+      bekannte, gefahrlose Standardfall.
+      → Im Dashboard **Advisors → Security** die Meldung ggf. „ignorieren/acknowledge",
+      sonst einfach so lassen. **Alle App-Tabellen (25) haben RLS.** Gegencheck:
       ```sql
-      select schemaname, tablename
-      from pg_tables
-      where schemaname = 'public' and rowsecurity = false
-      order by tablename;
+      select count(*) from pg_tables
+      where schemaname='public' and rowsecurity=false and tablename <> 'spatial_ref_sys';
+      -- muss 0 sein  ->  jede eigene Tabelle ist geschützt
       ```
-      Dann RLS **plus passende Policies** setzen (nicht nur RLS an — sonst ist die
-      Tabelle für die App gesperrt). Fix pro Tabelle anfragen.
 - [ ] **Alle SQL-Migrationen auf der Produktions-DB.** `setup_migration.sql`
       bündelt alles Nötige (Rivalen, Privatsphäre, Profil-Läufe, Heimatkern,
       Klub-Beschreibung). Einmal gegen Prod ausführen (idempotent).
