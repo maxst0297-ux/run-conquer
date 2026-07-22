@@ -12,6 +12,19 @@
 -- security-definer-RPCs; direkte INSERT/UPDATE bleiben gesperrt.
 -- ============================================================================
 
+-- clubs-Tabelle anlegen, falls noch nicht vorhanden (früheres club_desc_migration
+-- evtl. nie eingespielt). Lesen für alle; Schreiben ausschließlich über die RPCs.
+create table if not exists public.clubs (
+  code        text primary key,
+  name        text,
+  description text,
+  updated_at  timestamptz not null default now()
+);
+alter table public.clubs enable row level security;
+drop policy if exists "clubs_select_all" on public.clubs;
+create policy "clubs_select_all" on public.clubs for select using (true);
+grant select on public.clubs to anon, authenticated;
+
 alter table public.clubs add column if not exists founder_uid uuid;
 alter table public.clubs add column if not exists wappen      jsonb;
 

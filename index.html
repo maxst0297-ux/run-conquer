@@ -2139,7 +2139,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v204';
+const APP_VERSION='v205';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -8600,8 +8600,8 @@ function renderSettingsTab(tab){
     const CLUB_ICONS=['⚔️','🔥','❄️','⚡','🌑','🦅','🐺','🏔️','🌊','🌟'];
     if(userClub && !window._clubWappenEditMode){
       const wHtml=crestSVG(userClub.wappen||{},86);
-      body.innerHTML=`<div class="club-card-info" style="align-items:center;gap:14px"><div style="flex-shrink:0">${wHtml}</div><div style="flex:1"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:1px">${esc(userClub.name)}</div><div style="font-size:.68rem;color:var(--muted)">Gegründet ${new Date(userClub.foundedAt).toLocaleDateString('de')}</div></div></div><div id="clubMemberList" style="margin:10px 0"></div><div style="font-size:.75rem;color:var(--muted);margin-bottom:4px;text-align:center">Club-Code (antippen zum Kopieren)</div><div class="club-code-box" id="clubCodeBox">${esc(userClub.code)}</div><div style="font-size:.65rem;color:var(--muted);text-align:center;margin-bottom:14px">Teile diesen Code mit anderen Spielern</div><button class="btn" id="leaveClubBtn" style="width:100%;border-color:var(--red);color:var(--red)"><i class="fas fa-sign-out-alt"></i> Club verlassen</button>`;
-      $('clubCodeBox')?.addEventListener('click',()=>{navigator.clipboard?.writeText(userClub.code).then(()=>toast('📋 Code kopiert: '+userClub.code)).catch(()=>toast('Code: '+userClub.code));});
+      body.innerHTML=`<div class="club-card-info" style="align-items:center;gap:14px"><div style="flex-shrink:0">${wHtml}</div><div style="flex:1;min-width:0"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.65rem;letter-spacing:1px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(userClub.name)}</div><div style="font-size:.66rem;color:var(--muted);margin-top:3px">Gegründet ${new Date(userClub.foundedAt).toLocaleDateString('de')} · <span id="clubCodeInline" style="cursor:pointer;-webkit-tap-highlight-color:transparent">Code <b style="color:var(--text);letter-spacing:1px">${esc(userClub.code)}</b> 📋</span></div></div></div><div id="clubMemberList" style="margin:12px 0"></div><button class="btn" id="leaveClubBtn" style="width:100%;border-color:var(--red);color:var(--red)"><i class="fas fa-sign-out-alt"></i> Club verlassen</button>`;
+      $('clubCodeInline')?.addEventListener('click',()=>{navigator.clipboard?.writeText(userClub.code).then(()=>toast('📋 Code kopiert: '+userClub.code)).catch(()=>toast('Code: '+userClub.code));});
       $('leaveClubBtn')?.addEventListener('click',()=>{if(!confirm('Club wirklich verlassen?'))return;userClub=null;saveProfile();renderSettingsTab('club');toast('Club verlassen');});
       loadClubMembers(userClub.code,document.getElementById('clubMemberList'));
       // Club Activity Feed
