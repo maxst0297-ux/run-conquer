@@ -2291,24 +2291,34 @@ async function loadFromCloud(){
       const m=new Map([...history,...cloudHist].map(r=>[r.id??r.date,r]));
       mergedHist=[...m.values()].sort((a,b)=>(a.date||0)-(b.date||0)).slice(-500);
     }
+    // Append-only-Inventar (freigeschaltete + ABGEHOLTE Belohnungen) und die
+    // Kosmetik-Auto-Equips (Rahmen/Banner/Marker) niemals verlieren — UNABHÄNGIG
+    // davon, welche Seite „neuer" ist (analog zur History-Merge). Dazu den lokalen
+    // Stand VOR einem eventuellen Overwrite sichern.
+    const _locClaimed=Array.isArray(streakClaimed)?streakClaimed.slice():[];
+    const _locUnlocks=Array.isArray(streakUnlocks)?streakUnlocks.slice():[];
+    const _locEquip=Object.assign({},equipped);
     if(cloudIsNewer){
       // Cloud ist die Quelle der Wahrheit: beide lokalen Blobs überschreiben und
       // ALLE Variablen (Spielstand + Profil/Einstellungen) daraus neu laden.
       try{localStorage.setItem('rc_v4_'+userId,JSON.stringify(cg));}catch(e){}
-      if(cp){
-        // Append-only-Inventar (freigeschaltete + ABGEHOLTE Belohnungen) niemals
-        // verlieren: mit dem lokalen Stand vereinen — auch wenn die Cloud-Kopie
-        // die zuletzt abgeholte Belohnung noch nicht enthält (Sync-Watermark-Gap,
-        // da saveProfile() localStateTs nicht anhebt). Analog zur History-Merge.
-        try{const _uni=(a,b)=>Array.from(new Set([...(Array.isArray(a)?a:[]),...(Array.isArray(b)?b:[])]));
-          cp.streakClaimed=_uni(cp.streakClaimed,streakClaimed);
-          cp.streakUnlocks=_uni(cp.streakUnlocks,streakUnlocks);
-        }catch(e){}
-        try{localStorage.setItem('rc_profile_'+userId,JSON.stringify(cp));}catch(e){}
-      }
+      if(cp){try{localStorage.setItem('rc_profile_'+userId,JSON.stringify(cp));}catch(e){}}
       load();
       if(typeof loadProfile==='function')loadProfile();
     }
+    // Vereinigung IMMER anwenden (beide Zweige): lokal-vor-Overwrite ∪ aktuell ∪ Cloud.
+    try{
+      const _uni=(...as)=>Array.from(new Set([].concat(...as.map(a=>Array.isArray(a)?a:[]))));
+      const nc=_uni(streakClaimed,_locClaimed,cp?cp.streakClaimed:[]);
+      const nu=_uni(streakUnlocks,_locUnlocks,cp?cp.streakUnlocks:[]);
+      let changed=nc.length!==(streakClaimed||[]).length||nu.length!==(streakUnlocks||[]).length;
+      streakClaimed=nc;streakUnlocks=nu;
+      // Einmalige Auto-Equips (je genau 1 Streak-Item) aus dem lokalen Stand ergänzen,
+      // falls die (evtl. überschriebene) equipped-Map sie verloren hat.
+      equipped=equipped||{};
+      ['frame','banner','marker'].forEach(t=>{if(_locEquip[t]&&!equipped[t]){equipped[t]=_locEquip[t];changed=true;}});
+      if(changed&&typeof saveProfile==='function')saveProfile(); // Vereinigung persistieren -> Re-Sync lädt sie hoch
+    }catch(e){}
     history=mergedHist; // gemergte History gewinnt (load() hätte sie überschrieben)
     save();
     return cloudIsNewer;
@@ -3311,7 +3321,7 @@ function renderClubCommunity(){
         const col=p.user_color||'#e8ff47';
         return `<div class="club-member-row" data-idx="${i}" style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation">
           <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:${i<3?'var(--primary)':'var(--muted)'};width:22px;text-align:center;flex-shrink:0">${ranks[i]||i+1+'.'}</div>
-          <div style="width:38px;height:38px;border-radius:50%;background:${esc(col)}22;border:2px solid ${esc(col)}66;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">${esc(p.user_avatar||'🏃')}</div>
+          <div style="width:38px;height:38px;border-radius:50%;background:${_safeColor(col)}22;border:2px solid ${_safeColor(col)}66;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">${esc(p.user_avatar||'🏃')}</div>
           <div style="flex:1;min-width:0">
             <div style="font-size:.82rem;font-weight:600;color:${isMe?'var(--primary)':'var(--text)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.player_name||'Läufer')}${isMe?' ✦':''}</div>
             <div style="font-size:.63rem;color:var(--muted);margin-top:1px">${(p.total_km||0).toFixed(1)} km · ${p.total_conquered||0} Gebiete · ${p.streak_days||0}🔥</div>
@@ -3424,7 +3434,7 @@ window.showMyClubPopup=function(){
         : `<i class="fas fa-chevron-right" style="color:var(--muted);font-size:.6rem;flex-shrink:0"></i>`;
       return `<div class="myclub-row" data-idx="${i}" style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent">
         <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:${i<3?'var(--primary)':'var(--muted)'};width:22px;text-align:center;flex-shrink:0">${ranks[i]||(i+1)+'.'}</div>
-        <div style="width:38px;height:38px;border-radius:50%;background:${esc(col)}22;border:2px solid ${esc(col)}66;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">${esc(p.user_avatar||'🏃')}</div>
+        <div style="width:38px;height:38px;border-radius:50%;background:${_safeColor(col)}22;border:2px solid ${_safeColor(col)}66;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">${esc(p.user_avatar||'🏃')}</div>
         <div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600;color:${isMe?'var(--primary)':'var(--text)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.player_name||'Läufer')}${isFounder?' 👑':''}${isMe?' ✦':''}</div><div style="font-size:.63rem;color:var(--muted);margin-top:1px">${(p.total_km||0).toFixed(1)} km · ${p.total_conquered||0} Gebiete · ${p.streak_days||0}🔥</div></div>
         <div style="font-family:'Bebas Neue',sans-serif;color:var(--primary);font-size:.95rem;flex-shrink:0">${p.points||0}</div>
         ${tail}
@@ -3587,7 +3597,7 @@ window.showFollowListPopup=function(tab){
       body.innerHTML=people.map((p,i)=>{
         const m=meta[p.uid]||{};const col=m.user_color||'#e8ff47';const nm=m.player_name||p.name||'Läufer';
         return `<div class="fl-row" data-idx="${i}" style="display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent">
-          <div style="width:40px;height:40px;border-radius:50%;background:${esc(col)}22;border:2px solid ${esc(col)}66;display:flex;align-items:center;justify-content:center;font-size:1.15rem;flex-shrink:0">${esc(m.user_avatar||'🏃')}</div>
+          <div style="width:40px;height:40px;border-radius:50%;background:${_safeColor(col)}22;border:2px solid ${_safeColor(col)}66;display:flex;align-items:center;justify-content:center;font-size:1.15rem;flex-shrink:0">${esc(m.user_avatar||'🏃')}</div>
           <div style="flex:1;min-width:0"><div style="font-size:.86rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(nm)}</div><div style="font-size:.62rem;color:var(--muted)">${(m.points||0).toLocaleString('de-DE')} Punkte</div></div>
           <i class="fas fa-chevron-right" style="color:var(--muted);font-size:.6rem;flex-shrink:0"></i>
         </div>`;}).join('');
@@ -7830,6 +7840,23 @@ function clubNameForbidden(name){
   return CLUB_NAME_BLOCKLIST.some(w=>n.includes(w));
 }
 window.clubNameForbidden=clubNameForbidden;
+/* Farbwert für Inline-Styles absichern: esc() schützt nur HTML, nicht CSS
+   (`;:()` bleiben). user_color kommt aus fremden Profilen und ist per Direkt-
+   Zugriff frei setzbar -> nur echte Hex-Farben zulassen (sonst Fallback). */
+function _safeColor(c){return /^#[0-9a-fA-F]{3,8}$/.test(String(c||''))?String(c):'#e8ff47';}
+window._safeColor=_safeColor;
+/* Klub-Name + Wappen serverseitig setzen (Gründer-Claim). Bei Neugründung ist der
+   club_code evtl. noch nicht hochgesynct -> 'no_club'; dann mit Backoff erneut
+   versuchen, bis der Sync durch ist (statt fixem Timeout). */
+function _rcPersistClubMeta(name,wappen,tries){
+  if(!sb)return;tries=tries||0;
+  try{
+    sb.rpc('rc_set_club_name',{new_name:name}).then(({data,error})=>{
+      if((error||data==='no_club')&&tries<5){setTimeout(()=>_rcPersistClubMeta(name,wappen,tries+1),1200*(tries+1));return;}
+      if(wappen){try{sb.rpc('rc_set_club_wappen',{w:wappen}).then(()=>{},()=>{});}catch(e){}}
+    },()=>{if(tries<5)setTimeout(()=>_rcPersistClubMeta(name,wappen,tries+1),1200*(tries+1));});
+  }catch(e){}
+}
 /* Empfohlene Start-/Beta-Klubs mit realistischen Namen — füllen die Entdeckung,
    solange die Community noch klein ist. Bewusst OHNE erfundene Mitglieder-/
    Punktezahlen (kein Fake-Ranking): sie zeigen „neu · sei Gründer". */
@@ -7848,8 +7875,8 @@ const SEED_CLUBS=[
 /* Klub-Entdeckung: Suchfeld (Lupe) + Top-Klubs (echt, nach XP) + empfohlene
    Seed-Klubs + lokale Vorschläge. Tippen auf einen Klub -> Detail-Popup
    (Name groß, Gesamtpunkte, Mitglieder). */
-async function renderClubDiscovery(){
-  const el=$('clubDiscoveryList');if(!el)return;
+async function renderClubDiscovery(elId){
+  const el=document.getElementById(elId||'clubDiscoveryList');if(!el)return;
   el.innerHTML=`
     <div style="position:relative;margin-bottom:12px">
       <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.8rem;pointer-events:none"></i>
@@ -7870,9 +7897,12 @@ async function renderClubDiscovery(){
     realClubs=Object.values(clubs);
   }catch(e){}
   window._discReal=realClubs;
-  const input=document.getElementById('clubSearchInput');
-  if(input)input.addEventListener('input',()=>_renderDiscBody(input.value.trim()));
-  _renderDiscBody('');
+  // Innere Elemente IMMER innerhalb des Containers suchen (der Klub-Tab und das
+  // Klub-Hub-Modal nutzen sonst denselben id -> Kollision).
+  const input=el.querySelector('#clubSearchInput');
+  const body=el.querySelector('#clubDiscBody');
+  if(input)input.addEventListener('input',()=>_renderDiscBody(body,input.value.trim()));
+  _renderDiscBody(body,'');
 }
 function _discRow(c,i,ranks,isSeed){
   const isMine=userClub?.code===c.code;
@@ -7886,8 +7916,8 @@ function _discRow(c,i,ranks,isSeed){
     ${right}
   </div>`;
 }
-function _renderDiscBody(q){
-  const body=document.getElementById('clubDiscBody');if(!body)return;
+function _renderDiscBody(body,q){
+  if(!body)return;
   const real=(window._discReal||[]);
   const qn=_rcNormalizeName(q);
   let top=real.slice().sort((a,b)=>(b.totalPts||0)-(a.totalPts||0));
@@ -7950,7 +7980,7 @@ window.showClubDetailPopup=function(code,name){
       mm.innerHTML=list.map((p,i)=>{const col=p.user_color||'#e8ff47';const isMe=p.user_id===userId;
         return `<div class="cd-mrow" data-i="${i}" style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent">
           <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:${i<3?'var(--primary)':'var(--muted)'};width:22px;text-align:center;flex-shrink:0">${ranks[i]||(i+1)+'.'}</div>
-          <div style="width:36px;height:36px;border-radius:50%;background:${esc(col)}22;border:2px solid ${esc(col)}66;display:flex;align-items:center;justify-content:center;font-size:1.05rem;flex-shrink:0">${esc(p.user_avatar||'🏃')}</div>
+          <div style="width:36px;height:36px;border-radius:50%;background:${_safeColor(col)}22;border:2px solid ${_safeColor(col)}66;display:flex;align-items:center;justify-content:center;font-size:1.05rem;flex-shrink:0">${esc(p.user_avatar||'🏃')}</div>
           <div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600;color:${isMe?'var(--primary)':'var(--text)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.player_name||'Läufer')}${isMe?' ✦':''}</div><div style="font-size:.62rem;color:var(--muted)">${(p.total_km||0).toFixed(1)} km · ${p.total_conquered||0} Gebiete</div></div>
           <div style="font-family:'Bebas Neue',sans-serif;color:var(--primary);font-size:.9rem;flex-shrink:0">${p.points||0}</div>
         </div>`;}).join('');
@@ -8011,10 +8041,10 @@ function renderClubHubMain(){
     <div id="topClubsList">${rcSkel(6)}</div>
     <div class="set-hd" style="margin-top:20px">🔍 Clubs entdecken</div>
     <div style="font-size:.62rem;color:var(--muted);margin:-4px 0 8px">Tritt einem Club per Code bei — oder gründe deinen eigenen in den Einstellungen.</div>
-    <div id="clubDiscoveryList">${rcSkel(4)}</div>
+    <div id="clubHubDiscoveryList">${rcSkel(4)}</div>
     ${userClub?'':`<button class="btn btn-p" style="width:100%;margin-top:12px" onclick="closeClubHub();openSettingsAt('club')">🏰 Eigenen Club gründen / beitreten</button>`}`;
   try{renderTopClubs(document.getElementById('topClubsList'));}catch(e){}
-  try{renderClubDiscovery();}catch(e){}
+  try{renderClubDiscovery('clubHubDiscoveryList');}catch(e){}
 }
 window.openClubDetail=function(code,name){
   const b=document.getElementById('clubHubBody');if(!b)return;
@@ -8879,9 +8909,9 @@ function renderSettingsTab(tab){
         localStorage.setItem('rc_clubs_db',JSON.stringify(allClubs));
         window._clubDraft=null;
         saveProfile();renderSettingsTab('club');toast('🏰 Club gegründet: '+n);
-        // Gründer serverseitig sofort als Anführer setzen (best-effort, sobald das
-        // Profil mit club_code synchronisiert ist).
-        if(sb){setTimeout(()=>{try{sb.rpc('rc_set_club_wappen',{w:userClub.wappen}).then(()=>{},()=>{});sb.rpc('rc_set_club_name',{new_name:n}).then(()=>{},()=>{});}catch(e){}},1500);}
+        // Gründer serverseitig als Anführer setzen + Name/Wappen persistieren,
+        // sobald der club_code synchronisiert ist (Retry mit Backoff).
+        if(sb)_rcPersistClubMeta(n,userClub.wappen);
       });
       $w('joinClubBtn')?.addEventListener('click',()=>{
         const code=($w('clubJoinInput')?.value||'').trim().toUpperCase();

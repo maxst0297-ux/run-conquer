@@ -70,8 +70,21 @@ end; $$;
 revoke all on function public.rc_set_club_wappen(jsonb) from public;
 grant execute on function public.rc_set_club_wappen(jsonb) to authenticated;
 
+-- Normalisierung für den serverseitigen Klubnamen-Filter (Umlaute/ß, Leetspeak,
+-- Sonderzeichen weg) — spiegelt _rcNormalizeName im Client.
+create or replace function public._rc_norm_name(s text) returns text
+language sql immutable as $$
+  select regexp_replace(
+    translate(
+      translate(replace(lower(coalesce(s,'')), 'ß','ss'), 'äöü','aou'),
+      '43105@','aeiosa'),
+    '[^a-z0-9]','','g');
+$$;
+
 -- ── Name setzen — nur Anführer (erster Claim = Gründer). Damit erscheint in der
---    Klub-Entdeckung/Top-Liste immer der NAME statt des Codes. ──
+--    Klub-Entdeckung/Top-Liste immer der NAME statt des Codes. Serverseitiger
+--    Wortfilter gegen verfassungsfeindliche/extremistische Begriffe (autoritativ,
+--    da der Client-Filter umgehbar ist). ──
 create or replace function public.rc_set_club_name(new_name text)
 returns text language plpgsql security definer set search_path = public as $$
 declare
@@ -80,6 +93,8 @@ declare
   v_founder uuid;
 begin
   if v_uid is null then return 'unauthenticated'; end if;
+  if public._rc_norm_name(new_name) ~ '(heilhitler|siegheil|hakenkreuz|hitler|nsdap|hitlerjugend|hitlergruss|schutzstaffel|sturmabteilung|drittesreich|blutundehre|blutundboden|judenfrei|judensau|untermensch|herrenrasse|whitepower|whitepride|combat18|hessdivision|fuhrer)'
+    then return 'forbidden_name'; end if;
   select club_code into v_code from public.profiles where id = v_uid;
   if v_code is null or v_code = '' then return 'no_club'; end if;
   insert into public.clubs(code) values (v_code) on conflict (code) do nothing;
