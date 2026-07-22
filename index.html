@@ -2029,7 +2029,7 @@ let dailyLoginDate='',dailyLoginStreak=0,streakShields=0,recentQuoteIds=[];
 let terrShields=0; // Gebiets-Schutz-Inventar (24h Immunität, manuell aktivierbar)
 let boostBollwerk=0,bollwerkArmed=false; // Bollwerk-Boost (max 3): nächster Lauf +50% Verteidigung
 /* Freigeschaltete Streak-Belohnungen (IDs) + aktuell angelegte Kosmetik. */
-let streakUnlocks=[],equipped={};
+let streakUnlocks=[],equipped={},streakClaimed=[];
 let selectedTitle=''; // im Profil angezeigter Titel (aus verdienten Titeln wählbar)
 let userBirthday='';  // 'MM-TT' für Geburtstags-Gebietsschutz
 let shieldUntil=0;    // lokaler Anzeige-Timestamp des aktiven Gebiets-Schutzes
@@ -2139,7 +2139,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v203';
+const APP_VERSION='v204';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2715,7 +2715,7 @@ function applyTheme(name){
 }
 function saveProfile(){
   const theme=getActiveTheme();
-  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,streakUnlocks,equipped,userBio,profilePublic,showRuns,showTerritories,pushEnabled,lastNameChangeDate,WEEKLY_GOAL,DAILY_GOAL_KM,MONTHLY_GOAL,factionWins,selectedTitle,userBirthday}));
+  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,streakUnlocks,equipped,streakClaimed,userBio,profilePublic,showRuns,showTerritories,pushEnabled,lastNameChangeDate,WEEKLY_GOAL,DAILY_GOAL_KM,MONTHLY_GOAL,factionWins,selectedTitle,userBirthday}));
   $('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;
   const hi=$('hdrHi');if(hi)hi.textContent='Hallo, '+(playerName||'Läufer');
   // Update theme-color meta for Android status bar
@@ -2724,7 +2724,7 @@ function saveProfile(){
   syncProfileDebounced();
 }
 function loadProfile(){
-  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';streakUnlocks=p.streakUnlocks||[];equipped=p.equipped||{};userBio=p.userBio||'';factionWins=p.factionWins||[];selectedTitle=p.selectedTitle||'';userBirthday=p.userBirthday||'';profilePublic=p.profilePublic!==false;showRuns=p.showRuns!==false;showTerritories=p.showTerritories!==false;pushEnabled=!!p.pushEnabled;lastNameChangeDate=p.lastNameChangeDate||'';if(p.WEEKLY_GOAL>0)WEEKLY_GOAL=p.WEEKLY_GOAL;if(p.DAILY_GOAL_KM>0)DAILY_GOAL_KM=p.DAILY_GOAL_KM;if(p.MONTHLY_GOAL>0)MONTHLY_GOAL=p.MONTHLY_GOAL;const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
+  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';streakUnlocks=p.streakUnlocks||[];equipped=p.equipped||{};streakClaimed=p.streakClaimed||[];userBio=p.userBio||'';factionWins=p.factionWins||[];selectedTitle=p.selectedTitle||'';userBirthday=p.userBirthday||'';profilePublic=p.profilePublic!==false;showRuns=p.showRuns!==false;showTerritories=p.showTerritories!==false;pushEnabled=!!p.pushEnabled;lastNameChangeDate=p.lastNameChangeDate||'';if(p.WEEKLY_GOAL>0)WEEKLY_GOAL=p.WEEKLY_GOAL;if(p.DAILY_GOAL_KM>0)DAILY_GOAL_KM=p.DAILY_GOAL_KM;if(p.MONTHLY_GOAL>0)MONTHLY_GOAL=p.MONTHLY_GOAL;const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
   return false;
 }
 /* ── STREAK-BELOHNUNGEN (Inventar) ──────────────────────────────────────────
@@ -2761,6 +2761,25 @@ function equipReward(id){
   toast(r.icon+' '+r.name+' angelegt');
 }
 function unequipReward(type){if(type==='color')return;delete equipped[type];saveProfile();applyEquipped();if(typeof updateProfile==='function')updateProfile();}
+/* „Abholen": markiert die Belohnung als eingesammelt (kein wiederkehrendes
+   „Anlegen" mehr). Aktivieren passiert in den Einstellungen — Farben unter
+   Design → Gebietsfarbe, Titel unter Beschreibung. Rahmen/Banner/Marker haben
+   keine eigene Einstellungs-UI und es gibt je nur EIN Streak-Item -> Abholen
+   aktiviert sie direkt (kein Wechsel-Konflikt). */
+function collectStreakReward(id){
+  const r=REWARD_BY_ID[id];if(!r||!streakUnlocks.includes(id)){toast('🔒 Noch nicht freigeschaltet');return;}
+  if(!streakClaimed.includes(id))streakClaimed.push(id);
+  let hint='';
+  if(r.type==='color')hint='aktivierbar unter Einstellungen → Design → Gebietsfarbe';
+  else if(r.type==='title')hint='auswählbar unter Einstellungen → Beschreibung';
+  else{equipped[r.type]=id;hint='aktiviert';}
+  saveProfile();applyEquipped();
+  if(typeof updateProfile==='function')updateProfile();
+  if(typeof renderH3Territories==='function')renderH3Territories();
+  if(typeof renderTerr==='function')renderTerr();
+  toast(r.icon+' '+r.name+' abgeholt'+(hint?' – '+hint:''));
+}
+window.collectStreakReward=collectStreakReward;
 /* Marker (und andere globale Effekte) sofort anwenden; Banner/Rahmen/Titel setzt updateProfile. */
 function applyEquipped(){try{if(userMarker&&mapL)userMarker.setIcon(mkUserIcon());}catch(e){}}
 /* #51 — Horizontalen Scroller so verschieben, dass das Ziel-Element mittig steht. */
@@ -2789,11 +2808,13 @@ function renderRewards(){
   const cards=days.map(day=>{
     const r=STREAK_REWARDS[day];
     const unlocked=streakUnlocks.includes(r.id);
-    const active=r.type==='color'?(String(userColor).toLowerCase()===r.value.toLowerCase()):(equipped[r.type]===r.id);
+    const collected=streakClaimed.includes(r.id);
+    const active=r.type==='color'?(String(userColor).toLowerCase()===String(r.value).toLowerCase()):(equipped[r.type]===r.id);
     let ctrl;
     if(!unlocked)ctrl=`<div style="font-size:.5rem;color:var(--muted);margin-top:5px">🔒 Tag ${day}</div>`;
+    else if(!collected)ctrl=`<button onclick="window.collectStreakReward('${r.id}')" style="margin-top:5px;background:var(--primary);color:var(--bg);border:none;border-radius:12px;padding:3px 8px;font-size:.56rem;font-weight:700;cursor:pointer;touch-action:manipulation">Abholen</button>`;
     else if(active)ctrl=`<div style="font-size:.54rem;color:#10b981;font-weight:700;margin-top:5px">✓ Aktiv</div>`;
-    else ctrl=`<button onclick="window.equipReward('${r.id}')" style="margin-top:5px;background:var(--primary);color:var(--bg);border:none;border-radius:12px;padding:3px 8px;font-size:.56rem;font-weight:700;cursor:pointer;touch-action:manipulation">Anlegen</button>`;
+    else ctrl=`<div style="font-size:.54rem;color:#10b981;font-weight:700;margin-top:5px">✓ Abgeholt</div>`;
     const preview=r.type==='color'
       ? `<div style="width:32px;height:32px;border-radius:50%;background:${r.value};margin:0 auto;box-shadow:0 0 0 2px var(--border)${active?',0 0 10px '+r.value:''}"></div>`
       : `<div style="font-size:1.5rem;height:32px;line-height:32px">${r.icon}</div>`;
