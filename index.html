@@ -2139,7 +2139,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v207';
+const APP_VERSION='v208';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2291,6 +2291,13 @@ async function loadFromCloud(){
       const m=new Map([...history,...cloudHist].map(r=>[r.id??r.date,r]));
       mergedHist=[...m.values()].sort((a,b)=>(a.date||0)-(b.date||0)).slice(-500);
     }
+    // Append-only-Inventar (freigeschaltete + ABGEHOLTE Belohnungen) und die
+    // Kosmetik-Auto-Equips (Rahmen/Banner/Marker) niemals verlieren — UNABHÄNGIG
+    // davon, welche Seite „neuer" ist (analog zur History-Merge). Dazu den lokalen
+    // Stand VOR einem eventuellen Overwrite sichern.
+    const _locClaimed=Array.isArray(streakClaimed)?streakClaimed.slice():[];
+    const _locUnlocks=Array.isArray(streakUnlocks)?streakUnlocks.slice():[];
+    const _locEquip=Object.assign({},equipped);
     if(cloudIsNewer){
       // Cloud ist die Quelle der Wahrheit: beide lokalen Blobs überschreiben und
       // ALLE Variablen (Spielstand + Profil/Einstellungen) daraus neu laden.
@@ -2299,6 +2306,19 @@ async function loadFromCloud(){
       load();
       if(typeof loadProfile==='function')loadProfile();
     }
+    // Vereinigung IMMER anwenden (beide Zweige): lokal-vor-Overwrite ∪ aktuell ∪ Cloud.
+    try{
+      const _uni=(...as)=>Array.from(new Set([].concat(...as.map(a=>Array.isArray(a)?a:[]))));
+      const nc=_uni(streakClaimed,_locClaimed,cp?cp.streakClaimed:[]);
+      const nu=_uni(streakUnlocks,_locUnlocks,cp?cp.streakUnlocks:[]);
+      let changed=nc.length!==(streakClaimed||[]).length||nu.length!==(streakUnlocks||[]).length;
+      streakClaimed=nc;streakUnlocks=nu;
+      // Einmalige Auto-Equips (je genau 1 Streak-Item) aus dem lokalen Stand ergänzen,
+      // falls die (evtl. überschriebene) equipped-Map sie verloren hat.
+      equipped=equipped||{};
+      ['frame','banner','marker'].forEach(t=>{if(_locEquip[t]&&!equipped[t]){equipped[t]=_locEquip[t];changed=true;}});
+      if(changed&&typeof saveProfile==='function')saveProfile(); // Vereinigung persistieren -> Re-Sync lädt sie hoch
+    }catch(e){}
     history=mergedHist; // gemergte History gewinnt (load() hätte sie überschrieben)
     save();
     return cloudIsNewer;
@@ -2773,7 +2793,11 @@ function collectStreakReward(id){
   if(r.type==='color')hint='aktivierbar unter Einstellungen → Design → Gebietsfarbe';
   else if(r.type==='title')hint='auswählbar unter Einstellungen → Beschreibung';
   else{equipped[r.type]=id;hint='aktiviert';}
-  saveProfile();applyEquipped();
+  // saveProfile() persistiert die Belohnung; save() hebt zusätzlich localStateTs
+  // an, damit loadFromCloud() den lokalen Stand beim nächsten Start nicht mit
+  // einer veralteten Cloud-Kopie überschreibt (Merge in loadFromCloud sichert
+  // zusätzlich den Geräte-Wechsel-Fall ab).
+  saveProfile();try{save();}catch(e){}applyEquipped();
   if(typeof updateProfile==='function')updateProfile();
   if(typeof renderH3Territories==='function')renderH3Territories();
   if(typeof renderTerr==='function')renderTerr();
@@ -3297,7 +3321,7 @@ function renderClubCommunity(){
         const col=p.user_color||'#e8ff47';
         return `<div class="club-member-row" data-idx="${i}" style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation">
           <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:${i<3?'var(--primary)':'var(--muted)'};width:22px;text-align:center;flex-shrink:0">${ranks[i]||i+1+'.'}</div>
-          <div style="width:38px;height:38px;border-radius:50%;background:${esc(col)}22;border:2px solid ${esc(col)}66;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">${esc(p.user_avatar||'🏃')}</div>
+          <div style="width:38px;height:38px;border-radius:50%;background:${_safeColor(col)}22;border:2px solid ${_safeColor(col)}66;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">${esc(p.user_avatar||'🏃')}</div>
           <div style="flex:1;min-width:0">
             <div style="font-size:.82rem;font-weight:600;color:${isMe?'var(--primary)':'var(--text)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.player_name||'Läufer')}${isMe?' ✦':''}</div>
             <div style="font-size:.63rem;color:var(--muted);margin-top:1px">${(p.total_km||0).toFixed(1)} km · ${p.total_conquered||0} Gebiete · ${p.streak_days||0}🔥</div>
@@ -3410,7 +3434,7 @@ window.showMyClubPopup=function(){
         : `<i class="fas fa-chevron-right" style="color:var(--muted);font-size:.6rem;flex-shrink:0"></i>`;
       return `<div class="myclub-row" data-idx="${i}" style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent">
         <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:${i<3?'var(--primary)':'var(--muted)'};width:22px;text-align:center;flex-shrink:0">${ranks[i]||(i+1)+'.'}</div>
-        <div style="width:38px;height:38px;border-radius:50%;background:${esc(col)}22;border:2px solid ${esc(col)}66;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">${esc(p.user_avatar||'🏃')}</div>
+        <div style="width:38px;height:38px;border-radius:50%;background:${_safeColor(col)}22;border:2px solid ${_safeColor(col)}66;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">${esc(p.user_avatar||'🏃')}</div>
         <div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600;color:${isMe?'var(--primary)':'var(--text)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.player_name||'Läufer')}${isFounder?' 👑':''}${isMe?' ✦':''}</div><div style="font-size:.63rem;color:var(--muted);margin-top:1px">${(p.total_km||0).toFixed(1)} km · ${p.total_conquered||0} Gebiete · ${p.streak_days||0}🔥</div></div>
         <div style="font-family:'Bebas Neue',sans-serif;color:var(--primary);font-size:.95rem;flex-shrink:0">${p.points||0}</div>
         ${tail}
@@ -3573,7 +3597,7 @@ window.showFollowListPopup=function(tab){
       body.innerHTML=people.map((p,i)=>{
         const m=meta[p.uid]||{};const col=m.user_color||'#e8ff47';const nm=m.player_name||p.name||'Läufer';
         return `<div class="fl-row" data-idx="${i}" style="display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent">
-          <div style="width:40px;height:40px;border-radius:50%;background:${esc(col)}22;border:2px solid ${esc(col)}66;display:flex;align-items:center;justify-content:center;font-size:1.15rem;flex-shrink:0">${esc(m.user_avatar||'🏃')}</div>
+          <div style="width:40px;height:40px;border-radius:50%;background:${_safeColor(col)}22;border:2px solid ${_safeColor(col)}66;display:flex;align-items:center;justify-content:center;font-size:1.15rem;flex-shrink:0">${esc(m.user_avatar||'🏃')}</div>
           <div style="flex:1;min-width:0"><div style="font-size:.86rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(nm)}</div><div style="font-size:.62rem;color:var(--muted)">${(m.points||0).toLocaleString('de-DE')} Punkte</div></div>
           <i class="fas fa-chevron-right" style="color:var(--muted);font-size:.6rem;flex-shrink:0"></i>
         </div>`;}).join('');
@@ -7799,44 +7823,170 @@ async function openPlayerCard(uid,name){
 }
 window.openPlayerCard=openPlayerCard;
 /* CLUB DISCOVERY */
-async function renderClubDiscovery(){
-  const el=$('clubDiscoveryList');if(!el)return;
-  el.innerHTML=rcSkel(6);
+/* ── Klub-Namensfilter (verfassungsfeindliche/extremistische Begriffe) ──────────
+   NUR clientseitiger UX-Vorfilter (die echte Prüfung gehört serverseitig).
+   Normalisiert gegen Umlaute/Leetspeak/Sonderzeichen, kleine spezifische Liste
+   (bewusst hoch-spezifisch, um False-Positives / das Scunthorpe-Problem zu meiden). */
+const CLUB_NAME_BLOCKLIST=['heilhitler','siegheil','hakenkreuz','hitler','nsdap','hitlerjugend','hitlergruss','schutzstaffel','sturmabteilung','drittesreich','blutundehre','blutundboden','judenfrei','judensau','untermensch','herrenrasse','whitepower','whitepride','combat18','hessdivision','fuhrer'];
+function _rcNormalizeName(s){
+  return String(s||'').toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/ä/g,'a').replace(/ö/g,'o').replace(/ü/g,'u').replace(/ß/g,'ss')
+    .replace(/[43105@]/g,m=>({'4':'a','3':'e','1':'i','0':'o','5':'s','@':'a'}[m]))
+    .replace(/[^a-z0-9]/g,'');
+}
+function clubNameForbidden(name){
+  const n=_rcNormalizeName(name);if(!n)return false;
+  return CLUB_NAME_BLOCKLIST.some(w=>n.includes(w));
+}
+window.clubNameForbidden=clubNameForbidden;
+/* Farbwert für Inline-Styles absichern: esc() schützt nur HTML, nicht CSS
+   (`;:()` bleiben). user_color kommt aus fremden Profilen und ist per Direkt-
+   Zugriff frei setzbar -> nur echte Hex-Farben zulassen (sonst Fallback). */
+function _safeColor(c){return /^#[0-9a-fA-F]{3,8}$/.test(String(c||''))?String(c):'#e8ff47';}
+window._safeColor=_safeColor;
+/* Klub-Name + Wappen serverseitig setzen (Gründer-Claim). Bei Neugründung ist der
+   club_code evtl. noch nicht hochgesynct -> 'no_club'; dann mit Backoff erneut
+   versuchen, bis der Sync durch ist (statt fixem Timeout). */
+function _rcPersistClubMeta(name,wappen,tries){
+  if(!sb)return;tries=tries||0;
+  try{
+    sb.rpc('rc_set_club_name',{new_name:name}).then(({data,error})=>{
+      if((error||data==='no_club')&&tries<5){setTimeout(()=>_rcPersistClubMeta(name,wappen,tries+1),1200*(tries+1));return;}
+      if(wappen){try{sb.rpc('rc_set_club_wappen',{w:wappen}).then(()=>{},()=>{});}catch(e){}}
+    },()=>{if(tries<5)setTimeout(()=>_rcPersistClubMeta(name,wappen,tries+1),1200*(tries+1));});
+  }catch(e){}
+}
+/* Empfohlene Start-/Beta-Klubs mit realistischen Namen — füllen die Entdeckung,
+   solange die Community noch klein ist. Bewusst OHNE erfundene Mitglieder-/
+   Punktezahlen (kein Fake-Ranking): sie zeigen „neu · sei Gründer". */
+const SEED_CLUBS=[
+  {code:'RHEINR',name:'Rheinland Runners',icon:'🐺'},
+  {code:'ALPENS',name:'Alpen Sprinter',icon:'🏔️'},
+  {code:'NORDWD',name:'Nordwind Athletik',icon:'🌬️'},
+  {code:'ISARLF',name:'Isar Läufer',icon:'🌊'},
+  {code:'HANSEH',name:'Hanse Hunter',icon:'⚓'},
+  {code:'SPREES',name:'Spree Strider',icon:'🦅'},
+  {code:'SCHWAW',name:'Schwarzwald Wölfe',icon:'🐺'},
+  {code:'ELBEER',name:'Elbe Eroberer',icon:'🌊'},
+  {code:'MAINMO',name:'Main Momentum',icon:'⚡'},
+  {code:'RUHRRB',name:'Ruhrpott Rebellen',icon:'🔥'}
+];
+/* Klub-Entdeckung: Suchfeld (Lupe) + Top-Klubs (echt, nach XP) + empfohlene
+   Seed-Klubs + lokale Vorschläge. Tippen auf einen Klub -> Detail-Popup
+   (Name groß, Gesamtpunkte, Mitglieder). */
+async function renderClubDiscovery(elId){
+  const el=document.getElementById(elId||'clubDiscoveryList');if(!el)return;
+  el.innerHTML=`
+    <div style="position:relative;margin-bottom:12px">
+      <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.8rem;pointer-events:none"></i>
+      <input id="clubSearchInput" type="text" placeholder="Klub suchen…" autocomplete="off" autocapitalize="off" style="width:100%;box-sizing:border-box;background:var(--bg2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:'Poppins',sans-serif;font-size:.85rem;padding:10px 12px 10px 34px;outline:none">
+    </div>
+    <div id="clubDiscBody">${rcSkel(6)}</div>`;
+  let realClubs=[];
   try{
     if(!sb)throw new Error('no sb');
-    const{data}=await sb.from('profiles').select('player_name,points,club_code').not('club_code','is',null).order('points',{ascending:false}).limit(100);
+    const{data}=await sb.from('profiles').select('player_name,points,club_code').not('club_code','is',null).order('points',{ascending:false}).limit(400);
     const clubs={};
     (data||[]).forEach(p=>{if(!p.club_code)return;if(!clubs[p.club_code])clubs[p.club_code]={code:p.club_code,members:0,totalPts:0};clubs[p.club_code].members++;clubs[p.club_code].totalPts+=p.points||0;});
+    // Klubnamen serverseitig (clubs-Tabelle) -> damit immer der NAME statt des Codes erscheint.
+    try{const{data:cn}=await sb.from('clubs').select('code,name,wappen');(cn||[]).forEach(c=>{if(!clubs[c.code])return;if(c.name)clubs[c.code].name=c.name;if(c.wappen)clubs[c.code].wappen=c.wappen;});}catch(e){}
     const localClubs=JSON.parse(localStorage.getItem('rc_clubs_db')||'{}');
-    Object.values(localClubs).forEach(lc=>{if(!clubs[lc.code])clubs[lc.code]={code:lc.code,members:0,totalPts:0};clubs[lc.code].name=lc.name;clubs[lc.code].wappen=lc.wappen;});
-    const sorted=Object.values(clubs).sort((a,b)=>b.members-a.members||b.totalPts-a.totalPts).slice(0,12);
-    if(!sorted.length){el.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:8px">Noch keine Clubs bekannt</div>';return;}
-    /* club_code/Name stammen aus FREMDEN Profilen: konsequent esc()en und
-       statt String-Interpolation in onclick-Handler data-Attribute +
-       Event-Delegation nutzen (Stored-XSS-Schutz). */
-    el.innerHTML=sorted.map((c,ci)=>{
-      const isMyClub=userClub?.code===c.code;
-      const wHtml=(c.wappen&&Object.keys(c.wappen).length)?`<div style="width:36px;height:36px;flex-shrink:0">${crestSVG(c.wappen,36)}</div>`:`<div style="width:36px;height:36px;border-radius:50%;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">🛡️</div>`;
-      return`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
-        ${wHtml}
-        <div style="flex:1;min-width:0">
-          <div style="font-size:.82rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name||c.code)}${isMyClub?' ✦':''}</div>
-          <div style="font-size:.63rem;color:var(--muted)">${c.members} Mitgl. · ${c.totalPts.toLocaleString()} Pts</div>
-        </div>
-        <span class="disc-club-copy" data-ci="${ci}" style="font-family:'Bebas Neue',sans-serif;font-size:.72rem;background:rgba(var(--primary-rgb),.1);color:var(--primary);border:1px solid rgba(var(--primary-rgb),.2);border-radius:6px;padding:2px 7px;cursor:pointer;flex-shrink:0">${esc(c.code)}</span>
-        ${!isMyClub?`<button class="btn disc-club-join" data-ci="${ci}" style="font-size:.65rem;padding:4px 10px;flex-shrink:0">Beitreten</button>`:'<span style="font-size:.68rem;color:var(--primary);flex-shrink:0">Mein Club</span>'}
-      </div>`;
-    }).join('');
-    el.querySelectorAll('.disc-club-copy').forEach(s=>s.addEventListener('click',()=>{
-      const c=sorted[+s.dataset.ci];if(!c)return;
-      navigator.clipboard?.writeText(c.code).then(()=>toast('📋 Code kopiert')).catch(()=>toast('Code: '+c.code.slice(0,20)));
-    }));
-    el.querySelectorAll('.disc-club-join').forEach(b=>b.addEventListener('click',()=>{
-      const c=sorted[+b.dataset.ci];if(!c)return;
-      window.joinClubFromDisc(c.code,c.name||c.code);
-    }));
-  }catch(e){el.innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:8px">Clubs nicht verfügbar</div>';}
+    Object.values(localClubs).forEach(lc=>{if(!lc||!lc.code)return;if(!clubs[lc.code])clubs[lc.code]={code:lc.code,members:0,totalPts:0};if(lc.name)clubs[lc.code].name=lc.name;if(lc.wappen)clubs[lc.code].wappen=lc.wappen;});
+    if(userClub&&userClub.code&&!clubs[userClub.code])clubs[userClub.code]={code:userClub.code,members:1,totalPts:points,name:userClub.name,wappen:userClub.wappen};
+    realClubs=Object.values(clubs);
+  }catch(e){}
+  window._discReal=realClubs;
+  // Innere Elemente IMMER innerhalb des Containers suchen (der Klub-Tab und das
+  // Klub-Hub-Modal nutzen sonst denselben id -> Kollision).
+  const input=el.querySelector('#clubSearchInput');
+  const body=el.querySelector('#clubDiscBody');
+  if(input)input.addEventListener('input',()=>_renderDiscBody(body,input.value.trim()));
+  _renderDiscBody(body,'');
 }
+function _discRow(c,i,ranks,isSeed){
+  const isMine=userClub?.code===c.code;
+  const wHtml=(c.wappen&&Object.keys(c.wappen).length)?`<div style="width:34px;height:34px;flex-shrink:0">${crestSVG(c.wappen,34)}</div>`:`<div style="width:34px;height:34px;border-radius:50%;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0">${esc(c.icon||'🛡️')}</div>`;
+  const rank=(ranks&&ranks.length)?`<div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:${i<3?'var(--primary)':'var(--muted)'};width:22px;text-align:center;flex-shrink:0">${ranks[i]||(i+1)+'.'}</div>`:'';
+  const meta=isSeed?`<span style="color:var(--primary)">neu · sei Gründer</span>`:`${c.members} ${c.members===1?'Mitglied':'Mitglieder'} · ${(c.totalPts||0).toLocaleString('de-DE')} XP`;
+  const right=isMine?'<span style="font-size:.66rem;color:var(--primary);flex-shrink:0">Mein Klub</span>':(!userClub?`<button class="btn disc-join" data-code="${esc(c.code)}" data-name="${esc(c.name||c.code)}" style="font-size:.64rem;padding:4px 10px;flex-shrink:0">Beitreten</button>`:'<i class="fas fa-chevron-right" style="color:var(--muted);font-size:.6rem;flex-shrink:0"></i>');
+  return `<div class="disc-row" data-code="${esc(c.code)}" data-name="${esc(c.name||c.code)}" style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent">
+    ${rank}${wHtml}
+    <div style="flex:1;min-width:0"><div style="font-size:.9rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.name||c.code)}${isMine?' ✦':''}</div><div style="font-size:.62rem;color:var(--muted)">${meta}</div></div>
+    ${right}
+  </div>`;
+}
+function _renderDiscBody(body,q){
+  if(!body)return;
+  const real=(window._discReal||[]);
+  const qn=_rcNormalizeName(q);
+  let top=real.slice().sort((a,b)=>(b.totalPts||0)-(a.totalPts||0));
+  const realCodes=new Set(real.map(c=>c.code));
+  let seeds=SEED_CLUBS.filter(s=>!realCodes.has(s.code));
+  if(qn){top=top.filter(c=>_rcNormalizeName(c.name||c.code).includes(qn));seeds=seeds.filter(s=>_rcNormalizeName(s.name).includes(qn));}
+  top=top.slice(0,10);
+  const ranks=['🥇','🥈','🥉'];
+  let html=`<div style="font-size:.66rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:2px 0 8px">🏆 Top-Klubs${qn?' · Treffer':' weltweit'}</div>`;
+  html+= top.length ? top.map((c,i)=>_discRow(c,i,ranks,false)).join('')
+                    : `<div style="color:var(--muted);font-size:.72rem;padding:6px 2px">${qn?'Kein passender Klub.':'Noch keine Klubs — gründe den ersten!'}</div>`;
+  if(seeds.length){
+    html+=`<div style="font-size:.66rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 8px">✨ Empfohlene Klubs <span style="font-weight:400;text-transform:none">· Beta</span></div>`;
+    html+=seeds.slice(0,qn?10:6).map((s)=>_discRow({code:s.code,name:s.name,icon:s.icon,members:0,totalPts:0},0,[],true)).join('');
+  }
+  if(qn&&!top.length&&!seeds.length){
+    html+=`<button class="btn btn-p disc-found" style="width:100%;margin-top:10px">🏰 „${esc(q)}" als Klub gründen</button>`;
+  }
+  body.innerHTML=html;
+  body.querySelectorAll('.disc-row').forEach(r=>r.addEventListener('click',e=>{if(e.target.closest('.disc-join'))return;showClubDetailPopup(r.dataset.code,r.dataset.name);}));
+  body.querySelectorAll('.disc-join').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();window.joinClubFromDisc(b.dataset.code,b.dataset.name);}));
+  body.querySelector('.disc-found')?.addEventListener('click',()=>{try{closeClubHub&&closeClubHub();}catch(e){}openSettingsAt('club');});
+}
+/* Detail-Popup für EINEN beliebigen Klub: Name groß + Gesamtpunkte + Mitglieder. */
+window.showClubDetailPopup=function(code,name){
+  if(!code)return;
+  document.getElementById('clubDetailOverlay')?.remove();
+  const ov=document.createElement('div');ov.id='clubDetailOverlay';
+  ov.style.cssText='position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center';
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+  ov.innerHTML=`<div style="width:100%;max-width:480px;max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--card);border-radius:24px 24px 0 0;padding:0 0 max(env(safe-area-inset-bottom),16px)">
+    <div style="position:sticky;top:0;background:var(--card);z-index:2;display:flex;align-items:center;gap:12px;padding:18px 18px 12px;border-bottom:1px solid var(--border)">
+      <div style="flex:1;min-width:0"><div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:.5px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(name||code)}</div><div style="font-size:.62rem;color:var(--muted);margin-top:2px">Code ${esc(code)}</div></div>
+      <button onclick="document.getElementById('clubDetailOverlay')?.remove()" style="flex-shrink:0;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:11px;padding:6px 12px;font-size:.95rem;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:14px 18px">
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <div style="flex:1;background:var(--bg2);border-radius:14px;padding:12px;text-align:center"><div id="cdPts" style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--primary)">0</div><div style="font-size:.56rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Gesamtpunkte</div></div>
+        <div style="flex:1;background:var(--bg2);border-radius:14px;padding:12px;text-align:center"><div id="cdMem" style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--primary)">0</div><div style="font-size:.56rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Mitglieder</div></div>
+      </div>
+      <div style="font-size:.66rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Mitglieder</div>
+      <div id="cdMembers">${rcSkel(5)}</div>
+      ${!userClub?`<button class="btn btn-p" id="cdJoinBtn" style="width:100%;margin-top:14px">🏰 Diesem Klub beitreten</button>`:''}
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  document.getElementById('cdJoinBtn')?.addEventListener('click',()=>{ov.remove();window.joinClubFromDisc(code,name||code);});
+  if(!sb){const m=document.getElementById('cdMembers');if(m)m.innerHTML='<div style="padding:10px;color:var(--muted);font-size:.75rem;text-align:center">Nicht verbunden.</div>';return;}
+  sb.from('profiles').select('user_id,player_name,user_avatar,user_color,points,total_km,total_conquered').eq('club_code',code).order('points',{ascending:false}).limit(50)
+    .then(({data,error})=>{
+      if(!document.getElementById('clubDetailOverlay'))return;
+      const list=data||[];
+      const tp=list.reduce((s,p)=>s+(p.points||0),0);
+      const pe=document.getElementById('cdPts'),me=document.getElementById('cdMem'),mm=document.getElementById('cdMembers');
+      if(pe)pe.textContent=tp.toLocaleString('de-DE');
+      if(me)me.textContent=list.length;
+      if(!mm)return;
+      if(error||!list.length){mm.innerHTML='<div style="padding:10px;color:var(--muted);font-size:.75rem;text-align:center">Noch keine Mitglieder — sei die/der Erste!</div>';return;}
+      const ranks=['🥇','🥈','🥉'];
+      mm.innerHTML=list.map((p,i)=>{const col=p.user_color||'#e8ff47';const isMe=p.user_id===userId;
+        return `<div class="cd-mrow" data-i="${i}" style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:${i<3?'var(--primary)':'var(--muted)'};width:22px;text-align:center;flex-shrink:0">${ranks[i]||(i+1)+'.'}</div>
+          <div style="width:36px;height:36px;border-radius:50%;background:${_safeColor(col)}22;border:2px solid ${_safeColor(col)}66;display:flex;align-items:center;justify-content:center;font-size:1.05rem;flex-shrink:0">${esc(p.user_avatar||'🏃')}</div>
+          <div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:600;color:${isMe?'var(--primary)':'var(--text)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.player_name||'Läufer')}${isMe?' ✦':''}</div><div style="font-size:.62rem;color:var(--muted)">${(p.total_km||0).toFixed(1)} km · ${p.total_conquered||0} Gebiete</div></div>
+          <div style="font-family:'Bebas Neue',sans-serif;color:var(--primary);font-size:.9rem;flex-shrink:0">${p.points||0}</div>
+        </div>`;}).join('');
+      mm.querySelectorAll('.cd-mrow').forEach(r=>{const p=list[+r.dataset.i];if(p)r.addEventListener('click',()=>{ov.remove();showPublicProfile(p);});});
+    },()=>{const mm=document.getElementById('cdMembers');if(mm)mm.innerHTML='<div style="padding:10px;color:var(--muted);font-size:.75rem;text-align:center">Mitglieder nicht verfügbar.</div>';});
+};
 window.joinClubFromDisc=function(code,name){
   if(userClub){toast('Verlasse zunächst deinen aktuellen Club');return;}
   if(!confirm('Club "'+name+'" beitreten?\nCode: '+code))return;
@@ -7891,10 +8041,10 @@ function renderClubHubMain(){
     <div id="topClubsList">${rcSkel(6)}</div>
     <div class="set-hd" style="margin-top:20px">🔍 Clubs entdecken</div>
     <div style="font-size:.62rem;color:var(--muted);margin:-4px 0 8px">Tritt einem Club per Code bei — oder gründe deinen eigenen in den Einstellungen.</div>
-    <div id="clubDiscoveryList">${rcSkel(4)}</div>
+    <div id="clubHubDiscoveryList">${rcSkel(4)}</div>
     ${userClub?'':`<button class="btn btn-p" style="width:100%;margin-top:12px" onclick="closeClubHub();openSettingsAt('club')">🏰 Eigenen Club gründen / beitreten</button>`}`;
   try{renderTopClubs(document.getElementById('topClubsList'));}catch(e){}
-  try{renderClubDiscovery();}catch(e){}
+  try{renderClubDiscovery('clubHubDiscoveryList');}catch(e){}
 }
 window.openClubDetail=function(code,name){
   const b=document.getElementById('clubHubBody');if(!b)return;
@@ -8730,6 +8880,7 @@ function renderSettingsTab(tab){
       $w('createClubBtn')?.addEventListener('click',()=>{
         const n=(wCfg.name||'').trim();
         if(n.length<2){toast('Mindestens 2 Zeichen');return;}
+        if(clubNameForbidden(n)){toast('🚫 Dieser Klubname ist nicht erlaubt.');return;}
         wCfg.name=n;
         if(editMode){
           // Wappen (und Name) des bestehenden Klubs ändern. Serverseitig erzwingt
@@ -8745,7 +8896,8 @@ function renderSettingsTab(tab){
             else if(data==='ok'){toast('🎨 Wappen gespeichert');}
             else if(data==='not_leader'){toast('🔒 Nur der Anführer darf das Wappen ändern.');}
             else{toast('🎨 Wappen lokal geändert.');}
-          }catch(e){toast('🎨 Wappen lokal geändert (Server-SQL fehlt noch).');}})();}
+          }catch(e){toast('🎨 Wappen lokal geändert (Server-SQL fehlt noch).');}
+          try{sb.rpc('rc_set_club_name',{new_name:n}).then(()=>{},()=>{});}catch(e){}})();}
           else toast('🎨 Wappen geändert');
           renderSettingsTab('club');
           return;
@@ -8757,9 +8909,9 @@ function renderSettingsTab(tab){
         localStorage.setItem('rc_clubs_db',JSON.stringify(allClubs));
         window._clubDraft=null;
         saveProfile();renderSettingsTab('club');toast('🏰 Club gegründet: '+n);
-        // Gründer serverseitig sofort als Anführer setzen (best-effort, sobald das
-        // Profil mit club_code synchronisiert ist).
-        if(sb){setTimeout(()=>{try{sb.rpc('rc_set_club_wappen',{w:userClub.wappen}).then(()=>{},()=>{});}catch(e){}},1500);}
+        // Gründer serverseitig als Anführer setzen + Name/Wappen persistieren,
+        // sobald der club_code synchronisiert ist (Retry mit Backoff).
+        if(sb)_rcPersistClubMeta(n,userClub.wappen);
       });
       $w('joinClubBtn')?.addEventListener('click',()=>{
         const code=($w('clubJoinInput')?.value||'').trim().toUpperCase();
