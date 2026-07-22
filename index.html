@@ -1595,7 +1595,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <div class="pv-hub-row">
           <button class="pv-hub-btn" type="button" onclick="showProfileHub('quests')"><span class="pv-hub-ico">🎯</span>Quests</button>
           <button class="pv-hub-btn" type="button" onclick="showProfileHub('pass')"><span class="pv-hub-ico">🎫</span>Season-Pass</button>
-          <button class="pv-hub-btn" type="button" onclick="showProfileHub('rewards')"><span class="pv-hub-ico">🎁</span>Belohnungen</button>
+          <button class="pv-hub-btn" type="button" onclick="showProfileHub('rewards')"><span class="pv-hub-ico">🔥</span>Belohnungen</button>
         </div>
       </div>
       <div class="section-card">
@@ -2139,7 +2139,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v205';
+const APP_VERSION='v206';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2824,7 +2824,7 @@ function renderRewards(){
       ${ctrl}
     </div>`;
   }).join('');
-  el.innerHTML=`<div class="section-title"><i class="fas fa-gift"></i> Belohnungen <span style="font-size:.62rem;color:var(--muted);font-weight:400;margin-left:auto">${streakUnlocks.length}/${days.length} frei</span></div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${cards}</div>`;
+  el.innerHTML=`<div class="section-title">🔥 Belohnungen <span style="font-size:.62rem;color:var(--muted);font-weight:400;margin-left:auto">${streakUnlocks.length}/${days.length} frei</span></div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${cards}</div>`;
 }
 window.equipReward=equipReward;window.unequipReward=unequipReward;
 /* ── FRAKTIONSSIEGER-MEDAILLON (Design-Handoff „champion-icon") ──────────────
@@ -3473,7 +3473,7 @@ window.showProfileHub=function(which){
   const items=[
     {k:'quests',t:'Quests',ico:'🎯',html:'<div class="sec-hd" style="margin-top:0"><i class="fas fa-fire"></i> Tägliche Challenges<span id="chalStreakBadge" style="margin-left:auto;font-size:.7rem;font-family:\'Bebas Neue\',sans-serif;color:var(--primary)"></span></div><div id="dailyChalDiv"></div>'},
     {k:'pass',t:'Season-Pass',ico:'🎫',html:'<div id="pvBattlePass"></div>'},
-    {k:'rewards',t:'Belohnungen',ico:'🎁',html:'<div id="pvRewards"></div>'}
+    {k:'rewards',t:'Belohnungen',ico:'🔥',html:'<div id="pvRewards"></div>'}
   ];
   let idx=items.findIndex(i=>i.k===which);if(idx<0)idx=0;
   document.getElementById('profileHubOverlay')?.remove();
@@ -3481,7 +3481,7 @@ window.showProfileHub=function(which){
   ov.style.cssText='position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center';
   ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
   const tabsHtml=items.map((it,i)=>`<button data-phi="${i}" type="button" class="ph-tab" style="flex:1 1 0;min-width:0;padding:8px 5px;border:none;border-radius:12px;background:var(--bg2);color:var(--muted);font-family:'Poppins',sans-serif;font-weight:700;font-size:.68rem;cursor:pointer;transition:all .22s var(--ease-out);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;justify-content:center;gap:5px;-webkit-tap-highlight-color:transparent"><span style="font-size:.95rem">${it.ico}</span><span class="ph-tab-lbl">${it.t}</span></button>`).join('');
-  const panelsHtml=items.map(it=>`<div class="ph-panel" style="flex:0 0 100%;box-sizing:border-box;padding:14px 18px 4px">${it.html}</div>`).join('');
+  const panelsHtml=items.map(it=>`<div class="ph-panel" style="flex:0 0 100%;box-sizing:border-box;padding:14px 18px 4px;min-width:0;overflow:hidden">${it.html}</div>`).join('');
   ov.innerHTML=`<div style="width:100%;max-width:480px;max-height:88vh;display:flex;flex-direction:column;background:var(--card);border-radius:24px 24px 0 0;padding:0 0 max(env(safe-area-inset-bottom),16px)">
     <div style="flex:0 0 auto;background:var(--card);z-index:2;padding:14px 14px 12px;border-bottom:1px solid var(--border);border-radius:24px 24px 0 0">
       <div style="display:flex;gap:8px;align-items:center">
@@ -3510,11 +3510,14 @@ window.showProfileHub=function(which){
   };
   tabs.forEach((b,i)=>b.addEventListener('click',()=>setIdx(i)));
   // Horizontales Wischen zwischen den Bereichen (vertikales Scrollen bleibt frei).
+  // Startet die Geste in einem eigenen horizontalen Scroller (z. B. der Season-
+  // Pass-Reihe), wird NICHT die Spalte gewechselt — dann scrollt dieser intern.
   const vp=ov.querySelector('#phViewport');
-  let sx=0,sy=0,swiping=false,decided=false,dx=0;
-  vp.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY;swiping=false;decided=false;dx=0;},{passive:true});
+  const _inHScroll=(node)=>{for(let el=node;el&&el!==vp;el=el.parentElement){if(el.scrollWidth-el.clientWidth>4){const ov2=getComputedStyle(el).overflowX;if(ov2==='auto'||ov2==='scroll')return true;}}return false;};
+  let sx=0,sy=0,swiping=false,decided=false,dx=0,lockInner=false;
+  vp.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY;swiping=false;decided=false;dx=0;lockInner=_inHScroll(e.target);},{passive:true});
   vp.addEventListener('touchmove',e=>{const cx=e.touches[0].clientX,cy=e.touches[0].clientY;if(!decided){decided=true;swiping=Math.abs(cx-sx)>Math.abs(cy-sy)+6;}if(swiping)dx=cx-sx;},{passive:true});
-  vp.addEventListener('touchend',()=>{if(swiping&&Math.abs(dx)>50)setIdx(idx+(dx<0?1:-1));swiping=false;dx=0;},{passive:true});
+  vp.addEventListener('touchend',()=>{if(!lockInner&&swiping&&Math.abs(dx)>50)setIdx(idx+(dx<0?1:-1));swiping=false;dx=0;lockInner=false;},{passive:true});
   setIdx(idx);
   // Füllt die injizierten Container über die bestehende Profil-Render-Logik.
   try{updateProfile();}catch(e){}
