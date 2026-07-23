@@ -2139,7 +2139,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v210';
+const APP_VERSION='v211';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3368,7 +3368,7 @@ window.showMyClubPopup=function(){
     <div style="position:sticky;top:0;background:var(--card);z-index:2;display:flex;align-items:center;gap:12px;padding:18px 18px 12px;border-bottom:1px solid var(--border)">
       <div id="myClubCrest" style="flex-shrink:0">${wappenHtml}</div>
       <div style="flex:1;min-width:0">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(userClub.name)}</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(userClub.name||userClub.code||'Mein Klub')}</div>
         <div id="myClubStats" style="font-size:.66rem;color:var(--muted);margin-top:2px">Lade Mitglieder…</div>
       </div>
       <button onclick="document.getElementById('myClubOverlay')?.remove()" style="flex-shrink:0;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:11px;padding:6px 12px;font-size:.95rem;cursor:pointer">✕</button>
@@ -5836,7 +5836,7 @@ function checkTerritoryChanges(){
   }
   saveTerritorySnapshot(); // neuen Stand merken
   const minsAgo=(Date.now()-(snap.ts||Date.now()))/60000;
-  if(minsAgo<30)return;                 // schnelle Reloads nicht stören
+  if(minsAgo<3)return;                  // sehr schnelle Reloads nicht stören
   if(lost===0&&defended===0)return;     // nichts Nennenswertes -> ruhig bleiben
   // EINE Zusammenfassung „auf einen Blick" ins Benachrichtigungs-Center:
   // wie viele Gebiete verloren, wie viele Angriffe (verloren+verteidigt).
@@ -9834,7 +9834,7 @@ function updateProfile(){
   syncStreakUnlocks();
   updateProfileRank();
   $('pvAvatar').innerHTML=avatarHTML(54);$('pvName').textContent=playerName;
-  {const ccEl=$('pvClubChip');if(ccEl){if(userClub&&userClub.name){ccEl.style.display='block';ccEl.setAttribute('onclick','showMyClubPopup()');ccEl.innerHTML='🏰 '+esc(userClub.name);}else{ccEl.style.display='block';ccEl.setAttribute('onclick',"openSettingsAt('club')");ccEl.innerHTML='🏰 Klub beitreten';}}}
+  {const ccEl=$('pvClubChip');if(ccEl){if(userClub){ccEl.style.display='block';ccEl.setAttribute('onclick','showMyClubPopup()');ccEl.innerHTML='🏰 '+esc(userClub.name||'Mein Klub');}else{ccEl.style.display='block';ccEl.setAttribute('onclick',"openSettingsAt('club')");ccEl.innerHTML='🏰 Klub beitreten';}}}
   const _bioEl=$('pvBio');if(_bioEl)_bioEl.textContent=userBio?('„'+userBio+'“'):'➕ Beschreibung hinzufügen';
   const banner=$('pvBanner');banner.style.background=`linear-gradient(135deg,${userColor}44,${userColor}11,var(--bg2))`;banner.style.borderColor=userColor+'55';
   /* Angelegte Belohnungen anwenden: Banner + Profilrahmen (Ring am Avatar). */
@@ -10334,8 +10334,20 @@ function setupBg(){
   document.addEventListener('visibilitychange',()=>{
     if(document.visibilityState==='hidden'){
       if(isRunning)bgLockTs=Date.now();
+      // Zeitpunkt + Gebiets-Snapshot beim In-den-Hintergrund-Gehen merken, damit
+      // beim Zurückkommen berichtet werden kann, was in der Zwischenzeit passiert ist.
+      window._bgSince=Date.now();
+      try{if(userId&&userId!=='user'&&typeof saveTerritorySnapshot==='function')saveTerritorySnapshot();}catch(e){}
     } else {
       applyDecay();checkEnergyWeekReset();if(currentView==='community')updateCommunity();
+      // Re-Login-Report auch nach längerem Hintergrund (native App wird NICHT neu
+      // geladen -> Einmal-Guard zurücksetzen, Gebiete neu laden -> Diff läuft erneut).
+      try{const _bgMs=window._bgSince?Date.now()-window._bgSince:0;window._bgSince=0;
+        if(_bgMs>=3*60000 && userId && userId!=='user'){
+          window._terrDiffDone=false;window._decayAlertDone=false;
+          if(typeof loadGlobalTerritories==='function')loadGlobalTerritories();
+        }
+      }catch(e){}
       if(isRunning){
         if(bgLockTs>0){
           const gapSecs=Math.round((Date.now()-bgLockTs)/1000);
