@@ -2139,7 +2139,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v209';
+const APP_VERSION='v210';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -7880,23 +7880,8 @@ function _rcPersistClubMeta(name,wappen,tries){
     },()=>{if(tries<5)setTimeout(()=>_rcPersistClubMeta(name,wappen,tries+1),1200*(tries+1));});
   }catch(e){}
 }
-/* Empfohlene Start-/Beta-Klubs mit realistischen Namen — füllen die Entdeckung,
-   solange die Community noch klein ist. Bewusst OHNE erfundene Mitglieder-/
-   Punktezahlen (kein Fake-Ranking): sie zeigen „neu · sei Gründer". */
-const SEED_CLUBS=[
-  {code:'RHEINR',name:'Rheinland Runners',icon:'🐺'},
-  {code:'ALPENS',name:'Alpen Sprinter',icon:'🏔️'},
-  {code:'NORDWD',name:'Nordwind Athletik',icon:'🌬️'},
-  {code:'ISARLF',name:'Isar Läufer',icon:'🌊'},
-  {code:'HANSEH',name:'Hanse Hunter',icon:'⚓'},
-  {code:'SPREES',name:'Spree Strider',icon:'🦅'},
-  {code:'SCHWAW',name:'Schwarzwald Wölfe',icon:'🐺'},
-  {code:'ELBEER',name:'Elbe Eroberer',icon:'🌊'},
-  {code:'MAINMO',name:'Main Momentum',icon:'⚡'},
-  {code:'RUHRRB',name:'Ruhrpott Rebellen',icon:'🔥'}
-];
-/* Klub-Entdeckung: Suchfeld (Lupe) + Top-Klubs (echt, nach XP) + empfohlene
-   Seed-Klubs + lokale Vorschläge. Tippen auf einen Klub -> Detail-Popup
+/* Klub-Entdeckung: Suchfeld (Lupe) + NUR echte, bestehende Klubs (keine leeren/
+   Seed-Klubs), nach XP sortiert. Tippen auf einen Klub -> Detail-Popup
    (Name groß, Gesamtpunkte, Mitglieder). */
 async function renderClubDiscovery(elId){
   const el=document.getElementById(elId||'clubDiscoveryList');if(!el)return;
@@ -7941,23 +7926,18 @@ function _discRow(c,i,ranks,isSeed){
 }
 function _renderDiscBody(body,q){
   if(!body)return;
-  const real=(window._discReal||[]);
+  // NUR bestehende Klubs mit mindestens 1 Mitglied (keine leeren/Seed-Klubs).
+  const real=(window._discReal||[]).filter(c=>c&&(c.members||0)>=1);
   const qn=_rcNormalizeName(q);
-  let top=real.slice().sort((a,b)=>(b.totalPts||0)-(a.totalPts||0));
-  const realCodes=new Set(real.map(c=>c.code));
-  let seeds=SEED_CLUBS.filter(s=>!realCodes.has(s.code));
-  if(qn){top=top.filter(c=>_rcNormalizeName(c.name||c.code).includes(qn));seeds=seeds.filter(s=>_rcNormalizeName(s.name).includes(qn));}
-  top=top.slice(0,10);
+  let list=real.slice().sort((a,b)=>(b.totalPts||0)-(a.totalPts||0));
+  if(qn)list=list.filter(c=>_rcNormalizeName(c.name||c.code).includes(qn));
+  const shown=list.slice(0,qn?25:12);
   const ranks=['🥇','🥈','🥉'];
-  let html=`<div style="font-size:.66rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:2px 0 8px">🏆 Top-Klubs${qn?' · Treffer':' weltweit'}</div>`;
-  html+= top.length ? top.map((c,i)=>_discRow(c,i,ranks,false)).join('')
-                    : `<div style="color:var(--muted);font-size:.72rem;padding:6px 2px">${qn?'Kein passender Klub.':'Noch keine Klubs — gründe den ersten!'}</div>`;
-  if(seeds.length){
-    html+=`<div style="font-size:.66rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 8px">✨ Empfohlene Klubs <span style="font-weight:400;text-transform:none">· Beta</span></div>`;
-    html+=seeds.slice(0,qn?10:6).map((s)=>_discRow({code:s.code,name:s.name,icon:s.icon,members:0,totalPts:0},0,[],true)).join('');
-  }
-  if(qn&&!top.length&&!seeds.length){
-    html+=`<button class="btn btn-p disc-found" style="width:100%;margin-top:10px">🏰 „${esc(q)}" als Klub gründen</button>`;
+  let html=`<div style="font-size:.66rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:2px 0 8px">🏆 ${qn?'Treffer':'Top-Klubs'}</div>`;
+  html+= shown.length ? shown.map((c,i)=>_discRow(c,i,ranks,false)).join('')
+                      : `<div style="color:var(--muted);font-size:.72rem;padding:6px 2px">${qn?('Kein Klub „'+esc(q)+'" gefunden.'):'Noch keine Klubs vorhanden.'}</div>`;
+  if(!userClub){
+    html+=`<button class="btn btn-p disc-found" style="width:100%;margin-top:12px">🏰 ${qn?('„'+esc(q)+'" als Klub gründen'):'Eigenen Klub gründen'}</button>`;
   }
   body.innerHTML=html;
   body.querySelectorAll('.disc-row').forEach(r=>r.addEventListener('click',e=>{if(e.target.closest('.disc-join'))return;showClubDetailPopup(r.dataset.code,r.dataset.name);}));
@@ -9693,6 +9673,10 @@ async function launchAppFromSession(user){
       if(window._openGarminOnInit){window._openGarminOnInit=false;setTimeout(()=>{openImportModal();switchImpTab('impTabGarmin');},400);}
       syncGarminActivities().then(r=>{if(r&&r.imported>0){toast('⌚ '+r.imported+' Garmin-Lauf'+(r.imported>1?'läufe':'')+' synchronisiert');updateUI();}}).catch(()=>{});
       await loadFromCloud();
+      // Eigenen Klubnamen (+ Wappen) serverseitig sicherstellen, damit er in der
+      // Entdeckung/bei anderen erscheint (statt des Codes). Founder-gated: greift
+      // für den Gründer/ersten Claim; einmal pro Sitzung, best-effort.
+      if(sb&&userClub&&userClub.code&&userClub.name&&!window._clubMetaSynced){window._clubMetaSynced=true;try{_rcPersistClubMeta(userClub.name,userClub.wappen);}catch(e){}}
       await loadGlobalTerritories();
       subscribeTerritories();
       if((h3Territories||[]).filter(t=>h3IsBot(t.owner)).length===0){await genRivalsH3();}
