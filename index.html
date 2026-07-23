@@ -2139,7 +2139,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v208';
+const APP_VERSION='v209';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3078,11 +3078,23 @@ function pickRarity(hasLandmarks){
 }
 
 
-/* ── NOTIFICATIONS ── */
+/* ── NOTIFICATIONS ──
+   Persistiert pro Nutzer in localStorage, damit der Glocken-Badge nach App-
+   Neustart/Re-Login erhalten bleibt (inkl. Gelesen-Status). Begrenzt auf 50
+   Einträge / 7 Tage. */
+function _notifKey(){return 'rc_notifs_'+(userId||'user');}
+function saveNotifs(){try{localStorage.setItem(_notifKey(),JSON.stringify(notifications.slice(0,50)));}catch(e){}}
+function loadNotifs(){
+  try{const a=JSON.parse(localStorage.getItem(_notifKey())||'[]');
+    if(Array.isArray(a)){const cut=Date.now()-7*86400000;notifications=a.filter(n=>n&&(n.time||0)>cut).slice(0,50);}
+  }catch(e){}
+  try{updateNotifBadge();}catch(e){}try{renderNotifPanel();}catch(e){}
+}
+window.loadNotifs=loadNotifs;
 function addNotif(icon, text){
   notifications.unshift({id:Date.now(),icon,text,time:Date.now(),read:false});
   if(notifications.length>50)notifications=notifications.slice(0,50);
-  updateNotifBadge();
+  updateNotifBadge();saveNotifs();
 }
 function updateNotifBadge(){
   const count=notifications.filter(n=>!n.read).length;
@@ -3097,7 +3109,7 @@ function renderNotifPanel(){
     return`<div class="notif-row${n.read?'':' unread'}" onclick="window.markNotifRead(${n.id})"><span class="notif-icon">${esc(n.icon)}</span><span class="notif-text">${esc(n.text)}</span><span class="notif-time">${t}</span></div>`;
   }).join(''):'<div style="padding:20px;text-align:center;color:var(--muted);font-size:.8rem">Keine Benachrichtigungen</div>';
 }
-window.markNotifRead=function(id){const n=notifications.find(n=>n.id===id);if(n)n.read=true;updateNotifBadge();renderNotifPanel();};
+window.markNotifRead=function(id){const n=notifications.find(n=>n.id===id);if(n)n.read=true;updateNotifBadge();renderNotifPanel();saveNotifs();};
 
 /* ── DAILY CHALLENGES ── */
 const CHAL_POOL=[
@@ -4063,7 +4075,7 @@ async function showPublicProfile(p){
         <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:.5px;margin-top:14px">${esc(d.player_name||'Läufer')}</div>
         ${canSeeAll&&d.bio?`<div style="font-size:.8rem;color:var(--muted);font-style:italic;margin-top:3px">„${esc(d.bio)}“</div>`:''}
         <div style="font-size:.8rem;color:var(--muted);margin-top:8px"><b style="color:var(--text)" id="ppFollowers">–</b> Follower &nbsp;·&nbsp; <b style="color:var(--text)" id="ppFollowing">–</b> folgt</div>
-        ${team||d.club_code?`<div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:8px">${team?`<span style="background:${team.color}22;color:${team.color};border:1px solid ${team.color}44;border-radius:8px;padding:2px 9px;font-size:.66rem;font-weight:700">${team.icon} ${team.name}</span>`:''}${d.club_code?`<span style="background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;padding:2px 9px;font-size:.66rem">🏰 Club</span>`:''}</div>`:''}
+        ${team||d.club_code?`<div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:8px">${team?`<span style="background:${team.color}22;color:${team.color};border:1px solid ${team.color}44;border-radius:8px;padding:2px 9px;font-size:.66rem;font-weight:700">${team.icon} ${team.name}</span>`:''}${d.club_code?`<span id="ppClubChip" data-code="${esc(d.club_code)}" style="background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;padding:2px 9px;font-size:.66rem;cursor:pointer;-webkit-tap-highlight-color:transparent">🏰 <span id="ppClubName">Klub</span></span>`:''}</div>`:''}
       </div>`;
   let bodyHTML;
   if(canSeeAll){
@@ -4104,6 +4116,14 @@ async function showPublicProfile(p){
     </div>`;
   }
   ov.innerHTML=`<div style="width:100%;max-width:480px;max-height:88vh;overflow-y:auto;background:var(--card);border-radius:24px 24px 0 0;padding:0 0 max(env(safe-area-inset-bottom),16px) 0;animation:modalIn .28s var(--ease-out)">${bodyHTML}</div>`;
+  // Klub-Chip: Name anzeigen (aus clubs-Tabelle) + Tippen -> Klub-Profil.
+  if(d.club_code){
+    const _chip=document.getElementById('ppClubChip');
+    if(_chip){
+      _chip.addEventListener('click',(e)=>{e.stopPropagation();const nm=document.getElementById('ppClubName')?.textContent;ov.remove();showClubDetailPopup(d.club_code,(nm&&nm!=='Klub')?nm:d.club_code);});
+      if(sb){try{sb.from('clubs').select('name').eq('code',d.club_code).maybeSingle().then(({data})=>{const nEl=document.getElementById('ppClubName');if(nEl&&data&&data.name)nEl.textContent=data.name;}).catch(()=>{});}catch(e){}}
+    }
+  }
   document.getElementById('ppFollowBtn')?.addEventListener('click',async()=>{
     if(st==='accepted'||st==='pending_out'){await cancelOrUnfollow(d.user_id,d.player_name);}
     else if(st==='pending_in'){ov.remove();setView('community');return;}
@@ -5818,12 +5838,15 @@ function checkTerritoryChanges(){
   const minsAgo=(Date.now()-(snap.ts||Date.now()))/60000;
   if(minsAgo<30)return;                 // schnelle Reloads nicht stören
   if(lost===0&&defended===0)return;     // nichts Nennenswertes -> ruhig bleiben
-  // Zusammengefasst ins Benachrichtigungs-Center: verteidigt / verloren / Angriffe.
+  // EINE Zusammenfassung „auf einen Blick" ins Benachrichtigungs-Center:
+  // wie viele Gebiete verloren, wie viele Angriffe (verloren+verteidigt).
   try{
-    if(defended)addNotif('🛡️',defended+(defended===1?' Gebiet':' Gebiete')+' verteidigt');
-    if(lost)addNotif('⚔️',lost+(lost===1?' Gebiet':' Gebiete')+' verloren');
     const attacks=lost+defended;
-    if(attacks)addNotif('💥',attacks+(attacks===1?' Angriff':' Angriffe')+' auf deine Gebiete');
+    const parts=[];
+    if(lost)parts.push(lost+(lost===1?' Gebiet verloren':' Gebiete verloren'));
+    if(defended)parts.push(defended+(defended===1?' Gebiet verteidigt':' Gebiete verteidigt'));
+    if(attacks)parts.push(attacks+(attacks===1?' Angriff':' Angriffe'));
+    if(parts.length)addNotif(lost?'⚔️':'🛡️','Seit deinem letzten Besuch: '+parts.join(' · '));
   }catch(e){}
   showTerritoryUpdate({lost,held,defended,minsAgo});
 }
@@ -9655,6 +9678,7 @@ async function launchAppFromSession(user){
   const meta=user.user_metadata||{};
   playerName=meta.playerName||'';
   loadProfile();
+  loadNotifs(); // persistierte Benachrichtigungen + Glocken-Badge herstellen (vor dem Gebiets-Diff)
   if(!playerName)playerName=meta.playerName||user.email?.split('@')[0]||'Läufer';
   saveProfile();
   $('onboarding').style.display='none';
@@ -10763,10 +10787,10 @@ window.initApp=function(){
     const panel=$('notifPanel');
     const isOpen=panel.classList.contains('open');
     panel.classList.toggle('open',!isOpen);
-    if(!isOpen){notifications.forEach(n=>n.read=true);updateNotifBadge();renderNotifPanel();}
+    if(!isOpen){notifications.forEach(n=>n.read=true);updateNotifBadge();renderNotifPanel();saveNotifs();}
   });
   document.addEventListener('click',e=>{if(!e.target.closest('#notifPanel')&&!e.target.closest('#notifBtn'))$('notifPanel')?.classList.remove('open');if(!e.target.closest('#settingsDropdown')&&!e.target.closest('#settingsBtn'))closeSettingsDropdown();});
-  $('clearNotifBtn')?.addEventListener('click',()=>{notifications=[];updateNotifBadge();renderNotifPanel();});
+  $('clearNotifBtn')?.addEventListener('click',()=>{notifications=[];updateNotifBadge();renderNotifPanel();saveNotifs();});
   document.querySelectorAll('.stab-btn').forEach(b=>b.addEventListener('click',function(){document.querySelectorAll('.stab-btn').forEach(t=>t.classList.remove('active'));this.classList.add('active');renderSettingsTab(this.dataset.stab);}));
   /* Admin modal */
   $('closeAdminBtn').addEventListener('click',()=>$('adminModal').style.display='none');
