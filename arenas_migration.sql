@@ -42,6 +42,11 @@ create table if not exists public.arena_leaderboard (
   primary key (arena_id, season, user_id)
 );
 create index if not exists arena_lb_rank_idx on public.arena_leaderboard(arena_id, season, total_points desc);
+-- Fraktions-Snapshot (Council-Empfehlung): bei jedem Punkt die Fraktion des
+-- Spielers mitschreiben. Fraktionswechsel ist nur Tag 1-3 möglich -> danach
+-- eingefroren = End-of-Season-Fraktion. Der Settle nutzt DIESEN Wert, damit der
+-- Bonus IMMER an die richtige Fraktion geht, egal WANN gesettled wird.
+alter table public.arena_leaderboard add column if not exists user_team text;
 
 -- RLS: Lesen öffentlich, Schreiben ausschließlich serverseitig (Award-RPC).
 alter table public.arenas            enable row level security;
@@ -69,10 +74,11 @@ begin
       and recorded_at >= date_trunc('day', now());
   if v_cnt >= 3 then return jsonb_build_object('counted', false, 'reason', 'daily_cap'); end if;
   insert into public.arena_activity(arena_id, user_id, points, season) values (a_id, uid, pts, mk);
-  insert into public.arena_leaderboard(arena_id, season, user_id, total_points, updated_at)
-    values (a_id, mk, uid, pts, now())
+  insert into public.arena_leaderboard(arena_id, season, user_id, total_points, user_team, updated_at)
+    values (a_id, mk, uid, pts, (select user_team from public.profiles where id = uid), now())
   on conflict (arena_id, season, user_id) do update
     set total_points = public.arena_leaderboard.total_points + excluded.total_points,
+        user_team = excluded.user_team,   -- Fraktions-Snapshot aktuell halten (Tag 1-3 änderbar, dann fix)
         updated_at = now();
   return jsonb_build_object('counted', true, 'points', pts);
 end; $$;
@@ -126,12 +132,14 @@ begin
   get diagnostics v_new = row_count;               -- 1 = neu (wir settlen), 0 = schon gesettled
   if v_new = 0 then return jsonb_build_object('settled', false, 'reason', 'already'); end if;
   for r in
-    select lb.user_id, p.user_team,
+    -- Fraktion aus dem Leaderboard-Snapshot (End-of-Season-Fraktion), NICHT aus
+    -- dem aktuellen Profil -> ein Fraktionswechsel am Monatsanfang kann den Bonus
+    -- niemals an die falsche Fraktion lenken.
+    select lb.user_team,
            public.rc_arena_bonus(
              (row_number() over (partition by lb.arena_id order by lb.total_points desc))::int
            ) as bonus
     from public.arena_leaderboard lb
-    join public.profiles p on p.id = lb.user_id
     where lb.season = mk
   loop
     if r.bonus > 0 and coalesce(r.user_team,'') <> '' then
@@ -146,3 +154,8 @@ begin
 end; $$;
 revoke all on function public.rc_arena_settle_season(text) from public, anon, authenticated;
 grant execute on function public.rc_arena_settle_season(text) to service_role;
+
+-- Backfill: falls schon Leaderboard-Zeilen ohne Fraktions-Snapshot existieren,
+-- die aktuelle Fraktion nachtragen (einmalig, idempotent).
+update public.arena_leaderboard lb set user_team = p.user_team
+  from public.profiles p where p.id = lb.user_id and lb.user_team is null;
