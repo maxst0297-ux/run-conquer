@@ -12,7 +12,7 @@
    ========================================================================== */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import * as h3 from 'https://esm.sh/h3-js@4.1.0';
-import { createEngine, validateRun, validateTrack } from '../_shared/h3-engine.mjs';
+import { createEngine, validateRun, validateTrack, arenaHits } from '../_shared/h3-engine.mjs';
 
 const engine = createEngine(h3);
 
@@ -177,10 +177,37 @@ Deno.serve(async (req) => {
     const conqCount = (res.events || []).filter((e: any) => e.type === 'conquered' || e.type === 'cut').length;
     const conquestBonus = conqCount * CONQUEST_BONUS_XP;
 
+    // ── Arenen (Festungen): Läufe durch eine Arena-Zone geben Basis-Zusatzpunkte
+    //    (10 × Tempo-Faktor, Tages-Cap 3/Arena via rc_award_arena). Diese Basis
+    //    zählt SOFORT als XP + Fraktion (siehe runTotal). Der Platzierungs-Bonus
+    //    für die Top 15 wird separat am Saisonende gutgeschrieben. Vollständig
+    //    optional & gekapselt — darf einen Lauf niemals blockieren. ─────────────
+    let arenaTotal = 0;
+    try {
+      const { data: arenas } = await svc.from('arenas')
+        .select('id,center_lat,center_lng,radius_m,reference_speed').eq('active', true);
+      if (arenas && arenas.length && runCells && runCells.size) {
+        const mkArena = new Date().toISOString().slice(0, 7); // 'YYYY-MM'
+        const cellLLs: any[] = [];
+        for (const c of runCells) {
+          try { const ll = h3.cellToLatLng(c); cellLLs.push({ lat: ll[0], lng: ll[1], pace: cellPace.get(c) || paceKmh }); } catch (_) { /*noop*/ }
+        }
+        const arenaObjs = arenas.map((a: any) => ({ id: a.id, lat: a.center_lat, lng: a.center_lng, radius: a.radius_m, ref: a.reference_speed || 10 }));
+        const hits = arenaHits(cellLLs, arenaObjs);
+        for (const hit of hits) {
+          if (!(hit.points > 0)) continue;
+          try {
+            const { data: r } = await svc.rpc('rc_award_arena', { a_id: hit.id, uid: user.id, mk: mkArena, pts: Math.round(hit.points * 10) / 10 });
+            if (r && r.counted) arenaTotal += Number(r.points) || 0;
+          } catch (_) { /* Arena-SQL evtl. noch nicht eingespielt */ }
+        }
+      }
+    } catch (_) { /* Arenen-Feature optional */ }
+
     // ── Punkte + Energie persistieren (Energie server-autoritativ) ───────────
-    // Lauf-XP (Eroberung + Bonus + km-XP) werden serverseitig gutgeschrieben; der
-    // Client bucht dieselben Beträge lokal (identische Formel) — konsistenter Stand.
-    const runTotal = (res.playerPoints || 0) + conquestBonus + kmXp;
+    // Lauf-XP (Eroberung + Bonus + km-XP + Arena-Basis) werden serverseitig
+    // gutgeschrieben; der Client bucht dieselben Beträge lokal — konsistenter Stand.
+    const runTotal = (res.playerPoints || 0) + conquestBonus + kmXp + arenaTotal;
     await svc.from('profiles').update({
       points: (prof?.points || 0) + runTotal,
       energy, energy_week: weekKey,
@@ -229,7 +256,7 @@ Deno.serve(async (req) => {
       }
     } catch (_) { /* Events optional — Lauf bleibt gewertet */ }
 
-    return json({ ok: true, points: (res.playerPoints || 0) + conquestBonus, kmXp, conquestBonus, events: res.events, atkPts: res.atkPts, defPts: res.defPts, energy, boosted: applyBoost });
+    return json({ ok: true, points: (res.playerPoints || 0) + conquestBonus, kmXp, conquestBonus, arenaPoints: arenaTotal, events: res.events, atkPts: res.atkPts, defPts: res.defPts, energy, boosted: applyBoost });
   } catch (e) {
     return json({ error: String(e && (e as Error).message || e) }, 500);
   }

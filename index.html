@@ -2139,7 +2139,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v211';
+const APP_VERSION='v212';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -6580,9 +6580,13 @@ async function finalizeRun(elapsed){
      schreibt ihn bereits in profiles.points + Monats-Fraktionspunkte). Lokale
      Formel nur als Offline-Fallback — so bleiben Client und Server konsistent. */
   const kmXP=(res&&typeof res.kmXp==='number')?res.kmXp:Math.round(xpForKm(dist/1000,getWeeklyKm())*streakMul);
-  const totalPts=Math.round(res.pts+kmXP);
+  /* Arena-Basis-Punkte kommen NUR vom Server (Arena-Konfig + Tages-Cap dort);
+     hier lokal mitbuchen, damit Client und Server konsistent bleiben. */
+  const arenaPts=(res&&typeof res.arenaPts==='number')?res.arenaPts:0;
+  const totalPts=Math.round(res.pts+kmXP+arenaPts);
   const lvBefore=getLevel(prevPts);
   points+=totalPts;
+  if(arenaPts>0)runNote('🏟️ +'+Math.round(arenaPts)+' Arena-Punkte (Festung durchlaufen)');
   /* Boost wurde bei der Aktivierung reserviert (Energie −1) – hier nur der Hinweis. */
   if(boosted)runNote('⚡ Boost eingesetzt (+10 % Angriff)');
   if(streakDays>1)runNote(`🔥 Streak ×${streakMul.toFixed(1)} · +${kmXP} km-XP`);
@@ -6768,7 +6772,7 @@ async function processConquest(np,area,d,boosted=false,isImport=false,durationS=
      niemals wieder hochsetzen, sonst „verbraucht sich nichts". */
   if(typeof data.energy==='number'&&data.energy<energy)energy=data.energy;
   loadH3Territories&&loadH3Territories(); // Karte + Stats mit neuem Stand aktualisieren
-  return{pts:data.points||0,kmXp:(typeof data.kmXp==='number'?data.kmXp:null),conquered,defended,boostUsed:!!data.boosted};
+  return{pts:data.points||0,kmXp:(typeof data.kmXp==='number'?data.kmXp:null),arenaPts:(typeof data.arenaPoints==='number'?data.arenaPoints:0),conquered,defended,boostUsed:!!data.boosted};
 }
 
 /* STARTER QUESTS */
