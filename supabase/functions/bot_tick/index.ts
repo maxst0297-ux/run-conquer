@@ -47,6 +47,16 @@ Deno.serve(async (req) => {
       if (!locked || !locked.length) return json({ skipped: true });
     }
 
+    // ── Arenen: abgeschlossene Saison (Vormonat) settln — Platzierungs-Bonus der
+    //    Top 15 je Arena an ihre Fraktionen. UNABHÄNGIG vom Bot-Zustand (direkt
+    //    nach dem Lock, vor den 'no bots'/'empty world'-Early-Returns), idempotent
+    //    (genau einmal pro Saison), gekapselt. ──────────────────────────────────
+    try {
+      const d = new Date();
+      const prevMk = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1)).toISOString().slice(0, 7);
+      await svc.rpc('rc_arena_settle_season', { mk: prevMk });
+    } catch (_) { /* Arena-Settle optional (SQL evtl. noch nicht eingespielt) */ }
+
     const { data: bots } = await svc.from('profiles')
       .select('id,player_name,user_color,user_team').eq('is_bot', true);
     if (!bots || !bots.length) return json({ ok: true, actions: [], note: 'no bots' });
@@ -175,15 +185,6 @@ Deno.serve(async (req) => {
         }
       }
     }
-    // ── Arenen: abgeschlossene Saison (Vormonat) settln — Platzierungs-Bonus
-    //    der Top 15 je Arena an ihre Fraktionen. Idempotent (genau einmal pro
-    //    Saison); optional & gekapselt. ─────────────────────────────────────
-    try {
-      const d = new Date();
-      const prevMk = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1)).toISOString().slice(0, 7);
-      await svc.rpc('rc_arena_settle_season', { mk: prevMk });
-    } catch (_) { /* Arena-Settle optional (SQL evtl. noch nicht eingespielt) */ }
-
     return json({ ok: true, actions });
   } catch (e) {
     return json({ error: String(e && (e as Error).message || e) }, 500);
