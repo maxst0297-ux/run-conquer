@@ -96,6 +96,34 @@ export function neutralClaimPoints(cellCount, distanceKm, paceKmh) {
   return Math.round(capped * neutralPaceFactor(paceKmh));
 }
 
+// ── Arenen (Festungen): Punkte für Läufe durch feste Sportanlagen-Zonen ──────
+// Kein Einfluss auf Gebiete/Verteidigung — die Punkte zählen als zusätzliche
+// Fraktions-XP (Monatssaison) und ins Arena-Leaderboard. Serverseitig in conquer.
+export const ARENA_BASE_POINTS = 10;
+export function arenaSpeedFactor(avgKmh, refKmh) {
+  const r = (refKmh > 0 ? (avgKmh || 0) / refKmh : 1);
+  return Math.max(0.7, Math.min(1.5, r || 0.7));
+}
+export function arenaRunPoints(paces, refKmh) {
+  const arr = (paces || []).filter(p => typeof p === 'number' && p > 0);
+  const avg = arr.length ? arr.reduce((s, p) => s + p, 0) / arr.length : 0;
+  return Math.round(ARENA_BASE_POINTS * arenaSpeedFactor(avg, refKmh) * 10) / 10;
+}
+/* Welche Arenen hat der Lauf durchquert? cellLLs: [{lat,lng,pace}] der Lauf-
+   Zellen (Zentrum + Tempo), arenas: [{id, lat, lng, radius, ref}]. Trefferkriterium:
+   mind. eine Lauf-Zelle liegt im radius_m der Arena. Rückgabe: [{id, points, cells}]. */
+export function arenaHits(cellLLs, arenas) {
+  const out = [];
+  for (const a of (arenas || [])) {
+    const inPaces = [];
+    for (const c of (cellLLs || [])) {
+      if (haversineM([c.lat, c.lng], [a.lat, a.lng]) <= a.radius) inPaces.push(c.pace);
+    }
+    if (inPaces.length) out.push({ id: a.id, points: arenaRunPoints(inPaces, a.ref), cells: inPaces.length });
+  }
+  return out;
+}
+
 export function clampDefense(v) {
   return Math.max(DEF_MIN, Math.min(DEF_MAX, v));
 }

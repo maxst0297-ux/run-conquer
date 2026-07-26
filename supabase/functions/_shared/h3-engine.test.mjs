@@ -1,5 +1,5 @@
 import * as h3 from 'h3-js';
-import { createEngine, paceFactor, distanceBonus, runValue, validateRun, validateTrack, decayedDefense, timeToMinMs, DECAY_PER_DAY, pickBotTargets, pickBotCleanup, botAttack, BOT_NEW_DEFENSE, neutralPaceFactor, neutralClaimPoints, FAIR_CELLS_PER_KM, homeDecayRate, HOME_DECAY_PER_DAY } from './h3-engine.mjs';
+import { createEngine, paceFactor, distanceBonus, runValue, validateRun, validateTrack, decayedDefense, timeToMinMs, DECAY_PER_DAY, pickBotTargets, pickBotCleanup, botAttack, BOT_NEW_DEFENSE, neutralPaceFactor, neutralClaimPoints, FAIR_CELLS_PER_KM, homeDecayRate, HOME_DECAY_PER_DAY, ARENA_BASE_POINTS, arenaSpeedFactor, arenaRunPoints, arenaHits } from './h3-engine.mjs';
 
 const eng = createEngine(h3);
 let pass = 0, fail = 0;
@@ -433,6 +433,25 @@ ok('botAttack: Schwächung floored bei 1', (()=>{const r=botAttack(3,50);return 
 
 // engine.pathToCellPace muss im Objekt liegen (conquer ruft engine.pathToCellPace).
 ok('engine.pathToCellPace ist function', typeof eng.pathToCellPace === 'function', 'typeof=' + typeof eng.pathToCellPace);
+
+// ---------- Arenen (Festungen) ----------
+ok('arena speedFactor ref-Tempo -> 1.0', arenaSpeedFactor(10, 10) === 1);
+ok('arena speedFactor langsam -> Deckel 0.7', arenaSpeedFactor(3, 10) === 0.7);
+ok('arena speedFactor schnell -> Deckel 1.5', arenaSpeedFactor(30, 10) === 1.5);
+ok('arena points Ref-Tempo -> 10', arenaRunPoints([10, 10], 10) === 10);
+ok('arena points schnell -> 15 (Deckel)', arenaRunPoints([30], 10) === 15);
+ok('arena points ohne Tempo -> 7 (0.7-Deckel)', arenaRunPoints([], 10) === 7);
+{
+  const A = { id: 'a1', lat: 49.0252323, lng: 12.0849755, radius: 200, ref: 10 };
+  // Zelle im Zentrum -> Treffer; Zelle ~1 km weg -> kein Treffer.
+  const inCell = { lat: 49.0252323, lng: 12.0849755, pace: 12 };
+  const farCell = { lat: 49.0350000, lng: 12.0849755, pace: 12 }; // ~1.1 km nördlich
+  const hits = arenaHits([inCell, farCell], [A]);
+  ok('arenaHits: Zentrum trifft', hits.length === 1 && hits[0].id === 'a1', 'hits=' + JSON.stringify(hits));
+  ok('arenaHits: nur die Zelle im Radius zählt', hits[0] && hits[0].cells === 1, 'cells=' + (hits[0] && hits[0].cells));
+  const none = arenaHits([farCell], [A]);
+  ok('arenaHits: außerhalb -> kein Treffer', none.length === 0);
+}
 
 console.log(`\n==== ${pass} passed, ${fail} failed ====`);
 process.exit(fail ? 1 : 0);
