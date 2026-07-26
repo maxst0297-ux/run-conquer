@@ -90,3 +90,59 @@ insert into public.arenas (name, center_lat, center_lng, radius_m, active) value
   ('Freizeitsporthalle 37',        49.0056534, 12.1311601, 120, true),
   ('KICK ARENA Regensburg',        49.0302262, 12.1265822, 120, true)
 on conflict (name) do nothing;
+
+-- ── Saison-Settle: Platzierungs-Bonus (Top 15 je Arena) am Monatsende ────────
+-- Die BASIS-Punkte fließen bereits pro Lauf sofort in die Fraktion. Der
+-- PLATZIERUNGS-Bonus wird EINMALIG am Saisonende der Fraktion der Top-15
+-- gutgeschrieben. Idempotent über arena_settled (pro Saison genau einmal).
+
+create table if not exists public.arena_settled (
+  season     text primary key,
+  settled_at timestamptz not null default now()
+);
+alter table public.arena_settled enable row level security; -- nur serverseitig relevant
+
+-- Bonus-Kurve je Platz (1..15).
+create or replace function public.rc_arena_bonus(rnk int) returns int
+language sql immutable as $$
+  select case
+    when rnk = 1 then 500
+    when rnk = 2 then 350
+    when rnk = 3 then 250
+    when rnk between 4 and 5 then 150
+    when rnk between 6 and 10 then 80
+    when rnk between 11 and 15 then 40
+    else 0 end;
+$$;
+
+-- Settle einer abgeschlossenen Saison (mk = 'YYYY-MM'). Vom Server (bot_tick,
+-- service_role) je Tick aufgerufen; settelt jede Saison genau EINMAL.
+create or replace function public.rc_arena_settle_season(mk text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare v_new int; v_awarded int := 0; r record;
+begin
+  if mk is null or mk = '' then return jsonb_build_object('settled', false, 'reason', 'bad_args'); end if;
+  insert into public.arena_settled(season) values (mk) on conflict (season) do nothing;
+  get diagnostics v_new = row_count;               -- 1 = neu (wir settlen), 0 = schon gesettled
+  if v_new = 0 then return jsonb_build_object('settled', false, 'reason', 'already'); end if;
+  for r in
+    select lb.user_id, p.user_team,
+           public.rc_arena_bonus(
+             (row_number() over (partition by lb.arena_id order by lb.total_points desc))::int
+           ) as bonus
+    from public.arena_leaderboard lb
+    join public.profiles p on p.id = lb.user_id
+    where lb.season = mk
+  loop
+    if r.bonus > 0 and coalesce(r.user_team,'') <> '' then
+      begin
+        perform public.rc_add_faction_points(mk, r.user_team, r.bonus::bigint);
+        v_awarded := v_awarded + 1;
+      exception when others then null;             -- rc_add_faction_points evtl. (noch) nicht da
+      end;
+    end if;
+  end loop;
+  return jsonb_build_object('settled', true, 'season', mk, 'awarded', v_awarded);
+end; $$;
+revoke all on function public.rc_arena_settle_season(text) from public, anon, authenticated;
+grant execute on function public.rc_arena_settle_season(text) to service_role;
