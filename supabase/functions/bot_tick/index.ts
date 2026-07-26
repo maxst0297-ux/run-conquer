@@ -175,6 +175,15 @@ Deno.serve(async (req) => {
         }
       }
     }
+    // ── Arenen: abgeschlossene Saison (Vormonat) settln — Platzierungs-Bonus
+    //    der Top 15 je Arena an ihre Fraktionen. Idempotent (genau einmal pro
+    //    Saison); optional & gekapselt. ─────────────────────────────────────
+    try {
+      const d = new Date();
+      const prevMk = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1)).toISOString().slice(0, 7);
+      await svc.rpc('rc_arena_settle_season', { mk: prevMk });
+    } catch (_) { /* Arena-Settle optional (SQL evtl. noch nicht eingespielt) */ }
+
     return json({ ok: true, actions });
   } catch (e) {
     return json({ error: String(e && (e as Error).message || e) }, 500);
