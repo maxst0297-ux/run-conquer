@@ -347,6 +347,57 @@ body.onboarding-active{background:#000}
 .btn-p{background:var(--primary);color:var(--bg);border:none}
 .btn:disabled{opacity:.35;pointer-events:none}
 
+/* ── Lauf-HUD: Vollbild-Ansicht während eines Laufs ──
+   Liegt über der (gedimmten) Karte, aber UNTER den Modals (z-index 1200),
+   damit die Lauf-Zusammenfassung am Ende darüber erscheint. */
+#runHud{position:fixed;inset:0;z-index:1150;display:none;flex-direction:column;
+  background:linear-gradient(180deg,rgba(0,0,0,.5),rgba(0,0,0,.8));
+  -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
+  padding:calc(var(--sat) + 6px) 16px calc(var(--sab) + 10px);color:var(--text)}
+#runHud.on{display:flex}
+.rh-head{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.rh-title{flex:1;text-align:center;font-family:'Bebas Neue',sans-serif;font-size:1.35rem;letter-spacing:.06em}
+.rh-icon{width:40px;height:40px;border-radius:50%;flex-shrink:0;border:none;background:transparent;
+  color:var(--text);font-size:1.15rem;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:transform var(--motion-fast)}
+.rh-icon:active{transform:scale(.92)}
+.rh-icon.off{color:var(--muted)}
+.rh-status{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:2px;font-size:.72rem;
+  font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--primary);flex-shrink:0}
+.rh-bars{display:inline-flex;align-items:flex-end;gap:2px;height:13px}
+.rh-bars i{width:4px;border-radius:1px;background:var(--muted);display:block}
+.rh-bars i:nth-child(1){height:4px}.rh-bars i:nth-child(2){height:7px}
+.rh-bars i:nth-child(3){height:10px}.rh-bars i:nth-child(4){height:13px}
+.rh-bars i.lit{background:var(--primary)}
+.rh-ringwrap{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;margin:4px 0}
+.rh-ring{width:min(62vw,240px);height:min(62vw,240px);max-height:100%;transform:rotate(-90deg)}
+.rh-ring circle{fill:none;stroke-width:10;stroke-linecap:round}
+.rh-track{stroke:rgba(255,255,255,.13)}
+/* Umfang bei r=96 → 2πr ≈ 603.19 (siehe RH_RING_C im Skript) */
+.rh-prog{stroke:var(--primary);stroke-dasharray:603.19;stroke-dashoffset:603.19;transition:stroke-dashoffset .5s linear}
+.rh-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+.rh-time{font-family:'Bebas Neue',sans-serif;font-size:clamp(2.8rem,15vw,4.2rem);line-height:1;letter-spacing:.02em}
+.rh-dist{font-size:.95rem;color:var(--muted);margin-top:4px}
+.rh-tiles{display:grid;grid-template-columns:1fr 1fr;gap:9px;flex-shrink:0}
+.rh-tile{background:rgba(255,255,255,.055);border:1px solid var(--border);border-radius:16px;padding:10px 8px;text-align:center}
+.rh-tile>i{font-size:.82rem;color:var(--primary);display:block;margin-bottom:3px}
+.rh-tv{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;line-height:1}
+.rh-tl{font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-top:2px}
+.rh-ctrls{display:flex;align-items:center;justify-content:center;gap:26px;margin-top:12px;flex-shrink:0}
+.rh-fab{width:70px;height:70px;border-radius:50%;border:none;font-size:1.5rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(0,0,0,.35);
+  transition:transform var(--motion-fast)}
+.rh-fab:active{transform:scale(.93)}
+.rh-stop{background:var(--red);color:#fff}
+.rh-play{background:var(--primary);color:var(--bg)}
+/* Kleine Geräte: Ring/Buttons schrumpfen, damit nichts abgeschnitten wird */
+@media(max-height:700px){
+  .rh-time{font-size:clamp(2.2rem,11vw,3.2rem)}
+  .rh-fab{width:60px;height:60px;font-size:1.3rem}
+  .rh-tile{padding:7px 6px}.rh-tv{font-size:1.28rem}
+  .rh-ctrls{gap:20px;margin-top:8px}
+}
+
 /* ── Run Control Pill ── */
 #runCtrlPill{position:fixed;bottom:calc(var(--nav-total) + 6px);left:50%;transform:translateX(-50%);
   z-index:1100;display:flex;align-items:center;gap:8px;padding:10px 10px;
@@ -1330,6 +1381,8 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       </div>
       <div id="dockToggle"><i class="fas fa-running"></i></div>
 
+      </div>
+
       <div id="runCtrlPill">
         <button id="rcpPause" class="rcp-btn rcp-hidden"><i class="fas fa-pause"></i> Pause</button>
         <button id="rcpStop" class="rcp-btn rcp-hidden"><i class="fas fa-stop"></i> Stop</button>
@@ -1684,14 +1737,56 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
   </div>
 </div>
 
+      <!-- Vollbild-HUD während eines Laufs: Zeit im Ring, Kennzahlen, Steuerung -->
+      <div id="runHud" aria-hidden="true">
+        <div class="rh-head">
+          <button id="rhBack" class="rh-icon" aria-label="Karte ansehen" title="Karte ansehen"><i class="fas fa-chevron-left"></i></button>
+          <div class="rh-title">Lauf aktiv</div>
+          <button id="rhVoice" class="rh-icon" aria-label="Kilometer-Ansagen an/aus" title="Kilometer-Ansagen"><i class="fas fa-volume-up"></i></button>
+        </div>
+        <div class="rh-status">
+          <span class="rh-bars" id="rhBars"><i></i><i></i><i></i><i></i></span>
+          <span id="rhStatus">GPS wird gesucht…</span>
+        </div>
+        <div class="rh-ringwrap">
+          <svg class="rh-ring" viewBox="0 0 220 220" aria-hidden="true">
+            <circle class="rh-track" cx="110" cy="110" r="96"></circle>
+            <circle class="rh-prog" id="rhRing" cx="110" cy="110" r="96"></circle>
+          </svg>
+          <div class="rh-center">
+            <div class="rh-time" id="rhTime">00:00</div>
+            <div class="rh-dist" id="rhDist">0,00 km</div>
+          </div>
+        </div>
+        <div class="rh-tiles">
+          <div class="rh-tile"><i class="fas fa-route"></i><div class="rh-tv" id="rhDistTile">0,00 km</div><div class="rh-tl">Distanz</div></div>
+          <div class="rh-tile"><i class="fas fa-stopwatch"></i><div class="rh-tv" id="rhPace">–</div><div class="rh-tl">Pace</div></div>
+          <div class="rh-tile"><i class="fas fa-tachometer-alt"></i><div class="rh-tv" id="rhSpeed">0,0 km/h</div><div class="rh-tl">Tempo</div></div>
+          <div class="rh-tile"><i class="fas fa-draw-polygon"></i><div class="rh-tv" id="rhZones">0</div><div class="rh-tl">Zonen</div></div>
+          <div class="rh-tile"><i class="fas fa-chart-line"></i><div class="rh-tv" id="rhElev">0 m</div><div class="rh-tl">Höhenmeter</div></div>
+          <div class="rh-tile"><i class="fas fa-bolt"></i><div class="rh-tv" id="rhPts">0</div><div class="rh-tl">Punkte</div></div>
+        </div>
+        <div class="rh-ctrls">
+          <button id="rhStop" class="rh-fab rh-stop" aria-label="Lauf beenden"><i class="fas fa-stop"></i></button>
+          <button id="rhPause" class="rh-fab rh-play" aria-label="Pause"><i class="fas fa-pause"></i></button>
+        </div>
+
 <div id="postRunModal" class="modal" style="display:none">
   <div class="modal-card">
     <div class="modal-title" id="postRunTitle">LAUF BEENDET 🎉</div>
-    <div id="postStats" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px"></div>
-    <div style="text-align:center;background:var(--card);border-radius:14px;padding:16px;margin-bottom:14px">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:2.4rem;color:var(--primary)" id="postPts">+0</div>
-      <div class="muted" style="font-size:.78rem">Punkte verdient</div>
+    <!-- Strecke als H3-Hexagone (Start grün, Ziel rot) -->
+    <div id="postRoute" style="display:none;margin-bottom:14px">
+      <canvas id="postRouteCv" width="640" height="360" style="width:100%;height:auto;display:block;border-radius:14px;border:1px solid var(--border)"></canvas>
+      <div style="display:flex;align-items:center;gap:14px;margin-top:7px;font-size:.62rem;color:var(--muted)">
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block"></span>Start</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block"></span>Ziel</span>
+        <span id="postRouteZones" style="margin-left:auto;color:var(--primary);font-weight:700"></span>
+      </div>
     </div>
+    <!-- Kennzahlen-Zeile: Distanz · Dauer · XP -->
+    <div id="postHero" style="display:grid;grid-template-columns:1fr 1fr 1fr;margin-bottom:12px;text-align:center"></div>
+    <div id="postChips" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:14px"></div>
+    <div id="postStats" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px"></div>
     <div id="postSplits"></div>
     <div id="postInfluence"></div>
     <div id="postSong"></div>
@@ -2001,6 +2096,9 @@ let weekChart=null;
 let selectedTerrId=null,editAvatar=AVATARS[0];
 let notifications=[];
 let kmSplits=[],lastSplitKm=0,lastSplitSecs=0;
+/* Live durchlaufene H3-Zellen (Res 10) — nur für die Anzeige/Ansage während des
+   Laufs. Die verbindliche Eroberung rechnet weiterhin der Server am Ende. */
+let runCellSet=new Set();
 let previewLayer=null,sessionNewTerrNames=[],sessionNewLandmarks=[];
 let invasions=[],invasionLayer=null;
 let liveInterval=null;
@@ -2140,7 +2238,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v214';
+const APP_VERSION='v215';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2496,6 +2594,73 @@ function rcSkelProfile(){
 }
 window.rcSkel=rcSkel;
 function beep(f,d=.1){try{const c=new(window.AudioContext||window.webkitAudioContext)();if(c.state==='suspended')c.resume();const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=f;g.gain.value=.08;o.start();o.stop(c.currentTime+d);}catch(e){}}
+
+/* ═══ KILOMETER-ANSAGEN (Web Speech API) ═══
+   Gerätebezogene Einstellung (nur localStorage, NICHT in der Cloud): Ansagen
+   sollen pro Gerät wählbar sein, wie die Lautstärke selbst.
+   iOS/WKWebView-Fallstricke:
+   - speechSynthesis braucht eine echte Nutzergeste zum "Entsperren" → wird beim
+     START-Knopf mit einer leeren Äußerung freigeschaltet (_unlockSpeech).
+   - Nach längerer Stille kann die Queue hängen → vor jeder Ansage cancel().
+   - Der stille AudioContext-Loop (keepAwake) hält die Audio-Session offen,
+     damit die Ansage auch bei ausgeschaltetem Bildschirm noch kommt. */
+let voiceOn=localStorage.getItem('rc_voice')!=='0'; // Standard: an
+let _speechReady=false;
+function speechAvailable(){return typeof window!=='undefined'&&'speechSynthesis'in window&&typeof SpeechSynthesisUtterance!=='undefined';}
+function _unlockSpeech(){
+  if(_speechReady||!speechAvailable())return;
+  try{
+    const u=new SpeechSynthesisUtterance(' ');
+    u.volume=0;u.lang='de-DE';
+    speechSynthesis.speak(u);
+    _speechReady=true;
+  }catch(e){}
+}
+function speak(text){
+  if(!voiceOn||!text||!speechAvailable())return;
+  try{
+    speechSynthesis.cancel(); // hängende Queue (iOS) räumen
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang='de-DE';u.rate=1.05;u.pitch=1;u.volume=1;
+    const de=(speechSynthesis.getVoices()||[]).find(v=>/^de/i.test(v.lang||''));
+    if(de)u.voice=de;
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+/* Sekunden → gesprochene Dauer, z.B. 1385 → "23 Minuten 5 Sekunden" */
+function spokenDuration(s){
+  s=Math.max(0,Math.round(s));
+  const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;
+  const parts=[];
+  if(h>0)parts.push(h+(h===1?' Stunde':' Stunden'));
+  if(m>0)parts.push(m+(m===1?' Minute':' Minuten'));
+  if(sec>0||!parts.length)parts.push(sec+(sec===1?' Sekunde':' Sekunden'));
+  return parts.join(' ');
+}
+/* Pace-Sekunden → "5 Minuten 49" bzw. glatt "5 Minuten" (Einheit sagt der Satz) */
+function spokenPace(secPerKm){
+  secPerKm=Math.max(0,Math.round(secPerKm));
+  const m=Math.floor(secPerKm/60),s=secPerKm%60;
+  const mm=m+(m===1?' Minute':' Minuten');
+  return s>0?mm+' '+s:mm;
+}
+/* Distanz in Metern → "3 Komma 2 Kilometer" (eine Nachkommastelle reicht) */
+function spokenKm(m){
+  const km=m/1000, whole=Math.floor(km), dec=Math.round((km-whole)*10);
+  if(dec===10)return (whole+1)+' Kilometer';
+  return dec===0?whole+' Kilometer':whole+' Komma '+dec+' Kilometer';
+}
+/* Ansage nach jedem vollen Kilometer:
+   Kilometer → Gesamtzeit → Pace dieses Kilometers → Gesamtdistanz → Zonen. */
+function announceKm(km,totalSecs,splitSecs,distM,zones){
+  if(!voiceOn)return;
+  let t='Kilometer '+km+'. '
+       +'Gesamtzeit '+spokenDuration(totalSecs)+'. '
+       +'Pace '+spokenPace(splitSecs)+' pro Kilometer. '
+       +'Gesamtstrecke '+spokenKm(distM)+'.';
+  if(zones>0)t+=' '+zones+(zones===1?' Zone':' Zonen')+' erobert.';
+  speak(t);
+}
 function vib(ms){if(navigator.vibrate)navigator.vibrate(ms)}
 function showBoostInfo(){toast('⚡ Boosts verdoppeln deine Punkte für einen Lauf. Du erhältst '+CFG.ENERGY_MAX+' neue Boosts pro Woche.');}
 /* Energie/Boost als echter Schalter: der Server bleibt autoritativ (er bucht die
@@ -6268,7 +6433,7 @@ function calcKcal(m,s){const spd=(m/1000)/(s/3600),met=spd<8?6:spd>12?12:8;retur
 /* MINI-MAP */
 /* Zeichnet die H3-Hexagone eines Laufs (aus runs.cells) formtreu in ein Canvas.
    Grobkörnige Zellen (Res 10) statt exakter Route -> Wohnort-schonend. */
-function drawHexCells(canvas,cells){
+function drawHexCells(canvas,cells,pathPts){
   if(!canvas||!window.h3||!window.h3.cellToBoundary||!Array.isArray(cells)||!cells.length)return false;
   const polys=[];
   for(const c of cells){try{const b=window.h3.cellToBoundary(c,false);if(b&&b.length)polys.push(b);}catch(e){}}
@@ -6293,6 +6458,19 @@ function drawHexCells(canvas,cells){
     ctx.globalAlpha=0.9;ctx.strokeStyle=pCol;ctx.stroke();
   });
   ctx.globalAlpha=1;
+  /* Optional: Start-/Zielpunkt markieren (gleiche Projektion wie die Hexagone) */
+  if(Array.isArray(pathPts)&&pathPts.length>=2){
+    const dot=(p,fill)=>{
+      if(!p||p[0]==null||p[1]==null)return;
+      const x=tx(p[1]),y=ty(p[0]);
+      ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);
+      ctx.fillStyle=fill;ctx.fill();
+      ctx.lineWidth=2;ctx.strokeStyle='#fff';ctx.stroke();
+    };
+    dot(pathPts[0],'#22c55e');                  // Start
+    dot(pathPts[pathPts.length-1],'#ef4444');   // Ziel
+    ctx.lineWidth=1;
+  }
   return true;
 }
 function drawMiniMap(canvas,pts){
@@ -6349,7 +6527,10 @@ function startRun(){
   if(isRunning)return;
   if(localStorage.getItem('rc_gps_consent')!=='1'){showGpsConsent(startRun);return;}
   isRunning=true;isPaused=false;beep(440);
+  /* Der START-Klick ist die Nutzergeste, die iOS für Sprachausgabe verlangt. */
+  _unlockSpeech();
   runStart=Date.now();runSecs=0;path=[];lastPos=null;lastPosTime=0;gpsJumpWarned=false;dist=0;kmSplits=[];lastSplitKm=0;lastSplitSecs=0;_persistTick=0;
+  runCellSet=new Set();
   sessionNewTerrNames=[];sessionNewLandmarks=[];window._lastPrevAt=0;
   gpsSpeed=null;gpsAlt=null;cadence=0;runElevGain=0;lastRunAlt=null;
   statusTxt.textContent=energy>0?`⚡ Boost aktiv (${energy}/${CFG.ENERGY_MAX})`:'Läuft…';
@@ -6369,6 +6550,7 @@ function startRun(){
   if(pathLayer)mapL.removeLayer(pathLayer);
   pathLayer=L.polyline([],{color:userColor,weight:4}).addTo(mapL);
   startLiveUpdate();
+  openRunHud();       /* Vollbild-HUD: Zeit im Ring, Kennzahlen, Steuerung */
   startKeepAlive();   /* WakeLock + stiller Audio → verhindert Hintergrund-Suspendierung */
   restartBgWatch();   /* frischer Watch beim Laufstart */
   /* Tipp nur im Browser/PWA: dort stoppt GPS beim Sperren. Die native App
@@ -6404,7 +6586,7 @@ function onGPS(pos){
     if(!accCircle)accCircle=L.circle(pt,{radius:acc,color:userColor,weight:1,opacity:.35,fillColor:userColor,fillOpacity:.07,interactive:false}).addTo(mapL);
     else{accCircle.setLatLng(pt);accCircle.setRadius(acc);}
   }
-  setLocateBadge(acc);
+  setLocateBadge(acc);window._lastAcc=acc; // GPS-Güte für die HUD-Statuszeile
   /* Einmalig zum Standort zentrieren, sobald ein brauchbarer Fix vorliegt */
   if(!_gpsCentered&&acc<=80&&mapL){_gpsCentered=true;mapL.setView(pt,Math.max(mapL.getZoom(),16));}
   if(!window._cityTried&&acc<500){window._cityTried=true;cacheCityOnce(lat,lng);}
@@ -6436,9 +6618,15 @@ function onGPS(pos){
     }else{
       dist+=d;path.push([lat,lng,now]);pathLayer.addLatLng(pt);distLive.textContent=fmtDist(dist);
       lastPos=pt;lastPosTime=now;
+      /* Zonen live mitzählen (O(1) je Fix statt den ganzen Track neu zu indizieren) */
+      try{if(window.h3&&window.h3.latLngToCell)runCellSet.add(window.h3.latLngToCell(lat,lng,10));}catch(e){}
       if(path.length>=2&&Math.floor(dist/150)>(window._lastPrevAt||0)){window._lastPrevAt=Math.floor(dist/150);clearTimeout(window._prevTimer);window._prevTimer=setTimeout(()=>{const pv=mkPoly();if(pv){if(previewLayer)mapL.removeLayer(previewLayer);previewLayer=L.geoJSON({type:'Feature',geometry:pv.polyGeom.geometry},{style:{fillColor:userColor,fillOpacity:.12,color:userColor,weight:2,dashArray:'6 4',opacity:.5}}).addTo(mapL);}},200);}
       const km=Math.floor(dist/1000);
-      if(km>lastSplitKm){const el=runSecs+Math.floor((Date.now()-runStart)/1000),ss=el-lastSplitSecs;kmSplits.push({km,pace:fmtPace(1000,ss),splitSecs:ss});lastSplitKm=km;lastSplitSecs=el;beep(660,.1);toast(`KM ${km} · ${fmtPace(1000,ss)}/km`);}
+      if(km>lastSplitKm){const el=runSecs+Math.floor((Date.now()-runStart)/1000),ss=el-lastSplitSecs;kmSplits.push({km,pace:fmtPace(1000,ss),splitSecs:ss});lastSplitKm=km;lastSplitSecs=el;beep(660,.1);toast(`KM ${km} · ${fmtPace(1000,ss)}/km`);
+        /* Sprach-Ansage: Gesamtzeit, Pace dieses Kilometers, Strecke, Zonen.
+           Kurz verzögert, damit der Signalton nicht in die Stimme läuft. */
+        try{const _z=runCellSet.size;setTimeout(()=>announceKm(km,el,ss,dist,_z),450);}catch(e){}
+      }
     }
   } else if(!lastPos){path.push([lat,lng,now]);pathLayer.addLatLng(pt);lastPos=pt;lastPosTime=now;}
   landmarks.forEach(lm=>{
@@ -6472,8 +6660,66 @@ function startLiveUpdate(){clearInterval(liveInterval);liveInterval=setInterval(
   const pPace=$('panelPace');if(pPace)pPace.textContent=pVal==='--:--'?'–':pVal;
   const pHR=$('panelHR');if(pHR)pHR.textContent=heartRate&&heartRate>0?heartRate:'–';
   if(++_persistTick%12===0)persistActiveRun();
+  updateRunHud();
 },1000)}
 function stopLiveUpdate(){clearInterval(liveInterval);liveInterval=null}
+
+/* ═══ LAUF-HUD ═══
+   Vollbild-Ansicht während des Laufs. Liest ausschließlich den bestehenden
+   Lauf-Zustand (dist, runSecs, gpsSpeed, …) — kein eigener State, damit
+   HUD und Karte nie auseinanderlaufen. */
+const RH_RING_C=2*Math.PI*96; // Umfang des SVG-Rings (r=96), s. .rh-prog
+let _hudOpen=false;
+function _nf(n,d){return Number(n).toLocaleString('de-DE',{minimumFractionDigits:d,maximumFractionDigits:d});}
+function openRunHud(){
+  const h=$('runHud');if(!h)return;
+  _hudOpen=true;h.classList.add('on');h.setAttribute('aria-hidden','false');
+  const p=$('runCtrlPill');if(p)p.style.display='none'; // Doppel-Steuerung vermeiden
+  syncHudVoiceBtn();syncHudPauseBtn();updateRunHud();
+}
+function closeRunHud(){
+  const h=$('runHud');if(!h)return;
+  _hudOpen=false;h.classList.remove('on');h.setAttribute('aria-hidden','true');
+  const p=$('runCtrlPill');if(p)p.style.display='';
+}
+function syncHudVoiceBtn(){
+  const b=$('rhVoice');if(!b)return;
+  b.classList.toggle('off',!voiceOn);
+  b.innerHTML='<i class="fas fa-volume-'+(voiceOn?'up':'xmark')+'"></i>';
+  b.setAttribute('aria-label',voiceOn?'Ansagen ausschalten':'Ansagen einschalten');
+}
+function syncHudPauseBtn(){
+  const b=$('rhPause');if(!b)return;
+  b.innerHTML='<i class="fas fa-'+(isPaused?'play':'pause')+'"></i>';
+  b.setAttribute('aria-label',isPaused?'Weiter':'Pause');
+}
+function updateRunHud(){
+  if(!_hudOpen)return;
+  const el=isRunning?(runSecs+(isPaused?0:Math.floor((Date.now()-runStart)/1000))):0;
+  const t=$('rhTime');if(t)t.textContent=fmtTime(el);
+  const kmTxt=_nf(dist/1000,2)+' km';
+  const d1=$('rhDist');if(d1)d1.textContent=kmTxt;
+  const d2=$('rhDistTile');if(d2)d2.textContent=kmTxt;
+  /* Ring = Fortschritt im AKTUELLEN Kilometer (freier Lauf hat kein festes Ziel;
+     ein sich alle paar Minuten schließender Ring gibt stetig Feedback). */
+  const r=$('rhRing');
+  if(r)r.style.strokeDashoffset=String(RH_RING_C*(1-((dist%1000)/1000)));
+  const pVal=gpsSpeed!=null?speedToPace(gpsSpeed):fmtPace(dist,el);
+  const pc=$('rhPace');if(pc)pc.textContent=pVal==='--:--'?'–':pVal;
+  const kmh=gpsSpeed!=null?gpsSpeed*3.6:(el>0?(dist/el)*3.6:0);
+  const sp=$('rhSpeed');if(sp)sp.textContent=_nf(kmh,1)+' km/h';
+  const z=$('rhZones');if(z)z.textContent=String(runCellSet.size);
+  const ev=$('rhElev');if(ev)ev.textContent=Math.round(runElevGain)+' m';
+  const pt=$('rhPts');if(pt)pt.textContent=Number(points||0).toLocaleString('de-DE');
+  /* Statuszeile: GPS-Güte aus der letzten Genauigkeit + aktueller Punktestand */
+  const acc=window._lastAcc;
+  const lvl=acc==null?0:acc<=10?4:acc<=25?3:acc<=50?2:1;
+  const bars=$('rhBars');
+  if(bars)[...bars.children].forEach((b,i)=>b.classList.toggle('lit',i<lvl));
+  const st=$('rhStatus');
+  if(st)st.textContent=(isPaused?'Pausiert':(lvl>=3?'GPS bereit':lvl>0?'GPS schwach':'GPS wird gesucht…'))
+    +' · '+Number(points||0).toLocaleString('de-DE')+' Punkte';
+}
 
 function pauseRun(){
   if(!isRunning||isPaused)return;
@@ -6483,6 +6729,7 @@ function pauseRun(){
   statusTxt.textContent='Pausiert';statusDot.style.background='var(--primary)';
   pauseBtn.innerHTML='<i class="fas fa-play"></i> WEITER';
   const pPause=$('panelPauseBtn2');if(pPause)pPause.innerHTML='<i class="fas fa-play"></i> Weiter';
+  syncHudPauseBtn();updateRunHud();
   updateRunPill();beep(330,.08);
 }
 function resumeRun(){
@@ -6492,6 +6739,7 @@ function resumeRun(){
   statusTxt.textContent='Läuft…';statusDot.style.background='var(--green)';
   pauseBtn.innerHTML='<i class="fas fa-pause"></i> PAUSE';
   const pRes=$('panelPauseBtn2');if(pRes)pRes.innerHTML='<i class="fas fa-pause"></i> Pause';
+  syncHudPauseBtn();
   startLiveUpdate();
   updateRunPill();beep(440,.08);
 }
@@ -6537,6 +6785,8 @@ function stopRun(){
   statusBar.classList.remove('running');statusDot.style.background='var(--muted)';
   startBtn.disabled=false;pauseBtn.disabled=true;pauseBtn.innerHTML='<i class="fas fa-pause"></i> PAUSE';stopBtn.disabled=true;
   updateRunPill();
+  closeRunHud();
+  try{if(speechAvailable())speechSynthesis.cancel();}catch(e){} // laufende Ansage abbrechen
   liveRun.classList.remove('on');idleStats.style.display='';beep(330);
   /* Panel: RunBox ausblenden, START einblenden */
   const pSB2=$('panelStartBtn'),pRB2=$('panelRunBox');
@@ -6839,8 +7089,31 @@ function countUp(el,to,opts){
 let _postRunRec=null; // zuletzt im Post-Run-Modal gezeigter Lauf (für Teilen/Share-Card)
 function showPostRun(rec,detail){
   const _tt=$('postRunTitle');if(_tt&&!detail)_tt.textContent='LAUF BEENDET 🎉';
+  /* ── Strecke oben: H3-Hexagone des Laufs + Start-/Zielpunkt ── */
+  const _zones=Array.isArray(rec.cells)?rec.cells.length:0;
+  const _rt=$('postRoute'),_cv=$('postRouteCv');
+  let _drawn=false;
+  if(_rt&&_cv){
+    try{_drawn=drawHexCells(_cv,rec.cells,rec.path);}catch(e){_drawn=false;}
+    /* Ohne Zellen (z.B. sehr kurzer Lauf): auf die reine Streckenlinie zurückfallen */
+    if(!_drawn&&Array.isArray(rec.path)&&rec.path.length>=2){try{drawMiniMap(_cv,rec.path);_drawn=true;}catch(e){}}
+    _rt.style.display=_drawn?'block':'none';
+    const _rz=$('postRouteZones');
+    if(_rz)_rz.textContent=_zones?_zones+(_zones===1?' Zone':' Zonen'):'';
+  }
+  /* ── Kennzahlen-Zeile: Distanz · Dauer · XP (postPts wird danach animiert) ── */
+  const _sep='border-left:1px solid var(--border)';
+  $('postHero').innerHTML=
+    `<div><div style="font-family:'Bebas Neue',sans-serif;font-size:2.1rem;line-height:1">${_nf(rec.distance/1000,2)}</div><div class="sl">Distanz (km)</div></div>`+
+    `<div style="${_sep}"><div style="font-family:'Bebas Neue',sans-serif;font-size:2.1rem;line-height:1">${fmtTime(rec.duration)}</div><div class="sl">Dauer</div></div>`+
+    `<div style="${_sep}"><div id="postPts" style="font-family:'Bebas Neue',sans-serif;font-size:2.1rem;line-height:1;color:var(--primary)">+0</div><div class="sl">XP</div></div>`;
   countUp($('postPts'),rec.pts,{prefix:'+',duration:1000,delay:200,reduce:window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches});
-  $('postStats').innerHTML=`<div class="stat-card"><div class="sv">${fmtDist(rec.distance)}</div><div class="sl">Distanz</div></div><div class="stat-card"><div class="sv">${fmtTime(rec.duration)}</div><div class="sl">Zeit</div></div><div class="stat-card"><div class="sv">${fmtPace(rec.distance,rec.duration)}</div><div class="sl">Pace</div></div><div class="stat-card"><div class="sv">${rec.kcal}</div><div class="sl">kcal</div></div>`;
+  /* ── Chips: XP & eroberte Zonen ── */
+  const _chip=(txt,ic)=>`<span style="display:inline-flex;align-items:center;gap:6px;background:rgba(var(--primary-rgb),.10);border:1px solid rgba(var(--primary-rgb),.28);color:var(--primary);border-radius:40px;padding:6px 13px;font-size:.76rem;font-weight:700">${ic} ${txt}</span>`;
+  $('postChips').innerHTML=_chip('+'+Number(rec.pts).toLocaleString('de-DE')+' XP','<i class="fas fa-bolt"></i>')
+    +(_zones?_chip(_zones+' Zonen','<i class="fas fa-draw-polygon"></i>'):'');
+  /* ── Zweite Ebene: Pace, Höhenmeter, kcal, Ø-Puls ── */
+  $('postStats').innerHTML=`<div class="stat-card"><div class="sv">${fmtPace(rec.distance,rec.duration)}</div><div class="sl">Ø Pace /km</div></div><div class="stat-card"><div class="sv">${Math.round(rec.elevation||0)} m</div><div class="sl">Höhenmeter</div></div><div class="stat-card"><div class="sv">${rec.kcal}</div><div class="sl">kcal</div></div><div class="stat-card"><div class="sv">${rec.avgHR>0?rec.avgHR:'–'}</div><div class="sl">Ø Puls</div></div>`;
   $('postSplits').innerHTML=rec.splits?.length?`<div class="splits-table"><div class="split-hdr"><span>KM</span><span>Pace</span><span>Zeit</span></div>${rec.splits.map(s=>`<div class="split-row"><span>${s.km}</span><span>${s.pace}</span><span>${fmtTime(s.splitSecs)}</span></div>`).join('')}</div>`:'';
   $('postSong').innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--card);border-radius:12px;color:var(--muted);font-size:.82rem"><i class="fas fa-music" style="color:var(--primary)"></i> Song wird analysiert…</div>`;
   setTimeout(()=>{const s=fallbackSong();$('postSong').innerHTML=`<div style="background:var(--card);border-radius:12px;padding:14px"><div style="font-size:.6rem;text-transform:uppercase;letter-spacing:2px;color:var(--primary);margin-bottom:6px">🎵 Dein Lauf-Song</div><div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem">${s.title}</div><div style="color:var(--muted);font-size:.75rem;margin-bottom:6px">${s.artist} · ${s.bpm} BPM</div><div style="font-size:.72rem;color:var(--muted)">${s.reason}</div></div>`;},1200);
@@ -10172,6 +10445,17 @@ function settingsRow(icon,title,sub,action,opts){
 function settingsToggleRow(icon,title,sub,on,toggle){
   return `<div class="set-row" data-toggle="${toggle}"><div class="set-ico">${icon}</div><div style="flex:1;min-width:0"><div class="set-title">${title}</div><div class="set-sub">${sub}</div></div><span class="set-switch${on?' on':''}"><span class="set-knob"></span></span></div>`;
 }
+/* Kilometer-Ansagen: bewusst NUR lokal gespeichert (Gerät-Einstellung, wie die
+   Lautstärke) – nicht über die Cloud auf andere Geräte gespiegelt. */
+function toggleVoice(){
+  voiceOn=!voiceOn;
+  localStorage.setItem('rc_voice',voiceOn?'1':'0');
+  if(typeof syncHudVoiceBtn==='function')syncHudVoiceBtn();
+  if(voiceOn){_unlockSpeech();speak('Ansagen eingeschaltet');}
+  else{try{if(speechAvailable())speechSynthesis.cancel();}catch(e){}}
+  renderSettingsHome();
+  toast(voiceOn?'🔊 Kilometer-Ansagen an':'🔇 Kilometer-Ansagen aus');
+}
 function togglePush(){
   if(!pushEnabled){
     if(typeof Notification!=='undefined'&&Notification.permission==='default'){
@@ -10218,6 +10502,7 @@ function renderSettingsHome(){
     </div>
     ${H('Benachrichtigungen &amp; Sichtbarkeit')}
     <div class="set-group">
+      ${settingsToggleRow('🔊','Kilometer-Ansagen',voiceOn?'Zeit, Pace, Strecke & Zonen je Kilometer':'Aus – keine Sprachausgabe',voiceOn,'voice')}
       ${settingsToggleRow('🔔','Push-Benachrichtigungen',pushEnabled?'An':'Aus',pushEnabled,'push')}
       ${settingsToggleRow('🌐','Öffentliches Profil',profilePublic?'Alle Infos sichtbar':'Privat – nur Basisdaten',profilePublic,'public')}
     </div>
@@ -10237,6 +10522,7 @@ function renderSettingsHome(){
     <div style="text-align:center;font-size:.62rem;color:var(--muted);margin-top:14px">Runners Conquer · ${APP_VERSION}</div>`;
   body.querySelectorAll('.set-row').forEach(r=>r.addEventListener('click',()=>{
     const tg=r.dataset.toggle;
+    if(tg==='voice'){toggleVoice();return;}
     if(tg==='push'){togglePush();return;}
     if(tg==='public'){toggleProfilePublic();return;}
     if(tg==='showruns'){toggleShowRuns();return;}
@@ -10992,6 +11278,19 @@ window.initApp=function(){
   $('panelStartBtn')?.addEventListener('click',()=>{startRun();});
   $('panelPauseBtn2')?.addEventListener('click',()=>{isPaused?resumeRun():pauseRun();});
   $('panelStopBtn2')?.addEventListener('click',()=>{stopRun();});
+  /* ── Lauf-HUD ── */
+  $('rhPause')?.addEventListener('click',()=>{isPaused?resumeRun():pauseRun();});
+  $('rhStop')?.addEventListener('click',()=>{stopRun();});
+  /* Zurück blendet nur das HUD aus (Lauf läuft weiter) → Karte ansehen */
+  $('rhBack')?.addEventListener('click',()=>{closeRunHud();updateRunPill();const p=$('runCtrlPill');if(p)p.classList.add('visible');});
+  $('rhVoice')?.addEventListener('click',()=>{
+    voiceOn=!voiceOn;
+    localStorage.setItem('rc_voice',voiceOn?'1':'0');
+    syncHudVoiceBtn();
+    if(voiceOn){_unlockSpeech();speak('Ansagen eingeschaltet');toast('🔊 Kilometer-Ansagen an');}
+    else{try{speechSynthesis.cancel();}catch(e){}toast('🔇 Kilometer-Ansagen aus');}
+    if(typeof renderSettingsHome==='function'&&$('settingsBody'))renderSettingsHome();
+  });
   /* Close modal on backdrop click */
   document.querySelectorAll('.modal').forEach(modal=>{
     modal.addEventListener('click',e=>{if(e.target===modal)modal.style.display='none';});
