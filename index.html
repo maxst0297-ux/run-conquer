@@ -351,10 +351,18 @@ body.onboarding-active{background:#000}
    Liegt über der (gedimmten) Karte, aber UNTER den Modals (z-index 1200),
    damit die Lauf-Zusammenfassung am Ende darüber erscheint. */
 #runHud{position:fixed;inset:0;z-index:1150;display:none;flex-direction:column;
-  background:linear-gradient(180deg,rgba(0,0,0,.5),rgba(0,0,0,.8));
-  -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
-  padding:calc(var(--sat) + 6px) 16px calc(var(--sab) + 10px);color:var(--text)}
+  background:var(--bg);padding:calc(var(--sat) + 6px) 16px calc(var(--sab) + 10px);color:var(--text)}
 #runHud.on{display:flex}
+/* Minimierte Leiste: zeigt Zeit/Distanz weiter an und holt das HUD zurück */
+#runMini{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--nav-total) + 6px);
+  z-index:1150;display:none;align-items:center;gap:12px;padding:9px 10px 9px 16px;border-radius:50px;
+  background:var(--card);border:1px solid var(--border);color:var(--text);
+  box-shadow:0 6px 22px rgba(0,0,0,.4);cursor:pointer;max-width:calc(100vw - 32px)}
+#runMini.on{display:flex}
+#runMini .rm-t{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;line-height:1}
+#runMini .rm-d{font-size:.74rem;color:var(--muted);white-space:nowrap}
+#runMini .rm-up{width:34px;height:34px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;
+  justify-content:center;background:var(--primary);color:var(--bg);font-size:.85rem}
 .rh-head{display:flex;align-items:center;gap:10px;flex-shrink:0}
 .rh-title{flex:1;text-align:center;font-family:'Bebas Neue',sans-serif;font-size:1.35rem;letter-spacing:.06em}
 .rh-icon{width:40px;height:40px;border-radius:50%;flex-shrink:0;border:none;background:transparent;
@@ -1740,7 +1748,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       <!-- Vollbild-HUD während eines Laufs: Zeit im Ring, Kennzahlen, Steuerung -->
       <div id="runHud" aria-hidden="true">
         <div class="rh-head">
-          <button id="rhBack" class="rh-icon" aria-label="Karte ansehen" title="Karte ansehen"><i class="fas fa-chevron-left"></i></button>
+          <button id="rhBack" class="rh-icon" aria-label="Minimieren – Karte ansehen" title="Minimieren"><i class="fas fa-chevron-down"></i></button>
           <div class="rh-title">Lauf aktiv</div>
           <button id="rhVoice" class="rh-icon" aria-label="Kilometer-Ansagen an/aus" title="Kilometer-Ansagen"><i class="fas fa-volume-up"></i></button>
         </div>
@@ -1770,6 +1778,14 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
           <button id="rhStop" class="rh-fab rh-stop" aria-label="Lauf beenden"><i class="fas fa-stop"></i></button>
           <button id="rhPause" class="rh-fab rh-play" aria-label="Pause"><i class="fas fa-pause"></i></button>
         </div>
+      </div>
+
+      <!-- Minimiertes HUD: Zeit/Distanz bleiben sichtbar, Tippen holt es zurück -->
+      <div id="runMini" role="button" tabindex="0" aria-label="Lauf-Anzeige wieder öffnen">
+        <div><div class="rm-t" id="rmTime">00:00</div></div>
+        <div class="rm-d" id="rmDist">0,00 km</div>
+        <div class="rm-up"><i class="fas fa-chevron-up"></i></div>
+      </div>
 
 <div id="postRunModal" class="modal" style="display:none">
   <div class="modal-card">
@@ -2238,7 +2254,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v215';
+const APP_VERSION='v216';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -6660,7 +6676,7 @@ function startLiveUpdate(){clearInterval(liveInterval);liveInterval=setInterval(
   const pPace=$('panelPace');if(pPace)pPace.textContent=pVal==='--:--'?'–':pVal;
   const pHR=$('panelHR');if(pHR)pHR.textContent=heartRate&&heartRate>0?heartRate:'–';
   if(++_persistTick%12===0)persistActiveRun();
-  updateRunHud();
+  updateRunHud();updateRunMini();
 },1000)}
 function stopLiveUpdate(){clearInterval(liveInterval);liveInterval=null}
 
@@ -6674,13 +6690,28 @@ function _nf(n,d){return Number(n).toLocaleString('de-DE',{minimumFractionDigits
 function openRunHud(){
   const h=$('runHud');if(!h)return;
   _hudOpen=true;h.classList.add('on');h.setAttribute('aria-hidden','false');
-  const p=$('runCtrlPill');if(p)p.style.display='none'; // Doppel-Steuerung vermeiden
+  $('runMini')?.classList.remove('on');
   syncHudVoiceBtn();syncHudPauseBtn();updateRunHud();
 }
+/* Minimieren: HUD weg, Karte frei — Zeit/Distanz laufen in der Mini-Leiste
+   weiter, ein Tipp darauf holt das HUD zurück. */
+function minimizeRunHud(){
+  const h=$('runHud');if(!h)return;
+  _hudOpen=false;h.classList.remove('on');h.setAttribute('aria-hidden','true');
+  if(isRunning)$('runMini')?.classList.add('on');
+  updateRunMini();
+}
+/* Vollständig schließen (Lauf beendet): HUD und Mini-Leiste weg. */
 function closeRunHud(){
   const h=$('runHud');if(!h)return;
   _hudOpen=false;h.classList.remove('on');h.setAttribute('aria-hidden','true');
-  const p=$('runCtrlPill');if(p)p.style.display='';
+  $('runMini')?.classList.remove('on');
+}
+function updateRunMini(){
+  const m=$('runMini');if(!m||!m.classList.contains('on'))return;
+  const el=isRunning?(runSecs+(isPaused?0:Math.floor((Date.now()-runStart)/1000))):0;
+  const t=$('rmTime');if(t)t.textContent=fmtTime(el);
+  const d=$('rmDist');if(d)d.textContent=_nf(dist/1000,2)+' km'+(isPaused?' · Pause':'');
 }
 function syncHudVoiceBtn(){
   const b=$('rhVoice');if(!b)return;
@@ -6729,7 +6760,7 @@ function pauseRun(){
   statusTxt.textContent='Pausiert';statusDot.style.background='var(--primary)';
   pauseBtn.innerHTML='<i class="fas fa-play"></i> WEITER';
   const pPause=$('panelPauseBtn2');if(pPause)pPause.innerHTML='<i class="fas fa-play"></i> Weiter';
-  syncHudPauseBtn();updateRunHud();
+  syncHudPauseBtn();updateRunHud();updateRunMini();
   updateRunPill();beep(330,.08);
 }
 function resumeRun(){
@@ -6739,7 +6770,7 @@ function resumeRun(){
   statusTxt.textContent='Läuft…';statusDot.style.background='var(--green)';
   pauseBtn.innerHTML='<i class="fas fa-pause"></i> PAUSE';
   const pRes=$('panelPauseBtn2');if(pRes)pRes.innerHTML='<i class="fas fa-pause"></i> Pause';
-  syncHudPauseBtn();
+  syncHudPauseBtn();updateRunMini();
   startLiveUpdate();
   updateRunPill();beep(440,.08);
 }
@@ -11281,8 +11312,10 @@ window.initApp=function(){
   /* ── Lauf-HUD ── */
   $('rhPause')?.addEventListener('click',()=>{isPaused?resumeRun():pauseRun();});
   $('rhStop')?.addEventListener('click',()=>{stopRun();});
-  /* Zurück blendet nur das HUD aus (Lauf läuft weiter) → Karte ansehen */
-  $('rhBack')?.addEventListener('click',()=>{closeRunHud();updateRunPill();const p=$('runCtrlPill');if(p)p.classList.add('visible');});
+  /* Minimieren: Lauf läuft weiter, Mini-Leiste holt das HUD zurück */
+  $('rhBack')?.addEventListener('click',()=>minimizeRunHud());
+  $('runMini')?.addEventListener('click',()=>openRunHud());
+  $('runMini')?.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openRunHud();}});
   $('rhVoice')?.addEventListener('click',()=>{
     voiceOn=!voiceOn;
     localStorage.setItem('rc_voice',voiceOn?'1':'0');
