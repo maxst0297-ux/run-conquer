@@ -1389,8 +1389,6 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
       </div>
       <div id="dockToggle"><i class="fas fa-running"></i></div>
 
-      </div>
-
       <div id="runCtrlPill">
         <button id="rcpPause" class="rcp-btn rcp-hidden"><i class="fas fa-pause"></i> Pause</button>
         <button id="rcpStop" class="rcp-btn rcp-hidden"><i class="fas fa-stop"></i> Stop</button>
@@ -1792,7 +1790,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
     <div class="modal-title" id="postRunTitle">LAUF BEENDET 🎉</div>
     <!-- Strecke als H3-Hexagone (Start grün, Ziel rot) -->
     <div id="postRoute" style="display:none;margin-bottom:14px">
-      <canvas id="postRouteCv" width="640" height="360" style="width:100%;height:auto;display:block;border-radius:14px;border:1px solid var(--border)"></canvas>
+      <div id="postRouteMap" style="width:100%;height:200px;border-radius:14px;border:1px solid var(--border);overflow:hidden;background:var(--bg2)"></div>
       <div style="display:flex;align-items:center;gap:14px;margin-top:7px;font-size:.62rem;color:var(--muted)">
         <span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block"></span>Start</span>
         <span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block"></span>Ziel</span>
@@ -2254,7 +2252,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v216';
+const APP_VERSION='v217';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3232,7 +3230,7 @@ function editBio(){
   document.getElementById('bioSave').onclick=()=>{userBio=document.getElementById('bioInput').value.trim().slice(0,80);const ts=document.getElementById('titleSelect');if(ts)selectedTitle=ts.value||'';saveProfile();if(typeof updateProfile==='function')updateProfile();toast('Beschreibung & Titel gespeichert');ov.remove();};
 }
 window.editBio=editBio;
-function closeAllModals(){['profileModal','postRunModal','renameModal','settingsModal','adminModal','inboxModal'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
+function closeAllModals(){['profileModal','postRunModal','renameModal','settingsModal','adminModal','inboxModal'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});if(typeof destroyPostRouteMap==='function')destroyPostRouteMap();}
 
 /* ── AVATAR HTML HELPER ── */
 function avatarHTML(size){
@@ -7120,15 +7118,14 @@ function countUp(el,to,opts){
 let _postRunRec=null; // zuletzt im Post-Run-Modal gezeigter Lauf (für Teilen/Share-Card)
 function showPostRun(rec,detail){
   const _tt=$('postRunTitle');if(_tt&&!detail)_tt.textContent='LAUF BEENDET 🎉';
-  /* ── Strecke oben: H3-Hexagone des Laufs + Start-/Zielpunkt ── */
+  /* ── Strecke oben: echte Karte mit den eroberten Hexagonen + Start/Ziel ── */
   const _zones=Array.isArray(rec.cells)?rec.cells.length:0;
-  const _rt=$('postRoute'),_cv=$('postRouteCv');
-  let _drawn=false;
-  if(_rt&&_cv){
-    try{_drawn=drawHexCells(_cv,rec.cells,rec.path);}catch(e){_drawn=false;}
-    /* Ohne Zellen (z.B. sehr kurzer Lauf): auf die reine Streckenlinie zurückfallen */
-    if(!_drawn&&Array.isArray(rec.path)&&rec.path.length>=2){try{drawMiniMap(_cv,rec.path);_drawn=true;}catch(e){}}
-    _rt.style.display=_drawn?'block':'none';
+  const _rt=$('postRoute');
+  const _cells=Array.isArray(rec.cells)?rec.cells:[];
+  const _ll=(Array.isArray(rec.path)?rec.path:[]).map(p=>[p[0],p[1]]).filter(p=>isFinite(p[0])&&isFinite(p[1]));
+  const _hasRoute=!!(_cells.length||_ll.length>=2);
+  if(_rt){
+    _rt.style.display=_hasRoute?'block':'none';
     const _rz=$('postRouteZones');
     if(_rz)_rz.textContent=_zones?_zones+(_zones===1?' Zone':' Zonen'):'';
   }
@@ -7153,6 +7150,52 @@ function showPostRun(rec,detail){
   $('postInfluence').innerHTML=_routeBtn+runEventsSummaryHTML()+runNotesSummaryHTML()+inflHTML;
   $('postRunModal').style.display='flex';
   _postRunRec=rec; // aktueller Lauf für die Teilen-/Karten-Buttons (Share-Card)
+  /* Karte erst NACH dem Einblenden bauen — Leaflet kann eine Fläche mit
+     display:none nicht vermessen. */
+  if(_hasRoute)setTimeout(()=>buildPostRouteMap(_cells,_ll),80);
+}
+let _postMap=null;
+function destroyPostRouteMap(){
+  /* Äußeres try: closeAllModals() läuft bei jedem Ansichtswechsel und könnte
+     theoretisch feuern, bevor _postMap initialisiert ist. */
+  try{
+    if(!_postMap)return;
+    try{_postMap.remove();}catch(e){}
+    _postMap=null;
+  }catch(e){return;}
+  const el=$('postRouteMap');if(el)el.innerHTML='';
+}
+/* Normale Karte (Kacheln) mit den eroberten Hexagonen und Start-/Zielpunkt. */
+function buildPostRouteMap(cells,ll){
+  const el=$('postRouteMap');
+  if(!el||typeof L==='undefined')return;
+  destroyPostRouteMap();
+  try{
+    _postMap=L.map(el,{zoomControl:false,attributionControl:false,dragging:false,
+      scrollWheelZoom:false,doubleClickZoom:false,boxZoom:false,keyboard:false,touchZoom:false,tap:false});
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{}).addTo(_postMap);
+    const col=_safeColor(userColor);
+    const grp=L.featureGroup();
+    (cells||[]).forEach(c=>{try{
+      const b=window.h3&&window.h3.cellToBoundary&&window.h3.cellToBoundary(c,false);
+      if(b&&b.length)L.polygon(b,{color:col,weight:1.5,opacity:.95,fillColor:col,fillOpacity:.38,lineJoin:'round'}).addTo(grp);
+    }catch(e){}});
+    /* Ohne Zellen (sehr kurzer Lauf): wenigstens die Linie zeigen */
+    if(!grp.getLayers().length&&ll&&ll.length>=2)
+      L.polyline(ll,{color:col,weight:4,opacity:.95,lineCap:'round',lineJoin:'round'}).addTo(grp);
+    if(ll&&ll.length>=2){
+      L.circleMarker(ll[0],{radius:6,color:'#fff',weight:2,fillColor:'#22c55e',fillOpacity:1}).addTo(grp);
+      L.circleMarker(ll[ll.length-1],{radius:6,color:'#fff',weight:2,fillColor:'#ef4444',fillOpacity:1}).addTo(grp);
+    }
+    grp.addTo(_postMap);
+    const fit=()=>{try{
+      _postMap.invalidateSize();
+      const b=grp.getBounds();
+      if(b&&b.isValid())_postMap.fitBounds(b,{padding:[24,24],maxZoom:16});
+      else _postMap.setView([49.0134,12.1016],13);
+    }catch(e){}};
+    fit();setTimeout(fit,200);
+  }catch(e){destroyPostRouteMap();const p=$('postRoute');if(p)p.style.display='none';}
 }
 window._openRunRoute=function(){if(_postRunRec)showRouteOnMap(_postRunRec);};
 /* Strecke eines (vergangenen) Laufs auf einer LEEREN Karte anzeigen — nur die
@@ -10605,6 +10648,15 @@ function setView(view){
   const onMap=view==='map';
   if(dockToggle)dockToggle.style.display=onMap?'':'none';
   if(runDock){if(!onMap)runDock.classList.remove('up');runDock.style.display=onMap?'':'none';}
+  /* Kartenoptionen (Gebiete/Wahrzeichen/Arenen …) gehören nur zur Karte:
+     Pfeil ausblenden und ein offenes Panel beim Verlassen schließen. */
+  const _mpArrow=$('mapPanelArrow'),_mpPanel=$('mapPanel');
+  if(_mpArrow)_mpArrow.style.display=onMap?'':'none';
+  if(_mpPanel&&!onMap){
+    _mpPanel.classList.remove('open');
+    const _mpIco=$('mapPanelIcon');if(_mpIco)_mpIco.className='fas fa-chevron-left';
+    if(_mpArrow)_mpArrow.style.right='0';
+  }
   updateRunPill();
   const _upd=(view==='dash'||view==='start')?updateDash:view==='community'?updateCommunity:view==='profile'?updateProfile:null;
   updateAppHeader(view);
@@ -11073,7 +11125,7 @@ window.initApp=function(){
   $('userBadge').addEventListener('click',()=>openSettingsAt('home'));
   $('saveProfileBtn').addEventListener('click',()=>{playerName=$('editName').value.trim()||playerName;userAvatar=editAvatar;saveProfile();$('profileModal').style.display='none';toast('Profil gespeichert');updateProfile()});
   $('closeProfileBtn').addEventListener('click',()=>$('profileModal').style.display='none');
-  $('closePostBtn').addEventListener('click',()=>$('postRunModal').style.display='none');
+  $('closePostBtn').addEventListener('click',()=>{$('postRunModal').style.display='none';destroyPostRouteMap();});
   $('achPopBtn')?.addEventListener('click',_showNextAch);
   /* Klick auf den abgedunkelten Hintergrund blättert ebenfalls weiter. */
   $('achPopup')?.addEventListener('click',e=>{if(e.target&&e.target.id==='achPopup')_showNextAch();});
