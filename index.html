@@ -1649,7 +1649,6 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
         <p style="font-size:13px;color:rgba(255,255,255,.5);margin:0 0 16px;line-height:1.5">Starte deinen ersten Lauf und erobere dein erstes Gebiet.</p>
         <button class="btn btn-p" onclick="setView('start')" style="max-width:220px;margin:0 auto;display:flex;justify-content:center">Jetzt loslegen →</button>
       </div>
-      <div class="section-card" id="pvFactionWins" style="display:none"></div>
       <!-- Quests · Season-Pass · Belohnungen: drei Buttons -> je ein Popup. -->
       <div class="section-card" id="pvHub">
         <div class="pv-hub-row">
@@ -2209,6 +2208,10 @@ function checkBirthdayShield(){
 }
 /* Monate, in denen die eigene Fraktion die meisten Punkte hatte ("YYYY-MM"). */
 let factionWins=[];
+/* Welche Fraktion hat den jeweiligen Monat gewonnen: {'2026-07':'fire', …}.
+   Wird beim Abrechnen mitgeschrieben, damit der Orden auch nach einem
+   Fraktionswechsel noch den richtigen Sieger nennt. */
+let factionWinTeams={};
 let weeklyChals=[],weekChalKey='';
 let personalRecords={};
 let battlePassClaimed=[];
@@ -2252,7 +2255,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v217';
+const APP_VERSION='v218';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2915,7 +2918,7 @@ function applyTheme(name){
 }
 function saveProfile(){
   const theme=getActiveTheme();
-  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,streakUnlocks,equipped,streakClaimed,userBio,profilePublic,showRuns,showTerritories,pushEnabled,lastNameChangeDate,WEEKLY_GOAL,DAILY_GOAL_KM,MONTHLY_GOAL,factionWins,selectedTitle,userBirthday}));
+  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,streakUnlocks,equipped,streakClaimed,userBio,profilePublic,showRuns,showTerritories,pushEnabled,lastNameChangeDate,WEEKLY_GOAL,DAILY_GOAL_KM,MONTHLY_GOAL,factionWins,factionWinTeams,selectedTitle,userBirthday}));
   $('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;
   const hi=$('hdrHi');if(hi)hi.textContent='Hallo, '+(playerName||'Läufer');
   // Update theme-color meta for Android status bar
@@ -2924,7 +2927,7 @@ function saveProfile(){
   syncProfileDebounced();
 }
 function loadProfile(){
-  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';streakUnlocks=p.streakUnlocks||[];equipped=p.equipped||{};streakClaimed=p.streakClaimed||[];userBio=p.userBio||'';factionWins=p.factionWins||[];selectedTitle=p.selectedTitle||'';userBirthday=p.userBirthday||'';profilePublic=p.profilePublic!==false;showRuns=p.showRuns!==false;showTerritories=p.showTerritories!==false;pushEnabled=!!p.pushEnabled;lastNameChangeDate=p.lastNameChangeDate||'';if(p.WEEKLY_GOAL>0)WEEKLY_GOAL=p.WEEKLY_GOAL;if(p.DAILY_GOAL_KM>0)DAILY_GOAL_KM=p.DAILY_GOAL_KM;if(p.MONTHLY_GOAL>0)MONTHLY_GOAL=p.MONTHLY_GOAL;const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
+  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';streakUnlocks=p.streakUnlocks||[];equipped=p.equipped||{};streakClaimed=p.streakClaimed||[];userBio=p.userBio||'';factionWins=p.factionWins||[];factionWinTeams=p.factionWinTeams||{};selectedTitle=p.selectedTitle||'';userBirthday=p.userBirthday||'';profilePublic=p.profilePublic!==false;showRuns=p.showRuns!==false;showTerritories=p.showTerritories!==false;pushEnabled=!!p.pushEnabled;lastNameChangeDate=p.lastNameChangeDate||'';if(p.WEEKLY_GOAL>0)WEEKLY_GOAL=p.WEEKLY_GOAL;if(p.DAILY_GOAL_KM>0)DAILY_GOAL_KM=p.DAILY_GOAL_KM;if(p.MONTHLY_GOAL>0)MONTHLY_GOAL=p.MONTHLY_GOAL;const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
   return false;
 }
 /* ── STREAK-BELOHNUNGEN (Inventar) ──────────────────────────────────────────
@@ -3113,23 +3116,12 @@ function renderSeasonBadge(opts={}){
   const year=opts.year??now.getFullYear();
   return{svg:buildSeasonSvg(),monthName:(MONTH_NAMES_DE[((month%12)+12)%12]||'').toUpperCase(),year,caption:`Saison-Sieg der Fraktion · ${year}`};
 }
-/* Hall of Fame der Saison-/Fraktionssiege (ein Medaillon je gewonnenem Monat). */
-function renderFactionWins(){
-  const el=document.getElementById('pvFactionWins');if(!el)return;
-  const nowMk=(typeof currentMonthKey==='function')?currentMonthKey():'';
-  const wins=[...(factionWins||[])].filter(mk=>typeof mk==='string'&&mk<nowMk); // nur abgeschlossene Monate
-  if(!wins.length){el.style.display='none';return;}
-  el.style.display='';
-  const cards=wins.sort().reverse().map(mk=>{
-    const p=mk.split('-'),y=p[0],mi=Math.max(0,Math.min(11,parseInt(p[1],10)-1));
-    const badge=renderSeasonBadge({month:mi,year:parseInt(y,10)});
-    return `<div style="flex:0 0 auto;width:158px;text-align:center;padding:16px 10px;border-radius:22px;background:radial-gradient(110% 150% at 50% -20%,rgba(255,215,0,.13),transparent 62%),rgba(255,255,255,.02);border:1px solid rgba(255,215,0,.35)">
-      <div style="width:120px;height:120px;margin:0 auto;filter:drop-shadow(0 10px 26px rgba(255,215,0,.28))">${badge.svg}</div>
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.55rem;letter-spacing:3px;color:#FFD700;margin-top:8px;text-shadow:0 0 22px rgba(255,215,0,.45)">${badge.monthName}</div>
-      <div style="font-size:.56rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:2px">${esc(badge.caption)}</div>
-    </div>`;
-  }).join('');
-  el.innerHTML=`<div class="section-title"><i class="fas fa-trophy"></i> Saison-Siege der Fraktion</div><div style="display:flex;gap:14px;overflow-x:auto;padding:4px 2px 8px;-webkit-overflow-scrolling:touch">${cards}</div>`;
+/* Die Saison-Orden stehen ausschließlich unter den Erfolgen (renderSeasonWinsSection).
+   Wird gerade dort geschaut, die Ansicht nach einer Abrechnung auffrischen. */
+function refreshSeasonWinsView(){
+  try{
+    if(drawer&&drawer.classList.contains('open')&&typeof renderDrawer==='function')renderDrawer();
+  }catch(e){}
 }
 /* ═══ Saison-Sieg-Abrechnung ═══
    Regel: Der Saison-Sieg-Orden wird ERST NACH Monatsende vergeben — und nur an
@@ -3163,10 +3155,21 @@ function settleSeasonWins(){
   Object.keys(t).forEach(mk=>{
     if(mk>=nowMk)return; // nur abgeschlossene Monate
     const r=t[mk];
-    if(r&&r.lead&&r.team&&r.lead===r.team&&!factionWins.includes(mk)){factionWins.push(mk);changed=true;}
+    if(r&&r.lead&&r.team&&r.lead===r.team){
+      if(!factionWins.includes(mk)){factionWins.push(mk);changed=true;}
+      if(factionWinTeams[mk]!==r.lead){factionWinTeams[mk]=r.lead;changed=true;}
+    }
   });
-  if(changed){saveProfile();if(typeof renderFactionWins==='function')renderFactionWins();}
+  if(changed){saveProfile();refreshSeasonWinsView();}
   return changed;
+}
+/* Sieger-Fraktion eines Monats für die Anzeige am Orden. Primär der beim
+   Abrechnen festgehaltene Wert; für Altbestände (vor factionWinTeams) gilt die
+   eigene Fraktion jenes Monats — der Orden wird ja nur dafür vergeben. */
+function seasonWinTeam(mk){
+  const id=(factionWinTeams&&factionWinTeams[mk])||_teamDuringMonth(mk);
+  if(!id)return null;
+  return TEAMS.find(t=>t.id===id)||null;
 }
 /* In welcher Fraktion war ich im Monat mk? Primär aus dem Live-Mitschrieb; sonst
    zählt die aktuelle Fraktion, wenn der letzte Wechsel ("YYYY-MM") nicht NACH mk
@@ -3193,9 +3196,13 @@ async function settleSeasonWinsServer(){
       const mk=r&&r.month_key;
       if(!(typeof mk==='string'&&mk<nowMk)||!r.winner_team)return;
       const my=_teamDuringMonth(mk);
-      if(my&&my===r.winner_team&&!factionWins.includes(mk)){factionWins.push(mk);changed=true;}
+      if(my&&my===r.winner_team){
+        if(!factionWins.includes(mk)){factionWins.push(mk);changed=true;}
+        /* Server ist autoritativ: Sieger-Fraktion immer aus season_winners übernehmen */
+        if(factionWinTeams[mk]!==r.winner_team){factionWinTeams[mk]=r.winner_team;changed=true;}
+      }
     });
-    if(changed){saveProfile();if(typeof renderFactionWins==='function')renderFactionWins();toast('🏆 Saison-Sieg! Deine Fraktion hat den Monat gewonnen');}
+    if(changed){saveProfile();refreshSeasonWinsView();toast('🏆 Saison-Sieg! Deine Fraktion hat den Monat gewonnen');}
     return changed;
   }catch(e){return false;}
 }
@@ -5631,7 +5638,11 @@ function renderSeasonWinsSection(){
     const tiles=wins.map(mk=>{
       const p=mk.split('-'),y=p[0],mi=Math.max(0,Math.min(11,parseInt(p[1],10)-1));
       const badge=renderSeasonBadge({month:mi,year:parseInt(y,10)});
-      return `<div style="text-align:center"><div class="badge-tap" onclick="rcZoomSeason('${mk}')"><div style="width:74px;height:74px;margin:0 auto;filter:drop-shadow(0 6px 16px rgba(255,215,0,.28))">${badge.svg}</div></div><div style="font-size:.66rem;font-weight:700;margin-top:5px;color:#FFD700">${badge.monthName} ${badge.year}</div><div style="font-size:.56rem;color:var(--muted);line-height:1.3;margin-top:1px">Fraktion gewonnen</div></div>`;
+      const tm=(typeof seasonWinTeam==='function')?seasonWinTeam(mk):null;
+      const sub=tm
+        ? `<span style="color:${_safeColor(tm.color)}">${tm.icon} ${esc(tm.name)}</span>`
+        : 'Fraktion gewonnen';
+      return `<div style="text-align:center"><div class="badge-tap" onclick="rcZoomSeason('${mk}')"><div style="width:74px;height:74px;margin:0 auto;filter:drop-shadow(0 6px 16px rgba(255,215,0,.28))">${badge.svg}</div></div><div style="font-size:.66rem;font-weight:700;margin-top:5px;color:#FFD700">${badge.monthName} ${badge.year}</div><div style="font-size:.56rem;color:var(--muted);line-height:1.3;margin-top:1px">${sub}</div></div>`;
     }).join('');
     inner=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px 8px">${tiles}</div>`;
   }
@@ -5641,6 +5652,7 @@ function renderSeasonWinsSection(){
 window.rcZoomSeason=function(mk){
   const p=mk.split('-'),y=p[0],mi=Math.max(0,Math.min(11,parseInt(p[1],10)-1));
   const badge=renderSeasonBadge({month:mi,year:parseInt(y,10)});
+  const _zt=(typeof seasonWinTeam==='function')?seasonWinTeam(mk):null;
   document.getElementById('badgeZoomOv')?.remove();
   const ov=document.createElement('div');ov.id='badgeZoomOv';
   ov.style.cssText='position:fixed;inset:0;z-index:9700;background:rgba(0,0,0,.74);display:flex;align-items:center;justify-content:center;padding:24px';
@@ -5648,7 +5660,7 @@ window.rcZoomSeason=function(mk){
     <div style="width:190px;height:190px;margin:0 auto 14px;filter:drop-shadow(0 10px 26px rgba(255,215,0,.3))">${badge.svg}</div>
     <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:1px;color:#FFD700">${esc(badge.monthName)} ${badge.year}</div>
     <div style="font-size:.78rem;color:var(--muted);margin-top:4px">${esc(badge.caption)}</div>
-    <div style="font-size:.74rem;margin-top:12px;font-weight:700;color:#10b981">✓ Deine Fraktion war Monatssieger</div>
+    <div style="font-size:.74rem;margin-top:12px;font-weight:700;color:#10b981">${_zt?`✓ ${esc(_zt.icon)} ${esc(_zt.name)} hat diesen Monat gewonnen`:'✓ Deine Fraktion war Monatssieger'}</div>
     <button id="badgeZoomClose" style="margin-top:16px;background:none;border:1px solid var(--border);border-radius:10px;color:var(--muted);padding:8px 24px;font-size:.8rem;cursor:pointer;font-family:'Poppins',sans-serif">Schließen</button>
   </div>`;
   ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
@@ -10263,7 +10275,7 @@ function updateProfile(){
   /* Angelegte Belohnungen anwenden: Banner + Profilrahmen (Ring am Avatar). */
   const _ban=equipped.banner&&REWARD_BY_ID[equipped.banner];if(_ban){banner.style.background=_ban.value;const m=_ban.value.match(/#[0-9a-f]{6}/i);banner.style.borderColor=(m&&m[0]||userColor)+'88';}
   const _frm=equipped.frame&&REWARD_BY_ID[equipped.frame];const _av=$('pvAvatar');if(_av)_av.style.boxShadow=_frm?('0 0 0 3px '+_frm.value+',0 0 16px '+_frm.value+'99'):'';
-  renderRewards();renderFactionWins();applyEquipped();
+  renderRewards();applyEquipped();
   // Ziele-Swipe im Profil: Daily Quests + Events zusätzlich rendern, Swipe verdrahten.
   try{renderDailyChallenges();}catch(e){}
   try{renderEvents();}catch(e){}
