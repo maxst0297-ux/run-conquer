@@ -911,7 +911,33 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 /* ═══ REDESIGN — NAV FAB ═══ */
 .bottom-nav.with-fab{overflow:visible}
 /* Gleitendes Highlight hinter dem aktiven Tab (animate-ui Highlight als Vanilla) */
-.nav-hl{position:absolute;top:8px;bottom:8px;left:0;width:0;border-radius:16px;background:rgba(var(--primary-rgb),.13);z-index:0;opacity:0;pointer-events:none;transition:transform .32s cubic-bezier(.2,.8,.2,1),width .32s cubic-bezier(.2,.8,.2,1),opacity .2s}
+/* ── Liquid-Navigation ──────────────────────────────────────────────────────
+   Das aktive Symbol hebt sich in eine runde Blase über die Leiste, die beim
+   Wechsel seitlich hinübergleitet. Der 4px-Rand in Hintergrundfarbe erzeugt die
+   Aussparung in der Leiste — dieselbe Technik wie beim Start-FAB.
+   Die Blase ist aber bewusst NICHT gefüllt wie der FAB (zwei gleiche Kreise
+   nebeneinander wären verwechselbar): getönte Fläche mit Primärring. */
+.nav-hl{position:absolute;top:-17px;left:0;width:50px;height:50px;border-radius:50%;
+  background:var(--card);border:4px solid var(--bg);outline:2px solid var(--primary);outline-offset:-6px;
+  box-shadow:0 6px 16px rgba(0,0,0,.3);
+  z-index:0;opacity:0;pointer-events:none;
+  transition:transform .44s cubic-bezier(.62,-0.28,.35,1.28),opacity .2s}
+/* Aktives Symbol steigt in die Blase, das Label rückt nach */
+.nav-item .ai-ic,.nav-item i{transition:transform .44s cubic-bezier(.62,-0.28,.35,1.28),color var(--motion-base)}
+.nav-item>span:last-child{transition:transform .44s cubic-bezier(.62,-0.28,.35,1.28)}
+.bottom-nav .nav-item.active .ai-ic,.bottom-nav .nav-item.active i{transform:translateY(-23px);color:var(--primary)}
+.bottom-nav .nav-item.active>span:last-child{transform:translateY(-6px)}
+/* Der alte 2px-Strich ist neben der Blase überflüssig */
+.bottom-nav .nav-item.active .nav-indicator{transform:scaleX(0)}
+/* Während eines Laufs stehen zwei runde FABs in der Mitte — die Blase würde sie
+   überlappen. Dann bleibt die Leiste flach (Farbe markiert weiterhin den Tab). */
+.bottom-nav.run-active .nav-hl{opacity:0!important}
+.bottom-nav.run-active .nav-item.active .ai-ic,.bottom-nav.run-active .nav-item.active i{transform:translateY(-2px);color:inherit}
+.bottom-nav.run-active .nav-item.active>span:last-child{transform:none}
+.bottom-nav.run-active .nav-item.active .nav-indicator{transform:scaleX(1)}
+@media(prefers-reduced-motion:reduce){
+  .nav-hl,.nav-item .ai-ic,.nav-item i,.nav-item>span:last-child{transition-duration:1ms}
+}
 .bottom-nav .nav-item{z-index:1}
 /* Mittiger Platzhalter unter dem Play-FAB: schiebt Aktivität & Community nach
    außen, weg vom Button (leichter treffbar). */
@@ -2255,7 +2281,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v218';
+const APP_VERSION='v219';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -10510,12 +10536,13 @@ document.addEventListener('scroll',e=>{const t=e.target;if(t&&t.classList&&t.cla
 window.addEventListener('resize',updateScrollProgress);
 
 /* Gleitendes Highlight hinter dem aktiven Nav-Tab (animate-ui Highlight). */
+/* Blase auf die Mitte des aktiven Tabs schieben (Breite ist fest, s. .nav-hl). */
 function moveNavHighlight(){
   const hl=document.getElementById('navHl');
   const active=document.querySelector('.bottom-nav .nav-item.active');
   if(!hl||!active)return;
-  hl.style.width=active.offsetWidth+'px';
-  hl.style.transform='translateX('+active.offsetLeft+'px)';
+  const cx=active.offsetLeft+active.offsetWidth/2;
+  hl.style.transform='translateX('+Math.round(cx-hl.offsetWidth/2)+'px)';
   hl.style.opacity='1';
 }
 window.addEventListener('resize',moveNavHighlight);
