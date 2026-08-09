@@ -2321,7 +2321,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v222';
+const APP_VERSION='v223';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -7432,18 +7432,34 @@ window.showRouteOnMap=function(rec){
   ov.style.cssText='position:fixed;inset:0;z-index:9800;background:#0e1512';
   ov.innerHTML='<div id="routeMapDiv" style="position:absolute;inset:0;background:#0e1512"></div>'
     +'<button id="routeMapClose" style="position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);right:12px;z-index:2;background:var(--card);border:1px solid var(--border);border-radius:12px;color:var(--text);padding:8px 14px;font-size:.85rem;cursor:pointer">✕ Schließen</button>'
-    +'<div style="position:absolute;top:calc(env(safe-area-inset-top,0px) + 14px);left:14px;z-index:2;font-family:\'Bebas Neue\',sans-serif;letter-spacing:2px;color:#fff;font-size:1.1rem;text-shadow:0 1px 4px #000">DEINE STRECKE</div>';
+    +'<div style="position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);left:12px;z-index:2;font-family:\'Bebas Neue\',sans-serif;letter-spacing:2px;font-size:1.05rem;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:12px;padding:8px 14px">DEINE STRECKE</div>';
   document.body.appendChild(ov);
   let rm=null;
   document.getElementById('routeMapClose').onclick=()=>{try{rm&&rm.remove();}catch(e){}ov.remove();};
   const ll=rec.path.map(p=>[p[0],p[1]]).filter(p=>isFinite(p[0])&&isFinite(p[1]));
   try{
-    rm=L.map('routeMapDiv',{zoomControl:true,attributionControl:false});
-    L.polyline(ll,{color:'#000',weight:8,opacity:.35,lineCap:'round',lineJoin:'round'}).addTo(rm);
-    L.polyline(ll,{color:userColor||'#e8ff47',weight:4.5,opacity:.95,lineCap:'round',lineJoin:'round'}).addTo(rm);
+    /* Zoom-Tasten nach unten rechts: oben links lagen sie unter der Statusleiste. */
+    rm=L.map('routeMapDiv',{zoomControl:false,attributionControl:false});
+    L.control.zoom({position:'bottomright'}).addTo(rm);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{}).addTo(rm);
+    const col=_safeColor(userColor);
+    const grp=L.featureGroup();
+    /* Die eroberten Hexagone (H3, Res 10) unter die Strecke legen … */
+    (Array.isArray(rec.cells)?rec.cells:[]).forEach(c=>{try{
+      const b=window.h3&&window.h3.cellToBoundary&&window.h3.cellToBoundary(c,false);
+      if(b&&b.length)L.polygon(b,{color:col,weight:1.5,opacity:.9,fillColor:col,fillOpacity:.3,lineJoin:'round'}).addTo(grp);
+    }catch(e){}});
+    /* … und die gelaufene Strecke darüber, mit dunklem Saum zur Abgrenzung. */
+    L.polyline(ll,{color:'#000',weight:8,opacity:.35,lineCap:'round',lineJoin:'round'}).addTo(grp);
+    L.polyline(ll,{color:col,weight:4.5,opacity:.95,lineCap:'round',lineJoin:'round'}).addTo(grp);
     // Bewusst ohne Start-/Zielmarkierung (verrät Wohnort bzw. Ziel)
-    rm.fitBounds(ll,{padding:[50,50]});
-    setTimeout(()=>{try{rm.invalidateSize();rm.fitBounds(ll,{padding:[50,50]});}catch(e){}},120);
+    grp.addTo(rm);
+    const fit=()=>{try{
+      rm.invalidateSize();
+      const b=grp.getBounds();
+      if(b&&b.isValid())rm.fitBounds(b,{padding:[50,50]});else rm.fitBounds(ll,{padding:[50,50]});
+    }catch(e){}};
+    fit();setTimeout(fit,150);
   }catch(e){toast('Karte konnte nicht geladen werden');}
 }
 /* Lauf eines anderen (Follower) als Hexagone auf der leeren Karte — genau wie
