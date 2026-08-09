@@ -195,11 +195,22 @@ body.onboarding-active{background:#000}
 .ob-oauth-btn:disabled{opacity:.5;pointer-events:none}
 .ob-oauth-btn i{font-size:1rem}
 /* GPS consent modal */
-#gpsConsentModal{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:3500;display:flex;align-items:center;justify-content:center;padding:20px}
+#gpsConsentModal,#fairPlayModal{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:3500;display:flex;align-items:center;justify-content:center;padding:20px}
 .consent-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;max-width:340px;width:100%;text-align:center}
 .consent-title{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:1px;color:var(--primary);margin-bottom:10px}
 .consent-body{font-size:.78rem;color:var(--muted);line-height:1.6;margin-bottom:18px;text-align:left}
 .consent-btns{display:flex;gap:8px}
+/* Ankreuzfeld „nicht mehr anzeigen" im Fair-Play-Hinweis */
+.fp-check{display:flex;align-items:center;gap:10px;cursor:pointer;text-align:left;
+  background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:11px 12px;margin-bottom:14px;
+  font-size:.74rem;color:var(--muted);-webkit-user-select:none;user-select:none}
+.fp-box{width:20px;height:20px;flex-shrink:0;border-radius:6px;border:2px solid var(--border);
+  display:flex;align-items:center;justify-content:center;font-size:.72rem;color:var(--bg);
+  background:transparent;transition:background var(--motion-base),border-color var(--motion-base)}
+.fp-check.on .fp-box{background:var(--primary);border-color:var(--primary)}
+.fp-check.on{color:var(--text)}
+.fp-rules{margin:0 0 4px;padding-left:18px}
+.fp-rules li{margin-bottom:5px}
 /* Impressum modal */
 #impressumModal{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:3500;align-items:center;justify-content:center;padding:20px;display:none}
 .impressum-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;max-width:360px;width:100%;font-size:.8rem;color:var(--muted);line-height:1.8}
@@ -1292,6 +1303,36 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
   </div>
 </div>
 
+<!-- Fair-Play-Hinweis vor dem Laufstart -->
+<div id="fairPlayModal" style="display:none">
+  <div class="consent-card">
+    <div class="consent-title">🏁 Lauf starten</div>
+    <div class="consent-body">
+      Gleich beginnt die Aufzeichnung: Dein Weg wird per GPS verfolgt, und am Ende
+      werden daraus die Felder berechnet, die du eroberst.<br><br>
+      <b>Fair bleiben</b>
+      <ul class="fp-rules">
+        <li>Nur aus eigener Kraft — zu Fuß. Fahrrad, Auto, Bus oder Bahn zählen nicht.</li>
+        <li>Der Server prüft jeden Lauf auf Tempo und Plausibilität. Unrealistische Läufe werden verworfen — Punkte und Gebiete gibt es dafür nicht.</li>
+        <li>Manipulierte Standortdaten führen zum Ausschluss.</li>
+      </ul>
+      <b>Sicher bleiben</b>
+      <ul class="fp-rules">
+        <li>Achte auf den Verkehr und deine Umgebung, nicht auf das Display.</li>
+        <li>Es bleibt ein Spiel: Kein Gebiet ist ein Risiko wert.</li>
+      </ul>
+    </div>
+    <div class="fp-check" id="fpDontShow" role="checkbox" aria-checked="false" tabindex="0">
+      <span class="fp-box" id="fpBox"></span>
+      <span>Diesen Hinweis nicht mehr anzeigen</span>
+    </div>
+    <div class="consent-btns">
+      <button class="btn" id="fpCancelBtn" style="flex:1;border-color:var(--border);color:var(--muted)">Abbrechen</button>
+      <button class="btn btn-p" id="fpStartBtn" style="flex:2">Lauf starten</button>
+    </div>
+  </div>
+</div>
+
 <!-- Impressum-Modal -->
 <!-- TODO vor Beta-Launch: echten Namen/Firmenname + Adresse eintragen (§5 TMG, Pflichtangabe) -->
 <div id="impressumModal">
@@ -1817,9 +1858,7 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
     <!-- Strecke als H3-Hexagone (Start grün, Ziel rot) -->
     <div id="postRoute" style="display:none;margin-bottom:14px">
       <div id="postRouteMap" style="width:100%;height:200px;border-radius:14px;border:1px solid var(--border);overflow:hidden;background:var(--bg2)"></div>
-      <div style="display:flex;align-items:center;gap:14px;margin-top:7px;font-size:.62rem;color:var(--muted)">
-        <span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block"></span>Start</span>
-        <span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block"></span>Ziel</span>
+      <div style="display:flex;align-items:center;margin-top:7px;font-size:.62rem;color:var(--muted)">
         <span id="postRouteZones" style="margin-left:auto;color:var(--primary);font-weight:700"></span>
       </div>
     </div>
@@ -2282,7 +2321,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v220';
+const APP_VERSION='v221';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3305,8 +3344,10 @@ function loadNotifs(){
   try{updateNotifBadge();}catch(e){}try{renderNotifPanel();}catch(e){}
 }
 window.loadNotifs=loadNotifs;
-function addNotif(icon, text){
-  notifications.unshift({id:Date.now(),icon,text,time:Date.now(),read:false});
+/* action (optional): {type,arg} — macht die Benachrichtigung antippbar,
+   siehe runNotifAction(). */
+function addNotif(icon, text, action){
+  notifications.unshift({id:Date.now(),icon,text,time:Date.now(),read:false,action:action||null});
   if(notifications.length>50)notifications=notifications.slice(0,50);
   updateNotifBadge();saveNotifs();
 }
@@ -3320,10 +3361,138 @@ function renderNotifPanel(){
   $('notifList').innerHTML=notifications.length?notifications.map(n=>{
     const d=new Date(n.time);const diff=Math.round((Date.now()-n.time)/60000);
     const t=diff<1?'gerade':diff<60?`${diff} Min.`:diff<1440?`${Math.floor(diff/60)} Std.`:`${d.getDate()}. ${MONTHS[d.getMonth()]}`;
-    return`<div class="notif-row${n.read?'':' unread'}" onclick="window.markNotifRead(${n.id})"><span class="notif-icon">${esc(n.icon)}</span><span class="notif-text">${esc(n.text)}</span><span class="notif-time">${t}</span></div>`;
+    const arrow=n.action?'<span class="notif-time" style="color:var(--primary)">›</span>':'';
+    return`<div class="notif-row${n.read?'':' unread'}" onclick="window.markNotifRead(${n.id})"><span class="notif-icon">${esc(n.icon)}</span><span class="notif-text">${esc(n.text)}</span><span class="notif-time">${t}</span>${arrow}</div>`;
   }).join(''):'<div style="padding:20px;text-align:center;color:var(--muted);font-size:.8rem">Keine Benachrichtigungen</div>';
 }
-window.markNotifRead=function(id){const n=notifications.find(n=>n.id===id);if(n)n.read=true;updateNotifBadge();renderNotifPanel();saveNotifs();};
+window.markNotifRead=function(id){
+  const n=notifications.find(n=>n.id===id);
+  if(n)n.read=true;
+  updateNotifBadge();renderNotifPanel();saveNotifs();
+  if(n&&n.action)runNotifAction(n.action);
+};
+/* Antippbare Benachrichtigungen: aktuell nur der Wochenrückblick. */
+function runNotifAction(a){
+  if(!a||!a.type)return;
+  if(a.type==='weekreview'){
+    document.getElementById('notifPanel')?.classList.remove('open');
+    showWeekReview(a.arg);
+  }
+}
+
+/* ═══ WOCHENRÜCKBLICK ═══
+   Kalenderwoche (Mo–So). Nach Wochenende einmalig eine antippbare
+   Benachrichtigung; der Rückblick selbst wird bei jedem Öffnen frisch aus
+   history gerechnet, damit nichts doppelt gespeichert wird. */
+function _weekStart(d){
+  const x=new Date(d); x.setHours(0,0,0,0);
+  const wd=(x.getDay()+6)%7;      // Mo=0 … So=6
+  x.setDate(x.getDate()-wd);
+  return x;
+}
+function _weekKey(d){
+  const s=_weekStart(d);
+  return s.getFullYear()+'-'+String(s.getMonth()+1).padStart(2,'0')+'-'+String(s.getDate()).padStart(2,'0');
+}
+function _weekStatsFor(key){
+  const start=new Date(key+'T00:00:00');
+  if(isNaN(start))return null;
+  const end=new Date(start); end.setDate(end.getDate()+7);
+  const a=start.getTime(), b=end.getTime();
+  const runs=(history||[]).filter(r=>r&&r.date>=a&&r.date<b);
+  const s={key,start,end,runs:runs.length,km:0,secs:0,zones:0,xp:0,elev:0,bestPace:null,longest:0,days:new Set()};
+  runs.forEach(r=>{
+    s.km+=(r.distance||0)/1000;
+    s.secs+=(r.duration||0);
+    s.zones+=Array.isArray(r.cells)?r.cells.length:0;
+    s.xp+=(r.pts||0);
+    s.elev+=(r.elevation||0);
+    if((r.distance||0)>s.longest)s.longest=r.distance||0;
+    if(r.distance>=400&&r.duration>0){
+      const p=r.duration/60/(r.distance/1000);
+      if(s.bestPace===null||p<s.bestPace)s.bestPace=p;
+    }
+    s.days.add(new Date(r.date).toDateString());
+  });
+  s.activeDays=s.days.size;
+  return s;
+}
+function _fmtWeekRange(s){
+  const e=new Date(s.end); e.setDate(e.getDate()-1);
+  const f=d=>d.getDate()+'.'+(d.getMonth()+1)+'.';
+  return f(s.start)+'–'+f(e)+e.getFullYear();
+}
+/* Beim Start prüfen: ist eine Woche vorbei, in der gelaufen wurde? */
+function checkWeekReview(){
+  try{
+    const nowKey=_weekKey(new Date());
+    const prev=new Date(); prev.setDate(prev.getDate()-7);
+    const prevKey=_weekKey(prev);
+    if(prevKey===nowKey)return;
+    const doneKey='rc_weekreview_'+(userId||'anon');
+    let done=[];
+    try{done=JSON.parse(localStorage.getItem(doneKey)||'[]')||[];}catch(e){done=[];}
+    if(done.includes(prevKey))return;
+    const s=_weekStatsFor(prevKey);
+    if(!s||!s.runs)return;               // ohne Läufe kein Rückblick
+    done.push(prevKey);
+    while(done.length>12)done.shift();
+    localStorage.setItem(doneKey,JSON.stringify(done));
+    addNotif('📅','Dein Wochenrückblick ist da: '+s.runs+(s.runs===1?' Lauf':' Läufe')+' · '+_nf(s.km,1)+' km',
+             {type:'weekreview',arg:prevKey});
+  }catch(e){}
+}
+window.showWeekReview=function(key){
+  const s=_weekStatsFor(key||_weekKey(new Date(Date.now()-7*864e5)));
+  if(!s){toast('Kein Rückblick verfügbar');return;}
+  const pv=new Date(s.start); pv.setDate(pv.getDate()-7);
+  const prev=_weekStatsFor(_weekKey(pv));
+  const delta=(cur,old,unit,dp)=>{
+    if(!prev||!prev.runs)return '';
+    const d=cur-old;
+    if(Math.abs(d)<(dp?0.05:0.5))return '<span style="color:var(--muted)">±0</span>';
+    const up=d>0;
+    return `<span style="color:${up?'var(--green)':'var(--muted)'}">${up?'▲':'▼'} ${_nf(Math.abs(d),dp||0)}${unit}</span>`;
+  };
+  document.getElementById('weekReviewOv')?.remove();
+  const ov=document.createElement('div');ov.id='weekReviewOv';
+  ov.style.cssText='position:fixed;inset:0;z-index:9700;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center';
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+  const tile=(v,l,d)=>`<div class="stat-card"><div class="sv">${v}</div><div class="sl">${l}</div>${d?`<div style="font-size:.58rem;margin-top:3px">${d}</div>`:''}</div>`;
+  const pace=s.bestPace!==null?(Math.floor(s.bestPace)+':'+String(Math.round((s.bestPace%1)*60)).padStart(2,'0')):'–';
+  ov.innerHTML=`<div style="width:100%;max-width:480px;max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--card);border-radius:24px 24px 0 0;padding:0 0 max(env(safe-area-inset-bottom),16px)">
+    <div style="position:sticky;top:0;background:var(--card);z-index:2;display:flex;align-items:center;gap:12px;padding:18px 18px 12px;border-bottom:1px solid var(--border)">
+      <div style="font-size:1.7rem">📅</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.35rem;letter-spacing:.5px">WOCHENRÜCKBLICK</div>
+        <div style="font-size:.64rem;color:var(--muted);margin-top:2px">${esc(_fmtWeekRange(s))}</div>
+      </div>
+      <button onclick="document.getElementById('weekReviewOv')?.remove()" style="flex-shrink:0;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:11px;padding:6px 12px;font-size:.95rem;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:14px 18px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        ${tile(_nf(s.km,1),'Kilometer',delta(s.km,prev?prev.km:0,' km',1))}
+        ${tile(fmtTime(s.secs),'Laufzeit','')}
+        ${tile(s.runs,'Läufe',delta(s.runs,prev?prev.runs:0,''))}
+        ${tile(s.zones.toLocaleString('de-DE'),'Zonen',delta(s.zones,prev?prev.zones:0,''))}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+        ${tile(pace,'Beste Pace /km','')}
+        ${tile('+'+s.xp.toLocaleString('de-DE'),'XP',delta(s.xp,prev?prev.xp:0,''))}
+        ${tile(fmtDist(s.longest),'Längster Lauf','')}
+        ${tile(s.activeDays+'/7','Aktive Tage','')}
+      </div>
+      <div style="font-size:.72rem;color:var(--muted);line-height:1.5;background:var(--bg2);border-radius:12px;padding:12px">
+        ${prev&&prev.runs
+          ? (s.km>prev.km
+              ? '💪 Stärker als die Woche davor — weiter so.'
+              : (s.km>0?'Diese Woche etwas ruhiger. Auch Erholung gehört dazu.':''))
+          : 'Deine erste ausgewertete Woche — ab jetzt siehst du hier den Vergleich.'}
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+};
 
 /* ── DAILY CHALLENGES ── */
 const CHAL_POOL=[
@@ -3836,6 +4005,7 @@ window.showFollowListPopup=function(tab){
 function checkSeasonRollover(){
   if(seasonChecked)return;seasonChecked=true;
   try{settleSeasonWins();}catch(e){} // Saison-Orden abrechnen + fälschlich vergebene (laufender Monat) entfernen
+  try{checkWeekReview();}catch(e){}  // Wochenrückblick, sobald eine Woche vorbei ist
   try{settleSeasonWinsServer();}catch(e){} // serverseitige (autoritative) Abrechnung, async
   try{checkBirthdayShield();}catch(e){} // Geburtstags-Gebietsschutz
   try{
@@ -6486,7 +6656,7 @@ function calcKcal(m,s){const spd=(m/1000)/(s/3600),met=spd<8?6:spd>12?12:8;retur
 /* MINI-MAP */
 /* Zeichnet die H3-Hexagone eines Laufs (aus runs.cells) formtreu in ein Canvas.
    Grobkörnige Zellen (Res 10) statt exakter Route -> Wohnort-schonend. */
-function drawHexCells(canvas,cells,pathPts){
+function drawHexCells(canvas,cells){
   if(!canvas||!window.h3||!window.h3.cellToBoundary||!Array.isArray(cells)||!cells.length)return false;
   const polys=[];
   for(const c of cells){try{const b=window.h3.cellToBoundary(c,false);if(b&&b.length)polys.push(b);}catch(e){}}
@@ -6511,19 +6681,6 @@ function drawHexCells(canvas,cells,pathPts){
     ctx.globalAlpha=0.9;ctx.strokeStyle=pCol;ctx.stroke();
   });
   ctx.globalAlpha=1;
-  /* Optional: Start-/Zielpunkt markieren (gleiche Projektion wie die Hexagone) */
-  if(Array.isArray(pathPts)&&pathPts.length>=2){
-    const dot=(p,fill)=>{
-      if(!p||p[0]==null||p[1]==null)return;
-      const x=tx(p[1]),y=ty(p[0]);
-      ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);
-      ctx.fillStyle=fill;ctx.fill();
-      ctx.lineWidth=2;ctx.strokeStyle='#fff';ctx.stroke();
-    };
-    dot(pathPts[0],'#22c55e');                  // Start
-    dot(pathPts[pathPts.length-1],'#ef4444');   // Ziel
-    ctx.lineWidth=1;
-  }
   return true;
 }
 function drawMiniMap(canvas,pts){
@@ -6565,11 +6722,8 @@ function drawMiniMapAnimated(canvas,pts,onDone){
     ctx.fillStyle=light?'#EDE7E4':'#0d3d2c';ctx.fillRect(0,0,W,H);
     ctx.strokeStyle=pCol;ctx.lineWidth=2.5;ctx.lineCap='round';ctx.lineJoin='round';
     ctx.beginPath();pts.slice(0,count).forEach((p,i)=>i===0?ctx.moveTo(tx(p[1]),ty(p[0])):ctx.lineTo(tx(p[1]),ty(p[0])));ctx.stroke();
-    ctx.fillStyle='#10b981';ctx.beginPath();ctx.arc(tx(pts[0][1]),ty(pts[0][0]),3.5,0,Math.PI*2);ctx.fill();
-    if(t>=1){
-      ctx.fillStyle=pCol;ctx.beginPath();ctx.arc(tx(pts[pts.length-1][1]),ty(pts[pts.length-1][0]),3.5,0,Math.PI*2);ctx.fill();
-      onDone?.();return;
-    }
+    /* Bewusst ohne Start-/Zielpunkt (verrät Wohnort bzw. Ziel) */
+    if(t>=1){onDone?.();return;}
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
@@ -6579,6 +6733,7 @@ function drawMiniMapAnimated(canvas,pts,onDone){
 function startRun(){
   if(isRunning)return;
   if(localStorage.getItem('rc_gps_consent')!=='1'){showGpsConsent(startRun);return;}
+  if(localStorage.getItem('rc_fairplay_ack')!=='1'){showFairPlayNotice(startRun);return;}
   isRunning=true;isPaused=false;beep(440);
   /* Der START-Klick ist die Nutzergeste, die iOS für Sprachausgabe verlangt. */
   _unlockSpeech();
@@ -7222,10 +7377,7 @@ function buildPostRouteMap(cells,ll){
     /* Ohne Zellen (sehr kurzer Lauf): wenigstens die Linie zeigen */
     if(!grp.getLayers().length&&ll&&ll.length>=2)
       L.polyline(ll,{color:col,weight:4,opacity:.95,lineCap:'round',lineJoin:'round'}).addTo(grp);
-    if(ll&&ll.length>=2){
-      L.circleMarker(ll[0],{radius:6,color:'#fff',weight:2,fillColor:'#22c55e',fillOpacity:1}).addTo(grp);
-      L.circleMarker(ll[ll.length-1],{radius:6,color:'#fff',weight:2,fillColor:'#ef4444',fillOpacity:1}).addTo(grp);
-    }
+    /* Bewusst ohne Start-/Zielmarkierung: die verraten Wohnort bzw. Ziel. */
     grp.addTo(_postMap);
     const fit=()=>{try{
       _postMap.invalidateSize();
@@ -7255,9 +7407,7 @@ window.showRouteOnMap=function(rec){
     rm=L.map('routeMapDiv',{zoomControl:true,attributionControl:false});
     L.polyline(ll,{color:'#000',weight:8,opacity:.35,lineCap:'round',lineJoin:'round'}).addTo(rm);
     L.polyline(ll,{color:userColor||'#e8ff47',weight:4.5,opacity:.95,lineCap:'round',lineJoin:'round'}).addTo(rm);
-    // Start/Ziel-Marker
-    L.circleMarker(ll[0],{radius:6,color:'#10b981',fillColor:'#10b981',fillOpacity:1,weight:2}).addTo(rm);
-    L.circleMarker(ll[ll.length-1],{radius:6,color:'#ff4d6d',fillColor:'#ff4d6d',fillOpacity:1,weight:2}).addTo(rm);
+    // Bewusst ohne Start-/Zielmarkierung (verrät Wohnort bzw. Ziel)
     rm.fitBounds(ll,{padding:[50,50]});
     setTimeout(()=>{try{rm.invalidateSize();rm.fitBounds(ll,{padding:[50,50]});}catch(e){}},120);
   }catch(e){toast('Karte konnte nicht geladen werden');}
@@ -10160,6 +10310,27 @@ function showOAuthProfileSetup(user){
   window.showObState('obOAuthSetup');
 }
 
+/* Fair-Play-Hinweis vor dem Laufstart. Die Auswahl „nicht mehr anzeigen" ist
+   eine Geräte-Einstellung (nur localStorage) und wird erst beim Bestätigen
+   gespeichert — wer abbricht, sieht den Hinweis beim nächsten Mal wieder. */
+function showFairPlayNotice(onAccept){
+  const modal=$('fairPlayModal');
+  if(!modal){if(typeof onAccept==='function')onAccept();return;} // ohne Markup nicht blockieren
+  let dontShow=false;
+  const row=$('fpDontShow'),box=$('fpBox');
+  const paint=()=>{row.classList.toggle('on',dontShow);box.textContent=dontShow?'✓':'';row.setAttribute('aria-checked',dontShow?'true':'false');};
+  paint();
+  const toggle=()=>{dontShow=!dontShow;paint();};
+  row.onclick=toggle;
+  row.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();}};
+  modal.style.display='flex';
+  $('fpStartBtn').onclick=()=>{
+    if(dontShow)localStorage.setItem('rc_fairplay_ack','1');
+    modal.style.display='none';
+    if(typeof onAccept==='function')onAccept();
+  };
+  $('fpCancelBtn').onclick=()=>{modal.style.display='none';};
+}
 function showGpsConsent(onAccept){
   const modal=$('gpsConsentModal');
   if(!modal)return;
