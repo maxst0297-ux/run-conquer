@@ -384,6 +384,28 @@ ok('botAttack: Schwächung floored bei 1', (()=>{const r=botAttack(3,50);return 
   ok('Gebiets-Schutz: geschütztes Gebiet NICHT erobert', shielded.deletes.length === 0 && !shielded.creates.some(c => !c.neutral) && !!ev, 'deletes=' + shielded.deletes.length);
 }
 
+// ===== Sperrzeit: frisch erobertes Gebiet ist kurz unangreifbar =====
+{
+  const base = { userId: uid, runCells: new Set(territory), enclosed: new Set(), distanceKm: 6, paceKmh: 16 };
+  // Gegenprobe: ohne Sperre wird das schwache Gebiet erobert.
+  const open = eng.resolveRun({ ...base, territories: [{ ...enemyT, defense: 30, cells: new Set(territory) }] });
+  ok('Sperr-Gegenprobe: ungesperrt -> erobert', open.deletes.includes('T1'));
+  // Mit Sperre: prallt ab, eigenes Ereignis (nicht 'shielded').
+  const locked = eng.resolveRun({ ...base, territories: [{ ...enemyT, defense: 30, locked: true, cells: new Set(territory) }] });
+  ok('Sperrzeit: gesperrtes Gebiet NICHT erobert',
+     locked.deletes.length === 0 && !locked.creates.some(c => !c.neutral) && !!locked.events.find(e => e.type === 'locked'),
+     'deletes=' + locked.deletes.length);
+  ok('Sperrzeit: meldet "locked", nicht "shielded"',
+     !locked.events.find(e => e.type === 'shielded'));
+  // Auch der Vorbesitzer bekommt keinen Vorteil: dieselbe Sperre gilt für jeden
+  // Angreifer — hier ein anderer Angreifer als oben.
+  const other = eng.resolveRun({ ...base, userId: 'U-ANDERS', territories: [{ ...enemyT, defense: 30, locked: true, cells: new Set(territory) }] });
+  ok('Sperrzeit: gilt auch für einen anderen Angreifer', other.deletes.length === 0 && !!other.events.find(e => e.type === 'locked'));
+  // Eigenes Gebiet: die Sperre darf den Verteidigungsaufbau NICHT blockieren.
+  const mine = eng.resolveRun({ ...base, territories: [{ id: 'T9', owner: uid, defense: 40, locked: true, cells: new Set(territory) }] });
+  ok('Sperrzeit: eigener Verteidigungsaufbau bleibt möglich', mine.updates.some(u => u.own));
+}
+
 // ===== #44 — Tempo je Hexagon: pathToCellPace + gebietsabhängige Angriffskraft =====
 {
   // pathToCells bleibt abwärtskompatibel ein Set.

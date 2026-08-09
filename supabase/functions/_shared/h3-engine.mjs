@@ -549,6 +549,10 @@ export function createEngine(h3) {
       // angegriffen/erobert werden. Der Schutz wird pro Gebiet als t.shielded=true
       // hereingereicht (in conquer aus profiles.shield_until der Besitzer bestimmt).
       if (t.shielded) { out.events.push({ type: 'shielded', id: t.id }); continue; }
+      // Sperrzeit: frisch erobertes Gebiet ist kurz unangreifbar. Verhindert
+      // Ping-Pong an Gebietsgrenzen — gilt für ALLE, auch den Vorbesitzer und
+      // die Bots (t.locked wird in conquer aus locked_until bestimmt).
+      if (t.locked) { out.events.push({ type: 'locked', id: t.id }); continue; }
       // #44 — Angriffspunkte für DIESES Gebiet aus dem lokalen Tempo (Sprint durch
       // ein Gebiet trifft härter als Trab durch ein anderes). Boost bleibt aktiv.
       const tAtk = runValue(distanceKm, localPace(cells), 'atk') * boostMul;

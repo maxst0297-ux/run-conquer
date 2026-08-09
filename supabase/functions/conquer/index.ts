@@ -131,6 +131,9 @@ Deno.serve(async (req) => {
           defense: engine.decayedDefense(t.defense, Date.parse(t.updated_at || t.created_at) || nowMs, nowMs, rate),
           dailyAdded: t.daily_defense_added, lastDay: t.last_defense_day,
           shielded: !!shieldByOwner[t.owner],
+          // Sperrzeit nach einer Eroberung (verhindert Ping-Pong an den Grenzen).
+          // Fehlt die Spalte noch, ist locked_until undefined -> keine Sperre.
+          locked: (Date.parse(t.locked_until || '') || 0) > nowMs,
           today, cells: byT[t.id] || new Set(),
         });
       }
@@ -163,10 +166,20 @@ Deno.serve(async (req) => {
         if (u.setCells.length) await svc.from('h3_cells').insert(u.setCells.map((c: string) => ({ cell: c, territory_id: u.id })));
       }
     }
+    // Frisch beanspruchte/eroberte Gebiete sind kurz gesperrt — für jeden, auch
+    // den Vorbesitzer und die Bots. Ohne die Spalte scheitert der Insert, deshalb
+    // wird beim ersten Fehlschlag ohne locked_until weitergearbeitet.
+    const LOCK_MS = 20 * 60000;
+    const lockedUntil = new Date(nowMs + LOCK_MS).toISOString();
     for (const cr of res.creates) {
-      const { data: nt } = await svc.from('h3_territories')
-        .insert({ owner: cr.owner, owner_name: playerName, owner_color: userColor, owner_team: userTeam, defense: cr.defense, last_captured_at: now })
+      const baseRow: any = { owner: cr.owner, owner_name: playerName, owner_color: userColor, owner_team: userTeam, defense: cr.defense, last_captured_at: now };
+      let { data: nt } = await svc.from('h3_territories')
+        .insert({ ...baseRow, locked_until: lockedUntil })
         .select('id').single();
+      if (!nt) {
+        const retry = await svc.from('h3_territories').insert(baseRow).select('id').single();
+        nt = retry.data;
+      }
       if (nt && cr.cells.length)
         await svc.from('h3_cells').upsert(cr.cells.map((c: string) => ({ cell: c, territory_id: nt.id })), { onConflict: 'cell' });
     }

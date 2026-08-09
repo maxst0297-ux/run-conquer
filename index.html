@@ -2321,7 +2321,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v221';
+const APP_VERSION='v222';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3374,10 +3374,32 @@ window.markNotifRead=function(id){
 /* Antippbare Benachrichtigungen: aktuell nur der Wochenrückblick. */
 function runNotifAction(a){
   if(!a||!a.type)return;
-  if(a.type==='weekreview'){
-    document.getElementById('notifPanel')?.classList.remove('open');
-    showWeekReview(a.arg);
-  }
+  document.getElementById('notifPanel')?.classList.remove('open');
+  if(a.type==='weekreview')showWeekReview(a.arg);
+  else if(a.type==='flyto'&&typeof window.flyTo==='function')window.flyTo(a.arg);
+}
+
+/* ═══ ERTRAG GEHALTENER GEBIETE ═══
+   Gebiete werfen pro Stunde Punkte ab — degressiv nach Anzahl und nur, wenn man
+   in den letzten 72 h gelaufen ist. Gerechnet wird serverseitig
+   (rc_claim_hold_income), der Client holt den Betrag nur ab und zeigt ihn an.
+   Fehlt das SQL noch, scheitert der Aufruf leise. */
+async function claimHoldIncome(){
+  if(!sb||!userId||userId==='user')return 0;
+  try{
+    const{data,error}=await sb.rpc('rc_claim_hold_income');
+    if(error||!data||!data.ok)return 0;
+    const pts=Number(data.points)||0;
+    if(pts<=0)return 0;
+    points+=pts;
+    try{save();}catch(e){}
+    try{updateStatsUI();}catch(e){}
+    const cells=Number(data.cells)||0;
+    addNotif('🏰','Deine Gebiete haben +'+pts.toLocaleString('de-DE')+' Punkte abgeworfen'
+      +(cells?' ('+cells.toLocaleString('de-DE')+' Zellen)':''));
+    toast('🏰 +'+pts.toLocaleString('de-DE')+' Punkte aus deinen Gebieten');
+    return pts;
+  }catch(e){return 0;}
 }
 
 /* ═══ WOCHENRÜCKBLICK ═══
@@ -4006,6 +4028,7 @@ function checkSeasonRollover(){
   if(seasonChecked)return;seasonChecked=true;
   try{settleSeasonWins();}catch(e){} // Saison-Orden abrechnen + fälschlich vergebene (laufender Monat) entfernen
   try{checkWeekReview();}catch(e){}  // Wochenrückblick, sobald eine Woche vorbei ist
+  try{claimHoldIncome();}catch(e){}  // Ertrag der gehaltenen Gebiete abholen, async
   try{settleSeasonWinsServer();}catch(e){} // serverseitige (autoritative) Abrechnung, async
   try{checkBirthdayShield();}catch(e){} // Geburtstags-Gebietsschutz
   try{
@@ -6153,23 +6176,34 @@ async function loadH3Territories(){
    Lazy-Decay-Rechnung. Übersprungen, wenn eigener Gebiets-Schutz aktiv ist.
    Meldung als In-App-Toast + System-Benachrichtigung (feuert nur im Hintergrund
    und nur wenn der Nutzer Benachrichtigungen erlaubt hat). */
+const DECAY_WARN_HOURS=48;      // Vorwarnzeit: reicht für die Planung des nächsten Laufs
+const DECAY_WARN_COOLDOWN=20*3600000; // höchstens einmal am Tag warnen
 function checkDecayAlerts(){
   if(!userId||userId==='user')return;
   if(shieldUntil>Date.now())return; // eigene Gebiete gerade komplett geschützt
-  const THREAT_MIN=24*60; // Warnung ab „fällt in < 24 h"
-  let cnt=0,soonest=Infinity,soonestName='';
+  const key='rc_decaywarn_'+userId;
+  const last=parseInt(localStorage.getItem(key)||'0',10)||0;
+  if(Date.now()-last<DECAY_WARN_COOLDOWN)return; // nicht mehrmals täglich nerven
+  const THREAT_MIN=DECAY_WARN_HOURS*60;
+  let cnt=0,soonest=Infinity,soonestName='',soonestId=null;
   for(const t of (h3Territories||[])){
     if(t.owner!==userId)continue;
     const m=h3MinsToOne(t.defense,t.updated_at);
-    if(m>0 && m<THREAT_MIN){cnt++;if(m<soonest){soonest=m;soonestName=territoryName(t);}}
+    if(m>0 && m<THREAT_MIN){cnt++;if(m<soonest){soonest=m;soonestName=territoryName(t);soonestId=t.id;}}
   }
   if(!cnt)return;
+  localStorage.setItem(key,String(Date.now()));
   const hrs=Math.max(1,Math.round(soonest/60));
+  const when=hrs>=24?('~'+Math.round(hrs/24)+' Tag'+(Math.round(hrs/24)===1?'':'en')):('~'+hrs+' h');
   const body=cnt===1
-    ? `„${soonestName}" verfällt in ~${hrs} h – lauf vorbei und verteidige!`
-    : `${cnt} Gebiete verfallen bald (frühestes „${soonestName}" in ~${hrs} h) – lauf vorbei!`;
-  try{pushSystemNotif('⏳ Revier verfällt',body);}catch(e){}
-  toast('⏳ '+(cnt===1?'1 Gebiet droht':cnt+' Gebiete drohen')+' zu verfallen – lauf vorbei zum Verteidigen!');
+    ? `„${soonestName}" fällt in ${when}, wenn du nicht vorbeikommst.`
+    : `${cnt} Gebiete brauchen einen Kontrollgang – das erste („${soonestName}") fällt in ${when}.`;
+  /* Bleibt in den Benachrichtigungen stehen, statt nur kurz als Toast
+     aufzublitzen — antippen fliegt zum gefährdetsten Gebiet. */
+  try{addNotif('⏳',(cnt===1?'1 Gebiet':cnt+' Gebiete')+' drohen zu verfallen · frühestes in '+when,
+               soonestId?{type:'flyto',arg:String(soonestId)}:null);}catch(e){}
+  try{pushSystemNotif('⏳ Deine Grenzen bröckeln',body);}catch(e){}
+  toast('⏳ '+body);
 }
 /* #39 — Gebiets-Veränderungen seit dem letzten Besuch.
    Snapshot = wirksame (verfallene) Verteidigung je eigenem Gebiet + Zeitstempel.
@@ -7704,18 +7738,22 @@ function runNotesSummaryHTML(){
 }
 function runEventsSummaryHTML(){
   if(!_runEvents||!_runEvents.length)return '';
-  let conq=0,conqCells=0,claim=0,claimCells=0,def=0,defBuilt=0,atk=0,atkDmg=0;
+  let conq=0,conqCells=0,claim=0,claimCells=0,def=0,defBuilt=0,atk=0,atkDmg=0,locked=0;
   _runEvents.forEach(e=>{
     if(e.type==='conquered'||e.type==='cut'){conq++;conqCells+=e.cells||0;}
     else if(e.type==='neutral_claim'){claim++;claimCells+=e.cells||0;}
     else if(e.type==='defended'){def++;defBuilt+=e.built||0;}
     else if(e.type==='attacked'){atk++;atkDmg+=e.damage||0;}
+    else if(e.type==='locked'){locked++;}
   });
   const rows=[];
   if(conq)rows.push(['🔥','Erobert',conq+(conq===1?' Gebiet':' Gebiete'),'+'+conqCells+' Zellen','#ff4d6d']);
   if(claim)rows.push(['🗺️','Beansprucht',claim+(claim===1?' Gebiet':' Gebiete'),'+'+claimCells+' Zellen','var(--primary)']);
   if(def)rows.push(['🛡️','Verteidigt',def+'×','+'+defBuilt+' Verteidigung','#10b981']);
   if(atk)rows.push(['⚔️','Angegriffen',atk+'×','−'+atkDmg+' gegn. Verteidigung','#ff9f1c']);
+  // Frisch erobertes Gegnergebiet ist kurz gesperrt — erklärt, warum ein
+  // Angriff wirkungslos blieb, statt es kommentarlos zu verschlucken.
+  if(locked)rows.push(['⏱️','Noch gesperrt',locked+(locked===1?' Gebiet':' Gebiete'),'gerade erst erobert','var(--muted)']);
   if(!rows.length)return '';
   return `<div style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px">
     <div style="font-size:.6rem;font-weight:700;letter-spacing:1.5px;color:var(--primary);margin-bottom:8px">⚔️ LAUF-BILANZ</div>
