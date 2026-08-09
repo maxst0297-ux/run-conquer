@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
     const botIdSet = new Set(bots.map((b: any) => b.id));
     const randBot = () => bots[Math.floor(Math.random() * bots.length)];
 
-    const { data: trows } = await svc.from('h3_territories').select('id,owner,defense,updated_at,is_home_core');
+    const { data: trows } = await svc.from('h3_territories').select('id,owner,defense,updated_at,is_home_core,locked_until');
     if (!trows || !trows.length) return json({ ok: true, actions: [], note: 'empty world' });
     const { data: crows } = await svc.from('h3_cells').select('cell,territory_id');
 
@@ -125,7 +125,10 @@ Deno.serve(async (req) => {
       if (!anchorCells.length) continue;
       const doAttack = Math.random() < BOT_ATTACK_CHANCE;
 
-      if (doAttack && !botIdSet.has(anchor.owner) && !shielded.has(anchor.owner)) {
+      // Sperrzeit nach einer Eroberung gilt auch fuer Bots — sonst wirken sie
+      // wie Cheater, die die Regel umgehen.
+      const lockedNow = (Date.parse(anchor.locked_until || '') || 0) > nowMs;
+      if (doAttack && !botIdSet.has(anchor.owner) && !shielded.has(anchor.owner) && !lockedNow) {
         // Angriff auf ein Spielergebiet — mittlere Stärke, unabhängig vom Wert.
         // (Geschützte Spieler werden übersprungen.)
         const targetUid = anchor.owner; // Ziel-Spieler VOR der Übernahme merken
