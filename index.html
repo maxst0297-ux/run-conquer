@@ -2061,10 +2061,31 @@ const CFG={
   XP_7DAY:200,
   STREAK_MUL:1.1,
   // Level
-  LVL_XP:[0,500,1500,4000,10000,25000],
-  LVL_NAMES:['Neuling','Läufer','Entdecker','Gebietsherr','Stadtlegende','Herrscher'],
+  /* Level 1–100. Die ersten sechs Schwellen bleiben unverändert, damit niemand
+     durch die Erweiterung ein Level verliert. Ab Level 7 wächst der Bedarf
+     gleichmäßig statt sich zu verdoppeln — sonst wäre Level 100 unerreichbar.
+     Gesamt bis 100: rund 1,7 Mio. XP. */
+  LVL_XP:(function(){
+    const t=[0,500,1500,4000,10000,25000];
+    for(let lv=7;lv<=100;lv++)t[lv-1]=t[lv-2]+12000+(lv-7)*120;
+    return t;
+  })(),
+  /* Namen als Bänder statt 100 Einzelnamen: gilt jeweils ab dem genannten Level. */
+  LVL_TIERS:[
+    {min:1,name:'Neuling'},{min:2,name:'Läufer'},{min:3,name:'Entdecker'},
+    {min:4,name:'Gebietsherr'},{min:5,name:'Stadtlegende'},{min:6,name:'Herrscher'},
+    {min:8,name:'Bezwinger'},{min:12,name:'Eroberer'},{min:17,name:'Feldherr'},
+    {min:23,name:'Großeroberer'},{min:30,name:'Statthalter'},{min:38,name:'Vizekönig'},
+    {min:47,name:'König der Straßen'},{min:57,name:'Hochkönig'},{min:68,name:'Kaiser'},
+    {min:80,name:'Großkaiser'},{min:92,name:'Titan'},{min:100,name:'Unsterblicher'}
+  ],
   ATK_BONUS_LVL:.05,
   DEF_REGEN_LVL:.03,
+  /* Deckel für die ANZEIGE des Level-Bonus. Ohne ihn stünde bei Level 100
+     "+495 % Angriff". Die Werte entsprechen dem bisherigen Maximum (Level 6),
+     damit sich für heutige Spieler nichts ändert. */
+  ATK_BONUS_MAX:.25,
+  DEF_REGEN_MAX:.15,
   // Sonstiges
   ENERGY_MAX:3,ENERGY_BOOST_PTS:0.5,ENERGY_BOOST_ATK:0.3,
   HR_BASE:70,STEP_THR:12,STEP_INTERVAL:250,
@@ -2121,7 +2142,8 @@ const RULER_TIERS=[{min:0,name:'Neuling'},{min:1,name:'Besitzer'},{min:3,name:'B
 
 /* LEVEL */
 function getLevel(pts){for(let i=CFG.LVL_XP.length-1;i>=0;i--)if(pts>=CFG.LVL_XP[i])return i+1;return 1}
-function getLvlName(pts){return CFG.LVL_NAMES[Math.min(getLevel(pts)-1,CFG.LVL_NAMES.length-1)]}
+function lvlNameFor(lv){let n=CFG.LVL_TIERS[0].name;for(const t of CFG.LVL_TIERS){if(lv>=t.min)n=t.name;else break;}return n;}
+function getLvlName(pts){return lvlNameFor(getLevel(pts))}
 function getLvlProg(pts){const lv=getLevel(pts),cur=CFG.LVL_XP[lv-1]||0,nx=CFG.LVL_XP[lv]||CFG.LVL_XP[CFG.LVL_XP.length-1]+1;return{lv,name:getLvlName(pts),pct:Math.min(100,Math.round((pts-cur)/(nx-cur)*100)),xpLeft:Math.max(0,nx-pts)}}
 
 /* STATE */
@@ -2274,6 +2296,7 @@ function checkBirthdayShield(){
 }
 /* Monate, in denen die eigene Fraktion die meisten Punkte hatte ("YYYY-MM"). */
 let factionWins=[];
+let lvlRewardsGot=[];  // bereits vergebene Level-Belohnungen (gegen Doppelvergabe)
 /* Welche Fraktion hat den jeweiligen Monat gewonnen: {'2026-07':'fire', …}.
    Wird beim Abrechnen mitgeschrieben, damit der Orden auch nach einem
    Fraktionswechsel noch den richtigen Sieger nennt. */
@@ -2321,7 +2344,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v223';
+const APP_VERSION='v224';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2920,7 +2943,7 @@ function debounce(fn,w){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn
 const syncProfileDebounced=debounce(syncProfile,1000);
 
 /* PERSIST */
-function save(){localStateTs=Date.now();localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,energyWeek,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,lastRunDate,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered,registeredAt,starterQuestsDone,starterQuestFlags,heatPersonalOnly,dailyChallenges,dailyChalDate,chalStreak,lastChalDoneDate,dailyLoginDate,dailyLoginStreak,streakShields,terrShields,boostBollwerk,bollwerkArmed,recentQuoteIds,weeklyChals,weekChalKey,personalRecords,battlePassClaimed,bpClaimMigrated,totalRaids,totalBoosts,weeklyAchsDone,seasonXp,totalElevation,totalCuts,bestRank,natureVisited,localStateTs}));if(typeof syncProfileDebounced==='function')syncProfileDebounced();}
+function save(){localStateTs=Date.now();localStorage.setItem('rc_v4_'+userId,JSON.stringify({territories,points,energy,lastEnergyTs,energyWeek,history,quests,totalKm,totalConquered,totalDefended,achievements,streakDays,lastRunDate,stepsToday,capturedLandmarks,raids,revealedCells:[...revealedCells],totalDiscovered,registeredAt,starterQuestsDone,starterQuestFlags,heatPersonalOnly,dailyChallenges,dailyChalDate,chalStreak,lastChalDoneDate,dailyLoginDate,dailyLoginStreak,streakShields,terrShields,boostBollwerk,bollwerkArmed,recentQuoteIds,weeklyChals,weekChalKey,personalRecords,battlePassClaimed,bpClaimMigrated,totalRaids,totalBoosts,weeklyAchsDone,seasonXp,totalElevation,totalCuts,bestRank,natureVisited,lvlRewardsGot,localStateTs}));if(typeof syncProfileDebounced==='function')syncProfileDebounced();}
 /* Crash-resiliente Lauf-Persistenz: Pfad liegt sonst nur im RAM und ginge bei
    App-Kill/Crash mitten im Lauf komplett verloren. Wird alle ~12s gespiegelt,
    beim nächsten Boot per checkOrphanedRun() angeboten. */
@@ -2957,7 +2980,7 @@ function checkOrphanedRun(){
 function load(){
   try{
     const d=JSON.parse(localStorage.getItem('rc_v4_'+userId));
-    if(d){territories=d.territories||[];points=d.points||0;energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;lastRunDate=d.lastRunDate||'';stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;registeredAt=d.registeredAt||Date.now();starterQuestsDone=d.starterQuestsDone||[];starterQuestFlags=d.starterQuestFlags||{profileOpened:false};heatPersonalOnly=d.heatPersonalOnly||false;dailyChallenges=d.dailyChallenges||[];dailyChalDate=d.dailyChalDate||'';chalStreak=d.chalStreak||0;lastChalDoneDate=d.lastChalDoneDate||'';dailyLoginDate=d.dailyLoginDate||'';dailyLoginStreak=d.dailyLoginStreak||0;streakShields=d.streakShields||0;terrShields=d.terrShields||0;boostBollwerk=d.boostBollwerk||0;bollwerkArmed=!!d.bollwerkArmed;recentQuoteIds=d.recentQuoteIds||[];weeklyChals=d.weeklyChals||[];weekChalKey=d.weekChalKey||'';personalRecords=d.personalRecords||{};battlePassClaimed=d.battlePassClaimed||[];bpClaimMigrated=d.bpClaimMigrated||false;totalRaids=d.totalRaids||0;totalBoosts=d.totalBoosts||0;weeklyAchsDone=d.weeklyAchsDone||0;seasonXp=d.seasonXp||0;totalElevation=d.totalElevation||0;totalCuts=d.totalCuts||0;bestRank=(d.bestRank!=null?d.bestRank:null);natureVisited=d.natureVisited||[];localStateTs=d.localStateTs||0;/* invasions: serverseitig (rc_sync_breaches), nicht mehr aus localStorage */}
+    if(d){territories=d.territories||[];points=d.points||0;lvlRewardsGot=d.lvlRewardsGot||[];energy=d.energy??CFG.ENERGY_MAX;lastEnergyTs=d.lastEnergyTs||Date.now();energyWeek=d.energyWeek||'';history=d.history||[];quests=d.quests||[];totalKm=d.totalKm||0;totalConquered=d.totalConquered||0;totalDefended=d.totalDefended||0;achievements=d.achievements||[];streakDays=d.streakDays||0;lastRunDate=d.lastRunDate||'';stepsToday=d.stepsToday||0;capturedLandmarks=d.capturedLandmarks||[];raids=d.raids||[];revealedCells=new Set(d.revealedCells||[]);totalDiscovered=d.totalDiscovered||0;registeredAt=d.registeredAt||Date.now();starterQuestsDone=d.starterQuestsDone||[];starterQuestFlags=d.starterQuestFlags||{profileOpened:false};heatPersonalOnly=d.heatPersonalOnly||false;dailyChallenges=d.dailyChallenges||[];dailyChalDate=d.dailyChalDate||'';chalStreak=d.chalStreak||0;lastChalDoneDate=d.lastChalDoneDate||'';dailyLoginDate=d.dailyLoginDate||'';dailyLoginStreak=d.dailyLoginStreak||0;streakShields=d.streakShields||0;terrShields=d.terrShields||0;boostBollwerk=d.boostBollwerk||0;bollwerkArmed=!!d.bollwerkArmed;recentQuoteIds=d.recentQuoteIds||[];weeklyChals=d.weeklyChals||[];weekChalKey=d.weekChalKey||'';personalRecords=d.personalRecords||{};battlePassClaimed=d.battlePassClaimed||[];bpClaimMigrated=d.bpClaimMigrated||false;totalRaids=d.totalRaids||0;totalBoosts=d.totalBoosts||0;weeklyAchsDone=d.weeklyAchsDone||0;seasonXp=d.seasonXp||0;totalElevation=d.totalElevation||0;totalCuts=d.totalCuts||0;bestRank=(d.bestRank!=null?d.bestRank:null);natureVisited=d.natureVisited||[];localStateTs=d.localStateTs||0;/* invasions: serverseitig (rc_sync_breaches), nicht mehr aus localStorage */}
   }catch(e){logError('state_load',e);/* korrupter Blob -> Defaults; Cloud-Sync stellt wieder her */}
   // Rival territories werden nach erstem GPS-Fix generiert (locationfound)
   if(!quests.length)genQuests();
@@ -3539,7 +3562,7 @@ const WEEKLY_POOL=[
   {id:'wrun6',icon:'💪',desc:'6× diese Woche laufen',target:6,key:'runs',reward:400},
   {id:'wstrk',icon:'🗓️',desc:'3 Tage hintereinander laufen',target:3,key:'streak',reward:300},
 ];
-/* Saison-Pass-Belohnungen: je 1 pro Level, gleichmäßig verteilt. Banner & Marker
+/* Saison-Pass-Belohnungen: je 1 pro Stufe, gleichmäßig verteilt. Banner & Marker
    wurden entfernt (waren nicht spielwirksam); die restlichen Belohnungen sind
    lückenlos auf 18 Level neu verteilt. */
 const BATTLE_PASS_REWARDS=[
@@ -3562,7 +3585,7 @@ const BATTLE_PASS_REWARDS=[
   {lv:17,icon:'🛡️',name:'Gebiets-Schutz 24h',type:'terrshield',val:24},
   {lv:18,icon:'🏆',name:'Titel: Unaufhaltsam',type:'title',val:'Unaufhaltsam'},
 ];
-/* Saison-Pass: 18 Level, je 1 Belohnung. XP-Schwellen gleichmäßig verteilt und
+/* Saison-Pass: 18 Stufen, je 1 Belohnung. XP-Schwellen gleichmäßig verteilt und
    nach hinten steigend: Level 1–10 je 750 XP; ab Level 11 wird es teurer
    (Zuwachs = 750 + (lv-10)*150 XP). Max-Level (18) = 18.900 XP gesamt. */
 const SP_MAX_LV=18;
@@ -3648,6 +3671,44 @@ function renderDailyChallenges(){
     const valLbl=c.key==='distance'?((c.progress||0).toFixed(1)+'/'+c.target+' km'):c.key==='duration'?Math.floor((c.progress||0)/60)+'/'+Math.floor(c.target/60)+' min':(Math.floor(c.progress||0)+'/'+c.target);
     return`<div class="chal-card ${c.done?'done':''}"><span class="chal-icon">${c.done?'✅':c.icon}</span><div class="chal-info"><div class="chal-desc">${c.desc}</div><div style="font-size:.65rem;color:var(--muted);margin-bottom:4px">${valLbl}</div><div class="chal-bar"><div class="chal-fill" style="width:${p}%"></div></div></div><span class="chal-reward">${c.done?'✓':'+'+c.reward+' XP'}</span></div>`;
   }).join('');
+}
+
+/* ── LEVEL-BELOHNUNGEN ──
+   Bewusst zurückhaltend: alle 5 Level eine Kleinigkeit, alle 25 etwas mehr.
+   Nichts, was die Gebietsbalance verschiebt — die Boosts sind ohnehin gedeckelt.
+   Wird beim Aufstieg automatisch gutgeschrieben (kein Abhol-Klick nötig) und
+   über lvlRewardsGot gegen Doppelvergabe abgesichert. */
+function levelReward(lv){
+  if(lv%25===0)return{type:'bollwerk',icon:'🛡️',name:'Bollwerk-Boost'};
+  if(lv%10===0)return{type:'terrshield',val:24,icon:'🗺️',name:'Gebiets-Schutz (24 h)'};
+  if(lv%5===0) return{type:'energy',val:1,icon:'⚡',name:'Energie +1'};
+  return null;
+}
+function grantLevelRewards(fromLv,toLv){
+  const got=[];
+  for(let lv=Math.max(2,fromLv+1);lv<=toLv;lv++){
+    const rw=levelReward(lv);
+    if(!rw)continue;
+    if(lvlRewardsGot.includes(lv))continue;
+    lvlRewardsGot.push(lv);
+    try{
+      if(rw.type==='energy')energy=Math.min(CFG.ENERGY_MAX,energy+(rw.val||1));
+      else if(rw.type==='terrshield')grantTerritoryShield(rw.val||24,'');
+      else if(rw.type==='bollwerk'){
+        if((boostBollwerk||0)<3)boostBollwerk=(boostBollwerk||0)+1;
+        else awardXp(100,'lvl_bollwerk_overflow');
+      }
+      got.push(rw);
+    }catch(e){}
+  }
+  if(got.length){
+    try{save();}catch(e){}
+    try{updateBoostUI&&updateBoostUI();}catch(e){}
+    const txt=got.map(r=>r.icon+' '+r.name).join(' · ');
+    addNotif('🏆','Level '+toLv+' erreicht: '+txt);
+    setTimeout(()=>toast('🏆 Level-Belohnung: '+txt),2600);
+  }
+  return got;
 }
 
 /* ── LEVEL-UP ANIMATION ── */
@@ -7142,7 +7203,7 @@ async function finalizeRun(elapsed){
   setTimeout(triggerBotTick,1500); // Bots reagieren auf frisch eroberte Gebiete
   processSyncQueue(true);
   const lvAfter=getLevel(points);
-  if(lvAfter>lvBefore)setTimeout(()=>showLevelUp(lvAfter,getLvlName(points)),1800);
+  if(lvAfter>lvBefore){grantLevelRewards(lvBefore,lvAfter);setTimeout(()=>showLevelUp(lvAfter,getLvlName(points)),1800);}
 }
 function mkPolyFrom(pth,d){
   if(pth.length<2)return null;
@@ -8095,7 +8156,7 @@ async function importActivity(distM,durSecs,dateMs,path,source,avgHR){
   if(fullPath){
     showPostRun(rec);
     const lvAfter=getLevel(points);
-    if(lvAfter>lvBefore)setTimeout(()=>showLevelUp(lvAfter,getLvlName(points)),1800);
+    if(lvAfter>lvBefore){grantLevelRewards(lvBefore,lvAfter);setTimeout(()=>showLevelUp(lvAfter,getLvlName(points)),1800);}
   }else{
     toast('✅ Importiert · '+fmtDist(distM)+' · +'+totalPts+' Pts');
   }
@@ -10538,7 +10599,7 @@ function updateProfile(){
   const lvD=getLvlProg(points);
   $('pvLvLabel').textContent='Level '+lvD.lv+' · '+lvD.name;
   $('pvLvBar').style.width=lvD.pct+'%';
-  $('pvLvXpTxt').textContent=points+' XP · noch '+lvD.xpLeft+' bis Lv.'+(lvD.lv<CFG.LVL_NAMES.length?lvD.lv+1:'MAX');
+  $('pvLvXpTxt').textContent=points+' XP · noch '+lvD.xpLeft+' bis Lv.'+(lvD.lv<CFG.LVL_XP.length?lvD.lv+1:'MAX');
   const mine=territories.filter(t=>t.owner===userId);
   $('ps-km').textContent=totalKm.toFixed(1);$('ps-runs').textContent=history.length;$('ps-streak').textContent=streakDays+'🔥';$('ps-terr').textContent=mine.length;$('ps-pts').textContent=points;
   // Herrschertitel + Fraktion + Club-Badges
@@ -10589,7 +10650,7 @@ function updateProfile(){
       dsEl.style.display='none';
     }
   }
-  $('lvlBreakdown').innerHTML=`<div class="dominion-grid">${[['⚔️ Angriff','+'+Math.round((1+(lvD.lv-1)*CFG.ATK_BONUS_LVL-1)*100)+'%'],['🛡️ Verteidigung','+'+Math.round((1+(lvD.lv-1)*CFG.DEF_REGEN_LVL-1)*100)+'%'],['🔥 Streak',streakDays>0?streakDays+' Tage':'Inaktiv'],['⚡ Energie',energy+'/'+CFG.ENERGY_MAX]].map(([l,v])=>`<div class="dom-card"><div class="dom-val">${v}</div><div class="dom-lbl">${l}</div></div>`).join('')}</div>`;
+  $('lvlBreakdown').innerHTML=`<div class="dominion-grid">${[['⚔️ Angriff','+'+Math.round(Math.min((lvD.lv-1)*CFG.ATK_BONUS_LVL,CFG.ATK_BONUS_MAX)*100)+'%'],['🛡️ Verteidigung','+'+Math.round(Math.min((lvD.lv-1)*CFG.DEF_REGEN_LVL,CFG.DEF_REGEN_MAX)*100)+'%'],['🔥 Streak',streakDays>0?streakDays+' Tage':'Inaktiv'],['⚡ Energie',energy+'/'+CFG.ENERGY_MAX]].map(([l,v])=>`<div class="dom-card"><div class="dom-val">${v}</div><div class="dom-lbl">${l}</div></div>`).join('')}</div>`;
   // Herrschafts-Abschnitt
   const domEl=document.getElementById('pvDomainSection');
   if(domEl){
@@ -10614,7 +10675,7 @@ function updateProfile(){
     // bereits erreichten Level als abgeholt markieren (verhindert Doppel-Abholung
     // von XP/Schutz). Läuft genau einmal pro Account.
     if(!bpClaimMigrated){const _ml=spInfo(seasonXp).lv;battlePassClaimed=[];for(let i=1;i<=_ml;i++)battlePassClaimed.push(i);bpClaimMigrated=true;try{save&&save();}catch(e){}}
-    const _sp=spInfo(seasonXp);const bpLv=_sp.lv;const bpCur=Math.min(SP_MAX_LV,Math.max(1,bpLv));const bpPct=_sp.pct;const nextSp=_sp.next;bpEl.innerHTML=`<div class="section-title"><i class="fas fa-ticket-alt"></i> Saison-Pass <span style="font-size:.65rem;color:var(--muted);font-weight:400;margin-left:6px">Level ${bpLv}/${SP_MAX_LV}</span></div><div style="height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;margin-bottom:8px"><div style="height:100%;width:${bpPct}%;background:var(--primary);border-radius:3px;transition:width .4s"></div></div><div style="font-size:.68rem;color:var(--muted);margin-bottom:10px">${bpLv<SP_MAX_LV?nextSp+' XP bis Level '+(bpLv+1):'🏆 Max Level erreicht!'}</div><div id="pvBpScroll" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px">${BATTLE_PASS_REWARDS.map(r=>{const unlocked=bpLv>=r.lv;const claimed=battlePassClaimed.includes(r.lv);return`<div data-bplv="${r.lv}" ${r.lv===bpCur?'id="pvBpCur"':''} style="flex-shrink:0;width:68px;padding:8px 4px;border-radius:12px;background:${unlocked?claimed?'rgba(16,185,129,.15)':'rgba(232,255,71,.1)':'var(--card)'};border:1px solid ${unlocked?claimed?'rgba(16,185,129,.4)':'rgba(232,255,71,.4)':'var(--border)'};text-align:center;cursor:${unlocked&&!claimed?'pointer':'default'}"><div style="font-size:1.2rem">${r.icon}</div><div style="font-size:.58rem;color:${unlocked?'var(--primary)':'var(--muted)'};line-height:1.2;margin:3px 0">${r.name}</div><div style="font-size:.55rem;color:var(--muted)">Lv.${r.lv}</div>${unlocked&&!claimed?`<div style="font-size:.55rem;background:var(--primary);color:#000;border-radius:4px;padding:1px 4px;margin-top:2px;font-weight:700">Abholen</div>`:claimed?'<div style="font-size:.65rem;color:#10b981">✓</div>':''}</div>`;}).join('')}</div>`;bpEl.querySelectorAll('[data-bplv]').forEach(el=>{const lv=Number(el.dataset.bplv);if(bpLv>=lv&&!battlePassClaimed.includes(lv)){el.addEventListener('click',()=>{battlePassClaimed.push(lv);const rw=BATTLE_PASS_REWARDS.find(r=>r.lv===lv);if(rw){if(rw.type==='xp'){awardXp(rw.val,'battlepass');toast('🎁 Battle Pass: +'+rw.val+' XP');}else if(rw.type==='shield'){const g=grantStreakShield(rw.val);toast(g.added>0?(g.xp>0?`🛡️ +${g.added} Flammenschutz · Rest +${g.xp} XP`:'🛡️ Flammenschutz hinzugefügt!'):`🛡️ Schon 3 Flammenschutz – stattdessen +${g.xp} XP`);}else if(rw.type==='terrshield'){grantTerritoryShield(rw.val||24,'🗺️ Gebiets-Schutz erhalten – aktiviere ihn jederzeit über die Hero-Leiste (Feld „Gebiet").');}else if(rw.type==='energy'){energy=Math.min(CFG.ENERGY_MAX,energy+rw.val);toast('⚡ Energie aufgeladen!');}else if(rw.type==='title'){toast('👑 Titel freigeschaltet: '+rw.val);}else if(rw.type==='color'){toast('🎨 Farbe freigeschaltet – wählbar unter Einstellungen → Design → Gebietsfarbe.');}else if(rw.type==='bollwerk'){if((boostBollwerk||0)<3){boostBollwerk=(boostBollwerk||0)+1;try{updateBoostUI&&updateBoostUI();}catch(e){}toast('🛡️ Bollwerk-Boost erhalten – vor einem Lauf aktivieren für +50% Verteidigung.');}else{awardXp(100,'bollwerk_overflow');toast('🛡️ Schon 3 Bollwerk – stattdessen +100 XP');}}else{toast('🎁 '+rw.name+' freigeschaltet!');}}save();updateProfile();},{ once:true });}});requestAnimationFrame(()=>_centerScroller(document.getElementById('pvBpScroll'),document.getElementById('pvBpCur')));}
+    const _sp=spInfo(seasonXp);const bpLv=_sp.lv;const bpCur=Math.min(SP_MAX_LV,Math.max(1,bpLv));const bpPct=_sp.pct;const nextSp=_sp.next;bpEl.innerHTML=`<div class="section-title"><i class="fas fa-ticket-alt"></i> Saison-Pass <span style="font-size:.65rem;color:var(--muted);font-weight:400;margin-left:6px">Stufe ${bpLv}/${SP_MAX_LV}</span></div><div style="height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;margin-bottom:8px"><div style="height:100%;width:${bpPct}%;background:var(--primary);border-radius:3px;transition:width .4s"></div></div><div style="font-size:.68rem;color:var(--muted);margin-bottom:10px">${bpLv<SP_MAX_LV?nextSp+' XP bis Stufe '+(bpLv+1):'🏆 Höchste Stufe erreicht!'}</div><div id="pvBpScroll" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px">${BATTLE_PASS_REWARDS.map(r=>{const unlocked=bpLv>=r.lv;const claimed=battlePassClaimed.includes(r.lv);return`<div data-bplv="${r.lv}" ${r.lv===bpCur?'id="pvBpCur"':''} style="flex-shrink:0;width:68px;padding:8px 4px;border-radius:12px;background:${unlocked?claimed?'rgba(16,185,129,.15)':'rgba(232,255,71,.1)':'var(--card)'};border:1px solid ${unlocked?claimed?'rgba(16,185,129,.4)':'rgba(232,255,71,.4)':'var(--border)'};text-align:center;cursor:${unlocked&&!claimed?'pointer':'default'}"><div style="font-size:1.2rem">${r.icon}</div><div style="font-size:.58rem;color:${unlocked?'var(--primary)':'var(--muted)'};line-height:1.2;margin:3px 0">${r.name}</div><div style="font-size:.55rem;color:var(--muted)">Stufe ${r.lv}</div>${unlocked&&!claimed?`<div style="font-size:.55rem;background:var(--primary);color:#000;border-radius:4px;padding:1px 4px;margin-top:2px;font-weight:700">Abholen</div>`:claimed?'<div style="font-size:.65rem;color:#10b981">✓</div>':''}</div>`;}).join('')}</div>`;bpEl.querySelectorAll('[data-bplv]').forEach(el=>{const lv=Number(el.dataset.bplv);if(bpLv>=lv&&!battlePassClaimed.includes(lv)){el.addEventListener('click',()=>{battlePassClaimed.push(lv);const rw=BATTLE_PASS_REWARDS.find(r=>r.lv===lv);if(rw){if(rw.type==='xp'){awardXp(rw.val,'battlepass');toast('🎁 Battle Pass: +'+rw.val+' XP');}else if(rw.type==='shield'){const g=grantStreakShield(rw.val);toast(g.added>0?(g.xp>0?`🛡️ +${g.added} Flammenschutz · Rest +${g.xp} XP`:'🛡️ Flammenschutz hinzugefügt!'):`🛡️ Schon 3 Flammenschutz – stattdessen +${g.xp} XP`);}else if(rw.type==='terrshield'){grantTerritoryShield(rw.val||24,'🗺️ Gebiets-Schutz erhalten – aktiviere ihn jederzeit über die Hero-Leiste (Feld „Gebiet").');}else if(rw.type==='energy'){energy=Math.min(CFG.ENERGY_MAX,energy+rw.val);toast('⚡ Energie aufgeladen!');}else if(rw.type==='title'){toast('👑 Titel freigeschaltet: '+rw.val);}else if(rw.type==='color'){toast('🎨 Farbe freigeschaltet – wählbar unter Einstellungen → Design → Gebietsfarbe.');}else if(rw.type==='bollwerk'){if((boostBollwerk||0)<3){boostBollwerk=(boostBollwerk||0)+1;try{updateBoostUI&&updateBoostUI();}catch(e){}toast('🛡️ Bollwerk-Boost erhalten – vor einem Lauf aktivieren für +50% Verteidigung.');}else{awardXp(100,'bollwerk_overflow');toast('🛡️ Schon 3 Bollwerk – stattdessen +100 XP');}}else{toast('🎁 '+rw.name+' freigeschaltet!');}}save();updateProfile();},{ once:true });}});requestAnimationFrame(()=>_centerScroller(document.getElementById('pvBpScroll'),document.getElementById('pvBpCur')));}
   {
     const CAT_META={conq:{name:'Straßen',unit:'Straßen'},km:{name:'Kilometer',unit:'km'},atk:{name:'Angriffe',unit:'Siege'},def:{name:'Vert.',unit:'Vert.'},disc:{name:'Orte',unit:'Orte'},streak:{name:'Streak',unit:'Tage'}};
     const totalEarned=achievements.filter(a=>a.earned).length;
