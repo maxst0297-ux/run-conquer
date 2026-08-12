@@ -1,5 +1,5 @@
-const CACHE_NAME = 'runconquer-v224';
-const PRECACHE = ['/', '/index.html', '/manifest.json', '/bg-poster.jpg'];
+const CACHE_NAME = 'runconquer-v225';
+const PRECACHE = ['/', '/index.html', '/manifest.json', '/bg-poster.jpg', '/rc-erfolg-icons.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(

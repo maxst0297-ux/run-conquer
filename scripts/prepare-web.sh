@@ -21,7 +21,7 @@ rm -rf www
 mkdir -p www
 
 echo "→ Kern-Webdateien kopieren"
-cp index.html manifest.json sw.js territory.js privacy.html promo.html altstore-source.json www/
+cp index.html manifest.json sw.js territory.js rc-erfolg-icons.js privacy.html promo.html altstore-source.json www/
 
 echo "→ Medien kopieren"
 [ -f bg.mp4 ]        && cp bg.mp4 www/

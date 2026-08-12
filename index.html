@@ -22,6 +22,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="/territory.js"></script>
+<!-- Erfolgs-Abzeichen: erzeugt alle Medaillen zur Laufzeit als SVG (keine Bilddateien) -->
+<script src="rc-erfolg-icons.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Bebas+Neue&display=swap" rel="stylesheet">
 
 <style>
@@ -2344,7 +2346,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v224';
+const APP_VERSION='v225';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3152,52 +3154,10 @@ function buildChampionSvg(){
   const crown=`<g transform="translate(50 10)"><path d="M -14 8 L -14 2 L -7 6 L 0 -6 L 7 6 L 14 2 L 14 8 Z" fill="${GOLD}" stroke="${BRIGHT}" stroke-width="0.8" stroke-linejoin="round"/><rect x="-14" y="8" width="28" height="4" rx="1.5" fill="${GOLD}" stroke="${BRIGHT}" stroke-width="0.8"/><circle cx="0" cy="-4" r="2.4" fill="${BRIGHT}"/><circle cx="-8" cy="6" r="1.4" fill="${BRIGHT}"/><circle cx="8" cy="6" r="1.4" fill="${BRIGHT}"/></g>`;
   return `<svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">${defs}${rays}${wreath}${rings}${gems}${plate}${centerGroup}${crown}</svg>`;
 }
-/* ═══ Saison-Sieg der Fraktion — prunkvolles Medaillon (Port aus
-   design_handoff_saison/season-icon.js). Goldener Pokal + 36-Speichen-
-   Strahlenkranz + Lorbeerkranz + Juwelen + Doppelring + Krone. Alle Filter pro
-   SVG inline, eindeutige IDs pro Aufruf. ═══ */
-const SEASON_G={l:'#FFF6D2',m:'#FFD700',d:'#8a6a00',k:'#5e4300'};
-let _seaUid=0;
 function buildSeasonSvg(){
-  const G=SEASON_G,u='s'+(++_seaUid);
-  const st5=(cx,cy,r,f,o=1)=>{let p='';for(let i=0;i<10;i++){const rr=i%2?r*0.42:r;const a=-Math.PI/2+i*Math.PI/5;p+=`${(cx+Math.cos(a)*rr).toFixed(1)},${(cy+Math.sin(a)*rr).toFixed(1)} `;}return `<polygon points="${p.trim()}" fill="${f}" opacity="${o}"/>`;};
-  const sp4=(x,y,s,o=0.9)=>`<g transform="translate(${x} ${y}) scale(${s})"><path d="M0 -4 L1 -1 L4 0 L1 1 L0 4 L-1 1 L-4 0 L-1 -1 Z" fill="#ffffff" opacity="${o}"/></g>`;
-  const crown=(x,y,s,fill,lite)=>`<g transform="translate(${x} ${y}) scale(${s})"><path d="M -12 6 L -12 0 L -6 3 L 0 -7 L 6 3 L 12 0 L 12 6 Z" fill="${fill}" stroke="${lite}" stroke-width=".7"/><rect x="-12" y="6" width="24" height="3.6" rx="1.2" fill="${fill}" stroke="${lite}" stroke-width=".7"/><circle cx="0" cy="-7" r="1.7" fill="${lite}"/><circle cx="-12" cy="0" r="1.3" fill="${lite}"/><circle cx="12" cy="0" r="1.3" fill="${lite}"/></g>`;
-  const wreath=(u)=>{const cx=60,cy=57,r=44,n=10;let s=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${G.d}" stroke-width="1.8" opacity=".75"/>`;const leaf=(deg,tilt,sc,rr)=>{const a=deg*Math.PI/180,x=cx+Math.cos(a)*rr,y=cy+Math.sin(a)*rr;return `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${(deg+90+tilt).toFixed(1)}) scale(${sc.toFixed(2)})"><path d="M0 -5.4 Q 3.1 -1.4 0 4.4 Q -3.1 -1.4 0 -5.4 Z" fill="url(#M${u})" stroke="${G.k}" stroke-width=".5"/><line x1="0" y1="-4" x2="0" y2="3" stroke="${G.k}" stroke-width=".4" opacity=".6"/></g>`;};for(let i=0;i<n;i++){const t=i/(n-1),sc=1.14-0.36*t,rr=r+(i%2?1.8:-0.6);s+=leaf(78-t*148,(i%2?15:-13),sc,rr);s+=leaf(102+t*148,(i%2?-15:13),sc,rr);}s+=`<g transform="translate(${cx} ${cy+r})"><path d="M-6.5 -2.5 L0 0 L-6.5 4 Z" fill="url(#M${u})"/><path d="M6.5 -2.5 L0 0 L6.5 4 Z" fill="url(#M${u})"/><circle cx="0" cy="0" r="2.2" fill="${G.l}"/></g>`;return s;};
-  const defs=`<defs>`
-    +`<linearGradient id="M${u}" x1="8%" y1="0%" x2="92%" y2="100%"><stop offset="0%" stop-color="${G.l}"/><stop offset="22%" stop-color="${G.m}"/><stop offset="46%" stop-color="${G.d}"/><stop offset="64%" stop-color="${G.m}"/><stop offset="84%" stop-color="${G.l}"/><stop offset="100%" stop-color="${G.d}"/></linearGradient>`
-    +`<linearGradient id="V${u}" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="${G.l}"/><stop offset="48%" stop-color="${G.m}"/><stop offset="100%" stop-color="${G.d}"/></linearGradient>`
-    +`<radialGradient id="A${u}" cx="50%" cy="50%" r="50%"><stop offset="30%" stop-color="${G.m}" stop-opacity=".46"/><stop offset="65%" stop-color="${G.m}" stop-opacity=".20"/><stop offset="100%" stop-color="${G.m}" stop-opacity="0"/></radialGradient>`
-    +`<radialGradient id="P${u}" cx="42%" cy="30%" r="80%"><stop offset="0%" stop-color="#FFF6D2"/><stop offset="55%" stop-color="#FFD700"/><stop offset="100%" stop-color="#8a6a00"/></radialGradient>`
-    +`<filter id="B${u}" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur in="SourceAlpha" stdDeviation="0.8" result="b"/><feSpecularLighting in="b" surfaceScale="1.8" specularConstant="0.85" specularExponent="12" lighting-color="#ffffff" result="s"><feDistantLight azimuth="225" elevation="55"/></feSpecularLighting><feComposite in="s" in2="SourceAlpha" operator="in" result="si"/><feComposite in="SourceGraphic" in2="si" operator="arithmetic" k1="0" k2="1" k3="1" k4="0"/></filter>`
-    +`<filter id="S${u}" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="1.6" stdDeviation="1.4" flood-color="#000000" flood-opacity="0.6"/></filter>`
-    +`<filter id="G${u}" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="1.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`
-    +`</defs>`;
-  const bev=(b)=>`<g filter="url(#S${u})">${b}</g>`; // ohne feSpecularLighting (auf iOS unscharf)
-  const aura=`<circle cx="60" cy="57" r="59" fill="url(#A${u})"/>`;
-  let rays='';for(let i=0;i<36;i++){const a=i/36*Math.PI*2,lng=i%3===0;rays+=`<line x1="${(60+Math.cos(a)*43).toFixed(1)}" y1="${(57+Math.sin(a)*43).toFixed(1)}" x2="${(60+Math.cos(a)*(lng?52:47.5)).toFixed(1)}" y2="${(57+Math.sin(a)*(lng?52:47.5)).toFixed(1)}" stroke="${G.m}" stroke-width="${lng?'1.8':'1'}" stroke-linecap="round" opacity="${lng?'.8':'.45'}"/>`;}
-  let gems='';[[60,101],[16,57],[104,57]].forEach(p=>{gems+=`<g transform="translate(${p[0]} ${p[1]}) rotate(45)"><rect x="-2.6" y="-2.6" width="5.2" height="5.2" fill="#FFF6D2" stroke="${G.d}" stroke-width=".7"/></g>`;});
-  const g=`url(#V${u})`;
-  const cup=`<g transform="translate(60 57) scale(1.34)">`
-    +`<path d="M-13 -13 Q -21.5 -13 -21.5 -7 Q -21.5 -1 -14 0" fill="none" stroke="${g}" stroke-width="2.8"/>`
-    +`<path d="M13 -13 Q 21.5 -13 21.5 -7 Q 21.5 -1 14 0" fill="none" stroke="${g}" stroke-width="2.8"/>`
-    +`<path d="M -12.5 -17.5 L 12.5 -17.5 L 11 -3 Q 9.5 7 0 9 Q -9.5 7 -11 -3 Z" fill="${g}" stroke="${G.k}" stroke-width="1"/>`
-    +`<ellipse cx="0" cy="-17.5" rx="12.5" ry="2.7" fill="${G.l}" stroke="${G.k}" stroke-width=".8"/>`
-    +`<path d="M -8.5 -15 Q -9.5 -5 -5 1" stroke="${G.l}" stroke-width="1.5" fill="none" opacity=".65"/>`
-    +st5(0,-6,4.8,G.l)
-    +`<rect x="-2.7" y="9" width="5.4" height="6" fill="${g}" stroke="${G.k}" stroke-width=".8"/>`
-    +`<path d="M -8 15 L 8 15 L 8 18 L 10.5 18 L 10.5 22.5 L -10.5 22.5 L -10.5 18 L -8 18 Z" fill="${g}" stroke="${G.k}" stroke-width=".8"/>`
-    +`<path d="M -6 20 L 6 20" stroke="${G.l}" stroke-width=".9" opacity=".6"/>`
-    +`</g>`;
-  const body=aura+rays
-    +bev(wreath(u))
-    +`<circle cx="60" cy="57" r="36" fill="url(#P${u})" opacity=".2"/>`
-    +`<circle cx="60" cy="57" r="38.5" fill="none" stroke="url(#M${u})" stroke-width="2.2" opacity=".9"/>`
-    +bev(gems)
-    +`<g filter="url(#G${u})">${bev(cup)}</g>`
-    +crown(60,8.5,0.95,`url(#M${u})`,G.l)
-    +sp4(20,22,1.1)+sp4(100,20,1)+sp4(24,92,0.9)+sp4(96,92,1)+sp4(60,112,0.7)+sp4(8,40,0.6)+sp4(112,40,0.6);
-  return `<svg viewBox="0 0 120 120" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">${defs}${body}</svg>`;
+  /* Saison-Medaillon kommt jetzt ebenfalls aus rc-erfolg-icons.js. */
+  if(rcEnsureIcons()){try{return RCIcons.season();}catch(e){}}
+  return '';
 }
 function renderSeasonBadge(opts={}){
   const now=new Date();
@@ -5171,565 +5131,16 @@ function mkNaturalPoly(lat,lng,radiusM){
   }catch(e){return mkCircle(lat,lng,radiusM);}
 }
 function genQuests(){quests=[{id:'q1',icon:'🏃',desc:'Laufe 2 km',target:2000,progress:0,reward:100,type:'distance',claimed:false},{id:'q2',icon:'⚔️',desc:'Erobere 1 Gebiet',target:1,progress:0,reward:150,type:'conquer',claimed:false},{id:'q3',icon:'🛡️',desc:'Verteidige 2 Gebiete',target:2,progress:0,reward:100,type:'defend',claimed:false},{id:'q4',icon:'🗺️',desc:'Laufe 5 km',target:5000,progress:0,reward:250,type:'distance',claimed:false}]}
-/* ═══ Erfolg-Abzeichen v2 — ornamentaler Medaillen-Stil ══════════════════════
-   Port aus design_handoff_v2/ („Erfolg-Icons v2.dc.html", <script data-dc-script>).
-   Prozedurales Inline-SVG: Material-Paletten (MAT), Helfer und die 6 Kategorie-
-   Stufen (def/atk/conq/km/terr/pace × 6 Stufen). Ersetzt die früheren Icons.
-   Die geteilten Filter (#rcBevel/#rcShadow/#rcGlow/#rcGlow2) müssen einmal im DOM
-   liegen -> rcEnsureBadgeDefs(). Jedes Badge bekommt eine eindeutige uid, sonst
-   kollidieren die <defs> mehrerer Badges auf einer Seite. */
-let _rcbDefsInjected=false;
-function rcEnsureBadgeDefs(){
-  if(_rcbDefsInjected||document.getElementById('rcBadgeDefs'))return;
-  const div=document.createElement('div');
-  div.id='rcBadgeDefs';div.setAttribute('aria-hidden','true');
-  div.style.cssText='position:absolute;width:0;height:0;overflow:hidden';
-  div.innerHTML='<svg width="0" height="0" xmlns="http://www.w3.org/2000/svg" focusable="false"><defs>'
-    +'<filter id="rcBevel" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur in="SourceAlpha" stdDeviation="0.8" result="b"/><feSpecularLighting in="b" surfaceScale="1.8" specularConstant="0.85" specularExponent="12" lighting-color="#ffffff" result="s"><feDistantLight azimuth="225" elevation="55"/></feSpecularLighting><feComposite in="s" in2="SourceAlpha" operator="in" result="si"/><feComposite in="SourceGraphic" in2="si" operator="arithmetic" k1="0" k2="1" k3="1" k4="0"/></filter>'
-    +'<filter id="rcShadow" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="1.6" stdDeviation="1.4" flood-color="#000000" flood-opacity="0.6"/></filter>'
-    +'<filter id="rcGlow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="1.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'
-    +'<filter id="rcGlow2" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="3.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'
-    // Dunkle Medaillon-Platte hinter jedem Badge -> auf hellen wie dunklen
-    // Hintergründen (helle Themes, Popup-Karte) gleich gut sichtbar.
-    +'</defs></svg>';
-  document.body.appendChild(div);
-  _rcbDefsInjected=true;
-}
-const RCB={
-  MAT:{
-    gold:{l:'#FFF6D2',m:'#FFD700',d:'#8a6a00',k:'#3a2800'},
-    silver:{l:'#FFFFFF',m:'#CBD5DA',d:'#6d777c',k:'#232b30'},
-    bronze:{l:'#F0C08E',m:'#C0824A',d:'#6f4318',k:'#2c1a07'},
-    blue:{l:'#D6F8FF',m:'#00D4FF',d:'#086f8c',k:'#032b38'},
-    purple:{l:'#E6D6FF',m:'#9B5DE5',d:'#4e2590',k:'#1e0d38'},
-    green:{l:'#C9F7A8',m:'#10B981',d:'#0a5c40',k:'#03301f'},
-    lime:{l:'#F7FFB0',m:'#E6FF55',d:'#8a9c15',k:'#333d04'},
-    red:{l:'#FFC2CE',m:'#FF4D6D',d:'#8c1a30',k:'#38000c'},
-    iron:{l:'#C4CDD4',m:'#5A6670',d:'#23292e',k:'#080b0d'},
-    flame:{l:'#FFF3B0',m:'#FFB53C',d:'#E2492F',k:'#4e0e07'},
-  },
-  mg(u,M,x=''){return `<linearGradient id="M${u}${x}" x1="8%" y1="0%" x2="92%" y2="100%"><stop offset="0%" stop-color="${M.l}"/><stop offset="22%" stop-color="${M.m}"/><stop offset="46%" stop-color="${M.d}"/><stop offset="64%" stop-color="${M.m}"/><stop offset="84%" stop-color="${M.l}"/><stop offset="100%" stop-color="${M.d}"/></linearGradient>`;},
-  vg(u,M,x=''){return `<linearGradient id="V${u}${x}" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="${M.l}"/><stop offset="48%" stop-color="${M.m}"/><stop offset="100%" stop-color="${M.d}"/></linearGradient>`;},
-  ag(u,c,o=.6){return `<radialGradient id="A${u}" cx="50%" cy="50%" r="50%"><stop offset="30%" stop-color="${c}" stop-opacity="${(o*.42).toFixed(2)}"/><stop offset="65%" stop-color="${c}" stop-opacity="${(o*.18).toFixed(2)}"/><stop offset="100%" stop-color="${c}" stop-opacity="0"/></radialGradient>`;},
-  auraC(u,r=54){return `<circle cx="60" cy="57" r="${r}" fill="url(#A${u})"/>`;},
-  /* Nur Schlagschatten — die feSpecularLighting-Prägung (#rcBevel) rendert auf
-     iOS/WKWebView als Unschärfe (Badge wurde zum verwaschenen Klecks). Ohne sie
-     bleiben die Formen scharf; die Metall-Verläufe geben den Glanz. */
-  bev(b){return `<g filter="url(#rcShadow)">${b}</g>`;},
-  /* Kein Hintergrund-Plättchen hinter dem Badge (wie im Handoff): das Abzeichen
-     „schwebt" mit seiner Aura auf dem App-Hintergrund. */
-  wrap(d,b){return `<svg viewBox="0 0 120 120" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">${d?`<defs>${d}</defs>`:''}${b}</svg>`;},
-  sp4(x,y,s,o=.9,c='#ffffff'){return `<g transform="translate(${x} ${y}) scale(${s})"><path d="M0 -4 L1 -1 L4 0 L1 1 L0 4 L-1 1 L-4 0 L-1 -1 Z" fill="${c}" opacity="${o}"/></g>`;},
-  spks(u,pts,c='#ffffff'){let s='';pts.forEach(p=>{s+=this.sp4(p[0],p[1],p[2],p[3]??.85,c);});return s;},
-  st5(cx,cy,r,f,o=1){let p='';for(let i=0;i<10;i++){const rr=i%2?r*.42:r;const a=-Math.PI/2+i*Math.PI/5;p+=`${(cx+Math.cos(a)*rr).toFixed(1)},${(cy+Math.sin(a)*rr).toFixed(1)} `;}return `<polygon points="${p.trim()}" fill="${f}" opacity="${o}"/>`;},
-  crn(x,y,s,fill,lite){return `<g transform="translate(${x} ${y}) scale(${s})"><path d="M -12 6 L -12 0 L -6 3 L 0 -7 L 6 3 L 12 0 L 12 6 Z" fill="${fill}" stroke="${lite}" stroke-width=".7"/><rect x="-12" y="6" width="24" height="3.6" rx="1.2" fill="${fill}" stroke="${lite}" stroke-width=".7"/><circle cx="0" cy="-7" r="1.7" fill="${lite}"/><circle cx="-12" cy="0" r="1.3" fill="${lite}"/><circle cx="12" cy="0" r="1.3" fill="${lite}"/></g>`;},
-  wreath(u,M,o={}){
-    const cx=o.cx??60,cy=o.cy??58,r=o.r??42,n=o.n??9;
-    let s=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${M.d}" stroke-width="1.8" opacity=".75"/>`;
-    const leaf=(deg,tilt,sc,rr)=>{
-      const a=deg*Math.PI/180,x=cx+Math.cos(a)*rr,y=cy+Math.sin(a)*rr;
-      return `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${(deg+90+tilt).toFixed(1)}) scale(${sc.toFixed(2)})"><path d="M0 -5.4 Q 3.1 -1.4 0 4.4 Q -3.1 -1.4 0 -5.4 Z" fill="url(#M${u})" stroke="${M.k}" stroke-width=".5"/><line x1="0" y1="-4" x2="0" y2="3" stroke="${M.k}" stroke-width=".4" opacity=".6"/></g>`;
-    };
-    for(let i=0;i<n;i++){const t=i/(n-1),sc=1.14-.36*t;
-      s+=leaf(78-t*148, (i%2? 15:-13), sc, r+(i%2?1.8:-.6));
-      s+=leaf(102+t*148, (i%2?-15:13), sc, r+(i%2?1.8:-.6));
-    }
-    s+=`<g transform="translate(${cx} ${cy+r})"><path d="M-6.5 -2.5 L0 0 L-6.5 4 Z" fill="url(#M${u})"/><path d="M6.5 -2.5 L0 0 L6.5 4 Z" fill="url(#M${u})"/><circle cx="0" cy="0" r="2.2" fill="${M.l}"/></g>`;
-    return s;
-  },
-  ring(u,M,r=42){return `<circle cx="60" cy="57" r="${r+3.2}" fill="none" stroke="${M.k}" stroke-width="1.2" opacity=".85"/><circle cx="60" cy="57" r="${r}" fill="none" stroke="url(#M${u})" stroke-width="5.4"/><circle cx="60" cy="57" r="${r-3.4}" fill="none" stroke="${M.l}" stroke-width=".9" opacity=".4"/>`;},
-  shPath(cx,cy,w,h){const x0=cx-w/2,x1=cx+w/2,yt=cy-h*.46,ys=cy+h*.04;return `M ${x0} ${yt} L ${x1} ${yt} L ${x1} ${ys} Q ${x1} ${ys+h*.3} ${cx} ${cy+h*.54} Q ${x0} ${ys+h*.3} ${x0} ${ys} Z`;},
-  shoe(u,M,o={}){
-    const cx=o.cx??60,cy=o.cy??60,sc=o.sc??1;
-    return `<g transform="translate(${cx} ${cy}) scale(${sc})">
-      <path d="M -26 8 Q 0 16 26 6 L 27.5 12 Q 0 20.5 -27.5 14 Z" fill="url(#V${u})" stroke="${M.k}" stroke-width="1.1"/>
-      <line x1="-20" y1="14.5" x2="-14" y2="15.6" stroke="${M.k}" stroke-width="1" opacity=".6"/><line x1="-8" y1="16.4" x2="-2" y2="17" stroke="${M.k}" stroke-width="1" opacity=".6"/><line x1="6" y1="16.6" x2="12" y2="16" stroke="${M.k}" stroke-width="1" opacity=".6"/>
-      <path d="M -25 6 Q -22.5 -12 -8 -14.5 Q 0.5 -15.5 4.5 -9 Q 12 0.5 24 2.4 L 26 6 Q 0 14.5 -25 6 Z" fill="url(#V${u})" stroke="${M.k}" stroke-width="1.2"/>
-      <path d="M -21 -7.5 Q -14 -12.5 -7.5 -12" fill="none" stroke="${M.l}" stroke-width="1.5" opacity=".7"/>
-      <path d="M -17 3 Q -2 8.5 20 4" fill="none" stroke="${M.l}" stroke-width="1.4" opacity=".5"/>
-      <line x1="-6" y1="-9" x2="2.5" y2="-4.5" stroke="${M.k}" stroke-width="1.6"/><line x1="-9.5" y1="-5" x2="-0.5" y2="-0.5" stroke="${M.k}" stroke-width="1.6"/><line x1="-13" y1="-1" x2="-3.5" y2="2.8" stroke="${M.k}" stroke-width="1.6"/>
-      <circle cx="-6" cy="-9" r="1" fill="${M.l}"/><circle cx="-9.5" cy="-5" r="1" fill="${M.l}"/><circle cx="-13" cy="-1" r="1" fill="${M.l}"/>
-    </g>`;
-  },
-  tSword(fill,k,rot,cx=60,cy=58,len=27){
-    return `<g transform="rotate(${rot} ${cx} ${cy})"><polygon points="${cx},${cy-len} ${cx+2.4},${cy-len+4.5} ${cx+2.4},${cy+len-10} ${cx},${cy+len-6} ${cx-2.4},${cy+len-10} ${cx-2.4},${cy-len+4.5}" fill="${fill}" stroke="${k}" stroke-width=".5"/><line x1="${cx}" y1="${cy-len+5}" x2="${cx}" y2="${cy+len-11}" stroke="#ffffff" stroke-width=".6" opacity=".5"/><rect x="${cx-7}" y="${cy+len-11}" width="14" height="3.2" rx="1.3" fill="${fill}"/><rect x="${cx-1.5}" y="${cy+len-8}" width="3" height="7" fill="${k}"/><circle cx="${cx}" cy="${cy+len}" r="2.2" fill="${fill}"/></g>`;
-  },
-  tWing(fill,s,sc=1,cx=60,cy=55){
-    return `<g transform="translate(${cx+s*12} ${cy}) scale(${s} 1) scale(${sc})"><path d="M0 -5 Q 15 -15 32 -12 Q 21 -7 16 -3 Q 25 -4 30 0 Q 19 2 13 4 Q 6 6 1 4 Z" fill="${fill}"/><path d="M 3 -4 Q 13 -9 25 -9" fill="none" stroke="#ffffff" stroke-width=".8" opacity=".5"/></g>`;
-  },
-  hexP(cx,cy,r){let p='';for(let i=0;i<6;i++){const a=-Math.PI/2+i*Math.PI/3;p+=`${(cx+Math.cos(a)*r).toFixed(1)},${(cy+Math.sin(a)*r).toFixed(1)} `;}return p.trim();},
-  TIER_M(){return [this.MAT.bronze,this.MAT.silver,this.MAT.lime,this.MAT.blue,this.MAT.purple,this.MAT.gold];},
-  tierFrame(u,M,t){
-    let s='';
-    if(t===1) s+=`<circle cx="60" cy="57" r="42" fill="none" stroke="url(#M${u})" stroke-width="2.6"/>`;
-    if(t===2) s+=this.ring(u,M,42);
-    if(t>=3) s+=this.wreath(u,M,{r:42,n:t>=5?9:8});
-    if(t>=4) s+=`<circle cx="60" cy="57" r="33.5" fill="none" stroke="${M.l}" stroke-width=".9" stroke-dasharray="2 4" opacity=".5"/>`;
-    if(t>=6){let rays='';for(let i=0;i<14;i++){const a=i/14*Math.PI*2;rays+=`<line x1="${(60+Math.cos(a)*45).toFixed(1)}" y1="${(57+Math.sin(a)*45).toFixed(1)}" x2="${(60+Math.cos(a)*51).toFixed(1)}" y2="${(57+Math.sin(a)*51).toFixed(1)}" stroke="${M.m}" stroke-width="1.3" opacity=".55"/>`;}s=rays+s;
-      s+=`<g transform="translate(111 57) rotate(45)"><rect x="-2.4" y="-2.4" width="4.8" height="4.8" fill="url(#M${u})"/></g><g transform="translate(9 57) rotate(45)"><rect x="-2.4" y="-2.4" width="4.8" height="4.8" fill="url(#M${u})"/></g>`;}
-    if(t>=5) s+=this.crn(60,9.5,.72,`url(#M${u})`,M.l);
-    return s;
-  },
-  tierIcon(u,key,t){
-    const M=this.TIER_M()[t-1];
-    const d=this.mg(u,M)+this.vg(u,M)+this.ag(u,M.m,(.35+t*.11));
-    let b=this.auraC(u)+this.bev(this.tierFrame(u,M,t))+this.bev(this.tierMotif(u,key,M,t));
-    const sp=[[24,26,.85],[96,28,.85],[26,88,.75],[94,86,.85],[60,4,.7],[12,44,.6],[108,44,.6]];
-    if(t>=2) b+=this.spks(u,sp.slice(0,t));
-    return this.wrap(d,b);
-  },
-  tierMotif(u,key,M,t){
-    if(key==='def')return this.tDef(u,M,t);
-    if(key==='atk')return this.tAtk(u,M,t);
-    if(key==='conq')return this.tConq(u,M,t);
-    if(key==='km')return this.tKm(u,M,t);
-    if(key==='terr')return this.tTerr(u,M,t);
-    return this.tPace(u,M,t);
-  },
-  tDef(u,M,t){
-    let s='';
-    if(t>=4) s+=this.tSword(`url(#M${u})`,M.k,34)+this.tSword(`url(#M${u})`,M.k,-34);
-    const w=30+t*1.6,h=36+t*2;
-    s+=`<path d="${this.shPath(60,57,w,h)}" fill="url(#M${u})" stroke="${M.k}" stroke-width="1.2"/>`;
-    s+=`<path d="${this.shPath(60,57.5,w-8.5,h-9)}" fill="#0c2c1c" stroke="rgba(0,0,0,.55)" stroke-width="1"/>`;
-    if(t>=2){const yt=57-h*.46+4;[[60-w/2+4.4,yt],[60+w/2-4.4,yt],[60,57+h*.47]].forEach(p=>{s+=`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="1.3" fill="${M.l}" opacity=".9"/>`;});}
-    if(t>=3) s+=`<path d="M ${60-w/2+6} 52 L 60 57.5 L ${60+w/2-6} 52" fill="none" stroke="url(#V${u})" stroke-width="2.4"/>`;
-    if(t>=5) s+=this.st5(60,64,4.6,M.l,.95);
-    if(t>=6) s+=`<path d="${this.shPath(60,57.5,w-15,h-17)}" fill="none" stroke="${M.l}" stroke-width=".8" opacity=".55"/>`;
-    return s;
-  },
-  tAtk(u,M,t){
-    let s='';
-    if(t===1) s+=this.tSword(`url(#M${u})`,M.k,0);
-    else s+=this.tSword(`url(#M${u})`,M.k,32)+this.tSword(`url(#M${u})`,M.k,-32);
-    if(t>=4) s+=this.tSword(`url(#M${u})`,M.k,0,60,58,29);
-    if(t>=3) s+=this.st5(60,58,4,'#ffffff',.95);
-    if(t>=5) s+=`<path d="M 45 34 q 3 -6 8 -7 q -2 5 0 8 Z" fill="${M.l}" opacity=".85"/><path d="M 75 34 q -3 -6 -8 -7 q 2 5 0 8 Z" fill="${M.l}" opacity=".85"/>`;
-    if(t>=6){let burst='';for(let i=0;i<8;i++){const a=i/8*Math.PI*2+Math.PI/8;burst+=`<line x1="${(60+Math.cos(a)*13).toFixed(1)}" y1="${(58+Math.sin(a)*13).toFixed(1)}" x2="${(60+Math.cos(a)*18).toFixed(1)}" y2="${(58+Math.sin(a)*18).toFixed(1)}" stroke="${M.l}" stroke-width="1.1" opacity=".7"/>`;}s+=burst;}
-    return s;
-  },
-  tConq(u,M,t){
-    let s='';
-    if(t>=2) s+=`<path d="M 36 78 Q 60 66 84 78 L 84 80 L 36 80 Z" fill="url(#V${u})" opacity=".55"/>`;
-    if(t>=5) s+=`<rect x="38" y="60" width="44" height="13" fill="url(#V${u})" stroke="${M.k}" stroke-width="1"/>`;
-    if(t>=4){[42,78].forEach(x=>{s+=`<rect x="${x-6}" y="47" width="12" height="26" fill="url(#V${u})" stroke="${M.k}" stroke-width="1"/><rect x="${x-7}" y="43.5" width="4" height="4" fill="url(#V${u})"/><rect x="${x-2}" y="43.5" width="4" height="4" fill="url(#V${u})"/><rect x="${x+3}" y="43.5" width="4" height="4" fill="url(#V${u})"/>`;});}
-    if(t>=3) s+=`<rect x="52" y="40" width="16" height="34" fill="url(#M${u})" stroke="${M.k}" stroke-width="1.1"/><rect x="51" y="36" width="4.6" height="4.6" fill="url(#M${u})"/><rect x="57.7" y="36" width="4.6" height="4.6" fill="url(#M${u})"/><rect x="64.4" y="36" width="4.6" height="4.6" fill="url(#M${u})"/><path d="M 56.5 74 L 56.5 66 Q 60 62.5 63.5 66 L 63.5 74 Z" fill="#05140c"/>`;
-    if(t<3){
-      s+=`<line x1="60" y1="70" x2="60" y2="38" stroke="url(#M${u})" stroke-width="2.6" stroke-linecap="round"/>`;
-      s+=`<path d="M 60 38 L 79 43 L 73 48 L 79 53 L 60 58 Z" fill="url(#M${u})" stroke="${M.k}" stroke-width="1"/>`;
-      s+=`<path d="M 62.5 41.5 L 72 44.5" stroke="${M.l}" stroke-width="1" opacity=".6"/>`;
-      s+=`<ellipse cx="60" cy="71" rx="7.5" ry="2.6" fill="url(#V${u})" opacity=".9"/>`;
-      s+=`<circle cx="60" cy="36.5" r="2" fill="${M.l}"/>`;
-    } else {
-      const fy=36;
-      s+=`<line x1="60" y1="${fy}" x2="60" y2="${fy-13}" stroke="url(#M${u})" stroke-width="1.8"/><path d="M 60 ${fy-13} L ${70+t} ${fy-10.5} L 60 ${fy-8} Z" fill="url(#M${u})"/>`;
-    }
-    if(t>=6) s+=this.st5(60,65,3.4,M.l,.95);
-    return s;
-  },
-  tKm(u,M,t){
-    let s='';
-    for(let i=0;i<Math.min(t,4);i++){const y=46+i*7;const len=8+(i%2)*6;s+=`<line x1="26" y1="${y}" x2="${26+len}" y2="${y}" stroke="${M.m}" stroke-width="2" stroke-linecap="round" opacity=".6"/>`;}
-    if(t>=3) s+=`<path d="M 36 78 L 84 78" stroke="${M.d}" stroke-width="2" stroke-linecap="round" opacity=".6"/><path d="M 42 82 L 78 82" stroke="${M.d}" stroke-width="1.4" stroke-linecap="round" opacity=".4"/>`;
-    if(t>=4) s+=this.tWing(`url(#V${u})`,1,.7,62,50)+this.tWing(`url(#V${u})`,-1,.7,62,50);
-    s+=this.shoe(u,M,{cy:60,sc:.62+t*.04});
-    if(t>=6) s+=this.st5(60,24,3.6,M.l,.95);
-    return s;
-  },
-  tTerr(u,M,t){
-    const pos=[[60,57],[73,49.5],[73,64.5],[60,72],[47,64.5],[47,49.5],[60,42]];
-    const n=t===6?7:t;
-    let s='';
-    for(let i=0;i<n;i++){const p=pos[i];const main=i===0;
-      s+=`<polygon points="${this.hexP(p[0],p[1],8.6)}" fill="${main?`url(#M${u})`:`url(#V${u})`}" stroke="${M.k}" stroke-width="1" opacity="${main?1:.88}"/>`;
-      s+=`<polygon points="${this.hexP(p[0],p[1],6.2)}" fill="none" stroke="${M.l}" stroke-width=".6" opacity=".4"/>`;}
-    const fy=n>=7?42:57;
-    if(t>=2) s+=`<line x1="60" y1="${fy}" x2="60" y2="${fy-12}" stroke="url(#M${u})" stroke-width="1.7"/><path d="M 60 ${fy-12} L ${69+(t>=5?2:0)} ${fy-9.5} L 60 ${fy-7} Z" fill="url(#M${u})"/>`;
-    return s;
-  },
-  tPace(u,M,t){
-    let s='';
-    for(let i=0;i<Math.min(t+1,5);i++){const y=40+i*9;const len=7+(i%2)*7;s+=`<line x1="24" y1="${y}" x2="${24+len}" y2="${y}" stroke="${M.m}" stroke-width="2" stroke-linecap="round" opacity=".55"/>`;}
-    if(t>=4) s+=this.tWing(`url(#V${u})`,1,.85,62,50)+this.tWing(`url(#V${u})`,-1,.85,62,50);
-    if(t>=5) s+=`<path d="M 57 30 L 38 62 L 47.5 62 L 42 86 L 65 49 L 54.5 49 Z" fill="${M.m}" opacity=".3"/>`;
-    const bolt='M 66 30 L 47 62 L 56.5 62 L 51 86 L 74 49 L 63.5 49 Z';
-    if(t===1) s+=`<path d="${bolt}" fill="none" stroke="url(#M${u})" stroke-width="2.6" stroke-linejoin="round"/>`;
-    else s+=`<path d="${bolt}" fill="url(#V${u})" stroke="${M.k}" stroke-width="1" stroke-linejoin="round"/>`;
-    if(t>=3){let g='';for(let i=0;i<7;i++){const a=Math.PI*(1+i/6);g+=`<line x1="${(60+Math.cos(a)*30).toFixed(1)}" y1="${(56+Math.sin(a)*30).toFixed(1)}" x2="${(60+Math.cos(a)*34).toFixed(1)}" y2="${(56+Math.sin(a)*34).toFixed(1)}" stroke="${M.m}" stroke-width="1.2" opacity=".5"/>`;}s+=g;}
-    if(t>=6) s+=this.st5(88,36,3.4,M.l,.95);
-    return s;
-  },
-  /* ---- weitere Helfer für die 24 Einzel- + 8 Meisterklasse-Badges ---- */
-  glo(b){return `<g filter="url(#rcGlow)">${b}</g>`;},
-  glo2(b){return `<g filter="url(#rcGlow2)">${b}</g>`;},
-  rg(u,x,c1,c2){return `<radialGradient id="R${u}${x}" cx="42%" cy="32%" r="75%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></radialGradient>`;},
-  shield(u,M,panel,o={}){
-    const cx=o.cx??60,cy=o.cy??57,w=o.w??58,h=o.h??64;
-    let s=`<path d="${this.shPath(cx,cy,w,h)}" fill="url(#M${u})" stroke="${M.k}" stroke-width="1.3"/>`;
-    s+=`<path d="${this.shPath(cx,cy+.5,w-10.5,h-11)}" fill="${panel}" stroke="rgba(0,0,0,.55)" stroke-width="1"/>`;
-    s+=`<line x1="${cx-w/2+6}" y1="${cy-h*.46+2.6}" x2="${cx+w/2-6}" y2="${cy-h*.46+2.6}" stroke="#ffffff" stroke-width="1.3" opacity=".3"/>`;
-    const rv=[[cx-w/2+4.6,cy-h*.46+4.6],[cx+w/2-4.6,cy-h*.46+4.6],[cx-w/2+4.4,cy+h*.02],[cx+w/2-4.4,cy+h*.02],[cx,cy+h*.49]];
-    rv.forEach(p=>{s+=`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="1.4" fill="${M.l}" opacity=".9"/>`;});
-    return s;
-  },
-  cryShield(u,M,o={}){
-    const cx=o.cx??60,cy=o.cy??57,w=o.w??58,h=o.h??66;
-    const x0=cx-w/2,x1=cx+w/2,yt=cy-h*.48,ys=cy+h*.06,yb=cy+h*.52;
-    const P=`M ${cx} ${yt} L ${x1-5} ${yt+7} L ${x1} ${ys} L ${cx} ${yb} L ${x0} ${ys} L ${x0+5} ${yt+7} Z`;
-    let s=`<path d="${P}" fill="${M.m}" opacity=".22"/>`;
-    s+=`<path d="${P}" fill="none" stroke="url(#M${u})" stroke-width="3.4" stroke-linejoin="round"/>`;
-    s+=`<path d="M ${cx} ${yt+7} L ${x1-8} ${yt+11} L ${x1-5} ${ys} L ${cx} ${yb-7} L ${x0+5} ${ys} L ${x0+8} ${yt+11} Z" fill="none" stroke="${M.l}" stroke-width=".8" opacity=".5"/>`;
-    [[cx,yt+7,cx,yb-7],[x0+8,yt+11,x1-8,yt+11],[x0+5,ys,x1-5,ys]].forEach(l=>{s+=`<line x1="${l[0]}" y1="${l[1]}" x2="${l[2]}" y2="${l[3]}" stroke="${M.l}" stroke-width=".6" opacity=".35"/>`;});
-    return s;
-  },
-  /* ---- 24 Einzel-Erfolge ---- */
-  b1(u){const G=this.MAT.gold;const d=this.mg(u,G)+this.vg(u,G)+this.ag(u,'#FFD700',.75);
-    let b=this.auraC(u)+this.bev(this.wreath(u,G))+this.st5(60,13.5,4.6,G.l)+this.bev(this.shoe(u,G,{cy:59,sc:.92}));
-    b+=this.spks(u,[[24,26,1],[95,32,.8],[30,86,.7],[92,80,.9],[60,4,.6]]);
-    return this.wrap(d,b);},
-  b2(u){const S=this.MAT.silver,B=this.MAT.blue;const d=this.mg(u,S)+this.vg(u,S)+this.vg(u,B,'B')+this.ag(u,'#CBD5DA',.55);
-    let b=this.auraC(u)+this.bev(this.shield(u,S,'#12303f'));
-    b+=this.bev(`<g transform="translate(60 61) rotate(-5)"><rect x="-15" y="-9" width="30" height="20" rx="1.5" fill="#DCE7EC" stroke="#6d777c" stroke-width="1"/><line x1="-5" y1="-9" x2="-5" y2="11" stroke="#9FB2BD" stroke-width=".8"/><line x1="5" y1="-9" x2="5" y2="11" stroke="#9FB2BD" stroke-width=".8"/><path d="M -12 3 L -8 -2 L -2 4 L 3 -3 L 8 2 L 12 -2" fill="none" stroke="#6d777c" stroke-width=".9" opacity=".8"/></g>`);
-    b+=this.bev(`<g transform="translate(60 50)"><path d="M0 -10 C 5.5 -10 9 -6 9 -1.5 C 9 4 0 12 0 12 C 0 12 -9 4 -9 -1.5 C -9 -6 -5.5 -10 0 -10 Z" fill="url(#V${u}B)" stroke="${B.k}" stroke-width="1"/><circle cx="0" cy="-1.5" r="3" fill="#EAF9FF"/></g>`);
-    b+=this.spks(u,[[28,30,.8],[92,34,.7],[88,84,.8]]);
-    return this.wrap(d,b);},
-  b3(u){const Z=this.MAT.bronze,R=this.MAT.red;const d=this.mg(u,Z)+this.vg(u,Z)+this.ag(u,'#C0824A',.6);
-    let c=`<g transform="translate(60 60)">`;
-    c+=`<rect x="-19" y="-12" width="8" height="25" fill="url(#V${u})" stroke="${Z.k}" stroke-width="1"/><rect x="11" y="-12" width="8" height="25" fill="url(#V${u})" stroke="${Z.k}" stroke-width="1"/>`;
-    c+=`<rect x="-20.5" y="-15" width="4" height="4" fill="url(#V${u})"/><rect x="-14.5" y="-15" width="4" height="4" fill="url(#V${u})"/><rect x="10.5" y="-15" width="4" height="4" fill="url(#V${u})"/><rect x="16.5" y="-15" width="4" height="4" fill="url(#V${u})"/>`;
-    c+=`<rect x="-12" y="-2" width="24" height="15" fill="url(#V${u})" stroke="${Z.k}" stroke-width="1"/>`;
-    c+=`<rect x="-6.5" y="-20" width="13" height="19" fill="url(#V${u})" stroke="${Z.k}" stroke-width="1"/><rect x="-7.5" y="-23" width="4" height="4" fill="url(#V${u})"/><rect x="-2" y="-23" width="4" height="4" fill="url(#V${u})"/><rect x="3.5" y="-23" width="4" height="4" fill="url(#V${u})"/>`;
-    c+=`<path d="M -4 13 L -4 5 Q 0 1 4 5 L 4 13 Z" fill="#190d04"/>`;
-    c+=`<rect x="-16.5" y="-8" width="3" height="5" fill="#190d04"/><rect x="13.5" y="-8" width="3" height="5" fill="#190d04"/><rect x="-1.5" y="-16" width="3" height="5" fill="#190d04"/>`;
-    c+=`<line x1="0" y1="-30" x2="0" y2="-23" stroke="${Z.k}" stroke-width="1.2"/><path d="M 0 -30 L 8 -28 L 0 -25.5 Z" fill="${R.m}"/>`;
-    c+=`</g>`;
-    const b=this.auraC(u)+this.bev(this.shield(u,Z,'#2b1a0b',{h:68}))+this.bev(c)+this.spks(u,[[26,28,.7],[94,30,.8],[90,86,.7]]);
-    return this.wrap(d,b);},
-  b4(u){const B=this.MAT.blue,S=this.MAT.silver;const d=this.mg(u,B)+this.vg(u,B)+this.mg(u,S,'S')+this.ag(u,'#00D4FF',.8);
-    let b=this.auraC(u)+this.bev(this.cryShield(u,B));
-    b+=this.bev(`<line x1="53" y1="38" x2="53" y2="76" stroke="url(#M${u}S)" stroke-width="2.2"/><circle cx="53" cy="77.5" r="2" fill="url(#M${u}S)"/>`);
-    b+=this.glo(`<path d="M 53 40 C 63 35 67 45 79 40 L 77 53 C 67 57 63 48 53 52 Z" fill="url(#V${u})" opacity=".95"/><path d="M 56 43 C 63 40 66 46 74 43" fill="none" stroke="#EAF9FF" stroke-width="1.2" opacity=".7"/>`);
-    b+=this.spks(u,[[30,30,.9],[92,26,.8],[88,84,.9],[26,78,.7]],'#D6F8FF');
-    return this.wrap(d,b);},
-  b5(u){const P=this.MAT.purple,G=this.MAT.gold;const d=this.mg(u,P)+this.vg(u,P)+this.mg(u,G,'G')+this.ag(u,'#9B5DE5',.8);
-    let b=this.auraC(u)+this.bev(this.wreath(u,P,{r:43,n:8}))+this.bev(this.shield(u,P,'#1e0d38',{w:50,h:58}))
-      +this.crn(60,25,.82,`url(#M${u}G)`,G.l)
-      +this.glo(`<circle cx="60" cy="48" r="4.2" fill="${P.l}" opacity=".55"/><path d="M 60 53 L 66.5 61 L 64 76 L 56 76 L 53.5 61 Z" fill="${P.l}" opacity=".45"/>`);
-    b+=this.spks(u,[[24,32,.8],[96,36,.9],[60,6,.6]],'#E6D6FF');
-    return this.wrap(d,b);},
-  b6(u){const G=this.MAT.gold,R=this.MAT.red;const d=this.mg(u,G)+this.vg(u,G)+this.vg(u,R,'R')+this.ag(u,'#FFD700',.85);
-    let spikes='';[[60,10,60,-4],[110,57,124,57],[60,104,60,118],[10,57,-4,57]].forEach(p=>{spikes+=`<polygon points="${p[0]-3},${p[1]} ${p[2]},${p[3]} ${p[0]+3},${p[1]}" fill="url(#M${u})" opacity=".85"/>`;});
-    let b=this.auraC(u)+this.bev(spikes)+this.bev(this.wreath(u,G,{r:41,n:8}))
-      +this.bev(this.shield(u,G,`url(#V${u}R)`,{w:46,h:54}))
-      +this.bev(`<path d="M 53 50 Q 58 44 64 48 Q 69 51 66 57 Q 68 61 62 62 Q 57 66 53 61 Q 49 56 53 50 Z" fill="url(#V${u})" stroke="${G.k}" stroke-width=".8"/>`)
-      +this.crn(60,22,.9,`url(#M${u})`,G.l);
-    b+=this.spks(u,[[22,24,1],[98,28,.9],[28,90,.8],[92,88,1]]);
-    return this.wrap(d,b);},
-  b7(u){const N=this.MAT.green,L=this.MAT.lime;const d=this.mg(u,N)+this.vg(u,N)+this.ag(u,'#10B981',.75);
-    let burst='';for(let i=0;i<20;i++){const a=i/20*Math.PI*2;const r1=i%2?45:38,r2=i%2?38:45;burst+=`${(60+Math.cos(a)*r1).toFixed(1)},${(57+Math.sin(a)*r1).toFixed(1)} `;}
-    let b=this.auraC(u)+this.bev(`<polygon points="${burst.trim()}" fill="none" stroke="url(#M${u})" stroke-width="2.6" stroke-linejoin="round"/>`)
-      +`<circle cx="60" cy="57" r="33" fill="#062b1d" opacity=".8"/>`
-      +this.glo(`<line x1="26" y1="50" x2="40" y2="50" stroke="${L.m}" stroke-width="2" stroke-linecap="round" opacity=".8"/><line x1="22" y1="58" x2="38" y2="58" stroke="${L.m}" stroke-width="2" stroke-linecap="round" opacity=".6"/><line x1="27" y1="66" x2="41" y2="66" stroke="${L.m}" stroke-width="2" stroke-linecap="round" opacity=".7"/>`)
-      +this.bev(this.shoe(u,N,{cx:62,cy:58,sc:.88}));
-    b+=this.spks(u,[[88,28,.8],[94,74,.7],[30,86,.7]],L.l);
-    return this.wrap(d,b);},
-  b8(u){const G=this.MAT.gold;const d=this.mg(u,G)+this.vg(u,G)+this.ag(u,'#FFD700',.7);
-    const wing=(s)=>`<g transform="translate(${60+s*14} 56) scale(${s} 1)">
-      <path d="M0 -6 Q 16 -16 34 -12 Q 22 -8 16 -3 Q 26 -4 32 0 Q 20 2 14 4 Q 22 6 26 10 Q 12 10 4 7 Z" fill="url(#V${u})" stroke="${G.k}" stroke-width=".9"/>
-      <path d="M 4 -4 Q 14 -9 26 -9" fill="none" stroke="${G.l}" stroke-width=".9" opacity=".7"/></g>`;
-    let w=`<g transform="translate(60 57)">
-      <rect x="-2" y="-24" width="4" height="5" fill="url(#M${u})"/><circle cx="0" cy="-25.5" r="2" fill="url(#M${u})" stroke="${G.k}" stroke-width=".6"/>
-      <g transform="rotate(40)"><rect x="-1.6" y="-21.5" width="3.2" height="4" rx="1" fill="url(#M${u})"/></g><g transform="rotate(-40)"><rect x="-1.6" y="-21.5" width="3.2" height="4" rx="1" fill="url(#M${u})"/></g>
-      <circle cx="0" cy="0" r="16.5" fill="url(#M${u})" stroke="${G.k}" stroke-width="1.2"/>
-      <circle cx="0" cy="0" r="12.5" fill="#170f03"/>
-      </g>`;
-    let ticks='';for(let i=0;i<12;i++){const a=i/12*Math.PI*2;ticks+=`<line x1="${(60+Math.cos(a)*10).toFixed(1)}" y1="${(57+Math.sin(a)*10).toFixed(1)}" x2="${(60+Math.cos(a)*11.8).toFixed(1)}" y2="${(57+Math.sin(a)*11.8).toFixed(1)}" stroke="${G.m}" stroke-width="${i%3?0.8:1.4}" opacity=".85"/>`;}
-    const hands=`<line x1="60" y1="57" x2="60" y2="48.5" stroke="${G.l}" stroke-width="2" stroke-linecap="round"/><line x1="60" y1="57" x2="66" y2="59" stroke="${G.l}" stroke-width="1.5" stroke-linecap="round"/><circle cx="60" cy="57" r="1.5" fill="${G.l}"/>`;
-    const b=this.auraC(u)+this.bev(wing(1)+wing(-1))+this.bev(w)+ticks+hands+this.spks(u,[[26,30,.8],[94,30,.8],[60,92,.7]]);
-    return this.wrap(d,b);},
-  b9(u){const S=this.MAT.silver,B=this.MAT.blue;const d=this.mg(u,S)+this.vg(u,S)+this.ag(u,'#CBD5DA',.6);
-    let b=this.auraC(u)+`<circle cx="60" cy="57" r="34" fill="#0e2230"/>`
-      +this.bev(this.wreath(u,S,{r:42,n:9}))+this.st5(60,12.5,4.4,S.l)
-      +this.bev(`<path d="M 38 72 L 52 46 L 63 72 Z" fill="url(#V${u})" opacity=".8" stroke="${S.k}" stroke-width=".8"/>
-        <path d="M 48 72 L 66 40 L 84 72 Z" fill="url(#V${u})" stroke="${S.k}" stroke-width="1"/>
-        <path d="M 66 40 L 71.5 50 L 66 48 L 61.5 51 L 60.5 49.6 Z" fill="#F4FAFD"/>
-        <path d="M 52 46 L 55.5 52.5 L 51 51 L 48.5 53.5 Z" fill="#E6EFF4" opacity=".9"/>`)
-      +`<path d="M 47 36 q 2.5 -2.5 5 0 M 56 31 q 2.5 -2.5 5 0" fill="none" stroke="${S.m}" stroke-width="1" opacity=".8"/>`;
-    b+=this.spks(u,[[28,80,.7],[92,82,.7]]);
-    return this.wrap(d,b);},
-  b10(u){const F=this.MAT.flame;const d=this.mg(u,F)+this.vg(u,F)+this.ag(u,'#FF7A3C',.95);
-    const fl=(s,f,o=1)=>`<path transform="translate(60 76) scale(${s})" d="M0 0 C -13 -7 -11 -23 -2 -37 C 0 -28 4.5 -27 5.5 -19 C 6.5 -13 13 -11 12 -2 C 11 6 5 5 0 0 Z" fill="${f}" opacity="${o}"/>`;
-    const wf=(s)=>`<g transform="translate(${60+s*10} 66) scale(${s} 1) rotate(18)">
-      <path d="M0 0 Q 10 -12 26 -14 Q 18 -6 16 0 Q 24 -4 32 -2 Q 22 4 14 6 Q 8 8 2 6 Z" fill="url(#V${u})" opacity=".9"/></g>`;
-    let b=this.auraC(u,56)+this.glo2(wf(1)+wf(-1))
-      +this.glo(fl(1.08,`url(#V${u})`)+fl(.74,'#FFB53C')+fl(.46,'#FFF3B0'))
-      +this.glo(`<circle cx="44" cy="42" r="1.4" fill="#FFD27A"/><circle cx="76" cy="38" r="1.1" fill="#FFB53C"/><circle cx="70" cy="26" r="1.5" fill="#FFE9A8"/><circle cx="50" cy="24" r="1" fill="#FFB53C"/>`);
-    b+=this.spks(u,[[30,70,.7],[90,68,.7]],'#FFE9A8');
-    return this.wrap(d,b);},
-  b11(u){const B=this.MAT.blue;const d=this.mg(u,B)+this.vg(u,B)+this.ag(u,'#00D4FF',.9);
-    let b=this.auraC(u,56)+this.bev(this.cryShield(u,B,{w:60,h:68}))
-      +this.glo2(`<circle cx="60" cy="44" r="4.6" fill="#D6F8FF" opacity=".85"/><path d="M 60 50 L 68 58 L 65 78 L 55 78 L 52 58 Z" fill="#A8F0FF" opacity=".6"/><path d="M 52 56 L 44 64 M 68 56 L 76 64" stroke="#A8F0FF" stroke-width="2.4" stroke-linecap="round" opacity=".5"/>`)
-      +this.bev(`<polygon points="30,84 33,88 30,92 27,88" fill="url(#M${u})" opacity=".9"/><polygon points="92,80 94.5,83.5 92,87 89.5,83.5" fill="url(#M${u})" opacity=".8"/>`);
-    b+=this.spks(u,[[26,28,.9],[94,30,.9],[60,8,.7]],'#D6F8FF');
-    return this.wrap(d,b);},
-  b12(u){const P=this.MAT.purple,S=this.MAT.silver;const d=this.mg(u,P)+this.vg(u,P)+this.mg(u,S,'S')+this.ag(u,'#9B5DE5',.8);
-    const arrow=(x1,y1,x2,y2)=>{const dx=x2-x1,dy=y2-y1,L=Math.hypot(dx,dy),ux=dx/L,uy=dy/L,px=-uy,py=ux;
-      return `<line x1="${x1}" y1="${y1}" x2="${x2-ux*6}" y2="${y2-uy*6}" stroke="#1a0d2e" stroke-width="2.6"/><line x1="${x1}" y1="${y1}" x2="${x2-ux*6}" y2="${y2-uy*6}" stroke="url(#M${u}S)" stroke-width="1.2"/>
-      <polygon points="${x2},${y2} ${(x2-ux*8+px*3.6).toFixed(1)},${(y2-uy*8+py*3.6).toFixed(1)} ${(x2-ux*8-px*3.6).toFixed(1)},${(y2-uy*8-py*3.6).toFixed(1)}" fill="url(#M${u}S)"/>
-      <polygon points="${(x1+px*3).toFixed(1)},${(y1+py*3).toFixed(1)} ${(x1+ux*7).toFixed(1)},${(y1+uy*7).toFixed(1)} ${(x1-px*3).toFixed(1)},${(y1-py*3).toFixed(1)} ${(x1-ux*2).toFixed(1)},${(y1-uy*2).toFixed(1)}" fill="${P.l}" opacity=".9"/>`;};
-    let b=this.auraC(u)+this.bev(this.shield(u,P,'#170a2c'))
-      +`<path d="M 48 36 L 55 48 L 50 56 L 57 66 M 72 40 L 66 52 L 71 60" fill="none" stroke="#E6D6FF" stroke-width="1" opacity=".4"/>`
-      +this.bev(arrow(26,26,80,74)+arrow(94,22,52,70)+arrow(22,64,74,42));
-    b+=this.spks(u,[[92,88,.8],[28,90,.7]],'#E6D6FF');
-    return this.wrap(d,b);},
-  b13(u){const Z=this.MAT.bronze;const d=this.mg(u,Z)+this.vg(u,Z)+this.ag(u,'#C0824A',.65);
-    let b=this.auraC(u)+`<circle cx="60" cy="57" r="33" fill="#241205" opacity=".9"/>`
-      +this.bev(this.ring(u,Z,41))
-      +`<circle cx="60" cy="57" r="37.4" fill="none" stroke="${Z.k}" stroke-width="1.4" stroke-dasharray="4 3.4" opacity=".8"/>`
-      +this.bev(`<g transform="translate(60 58)">
-        <path d="M -32 -4 L -14 -1 L -14 8 L -32 4 Z" fill="url(#V${u})" stroke="${Z.k}" stroke-width="1"/><rect x="-34" y="-6" width="5" height="12" fill="${Z.d}" stroke="${Z.k}" stroke-width=".8"/>
-        <path d="M 32 -4 L 14 -1 L 14 8 L 32 4 Z" fill="url(#V${u})" stroke="${Z.k}" stroke-width="1"/><rect x="29" y="-6" width="5" height="12" fill="${Z.d}" stroke="${Z.k}" stroke-width=".8"/>
-        <path d="M -16 -2 Q -8 -7 -1 -3 L 8 2 Q 12 5 8 8 Q 3 11 -3 8 L -13 5 Q -18 2 -16 -2 Z" fill="url(#V${u})" stroke="${Z.k}" stroke-width="1.1"/>
-        <path d="M 16 -2 Q 8 -6 2 -3.5" fill="none" stroke="${Z.k}" stroke-width="1.1"/>
-        <path d="M -6 -4 Q 0 -6 5 -3" fill="none" stroke="${Z.l}" stroke-width="1" opacity=".7"/>
-        <path d="M -3 8 Q 1 9.5 5 8 M -8 6.5 Q -4 8.5 0 7.5" fill="none" stroke="${Z.k}" stroke-width=".8" opacity=".8"/>
-      </g>`);
-    b+=this.spks(u,[[27,29,.7],[93,31,.7]]);
-    return this.wrap(d,b);},
-  b14(u){const G=this.MAT.gold;const d=this.mg(u,G)+this.vg(u,G)+this.ag(u,'#FFD700',.85);
-    let rays='';for(let i=0;i<10;i++){const a=i/10*Math.PI*2-Math.PI/2;rays+=`<line x1="${(60+Math.cos(a)*20).toFixed(1)}" y1="${(56+Math.sin(a)*20).toFixed(1)}" x2="${(60+Math.cos(a)*34).toFixed(1)}" y2="${(56+Math.sin(a)*34).toFixed(1)}" stroke="${G.m}" stroke-width="1" opacity=".4"/>`;}
-    let b=this.auraC(u,56)+rays
-      +this.bev(this.st5(34,42,7.5,`url(#M${u})`)+this.st5(87,44,7,`url(#M${u})`)+this.st5(40,80,6.6,`url(#M${u})`)+this.st5(81,80,6.9,`url(#M${u})`))
-      +this.bev(this.st5(60,54,18,`url(#M${u})`))
-      +this.glo(this.st5(60,54,9.5,G.l,.95))
-      +this.st5(60,54,4,'#FFFDF0');
-    b+=this.spks(u,[[22,24,.9],[98,22,.9],[60,96,.8],[24,66,.6],[96,66,.6]]);
-    return this.wrap(d,b);},
-  b15(u){const B=this.MAT.blue,S=this.MAT.silver,N=this.MAT.green;const d=this.mg(u,S,'S')+this.vg(u,B)+this.rg(u,'G','#A8F0FF','#065a72')+this.ag(u,'#00D4FF',.7);
-    let comp=`<polygon points="60,16 64,50 60,57 56,50" fill="url(#M${u}S)" opacity=".9"/><polygon points="60,98 64,64 60,57 56,64" fill="url(#M${u}S)" opacity=".9"/><polygon points="19,57 53,53 60,57 53,61" fill="url(#M${u}S)" opacity=".9"/><polygon points="101,57 67,53 60,57 67,61" fill="url(#M${u}S)" opacity=".9"/>`;
-    let b=this.auraC(u)+this.bev(comp)
-      +`<ellipse cx="60" cy="57" rx="27" ry="8.5" transform="rotate(-16 60 57)" fill="none" stroke="${S.d}" stroke-width="2" opacity=".7"/>`
-      +this.bev(`<circle cx="60" cy="57" r="17.5" fill="url(#R${u}G)" stroke="${B.d}" stroke-width="1.2"/>`)
-      +`<path d="M 49 48 Q 55 44 60 48 Q 64 51 61 55 Q 55 56 51 53 Z" fill="${N.m}" opacity=".85"/><path d="M 64 60 Q 70 58 73 62 Q 71 67 65 67 Q 62 64 64 60 Z" fill="${N.m}" opacity=".8"/><path d="M 51 62 Q 55 61 56 65 Q 53 68 50 66 Z" fill="${N.m}" opacity=".75"/>
-      <ellipse cx="60" cy="57" rx="7" ry="17.5" fill="none" stroke="#EAF9FF" stroke-width=".7" opacity=".4"/><ellipse cx="60" cy="57" rx="17.5" ry="6" fill="none" stroke="#EAF9FF" stroke-width=".7" opacity=".35"/>
-      <ellipse cx="43" cy="26" rx="2" ry="2" fill="#FFD700"/>`
-      +`<path d="M 33 64 A 27 8.5 -16 0 0 87 50" fill="none" stroke="url(#M${u}S)" stroke-width="2.2"/>`;
-    b+=this.spks(u,[[28,32,.8],[92,28,.8],[90,86,.7]],'#D6F8FF');
-    return this.wrap(d,b);},
-  b16(u){const I=this.MAT.iron,G=this.MAT.gold;const d=this.mg(u,I)+this.vg(u,I)+this.mg(u,G,'G')+this.ag(u,'#8fa3b0',.5);
-    const chain=(x1,y1,x2,y2)=>{const L=Math.hypot(x2-x1,y2-y1),n=Math.floor(L/7),ux=(x2-x1)/L,uy=(y2-y1)/L,ang=Math.atan2(uy,ux)*180/Math.PI;let s='';
-      for(let i=0;i<=n;i++){const x=x1+ux*i*7,y=y1+uy*i*7;s+=`<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="${i%2?4.2:2.6}" ry="${i%2?2.6:2.2}" transform="rotate(${ang.toFixed(0)} ${x.toFixed(1)} ${y.toFixed(1)})" fill="none" stroke="url(#M${u})" stroke-width="1.8"/>`;}return s;};
-    let b=this.auraC(u)+this.bev(this.shield(u,I,'#101418',{h:68}))
-      +this.bev(`<g transform="translate(60 57)"><rect x="-9" y="-12" width="18" height="20" fill="#1c2227" stroke="${I.d}" stroke-width="1"/><rect x="-11" y="-15" width="5" height="4" fill="#1c2227"/><rect x="-2.5" y="-15" width="5" height="4" fill="#1c2227"/><rect x="6" y="-15" width="5" height="4" fill="#1c2227"/><path d="M -3 8 L -3 1 Q 0 -2 3 1 L 3 8 Z" fill="#05070a"/><rect x="-9" y="-12" width="18" height="3" fill="${I.m}" opacity=".3"/></g>`)
-      +this.bev(chain(28,34,92,78)+chain(92,34,28,78))
-      +this.bev(`<g transform="translate(60 56)"><rect x="-6" y="-2" width="12" height="10" rx="2" fill="url(#M${u}G)" stroke="${G.k}" stroke-width=".8"/><path d="M -3.6 -2 v-3 a3.6 3.6 0 0 1 7.2 0 v3" fill="none" stroke="url(#M${u}G)" stroke-width="2.2"/><circle cx="0" cy="2.6" r="1.6" fill="#241503"/></g>`);
-    b+=this.spks(u,[[26,26,.6],[94,88,.6]]);
-    return this.wrap(d,b);},
-  b17(u){const N=this.MAT.green,S=this.MAT.silver,R=this.MAT.red;const d=this.mg(u,N)+this.vg(u,N)+this.mg(u,S,'S')+this.ag(u,'#10B981',.7);
-    const P=this.shPath(60,57,58,64);
-    let b=this.auraC(u)+this.bev(`<path d="${P}" fill="url(#M${u})" stroke="${N.k}" stroke-width="1.3"/>`)
-      +`<path d="${this.shPath(60,57.5,47.5,53)}" fill="#173226" stroke="rgba(0,0,0,.5)" stroke-width="1"/>`
-      +`<clipPath id="H${u}"><path d="${this.shPath(60,57.5,47.5,53)}"/></clipPath>`
-      +`<g clip-path="url(#H${u})"><path d="M 60 28 L 56 40 L 62 50 L 55 62 L 61 74 L 57 88 L 90 88 L 90 28 Z" fill="${N.m}" opacity=".3"/><path d="M 62 50 Q 70 46 74 52 Q 78 60 70 64 Q 63 66 61 59 Q 60 53 62 50 Z" fill="url(#V${u})" opacity=".9"/><line x1="68" y1="50" x2="66" y2="62" stroke="${N.k}" stroke-width="1"/><path d="M 38 40 L 46 46 M 34 56 L 44 60 M 40 72 L 48 70" stroke="#9FB2BD" stroke-width="1" opacity=".5"/></g>`
-      +`<path d="M 60 28 L 56 40 L 62 50 L 55 62 L 61 74 L 57 88" fill="none" stroke="#EAF9FF" stroke-width="1.2" stroke-dasharray="3 2.4" opacity=".8"/>`
-      +this.bev(`<g transform="translate(60 57) rotate(-18)"><polygon points="-20,-8 16,6 12,10 -22,-3" fill="url(#M${u}S)"/><polygon points="-20,8 16,-6 12,-10 -22,3" fill="url(#M${u}S)"/><circle cx="-2" cy="0" r="2" fill="url(#M${u}S)" stroke="#3a4206" stroke-width=".6"/><circle cx="20" cy="9" r="4.4" fill="none" stroke="${R.m}" stroke-width="2.6"/><circle cx="20" cy="-9" r="4.4" fill="none" stroke="${R.m}" stroke-width="2.6"/></g>`);
-    b+=this.spks(u,[[28,28,.7],[92,30,.7]]);
-    return this.wrap(d,b);},
-  b18(u){const G=this.MAT.gold,S=this.MAT.silver,R=this.MAT.red;const d=this.mg(u,G)+this.vg(u,G)+this.mg(u,S,'S')+this.vg(u,R,'R')+this.ag(u,'#FFD700',.9);
-    const swd=(rot)=>`<g transform="rotate(${rot} 60 60)"><polygon points="60,24 62.3,28 62.3,74 60,78 57.7,74 57.7,28" fill="url(#M${u}S)" stroke="#232b30" stroke-width=".5"/><line x1="60" y1="29" x2="60" y2="72" stroke="#8b969d" stroke-width=".7" opacity=".8"/><rect x="52.8" y="73" width="14.4" height="3.2" rx="1.3" fill="url(#M${u})"/><rect x="58.4" y="76" width="3.2" height="8" fill="#2a1a05"/><circle cx="60" cy="86" r="2.4" fill="url(#M${u})"/></g>`;
-    let b=this.auraC(u,56)+this.bev(this.wreath(u,G,{r:43,n:8}))
-      +this.bev(swd(35)+swd(-35))
-      +this.bev(this.shield(u,G,`url(#V${u}R)`,{w:34,h:40,cy:58}))
-      +this.st5(60,57,6.5,G.l)
-      +this.crn(60,20,1,`url(#M${u})`,G.l);
-    b+=this.spks(u,[[22,30,1],[98,32,1],[26,88,.8],[94,86,.8],[60,4,.7]]);
-    return this.wrap(d,b);},
-  b19(u){const B=this.MAT.blue;const d=this.mg(u,B)+this.ag(u,'#00D4FF',.95);
-    const pose=`<circle cx="67" cy="33" r="4.8"/><path d="M 64 40 L 55 57" /><path d="M 62 44 L 73 50 L 81 43"/><path d="M 61 47 L 49 51 L 43 43"/><path d="M 55 57 L 67 64 L 74 78"/><path d="M 55 57 L 45 67 L 35 61"/>`;
-    let b=this.auraC(u,58)
-      +`<circle cx="60" cy="57" r="40" fill="none" stroke="${B.m}" stroke-width="1.6" stroke-dasharray="18 9" opacity=".35"/>`
-      +this.glo2(`<g fill="rgba(0,212,255,.55)" stroke="rgba(0,212,255,.55)" stroke-width="8.5" stroke-linecap="round" fill-rule="evenodd">${pose}</g>`)
-      +this.glo(`<g fill="#D6F8FF" stroke="#D6F8FF" stroke-width="3.4" stroke-linecap="round">${pose}</g>`)
-      +this.glo(`<path d="M 20 46 Q 32 44 42 46 M 14 57 Q 28 55 38 57 M 21 68 Q 32 66 41 67" fill="none" stroke="${B.m}" stroke-width="1.8" stroke-linecap="round" opacity=".5"/>`)
-      +`<circle cx="30" cy="36" r="1.2" fill="#A8F0FF" opacity=".9"/><circle cx="88" cy="66" r="1.4" fill="#A8F0FF" opacity=".8"/><circle cx="82" cy="24" r="1" fill="#A8F0FF" opacity=".7"/><circle cx="42" cy="84" r="1.2" fill="#A8F0FF" opacity=".8"/>`;
-    b+=this.spks(u,[[24,24,.9],[94,84,.8],[92,40,.7]],'#D6F8FF');
-    return this.wrap(d,b);},
-  b20(u){const P=this.MAT.purple;const d=this.mg(u,P)+this.vg(u,P)+this.ag(u,'#9B5DE5',.85);
-    let b=this.auraC(u,56)+`<circle cx="60" cy="57" r="33" fill="#150826" opacity=".92"/>`
-      +this.bev(this.wreath(u,P,{r:42,n:8}))
-      +`<path d="M 79 26 a 7.5 7.5 0 1 0 5 12.8 a 6 6 0 1 1 -5 -12.8 Z" fill="#E6D6FF" opacity=".95"/>`
-      +`<circle cx="46" cy="32" r="1.1" fill="#E6D6FF"/><circle cx="68" cy="40" r=".9" fill="#E6D6FF" opacity=".8"/><circle cx="38" cy="44" r=".8" fill="#E6D6FF" opacity=".7"/>`
-      +this.glo2(`<path d="M 30 66 Q 46 58 60 62 M 26 72 Q 44 64 58 68 M 34 78 Q 48 71 60 73" fill="none" stroke="${P.m}" stroke-width="2.4" stroke-linecap="round" opacity=".55"/>`)
-      +this.bev(this.shoe(u,P,{cx:63,cy:60,sc:.8}));
-    b+=this.spks(u,[[88,80,.8],[30,86,.7]],'#E6D6FF');
-    return this.wrap(d,b);},
-  b21(u){const N=this.MAT.green,G=this.MAT.gold;const d=this.mg(u,N)+this.vg(u,N)+this.mg(u,G,'G')+this.ag(u,'#10B981',.7);
-    let b=this.auraC(u)+`<circle cx="60" cy="57" r="33.5" fill="#0b2a1a"/>`
-      +this.bev(this.ring(u,N,41))
-      +`<circle cx="60" cy="57" r="36.8" fill="none" stroke="url(#M${u}G)" stroke-width="1.2" opacity=".8"/>`
-      +this.bev(`<g transform="translate(60 60)">
-        <path d="M -2.8 18 L -2 2 L 2 2 L 2.8 18 Z" fill="#5c3a1a" stroke="#2c1a07" stroke-width=".8"/>
-        <path d="M -2.4 6 Q -7 8 -9 12 M 2.4 6 Q 7 8 9 12" fill="none" stroke="#5c3a1a" stroke-width="1.6"/>
-        <circle cx="-9" cy="-6" r="10.5" fill="url(#V${u})" stroke="${N.k}" stroke-width=".9"/>
-        <circle cx="9" cy="-5" r="9.5" fill="url(#V${u})" stroke="${N.k}" stroke-width=".9"/>
-        <circle cx="0" cy="-14" r="11.5" fill="url(#V${u})" stroke="${N.k}" stroke-width=".9"/>
-        <circle cx="-4" cy="-17" r="1.1" fill="${N.l}"/><circle cx="5" cy="-12" r="1" fill="${N.l}"/><circle cx="-11" cy="-9" r="1" fill="${N.l}"/><circle cx="11" cy="-7" r=".9" fill="${N.l}"/><circle cx="1" cy="-8" r=".9" fill="${N.l}" opacity=".8"/>
-        <path d="M -14 16 Q 0 13 14 16" fill="none" stroke="${N.m}" stroke-width="1.6" stroke-linecap="round" opacity=".7"/>
-      </g>`)
-      +`<path d="M 82 44 q 3 -1.5 4 1.5 q -3 1.5 -4 -1.5 Z" fill="${N.m}" opacity=".85"/>`;
-    b+=this.spks(u,[[30,30,.6],[90,84,.6]],N.l);
-    return this.wrap(d,b);},
-  b22(u){const G=this.MAT.gold;const d=this.mg(u,G)+this.vg(u,G)+this.ag(u,'#FFD700',1);
-    let rays='';for(let i=0;i<12;i++){const a=i/12*Math.PI*2;rays+=`<line x1="${(60+Math.cos(a)*24).toFixed(1)}" y1="${(56+Math.sin(a)*24).toFixed(1)}" x2="${(60+Math.cos(a)*36).toFixed(1)}" y2="${(56+Math.sin(a)*36).toFixed(1)}" stroke="${G.m}" stroke-width="1.2" opacity=".45"/>`;}
-    const l=G.l,k='#5e4300',g=`url(#V${u})`;
-    const cup=`<g transform="translate(60 56)">
-      <path d="M-13 -13 Q -21.5 -13 -21.5 -7 Q -21.5 -1 -14 0" fill="none" stroke="${g}" stroke-width="2.8"/>
-      <path d="M13 -13 Q 21.5 -13 21.5 -7 Q 21.5 -1 14 0" fill="none" stroke="${g}" stroke-width="2.8"/>
-      <path d="M -12.5 -17.5 L 12.5 -17.5 L 11 -3 Q 9.5 7 0 9 Q -9.5 7 -11 -3 Z" fill="${g}" stroke="${k}" stroke-width="1"/>
-      <ellipse cx="0" cy="-17.5" rx="12.5" ry="2.7" fill="${l}" stroke="${k}" stroke-width=".8"/>
-      <path d="M -8.5 -15 Q -9.5 -5 -5 1" stroke="${l}" stroke-width="1.5" fill="none" opacity=".65"/>
-      ${this.st5(0,-6,4.8,l)}
-      <rect x="-2.7" y="9" width="5.4" height="6" fill="${g}" stroke="${k}" stroke-width=".8"/>
-      <path d="M -8 15 L 8 15 L 8 18 L 10.5 18 L 10.5 22.5 L -10.5 22.5 L -10.5 18 L -8 18 Z" fill="${g}" stroke="${k}" stroke-width=".8"/>
-    </g>`;
-    let b=this.auraC(u,57)+rays+this.bev(this.wreath(u,G,{r:43,n:9}))+this.st5(60,11.5,4.6,G.l)+this.bev(cup);
-    b+=this.spks(u,[[22,26,1],[98,24,1],[26,88,.9],[94,88,.9],[60,98,.7]]);
-    return this.wrap(d,b);},
-  b23(u){const I=this.MAT.iron,R=this.MAT.red;const d=this.mg(u,I)+this.vg(u,I)+this.ag(u,'#FF4D6D',.9);
-    let b=this.auraC(u,57)
-      +this.glo(`<circle cx="40" cy="86" r="1.3" fill="#FF7A8E"/><circle cx="82" cy="82" r="1.1" fill="#FF4D6D"/><circle cx="88" cy="38" r="1.2" fill="#FF7A8E"/>`)
-      +this.bev(`<g transform="translate(60 58)">
-        <path d="M -14 -20 C -28 -28 -32 -44 -22 -54 C -24 -40 -18 -30 -8 -25 Z" fill="url(#M${u})" stroke="${I.k}" stroke-width="1"/>
-        <path d="M 14 -20 C 28 -28 32 -44 22 -54 C 24 -40 18 -30 8 -25 Z" fill="url(#M${u})" stroke="${I.k}" stroke-width="1"/>
-        <path d="M -17 -24 L 17 -24 L 22 -8 L 13 -1 L -13 -1 L -22 -8 Z" fill="url(#V${u})" stroke="${I.k}" stroke-width="1.2"/>
-        <path d="M -22 -8 L -28 -2 L -16 2 Z" fill="url(#V${u})" stroke="${I.k}" stroke-width=".9"/>
-        <path d="M 22 -8 L 28 -2 L 16 2 Z" fill="url(#V${u})" stroke="${I.k}" stroke-width=".9"/>
-        <path d="M -9 -1 L 9 -1 L 6 8 L -6 8 Z" fill="url(#V${u})" stroke="${I.k}" stroke-width="1"/>
-        <path d="M -10 10 L 10 10 L 6 20 L -6 20 Z" fill="#171b1f" stroke="${I.k}" stroke-width="1"/>
-        <polygon points="-6,8 -3.6,13.5 -1.6,8" fill="#DCE7EC"/><polygon points="0,8 2,13.5 4,8" fill="#DCE7EC"/><polygon points="-4.4,10 6.4,10 6,8 -5,8" fill="none"/>
-        <polygon points="-4,17 -2,12.5 0,17" fill="#c9d4da"/><polygon points="2,17 4,12.5 6,17" fill="#c9d4da"/>
-        <path d="M -2 4 L 0 6 L 2 4" fill="none" stroke="${I.k}" stroke-width=".9"/>
-        <path d="M -1.5 -24 L 0 -31 L 1.5 -24 Z" fill="url(#M${u})"/>
-      </g>`)
-      +this.glo2(`<path d="M 46 50 L 55 46 L 53 52 Z" fill="#FF4D6D"/><path d="M 74 50 L 65 46 L 67 52 Z" fill="#FF4D6D"/>`)
-      +`<circle cx="52.5" cy="49.4" r=".9" fill="#FFD9DF"/><circle cx="67.5" cy="49.4" r=".9" fill="#FFD9DF"/>`;
-    b+=this.spks(u,[[26,30,.6],[94,64,.6]],'#FFC2CE');
-    return this.wrap(d,b);},
-  b24(u){const P=this.MAT.purple,B=this.MAT.blue;const d=this.vg(u,P)+this.vg(u,B,'B')+this.rg(u,'C','#F1E8FF','#5b2fa8')+this.ag(u,'#9B5DE5',1);
-    let shards='';
-    for(let i=0;i<8;i++){const long=i%2===0,L=long?31:21,W=long?6.4:4.6,rot=i*45;
-      shards+=`<g transform="rotate(${rot} 60 56)"><polygon points="60,${56-L} ${60+W},${56-L*.32} 60,${56+L*.14} ${60-W},${56-L*.32}" fill="url(#V${u}${long?'':'B'})" stroke="#F1E8FF" stroke-width=".7" stroke-opacity=".55"/><line x1="60" y1="${56-L}" x2="60" y2="${56+L*.1}" stroke="#F1E8FF" stroke-width=".5" opacity=".5"/></g>`;}
-    let core=`<polygon points="60,45 69.5,50.5 69.5,61.5 60,67 50.5,61.5 50.5,50.5" fill="url(#R${u}C)" stroke="#E6D6FF" stroke-width="1"/>`;
-    for(let i=0;i<6;i++){const a1=-Math.PI/2+i*Math.PI/3,a2=-Math.PI/2+(i+1)*Math.PI/3;
-      core+=`<polygon points="60,56 ${(60+Math.cos(a1)*10.4).toFixed(1)},${(56+Math.sin(a1)*10.4).toFixed(1)} ${(60+Math.cos(a2)*10.4).toFixed(1)},${(56+Math.sin(a2)*10.4).toFixed(1)}" fill="${i%2?'#B9F2FF':'#E6D6FF'}" opacity="${i%2?'.28':'.16'}"/>`;}
-    core+=`<circle cx="56.5" cy="51.5" r="1.5" fill="#ffffff" opacity=".95"/>`;
-    let b=this.auraC(u,58)+this.bev(shards)+this.glo(core);
-    b+=this.spks(u,[[24,26,1],[96,28,.9],[28,88,.9],[92,86,1],[60,6,.8],[14,57,.6],[106,57,.6]],'#E6D6FF');
-    return this.wrap(d,b);},
-  /* ---- 8 Meisterklasse-Abzeichen ---- */
-  b25(u){const G=this.MAT.gold;const d=this.mg(u,G)+this.vg(u,G)+this.ag(u,'#FFD700',.95);
-    let rays='';for(let i=0;i<12;i++){const a=i/12*Math.PI*2;rays+=`<line x1="${(60+Math.cos(a)*38).toFixed(1)}" y1="${(57+Math.sin(a)*38).toFixed(1)}" x2="${(60+Math.cos(a)*46).toFixed(1)}" y2="${(57+Math.sin(a)*46).toFixed(1)}" stroke="${G.m}" stroke-width="1.4" opacity=".5"/>`;}
-    let b=this.auraC(u,57)+rays+this.bev(this.wreath(u,G,{r:42,n:9}))
-      +this.bev(this.tWing(`url(#V${u})`,1,.85,60,52)+this.tWing(`url(#V${u})`,-1,.85,60,52))
-      +this.bev(this.shoe(u,G,{cy:61,sc:.8}))
-      +this.crn(60,13,.8,`url(#M${u})`,G.l);
-    b+=this.spks(u,[[22,26,1],[98,24,1],[26,88,.9],[94,88,.9],[60,98,.8]]);
-    return this.wrap(d,b);},
-  b26(u){const P=this.MAT.purple,G=this.MAT.gold;const d=this.mg(u,P)+this.vg(u,P)+this.mg(u,G,'G')+this.ag(u,'#9B5DE5',.9);
-    let gems='';[[92,25],[92,89],[28,89],[28,25]].forEach(p=>{gems+=`<g transform="translate(${p[0]} ${p[1]}) rotate(45)"><rect x="-2.6" y="-2.6" width="5.2" height="5.2" fill="url(#M${u}G)" stroke="${G.k}" stroke-width=".6"/></g>`;});
-    let b=this.auraC(u,56)+this.bev(this.ring(u,P,42))+this.bev(gems)
-      +this.bev(this.tWing(`url(#V${u})`,1,1.05,60,52)+this.tWing(`url(#V${u})`,-1,1.05,60,52))
-      +this.bev(this.shoe(u,P,{cy:61,sc:.84}))
-      +this.st5(60,13,4.4,P.l);
-    b+=this.spks(u,[[24,30,.9],[96,32,.9],[60,100,.8]],'#E6D6FF');
-    return this.wrap(d,b);},
-  b27(u){const B=this.MAT.blue,G=this.MAT.gold,N=this.MAT.green;const d=this.mg(u,G)+this.vg(u,B)+this.rg(u,'G','#A8F0FF','#065a72')+this.ag(u,'#00D4FF',.85);
-    let b=this.auraC(u,56)+this.bev(this.wreath(u,G,{r:42,n:9}))
-      +this.bev(`<circle cx="60" cy="57" r="20" fill="url(#R${u}G)" stroke="${B.d}" stroke-width="1.4"/>`)
-      +`<path d="M 48 47 Q 56 42 62 47 Q 67 51 63 56 Q 56 58 51 54 Z" fill="${N.m}" opacity=".85"/><path d="M 64 62 Q 71 60 74 65 Q 71 70 65 69 Z" fill="${N.m}" opacity=".8"/>`
-      +`<ellipse cx="60" cy="57" rx="8" ry="20" fill="none" stroke="#EAF9FF" stroke-width=".8" opacity=".45"/><ellipse cx="60" cy="57" rx="20" ry="7" fill="none" stroke="#EAF9FF" stroke-width=".8" opacity=".4"/>`
-      +`<ellipse cx="60" cy="57" rx="27" ry="9" transform="rotate(-18 60 57)" fill="none" stroke="url(#M${u})" stroke-width="2.4"/>`
-      +this.crn(60,12,.8,`url(#M${u})`,G.l);
-    b+=this.spks(u,[[24,28,.9],[96,26,.9],[28,88,.8],[92,86,.9]],'#D6F8FF');
-    return this.wrap(d,b);},
-  b28(u){const F=this.MAT.flame,G=this.MAT.gold;const d=this.mg(u,G)+this.vg(u,F)+this.ag(u,'#FFB53C',1);
-    const fl=(s,f,o=1)=>`<path transform="translate(60 72) scale(${s})" d="M0 0 C -13 -7 -11 -23 -2 -37 C 0 -28 4.5 -27 5.5 -19 C 6.5 -13 13 -11 12 -2 C 11 6 5 5 0 0 Z" fill="${f}" opacity="${o}"/>`;
-    let b=this.auraC(u,58)+this.bev(this.wreath(u,G,{r:43,n:9}))
-      +this.glo2(fl(1.05,`url(#V${u})`)+fl(.72,'#FFB53C')+fl(.44,'#FFF3B0'))
-      +this.glo(`<circle cx="46" cy="42" r="1.4" fill="#FFD27A"/><circle cx="74" cy="38" r="1.2" fill="#FFB53C"/><circle cx="68" cy="27" r="1.5" fill="#FFE9A8"/>`)
-      +this.crn(60,12,.8,`url(#M${u})`,G.l);
-    b+=this.spks(u,[[24,28,1],[96,26,1],[28,88,.8],[92,88,.9]],'#FFE9A8');
-    return this.wrap(d,b);},
-  b29(u){const P=this.MAT.purple,G=this.MAT.gold;const d=this.mg(u,G)+this.mg(u,P,'P')+this.ag(u,'#FFD700',1);
-    let rays='';for(let i=0;i<16;i++){const a=i/16*Math.PI*2;const lng=i%2===0;rays+=`<line x1="${(60+Math.cos(a)*40).toFixed(1)}" y1="${(57+Math.sin(a)*40).toFixed(1)}" x2="${(60+Math.cos(a)*(lng?49:44)).toFixed(1)}" y2="${(57+Math.sin(a)*(lng?49:44)).toFixed(1)}" stroke="${G.m}" stroke-width="${lng?1.6:1}" opacity="${lng?.7:.4}"/>`;}
-    let b=this.auraC(u,58)+rays+this.bev(this.tSword(`url(#M${u})`,G.k,35)+this.tSword(`url(#M${u})`,G.k,-35))
-      +this.bev(this.shield(u,G,`url(#M${u}P)`,{w:46,h:52}))
-      +this.st5(60,58,7,G.l)
-      +this.crn(60,17,1.05,`url(#M${u})`,G.l);
-    b+=this.spks(u,[[20,24,1],[100,26,1],[24,90,.9],[96,88,1]]);
-    return this.wrap(d,b);},
-  b30(u){const I=this.MAT.iron,G=this.MAT.gold;const d=this.mg(u,I)+this.vg(u,I)+this.mg(u,G,'G')+this.ag(u,'#FFD700',.65);
-    let chain='';const n=20;for(let i=0;i<n;i++){const a=i/n*Math.PI*2;const x=60+Math.cos(a)*42,y=57+Math.sin(a)*42;chain+=`<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="${i%2?4.4:2.8}" ry="${i%2?2.8:2.2}" transform="rotate(${(a*180/Math.PI).toFixed(0)} ${x.toFixed(1)} ${y.toFixed(1)})" fill="none" stroke="url(#M${u}G)" stroke-width="1.8"/>`;}
-    const c=`<g transform="translate(60 61)">
-      <rect x="-20" y="-10" width="9" height="24" fill="url(#V${u})" stroke="${I.k}" stroke-width="1"/><rect x="11" y="-10" width="9" height="24" fill="url(#V${u})" stroke="${I.k}" stroke-width="1"/>
-      <rect x="-21.5" y="-13.5" width="4.4" height="4.4" fill="url(#V${u})"/><rect x="-15" y="-13.5" width="4.4" height="4.4" fill="url(#V${u})"/><rect x="10.5" y="-13.5" width="4.4" height="4.4" fill="url(#V${u})"/><rect x="17" y="-13.5" width="4.4" height="4.4" fill="url(#V${u})"/>
-      <rect x="-12" y="0" width="24" height="14" fill="url(#V${u})" stroke="${I.k}" stroke-width="1"/>
-      <rect x="-7" y="-19" width="14" height="20" fill="url(#V${u})" stroke="${I.k}" stroke-width="1"/><rect x="-8" y="-22.5" width="4.4" height="4.4" fill="url(#V${u})"/><rect x="-2.2" y="-22.5" width="4.4" height="4.4" fill="url(#V${u})"/><rect x="3.6" y="-22.5" width="4.4" height="4.4" fill="url(#V${u})"/>
-      <path d="M -4 14 L -4 6 Q 0 2 4 6 L 4 14 Z" fill="#05070a"/>
-      <line x1="0" y1="-29" x2="0" y2="-22.5" stroke="${G.d}" stroke-width="1.2"/><path d="M 0 -29 L 9 -26.5 L 0 -24 Z" fill="url(#M${u}G)"/>
-    </g>`;
-    let b=this.auraC(u)+this.bev(chain)+this.bev(c);
-    b+=this.spks(u,[[26,26,.7],[94,88,.7]]);
-    return this.wrap(d,b);},
-  b31(u){const B=this.MAT.blue;const d=this.mg(u,B)+this.vg(u,B)+this.ag(u,'#00D4FF',1);
-    let b=this.auraC(u,58)
-      +this.glo(`<path d="M 22 40 Q 34 38 44 41 M 16 54 Q 30 52 40 54 M 22 68 Q 33 66 42 67" fill="none" stroke="${B.m}" stroke-width="1.8" stroke-linecap="round" opacity=".55"/>`)
-      +this.bev(this.tWing(`url(#V${u})`,1,1.15,62,50)+this.tWing(`url(#V${u})`,-1,1.15,62,50))
-      +this.glo2(`<path d="M 67 26 L 46 62 L 57 62 L 51 90 L 76 50 L 64 50 Z" fill="url(#V${u})" stroke="#D6F8FF" stroke-width="1" stroke-linejoin="round"/>`)
-      +this.st5(60,12,4,'#D6F8FF');
-    b+=this.spks(u,[[24,28,1],[96,30,.9],[30,92,.8],[92,88,.9]],'#D6F8FF');
-    return this.wrap(d,b);},
-  b32(u){const G=this.MAT.gold,S=this.MAT.silver;const d=this.mg(u,G)+this.vg(u,G)+this.mg(u,S,'S')+this.ag(u,'#FFD700',1);
-    let b=this.auraC(u,58)+this.bev(this.wreath(u,G,{r:43,n:9}))
-      +this.bev(this.tSword(`url(#M${u}S)`,'#232b30',32)+this.tSword(`url(#M${u}S)`,'#232b30',-32))
-      +this.bev(this.cryShield(u,G,{w:46,h:54}))
-      +this.st5(60,57,8,G.l)
-      +this.crn(60,14,.85,`url(#M${u})`,G.l);
-    b+=this.spks(u,[[22,26,1],[98,24,1],[26,90,.9],[94,88,1],[60,4,.8]]);
-    return this.wrap(d,b);}
-};
-/* ═══ (veraltet) Erfolg-Icons v1 — flacher Stil, nicht mehr verdrahtet ═══ */
-const RC_TIERS=[
-  {name:'Bronze',  main:'#C0824A',soft:'rgba(192,130,74,.16)', deep:'#8a5a2e'},
-  {name:'Silber',  main:'#CBD5DA',soft:'rgba(203,213,218,.16)',deep:'#7d878c'},
-  {name:'Limette', main:'#E6FF55',soft:'rgba(230,255,85,.15)', deep:'#9aae1f'},
-  {name:'Türkis',  main:'#00D4FF',soft:'rgba(0,212,255,.15)',  deep:'#0a7fa0'},
-  {name:'Episch',  main:'#9B5DE5',soft:'rgba(155,93,229,.18)', deep:'#5e2fa0'},
-  {name:'Imperial',main:'#FFD700',soft:'rgba(255,215,0,.18)',  deep:'#b89500'}
-];
-const RC_LOCKED={name:'Gesperrt',main:'#33564a',soft:'rgba(255,255,255,.05)',deep:'#0c2c22'};
 let _rcUid=0;
-function _rcStar(cx,cy,r,c,op){let pts='';for(let i=0;i<10;i++){const rr=i%2?r*0.45:r;const a=-Math.PI/2+i*Math.PI/5;pts+=(cx+Math.cos(a)*rr).toFixed(1)+','+(cy+Math.sin(a)*rr).toFixed(1)+' ';}return`<polygon points="${pts.trim()}" fill="${c}" opacity="${op}"/>`;}
-function _rcMotif(key,t,c,soft){switch(key){case'distance':return _rcMDistance(t,c);case'territory':return _rcMTerritory(t,c,soft);case'raid':return _rcMRaid(t,c,soft);case'rank':return _rcMRank(t,c,soft);case'streak':return _rcMStreak(t,c,soft);case'pace':return _rcMPace(t,c,soft);case'landmark':return _rcMLandmark(t,c,soft);default:return'';}}
-function _rcMDistance(t,c){let s='';const trail='M 34 70 C 36 54 50 58 52 46 C 54 34 62 36 58 26';s+=`<path d="${trail}" fill="none" stroke="${c}" stroke-width="8" opacity=".10" stroke-linecap="round"/>`;s+=`<path d="${trail}" fill="none" stroke="${c}" stroke-width="2.6" opacity=".4" stroke-linecap="round"/>`;const fp=[[37,66,-22],[43,58,-30],[49,51,-18],[53,43,-34],[56,35,-20],[58,28,-30]];for(let i=0;i<t;i++){const p=fp[i];s+=`<g transform="translate(${p[0]} ${p[1]}) rotate(${p[2]})"><ellipse cx="0" cy="0" rx="2.1" ry="3.4" fill="${c}"/><circle cx="0.5" cy="-3.6" r="1" fill="${c}"/></g>`;}s+=`<circle cx="34" cy="70" r="3.2" fill="#072c21" stroke="${c}" stroke-width="2.2"/>`;const px=58,ptop=15,fw=11,fh=8,fx0=px-fw;s+=`<line x1="${px}" y1="28" x2="${px}" y2="${ptop}" stroke="${c}" stroke-width="2"/>`;s+=`<rect x="${fx0}" y="${ptop}" width="${fw}" height="${fh}" fill="#072c21" stroke="${c}" stroke-width="1.4"/>`;for(let col=0;col<3;col++)for(let row=0;row<2;row++){if((col+row)%2===0)s+=`<rect x="${(fx0+col*fw/3).toFixed(1)}" y="${(ptop+row*fh/2).toFixed(1)}" width="${(fw/3).toFixed(1)}" height="${(fh/2).toFixed(1)}" fill="${c}"/>`;}return s;}
-function _rcMTerritory(t,c,soft){let s='';const region='M 30 42 Q 28 30 40 27 Q 54 23 65 31 Q 74 40 69 52 Q 64 65 49 65 Q 33 64 31 53 Z';s+=`<path d="${region}" fill="${soft}" stroke="${c}" stroke-width="2.8" stroke-linejoin="round"/>`;const cells=[];for(let r=0;r<4;r++)for(let col=0;col<4;col++)cells.push([37+col*7.5,33+r*7.5]);const filled=Math.min(cells.length,Math.round(t*16/6));cells.forEach((p,i)=>{const on=i<filled;s+=`<rect x="${p[0]}" y="${p[1]}" width="6" height="6" rx="1" fill="${on?c:'none'}" opacity="${on?'.5':'1'}" stroke="${on?'none':c}" stroke-opacity="${on?'0':'.16'}" stroke-width="1"/>`;});if(t>=4)s+=`<path d="${region}" fill="none" stroke="${c}" stroke-width="1" stroke-dasharray="3 3" opacity=".5"/>`;if(t>=2){const fx=49,fy=24;s+=`<line x1="${fx}" y1="${fy+1}" x2="${fx}" y2="${fy-13}" stroke="${c}" stroke-width="2"/><path d="M ${fx} ${fy-13} L ${fx+11} ${fy-10.5} L ${fx+8} ${fy-8} L ${fx+11} ${fy-5.5} L ${fx} ${fy-3} Z" fill="${c}"/>`;}return s;}
-function _rcMRaid(t,c,soft){const cx=50,cy=47;let s='';const sword=(rot)=>`<g transform="rotate(${rot} ${cx} ${cy})" opacity=".72"><line x1="${cx}" y1="${cy-23}" x2="${cx}" y2="${cy+21}" stroke="${c}" stroke-width="2.2" stroke-linecap="round"/><path d="M ${cx} ${cy-26} l -1.8 4 h3.6 z" fill="${c}"/><line x1="${cx-6}" y1="${cy+13}" x2="${cx+6}" y2="${cy+13}" stroke="${c}" stroke-width="2.4" stroke-linecap="round"/><circle cx="${cx}" cy="${cy+20}" r="2" fill="${c}"/></g>`;if(t>=3)s+=sword(32)+sword(-32);else if(t>=2)s+=sword(40);if(t>=5){const ty=cy-25;s+=`<path d="M ${cx-9} ${ty} L ${cx-9} ${ty-5} L ${cx-4} ${ty-1} L ${cx} ${ty-7} L ${cx+4} ${ty-1} L ${cx+9} ${ty-5} L ${cx+9} ${ty} Z" fill="${c}"/>`;}const sh=`M ${cx} ${cy-19} L ${cx+15} ${cy-13} L ${cx+15} ${cy+3} Q ${cx+15} ${cy+17} ${cx} ${cy+23} Q ${cx-15} ${cy+17} ${cx-15} ${cy+3} L ${cx-15} ${cy-13} Z`;s+=`<path d="${sh}" fill="${soft}" stroke="${c}" stroke-width="2.8" stroke-linejoin="round"/>`;s+=`<path d="M ${cx+3} ${cy-9} L ${cx-5} ${cy+2} L ${cx-0.5} ${cy+2} L ${cx-3} ${cy+11} L ${cx+6} ${cy-2} L ${cx+1.5} ${cy-2} Z" fill="${c}"/>`;if(t>=4){[[cx-10,cy-9],[cx+10,cy-9]].forEach(p=>s+=`<circle cx="${p[0]}" cy="${p[1]}" r="1.5" fill="${c}"/>`);}if(t>=6)s+=`<path d="M ${cx-19} ${cy+14} Q ${cx-26} ${cy-1} ${cx-17} ${cy-15}" fill="none" stroke="${c}" stroke-width="2"/><path d="M ${cx+19} ${cy+14} Q ${cx+26} ${cy-1} ${cx+17} ${cy-15}" fill="none" stroke="${c}" stroke-width="2"/>`;return s;}
-function _rcMRank(t,c,soft){const cx=50,bw=36,lx=cx-bw/2,bandY=54,bandH=8,peaks=t+1,mid=Math.floor(peaks/2);let s='';let d=`M ${lx} ${bandY}`;const tip=[];for(let i=0;i<peaks;i++){const x1=lx+bw*(i+1)/peaks,xm=lx+bw*(i+0.5)/peaks,ph=17+(i===mid?7:0);tip.push([xm,bandY-ph]);d+=` L ${xm.toFixed(1)} ${(bandY-ph).toFixed(1)} L ${x1.toFixed(1)} ${bandY}`;}d+=' Z';if(t>=3)s+=`<path d="M ${lx+3} ${bandY} Q ${cx} ${bandY-26} ${lx+bw-3} ${bandY}" fill="none" stroke="${c}" stroke-width="1.6" opacity=".5"/>`;s+=`<path d="${d}" fill="${soft}" stroke="${c}" stroke-width="2.6" stroke-linejoin="round"/>`;s+=`<path d="M ${lx} ${bandY} L ${lx+bw} ${bandY} L ${lx+bw} ${bandY+bandH-2} Q ${cx} ${bandY+bandH+3} ${lx} ${bandY+bandH-2} Z" fill="${soft}" stroke="${c}" stroke-width="2.6" stroke-linejoin="round"/>`;for(const p of tip)s+=`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2" fill="${c}"/>`;for(let i=0;i<t;i++){const x=lx+bw*(i+0.5)/t;s+=`<circle cx="${x.toFixed(1)}" cy="${bandY+bandH/2-1}" r="1.5" fill="${c}"/>`;}if(t>=5){const oy=bandY-28;s+=`<circle cx="${cx}" cy="${oy}" r="2.6" fill="none" stroke="${c}" stroke-width="1.6"/><line x1="${cx}" y1="${oy-2.6}" x2="${cx}" y2="${oy-8}" stroke="${c}" stroke-width="1.8"/><line x1="${cx-3}" y1="${oy-6}" x2="${cx+3}" y2="${oy-6}" stroke="${c}" stroke-width="1.8"/>`;}if(t>=6)s+=`<path d="M ${cx-22} ${bandY+12} Q ${cx-30} ${bandY-4} ${cx-19} ${bandY-18}" fill="none" stroke="${c}" stroke-width="2" opacity=".8"/><path d="M ${cx+22} ${bandY+12} Q ${cx+30} ${bandY-4} ${cx+19} ${bandY-18}" fill="none" stroke="${c}" stroke-width="2" opacity=".8"/>`;return s;}
-function _rcMStreak(t,c,soft){const cx=50,by=66,sc=0.78+t*0.055;const flame=(k,fill,op,dx)=>`<path transform="translate(${cx+(dx||0)} ${by}) scale(${k.toFixed(3)})" d="M0 0 C -13 -7 -11 -23 -2 -36 C 0 -28 4 -27 5 -19 C 6 -13 13 -11 12 -2 C 11 6 5 5 0 0 Z" fill="${fill}" opacity="${op}" stroke="${fill}" stroke-width="${(1.2/k).toFixed(2)}" stroke-linejoin="round"/>`;let s='';s+=flame(sc,soft,1,0);s+=flame(sc*0.72,c,.4,0);if(t>=2)s+=flame(sc*0.4,c,.95,0.5);for(let i=0;i<t;i++){const side=i%2?1:-1;const x=cx+side*(9+(i%3)*2);const y=by-16-i*5;s+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(1.2+(i%2)*0.5).toFixed(1)}" fill="${c}" opacity=".75"/>`;}if(t>=3){s+=`<line x1="${cx-11}" y1="${by+4}" x2="${cx+9}" y2="${by-1}" stroke="${c}" stroke-width="2.6" stroke-linecap="round" opacity=".8"/><line x1="${cx-9}" y1="${by-1}" x2="${cx+11}" y2="${by+4}" stroke="${c}" stroke-width="2.6" stroke-linecap="round" opacity=".8"/>`;}return s;}
-function _rcMPace(t,c,soft){const cx=50,cy=46;let s='';const lines=Math.max(2,t);for(let i=0;i<lines;i++){const y=cy-15+i*(30/lines);const len=6+(i%2?8:3);s+=`<line x1="${cx-28}" y1="${y.toFixed(1)}" x2="${(cx-28+len)}" y2="${y.toFixed(1)}" stroke="${c}" stroke-width="2" stroke-linecap="round" opacity=".55"/>`;}if(t>=2){const ws=(0.4+t*0.07).toFixed(2);s+=`<g transform="translate(${cx} ${cy}) scale(${ws})" opacity=".45"><path d="M -4 -1 q -12 -3 -20 4 q 11 -1 16 2 q -10 1 -14 6 q 12 -2 18 0 Z" fill="${c}"/><path d="M 4 -1 q 12 -3 20 4 q -11 -1 -16 2 q 10 1 14 6 q -12 -2 -18 0 Z" fill="${c}"/></g>`;}const bolt=(dx,op)=>`<path transform="translate(${dx} 0)" d="M ${cx+5} ${cy-21} L ${cx-8} ${cy+3} L ${cx-1} ${cy+3} L ${cx-5} ${cy+22} L ${cx+12} ${cy-6} L ${cx+3} ${cy-6} Z" fill="${c}" opacity="${op}"/>`;if(t>=5)s+=bolt(-9,.4);s+=bolt(0,1);return s;}
-function _rcMLandmark(t,c,soft){const cx=50;let s='';s+=`<path d="M 26 70 Q 50 60 74 70" fill="none" stroke="${c}" stroke-width="2.4" stroke-linecap="round" opacity=".55"/>`;const seg=Math.min(5,t+1),baseY=68,segH=6;for(let i=0;i<seg;i++){const y=baseY-(i+1)*segH;const ww=Math.max(7,20-i*3);s+=`<rect x="${(cx-ww/2).toFixed(1)}" y="${y}" width="${ww.toFixed(1)}" height="${segH-1}" rx="1" fill="${soft}" stroke="${c}" stroke-width="2"/>`;}const topY=baseY-seg*segH;s+=`<path d="M ${cx-5} ${topY} L ${cx} ${topY-9} L ${cx+5} ${topY} Z" fill="${soft}" stroke="${c}" stroke-width="2" stroke-linejoin="round"/>`;s+=_rcStar(cx,topY-12,3.2,c,1);const extra=t-1,cp=[[31,30],[39,22],[61,23],[69,31],[34,44]];let prev=null;for(let i=0;i<extra;i++){const p=cp[i%cp.length];if(prev)s+=`<line x1="${prev[0]}" y1="${prev[1]}" x2="${p[0]}" y2="${p[1]}" stroke="${c}" stroke-width="0.8" opacity=".3"/>`;s+=_rcStar(p[0],p[1],2,c,.85);prev=p;}return s;}
-function _rcFrame(t,c,locked){const op=locked?'.3':'1';if(t===1){return`<circle cx="50" cy="50" r="42" fill="none" stroke="${c}" stroke-width="1.6" opacity="${op}"/>`;}if(t===2){return`<circle cx="50" cy="50" r="42" fill="none" stroke="${c}" stroke-width="2.2" opacity="${op}"/><circle cx="50" cy="50" r="37" fill="none" stroke="${c}" stroke-width="1.1" opacity="${locked?'.22':'.55'}"/>`;}if(t===3){let teeth='';const n=24;for(let i=0;i<n;i++){const a=i/n*Math.PI*2;const r=i%2?44:40;teeth+=`${(50+Math.cos(a)*r).toFixed(1)},${(50+Math.sin(a)*r).toFixed(1)} `;}return`<polygon points="${teeth.trim()}" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round" opacity="${op}"/><circle cx="50" cy="50" r="36" fill="none" stroke="${c}" stroke-width="1.1" opacity="${locked?'.22':'.5'}"/>`;}if(t===4){let d='';const n=18;for(let i=0;i<=n;i++){const a=i/n*Math.PI*2;const r=i%2?43:39;const x=(50+Math.cos(a)*r).toFixed(1),y=(50+Math.sin(a)*r).toFixed(1);d+=(i===0?'M':'L')+x+' '+y+' ';}d+='Z';let dots='';for(let i=0;i<4;i++){const a=i/4*Math.PI*2-Math.PI/4;dots+=`<circle cx="${(50+Math.cos(a)*43).toFixed(1)}" cy="${(50+Math.sin(a)*43).toFixed(1)}" r="2.2" fill="${c}" opacity="${op}"/>`;}return`<path d="${d}" fill="none" stroke="${c}" stroke-width="2.4" stroke-linejoin="round" opacity="${op}"/><circle cx="50" cy="50" r="35" fill="none" stroke="${c}" stroke-width="1" opacity="${locked?'.2':'.45'}"/>`+dots;}if(t===5){let spikes='';const n=16;for(let i=0;i<n*2;i++){const a=i/(n*2)*Math.PI*2;const r=i%2?45:38;spikes+=`${(50+Math.cos(a)*r).toFixed(1)},${(50+Math.sin(a)*r).toFixed(1)} `;}let facet='';for(let i=0;i<n;i++){const a=i/n*Math.PI*2-Math.PI/2;facet+=`<line x1="${(50+Math.cos(a)*38).toFixed(1)}" y1="${(50+Math.sin(a)*38).toFixed(1)}" x2="${(50+Math.cos(a)*44.5).toFixed(1)}" y2="${(50+Math.sin(a)*44.5).toFixed(1)}" stroke="${c}" stroke-width="1" opacity="${locked?'.2':'.4'}"/>`;}return`<polygon points="${spikes.trim()}" fill="none" stroke="${c}" stroke-width="2.4" stroke-linejoin="round" opacity="${op}"/>`+facet+`<circle cx="50" cy="50" r="34" fill="none" stroke="${c}" stroke-width="1.2" opacity="${locked?'.22':'.55'}"/>`;}let rays='';const n=36;for(let i=0;i<n;i++){const a=i/n*Math.PI*2;const lng=i%3===0;rays+=`<line x1="${(50+Math.cos(a)*40).toFixed(1)}" y1="${(50+Math.sin(a)*40).toFixed(1)}" x2="${(50+Math.cos(a)*(lng?47:44)).toFixed(1)}" y2="${(50+Math.sin(a)*(lng?47:44)).toFixed(1)}" stroke="${c}" stroke-width="${lng?'1.8':'1'}" stroke-linecap="round" opacity="${locked?'.3':(lng?'.8':'.5')}"/>`;}const wreath=locked?'':`<path d="M 30 56 Q 26 67 37 72" fill="none" stroke="${c}" stroke-width="1.8" opacity=".6"/><path d="M 70 56 Q 74 67 63 72" fill="none" stroke="${c}" stroke-width="1.8" opacity=".6"/>`+[0,1,2].map(k=>`<circle cx="${30+k*2}" cy="${60+k*4}" r="1.2" fill="${c}" opacity=".5"/><circle cx="${70-k*2}" cy="${60+k*4}" r="1.2" fill="${c}" opacity=".5"/>`).join('');const crown=locked?'':`<path d="M 44 11 L 46.5 16 L 50 10.5 L 53.5 16 L 56 11 L 55 18 L 45 18 Z" fill="${c}"/>`;return rays+`<circle cx="50" cy="50" r="40" fill="none" stroke="${c}" stroke-width="3" opacity="${op}"/><circle cx="50" cy="50" r="35" fill="none" stroke="${c}" stroke-width="1.2" opacity="${locked?'.22':'.6'}"/>`+wreath+crown;}
-function rcBuildIconSvg(key,t,locked,opts={}){const showPips=opts.showPips!==false;const tr=locked?RC_LOCKED:RC_TIERS[t-1];const c=tr.main,soft=tr.soft,deep=tr.deep;const uid=key+t+(locked?'l':'u')+(++_rcUid);const glow=(!locked&&t>=4);const fillStop=locked?'.4':(0.22+t*0.09).toFixed(2);let defs=`<defs><radialGradient id="g${uid}" cx="50%" cy="34%" r="74%"><stop offset="0%" stop-color="${locked?'#0e3326':deep}" stop-opacity="${locked?'1':fillStop}"/><stop offset="100%" stop-color="#06291f" stop-opacity="1"/></radialGradient>`;if(glow)defs+=`<filter id="f${uid}" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="${t>=6?'2.6':'1.7'}" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;defs+=`<clipPath id="c${uid}"><circle cx="50" cy="50" r="38"/></clipPath></defs>`;const plate=`<circle cx="50" cy="50" r="38" fill="url(#g${uid})" ${glow?`filter="url(#f${uid})"`:''}/>`;const fr=_rcFrame(t,c,locked);const m=`<g clip-path="url(#c${uid})"${locked?' opacity=".3"':''}>${_rcMotif(key,t,c,soft)}</g>`;let pips='';if(showPips){const gap=6,sx=50-(5*gap)/2,y=85;for(let i=0;i<6;i++){const on=i<t;pips+=`<circle cx="${(sx+i*gap).toFixed(1)}" cy="${y}" r="1.9" fill="${on?(locked?'#33564a':c):'none'}" stroke="${on?'none':'rgba(255,255,255,.16)'}" stroke-width="1"/>`;}}let lock='';if(locked)lock=`<g><circle cx="50" cy="51" r="13" fill="#05231a" stroke="rgba(255,255,255,.16)" stroke-width="1.4"/><rect x="44" y="49" width="12" height="9.5" rx="1.8" fill="#9fb4aa"/><path d="M46.2 49 v-2.6 a3.8 3.8 0 0 1 7.6 0 V49" fill="none" stroke="#9fb4aa" stroke-width="1.8"/><circle cx="50" cy="53.4" r="1.3" fill="#05231a"/></g>`;return`<svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">${defs}${plate}${fr}${m}${lock}${pips}</svg>`;}
-/* App-Kategorie -> Stufen-Motiv des neuen Sets (design_handoff_v2):
-   conq/km/atk/def direkt; disc(Orte)->terr(Hexagon-Gebiete); streak->pace(Blitz). */
-const RC_ACH_KEY={conq:'conq',km:'km',atk:'atk',def:'def',disc:'terr',streak:'pace'};
 function getAchSvg(a,sz=44){
-  rcEnsureBadgeDefs();
-  const peers=achievements.filter(x=>x.cat===a.cat);
+  /* Stufe aus der Reihenfolge innerhalb der Kategorie (nach Ziel sortiert, damit
+     die Stufe nicht von der Reihenfolge im Quelltext abhängt). */
+  const peers=achievements.filter(x=>x.cat===a.cat).sort((x,y)=>x.target-y.target);
   const tier=Math.max(1,Math.min(6,peers.findIndex(x=>x.id===a.id)+1));
-  const key=RC_ACH_KEY[a.cat]||'conq';
-  const uid='a'+String(a.id).replace(/[^a-z0-9]/gi,'')+(++_rcUid);
-  const svg=RCB.tierIcon(uid,key,tier);
+  let svg='';
+  if(rcEnsureIcons()){
+    try{svg=RCIcons.tier(RC_ICON_CAT[a.cat]||'conq',tier);}catch(e){svg='';}
+  }
   if(a.earned){
     return `<div style="width:${sz}px;height:${sz}px;display:block;margin:0 auto;flex-shrink:0">${svg}</div>`;
   }
@@ -5877,10 +5288,59 @@ const RC_MASTER=[
   {badge:'b32',name:'Unbesiegbar',       req:'100 Verteidigungen',            chk:s=>totalDefended>=100},
 ];
 /* Ein einzelnes b*-Abzeichen als HTML (earned = farbig, sonst entsättigt+Schloss). */
+/* ═══ ERFOLGS-ABZEICHEN (rc-erfolg-icons.js) ═══
+   Die Medaillen kommen aus der externen Bibliothek und werden zur Laufzeit als
+   SVG erzeugt. b1–b32 entsprechen 1:1 den 32 Icons (24 Einzel + 8 Meisterklasse). */
+const RC_ICON_ID=['erster-schritt','entdecker','eroberer','grenzpionier','territoriumsheld',
+  'koenig-der-laeufer','tempojaeger','dauerbrenner','hoehenstuermer','unaufhaltsam',
+  'verteidiger','belagerer','teamplayer','allrounder','weltenbummler','festungsbauer',
+  'grenzierer','champion','geist-des-laufens','nachtlaeufer','naturliebhaber','legendaer',
+  'conqueror','unsterblich','marathon-finisher','ultra-laeufer','weltumrunder','ewige-flamme',
+  'gross-imperator','eiserne-festung','schallmauer','unbesiegbar'];
+function rcIconIdFor(badge){
+  const n=parseInt(String(badge).replace(/^b/,''),10);
+  return (n>=1&&n<=RC_ICON_ID.length)?RC_ICON_ID[n-1]:null;
+}
+/* Stufen-Kategorien der App -> Kategorien der Bibliothek. 'disc' (Orte) nutzt die
+   Hexagon-Grafik von 'terr', 'streak' die Tempo-Grafik von 'pace'; für beide gibt
+   es kein eigenes Motiv. Beschriftung und Ziele werden unten passend gesetzt. */
+const RC_ICON_CAT={conq:'conq',km:'km',atk:'atk',def:'def',disc:'terr',streak:'pace'};
+/* Die Bibliothek liefert eigene Zielwerte mit. Die weichen von denen der App ab,
+   deshalb werden Beschriftung und Zahlen einmalig auf die echten Ziele gesetzt —
+   sonst stünde auf dem Abzeichen eine andere Zahl als in der Erfolgsliste. */
+let _rcDefsDone=false,_rcGoalsDone=false;
+function rcEnsureIcons(){
+  if(typeof RCIcons==='undefined')return false;
+  if(!_rcDefsDone){_rcDefsDone=true;try{RCIcons.installDefs(document);}catch(e){}}
+  /* Zielwerte erst übernehmen, wenn die Erfolge geladen sind — sonst würde ein
+     früher Aufruf die Werte der Bibliothek dauerhaft stehen lassen. Deshalb wird
+     _rcGoalsDone nur bei Erfolg gesetzt und sonst beim nächsten Mal erneut versucht. */
+  if(!_rcGoalsDone){
+    const SHORT={conq:'EROBERT',km:'KILOMETER',atk:'ANGRIFFE',def:'VERTEIDIGT',disc:'ORTE',streak:'STREAK'};
+    const SUF={conq:'',km:' km',atk:'×',def:'×',disc:'',streak:' Tage'};
+    try{
+      let n=0;
+      Object.keys(RC_ICON_CAT).forEach(cat=>{
+        const t=(RCIcons.TIERS||[]).find(x=>x.id===RC_ICON_CAT[cat]);
+        const peers=(achievements||[]).filter(a=>a.cat===cat).sort((a,b)=>a.target-b.target);
+        if(!t||peers.length!==6)return;
+        t.short=SHORT[cat]||t.short;
+        t.thresholds=peers.map(p=>p.target);
+        t.goals=peers.map(p=>p.target.toLocaleString('de-DE')+(SUF[cat]||''));
+        n++;
+      });
+      if(n===Object.keys(RC_ICON_CAT).length)_rcGoalsDone=true;
+    }catch(e){}
+  }
+  return true;
+}
 function getBadgeTileSvg(badge,earned,size){
-  rcEnsureBadgeDefs();
   const uid='n'+badge+(++_rcUid);
-  const svg=(RCB[badge]?RCB[badge](uid):'');
+  let svg='';
+  if(rcEnsureIcons()){
+    const id=rcIconIdFor(badge);
+    if(id){try{svg=RCIcons.render(id,{uid});}catch(e){svg='';}}
+  }
   if(earned)return `<div style="width:${size}px;height:${size}px;margin:0 auto">${svg}</div>`;
   const lk=Math.round(size*0.32);
   return `<div style="position:relative;width:${size}px;height:${size}px;margin:0 auto">`
@@ -10693,36 +10153,6 @@ function updateProfile(){
 }
 
 /* DRAWER */
-function _achSvg(cat,earned){
-  const cols={conq:'#c9a227',km:'#4aabe8',atk:'#e85a4a',def:'#3ae880',disc:'#9b6fe8',streak:'#e87b3a'};
-  const lbl={conq:'C',km:'K',atk:'A',def:'D',disc:'E',streak:'S'};
-  const c=cols[cat]||'#888';const lb=lbl[cat]||'?';
-  const cv=document.createElement('canvas');cv.width=cv.height=84;
-  const x=cv.getContext('2d');if(!x)return'';
-  const pts=(r)=>{const a=[];for(let i=0;i<6;i++){const ang=Math.PI/3*i-Math.PI/6;a.push([42+r*Math.cos(ang),42+r*Math.sin(ang)]);}return a;};
-  const hex=(r)=>{const p=pts(r);x.beginPath();x.moveTo(p[0][0],p[0][1]);p.slice(1).forEach(([px,py])=>x.lineTo(px,py));x.closePath();};
-  // outer rim
-  hex(40);const g1=x.createLinearGradient(0,0,84,84);g1.addColorStop(0,'#706050');g1.addColorStop(.5,'#c0b090');g1.addColorStop(1,'#504030');x.fillStyle=g1;x.fill();
-  // inner bg
-  hex(32);const g2=x.createLinearGradient(0,0,0,84);g2.addColorStop(0,'#1e1810');g2.addColorStop(1,'#0a0808');x.fillStyle=g2;x.fill();
-  // glow
-  x.beginPath();x.arc(42,42,14,0,2*Math.PI);x.fillStyle=c;x.globalAlpha=earned?0.35:0.12;x.fill();x.globalAlpha=1;
-  // label
-  x.fillStyle=earned?c:'#666';x.font='bold 26px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText(lb,42,43);
-  // dim overlay for unearned
-  if(!earned){hex(40);x.fillStyle='rgba(0,0,0,0.5)';x.fill();}
-  return cv.toDataURL();
-}
-window._achSvg=_achSvg;
-function renderAchHexGrid(){
-  const CAT_NAMES={conq:'Straßen',km:'Kilometer',atk:'Angriffe',def:'Verteidigung',disc:'Orte',streak:'Streak'};
-  const totalEarned=achievements.filter(a=>a.earned).length;
-  return `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary);letter-spacing:2px">ERFOLGE</span><span style="font-size:.72rem;color:var(--muted);background:var(--card);padding:3px 10px;border-radius:20px;border:1px solid var(--border)">${totalEarned}/${achievements.length}</span></div>`+
-    Object.keys(CAT_NAMES).map(cat=>{
-      const tiers=getAchTiers(cat);const doneN=tiers.filter(t=>t.done).length;
-      return `<div style="margin-bottom:24px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span style="font-size:.72rem;font-weight:700;color:var(--text)">${CAT_NAMES[cat]}</span><span style="font-size:.58rem;color:var(--muted)">${doneN}/6</span></div><div class="ach-sheet-grid">${tiers.map(t=>`<div class="ach-sg ${t.done?'done':t.state==='next'?'next locked':'locked'}"><div class="ach-ic">${getAchSvg(t,62)}</div><div class="ach-n">${t.name}</div><div class="ach-c">${t.done?'✓ '+t.target.toLocaleString('de-DE'):t.target.toLocaleString('de-DE')} ${CAT_UNITS[cat]||''}</div></div>`).join('')}</div></div>`;
-    }).join('');
-}
 function openDrawer(tab){$('drawerOverlay').classList.add('open');drawer.style.display='flex';setTimeout(()=>drawer.classList.add('open'),10);if(tab)currentTab=tab;renderDrawer();}
 function openDrawerTab(tab){openDrawer(tab);}
 window.openDrawer=openDrawer;

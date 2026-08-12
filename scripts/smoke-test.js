@@ -42,7 +42,7 @@ checkInlineScripts('videos/Promo Slide/Promo Scroll.html');
 
 /* ── 2) Eigenständige JS-Dateien ── */
 console.log('2) JS-Dateien');
-const jsFiles = ['sw.js', 'territory.js'];
+const jsFiles = ['sw.js', 'territory.js', 'rc-erfolg-icons.js'];
 const walk = d => fs.readdirSync(d, { withFileTypes: true }).flatMap(e =>
   e.isDirectory() ? walk(path.join(d, e.name)) : e.name.endsWith('.js') ? [path.join(d, e.name)] : []);
 jsFiles.push(...walk(path.join(ROOT, 'api')).map(f => path.relative(ROOT, f)));
@@ -53,7 +53,7 @@ for (const f of jsFiles) {
 
 /* ── 3) Referenzierte Assets existieren ── */
 console.log('3) Asset-Referenzen');
-const assets = ['index.html', 'manifest.json', 'sw.js', 'territory.js', 'privacy.html', 'promo.html',
+const assets = ['index.html', 'manifest.json', 'sw.js', 'territory.js', 'rc-erfolg-icons.js', 'privacy.html', 'promo.html',
   'bg.mp4', 'bg-poster.jpg', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png',
   'assets/logo/lyr_rc.png', 'assets/logo/lyr_crown.png', 'videos/Promo Slide/Promo Scroll.html'];
 for (const a of assets) {
