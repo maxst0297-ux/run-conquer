@@ -2233,6 +2233,11 @@ let boostBollwerk=0,bollwerkArmed=false; // Bollwerk-Boost (max 3): nächster La
 /* Freigeschaltete Streak-Belohnungen (IDs) + aktuell angelegte Kosmetik. */
 let streakUnlocks=[],equipped={},streakClaimed=[];
 let selectedTitle=''; // im Profil angezeigter Titel (aus verdienten Titeln wählbar)
+/* Wann ein Abzeichen zum ersten Mal erreicht wurde: {b1:Zeitstempel}. Wird beim
+   Rendern nachgetragen — für vor dieser Version verdiente Abzeichen fehlt es,
+   dann steht nur "Freigeschaltet" ohne Datum. */
+let badgeDates={};
+let pinnedBadge='';   // ans Profil geheftetes Abzeichen ('' = keines)
 let userBirthday='';  // 'MM-TT' für Geburtstags-Gebietsschutz
 let shieldUntil=0;    // lokaler Anzeige-Timestamp des aktiven Gebiets-Schutzes
 /* Gebiets-Schutz gewähren (24h Angriffs-Immunität). Serverseitig via rc_grant_shield;
@@ -2346,7 +2351,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v225';
+const APP_VERSION='v226';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3009,7 +3014,7 @@ function applyTheme(name){
 }
 function saveProfile(){
   const theme=getActiveTheme();
-  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,streakUnlocks,equipped,streakClaimed,userBio,profilePublic,showRuns,showTerritories,pushEnabled,lastNameChangeDate,WEEKLY_GOAL,DAILY_GOAL_KM,MONTHLY_GOAL,factionWins,factionWinTeams,selectedTitle,userBirthday}));
+  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,streakUnlocks,equipped,streakClaimed,userBio,profilePublic,showRuns,showTerritories,pushEnabled,lastNameChangeDate,WEEKLY_GOAL,DAILY_GOAL_KM,MONTHLY_GOAL,factionWins,factionWinTeams,badgeDates,pinnedBadge,selectedTitle,userBirthday}));
   $('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;
   const hi=$('hdrHi');if(hi)hi.textContent='Hallo, '+(playerName||'Läufer');
   // Update theme-color meta for Android status bar
@@ -3018,7 +3023,7 @@ function saveProfile(){
   syncProfileDebounced();
 }
 function loadProfile(){
-  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';streakUnlocks=p.streakUnlocks||[];equipped=p.equipped||{};streakClaimed=p.streakClaimed||[];userBio=p.userBio||'';factionWins=p.factionWins||[];factionWinTeams=p.factionWinTeams||{};selectedTitle=p.selectedTitle||'';userBirthday=p.userBirthday||'';profilePublic=p.profilePublic!==false;showRuns=p.showRuns!==false;showTerritories=p.showTerritories!==false;pushEnabled=!!p.pushEnabled;lastNameChangeDate=p.lastNameChangeDate||'';if(p.WEEKLY_GOAL>0)WEEKLY_GOAL=p.WEEKLY_GOAL;if(p.DAILY_GOAL_KM>0)DAILY_GOAL_KM=p.DAILY_GOAL_KM;if(p.MONTHLY_GOAL>0)MONTHLY_GOAL=p.MONTHLY_GOAL;const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
+  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';streakUnlocks=p.streakUnlocks||[];equipped=p.equipped||{};streakClaimed=p.streakClaimed||[];userBio=p.userBio||'';factionWins=p.factionWins||[];factionWinTeams=p.factionWinTeams||{};badgeDates=p.badgeDates||{};pinnedBadge=p.pinnedBadge||'';selectedTitle=p.selectedTitle||'';userBirthday=p.userBirthday||'';profilePublic=p.profilePublic!==false;showRuns=p.showRuns!==false;showTerritories=p.showTerritories!==false;pushEnabled=!!p.pushEnabled;lastNameChangeDate=p.lastNameChangeDate||'';if(p.WEEKLY_GOAL>0)WEEKLY_GOAL=p.WEEKLY_GOAL;if(p.DAILY_GOAL_KM>0)DAILY_GOAL_KM=p.DAILY_GOAL_KM;if(p.MONTHLY_GOAL>0)MONTHLY_GOAL=p.MONTHLY_GOAL;const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
   return false;
 }
 /* ── STREAK-BELOHNUNGEN (Inventar) ──────────────────────────────────────────
@@ -5291,6 +5296,42 @@ const RC_MASTER=[
 /* ═══ ERFOLGS-ABZEICHEN (rc-erfolg-icons.js) ═══
    Die Medaillen kommen aus der externen Bibliothek und werden zur Laufzeit als
    SVG erzeugt. b1–b32 entsprechen 1:1 den 32 Icons (24 Einzel + 8 Meisterklasse). */
+/* Kurzer Begleittext je Abzeichen — die Bedingung selbst steht separat im
+   Feld `req` der Erfolgsliste, das hier ist die Einordnung darüber. */
+const RC_BADGE_FLAVOR={
+  b1:'Willkommen auf dem Asphalt. Das Abenteuer läuft!',
+  b2:'Du weißt jetzt, was hinter der nächsten Ecke liegt.',
+  b3:'Das erste Stück Karte trägt deine Farbe.',
+  b4:'Wo andere umkehren, ziehst du die Grenze weiter.',
+  b5:'Aus einzelnen Feldern ist ein Revier geworden.',
+  b6:'Die Straßen kennen deinen Namen.',
+  b7:'Nicht nur weit — vor allem schnell.',
+  b8:'Eine Stunde am Stück. Der Kopf gibt vor den Beinen auf, deiner nicht.',
+  b9:'Jeder Höhenmeter zählt doppelt.',
+  b10:'Sieben Tage. Kein Ausrutscher.',
+  b11:'Angriff überstanden — das Gebiet bleibt deins.',
+  b12:'Du klopfst an fremde Tore, bis sie nachgeben.',
+  b13:'Allein läuft man schneller, zusammen weiter.',
+  b14:'Kein Spezialist. Überall zu Hause.',
+  b15:'Hundert Kilometer Straße liegen hinter dir.',
+  b16:'Deine Mauern halten, was sie versprechen.',
+  b17:'Ein sauberer Schnitt durch fremdes Land.',
+  b18:'Ganz oben. Für den Moment gehört die Liste dir.',
+  b19:'Hundert Tage unterwegs. Das ist keine Phase mehr.',
+  b20:'Wenn die Stadt schläft, gehört sie dir.',
+  b21:'Abseits vom Asphalt wartet das Beste.',
+  b22:'Jede Stufe erklommen. Es gibt nichts mehr darüber.',
+  b23:'Dreißig Tage gehalten — das ist kein Zufall mehr.',
+  b24:'Dein Name steht in der Chronik der Stadt.',
+  b25:'42,195 km. Die klassische Distanz, an einem Stück.',
+  b26:'Jenseits des Marathons beginnt der Ultra.',
+  b27:'Die Strecke einmal um den halben Kontinent.',
+  b28:'Ein ganzes Jahr, Tag für Tag. Ohne Ausnahme.',
+  b29:'Fünfhundert Gebiete. Ein Reich, kein Revier.',
+  b30:'Hundert Tage gehalten — hier kommt niemand durch.',
+  b31:'Schneller als drei Minuten je Kilometer.',
+  b32:'Hundert Verteidigungen. Ungebrochen.'
+};
 const RC_ICON_ID=['erster-schritt','entdecker','eroberer','grenzpionier','territoriumsheld',
   'koenig-der-laeufer','tempojaeger','dauerbrenner','hoehenstuermer','unaufhaltsam',
   'verteidiger','belagerer','teamplayer','allrounder','weltenbummler','festungsbauer',
@@ -5353,9 +5394,14 @@ function getBadgeTileSvg(badge,earned,size){
 function renderBadgeSection(list,title){
   const stats=_rcStats();
   const done=list.filter(x=>!!x.chk(stats)).length;
+  let _newDate=false;
   const tiles=list.map(x=>{const earned=!!x.chk(stats);
+    /* Erstmals erreicht -> Datum festhalten (Abzeichen werden live berechnet,
+       ohne das gäbe es kein Freischalt-Datum). */
+    if(earned&&!badgeDates[x.badge]){badgeDates[x.badge]=Date.now();_newDate=true;}
     return `<div style="text-align:center"><div class="badge-tap" onclick="rcZoomBadge('${x.badge}')">${getBadgeTileSvg(x.badge,earned,74)}</div><div style="font-size:.66rem;font-weight:700;margin-top:5px;color:${earned?'var(--text)':'var(--muted)'}">${x.name}</div><div style="font-size:.56rem;color:var(--muted);line-height:1.3;margin-top:1px">${x.req}</div></div>`;
   }).join('');
+  if(_newDate){try{saveProfile();}catch(e){}}
   return `<div style="margin-top:28px"><div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border)"><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px">${title}</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--primary)">${done}/${list.length}</span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px 8px">${tiles}</div></div>`;
 }
 /* Saison-Siege der Fraktion auch im Erfolge-/Icon-Bereich zeigen (je gewonnener
@@ -5419,18 +5465,61 @@ window.rcZoomBadge=function(badge){
 function showBadgeZoom(badge,name,req,earned){
   document.getElementById('badgeZoomOv')?.remove();
   const ov=document.createElement('div');ov.id='badgeZoomOv';
-  ov.style.cssText='position:fixed;inset:0;z-index:9700;background:rgba(0,0,0,.74);display:flex;align-items:center;justify-content:center;padding:24px';
-  ov.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:22px;padding:26px 22px calc(22px + env(safe-area-inset-bottom,0px));max-width:300px;width:100%;text-align:center;animation:badgeZoomIn .28s cubic-bezier(.2,1,.3,1)">
-    <div style="width:190px;height:190px;margin:0 auto 14px">${getBadgeTileSvg(badge,earned,190)}</div>
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:1px">${esc(name)}</div>
-    <div style="font-size:.78rem;color:var(--muted);margin-top:4px">${esc(req)}</div>
-    <div style="font-size:.74rem;margin-top:12px;font-weight:700;color:${earned?'#10b981':'var(--muted)'}">${earned?'✓ Freigeschaltet':'🔒 Noch nicht freigeschaltet'}</div>
-    <button id="badgeZoomClose" style="margin-top:16px;background:none;border:1px solid var(--border);border-radius:10px;color:var(--muted);padding:8px 24px;font-size:.8rem;cursor:pointer;font-family:'Poppins',sans-serif">Schließen</button>
+  ov.style.cssText='position:fixed;inset:0;z-index:9700;background:rgba(0,0,0,.74);display:flex;align-items:center;justify-content:center;padding:20px';
+  const flavor=RC_BADGE_FLAVOR[badge]||'';
+  const ts=badgeDates[badge];
+  const dateTxt=(earned&&ts)?(' am '+new Date(ts).toLocaleDateString('de-DE')):'';
+  const pinned=(pinnedBadge===badge);
+  const box=(ic,title,body)=>`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px 14px;text-align:left;margin-top:14px">
+      <div style="display:flex;align-items:center;gap:8px;font-size:.78rem;font-weight:700;color:var(--text)">${ic}<span>${title}</span></div>
+      <div style="font-size:.76rem;color:var(--muted);margin-top:5px;line-height:1.45">${body}</div></div>`;
+  ov.innerHTML=`<div id="badgeZoomCard" style="background:var(--card);border:1px solid var(--border);border-radius:22px;padding:18px 20px calc(20px + env(safe-area-inset-bottom,0px));max-width:340px;width:100%;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch;text-align:center;position:relative;animation:badgeZoomIn .28s cubic-bezier(.2,1,.3,1)">
+    <button id="badgeZoomClose" aria-label="Schließen" style="position:absolute;top:12px;right:12px;background:none;border:none;color:var(--muted);font-size:1.3rem;line-height:1;cursor:pointer;padding:4px 8px">&times;</button>
+    <div style="width:150px;height:150px;margin:6px auto 12px">${getBadgeTileSvg(badge,earned,150)}</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:1px">${esc(name)}</div>
+    ${flavor?`<div style="font-size:.8rem;color:var(--muted);margin-top:6px;line-height:1.45">${esc(flavor)}</div>`:''}
+    ${box('<i class="fas fa-bullseye" style="color:var(--primary)"></i>','So bekommst du es',esc(req))}
+    <div style="margin-top:12px;border-radius:12px;padding:11px;font-size:.78rem;font-weight:700;background:${earned?'rgba(16,185,129,.12)':'var(--bg2)'};border:1px solid ${earned?'rgba(16,185,129,.35)':'var(--border)'};color:${earned?'#10b981':'var(--muted)'}">
+      ${earned?('✓ Freigeschaltet'+esc(dateTxt)):'🔒 Noch nicht freigeschaltet'}
+    </div>
+    ${earned?`<button class="btn btn-p" id="badgePinBtn" style="width:100%;margin-top:12px">${pinned?'<i class="fas fa-thumbtack fa-rotate-90"></i> Vom Profil lösen':'<i class="fas fa-thumbtack"></i> Ans Profil heften'}</button>`:''}
+    <button class="btn" id="badgeShareBtn" style="width:100%;margin-top:8px;background:transparent;border:1px solid var(--primary);color:var(--primary)"><i class="fas fa-share-alt"></i> Badge teilen</button>
   </div>`;
   ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
   document.body.appendChild(ov);
   document.getElementById('badgeZoomClose').onclick=()=>ov.remove();
+  const pinBtn=document.getElementById('badgePinBtn');
+  if(pinBtn)pinBtn.onclick=()=>{
+    pinnedBadge=pinned?'':badge;
+    try{saveProfile();}catch(e){}
+    try{updateProfile&&updateProfile();}catch(e){}
+    toast(pinned?'Abzeichen vom Profil gelöst':'📌 Abzeichen ans Profil geheftet');
+    ov.remove();
+  };
+  document.getElementById('badgeShareBtn').onclick=()=>shareBadge(badge,name);
   try{vib(20);}catch(e){}
+}
+/* Abzeichen als Bild teilen — dieselbe Technik wie beim Lauf-Teilen. */
+async function shareBadge(badge,name){
+  const card=document.getElementById('badgeZoomCard');
+  if(!card||typeof html2canvas!=='function'){toast('Teilen nicht verfügbar');return;}
+  const btns=[document.getElementById('badgeZoomClose'),document.getElementById('badgePinBtn'),document.getElementById('badgeShareBtn')].filter(Boolean);
+  btns.forEach(b=>b.style.visibility='hidden');   // Knöpfe gehören nicht ins Bild
+  toast('📸 Erstelle Bild…');
+  try{
+    const bg=getComputedStyle(document.body).getPropertyValue('--card').trim()||'#0D3D2C';
+    const cv=await html2canvas(card,{backgroundColor:bg,scale:2,logging:false,useCORS:true});
+    cv.toBlob(async blob=>{
+      if(!blob){toast('Bild konnte nicht erstellt werden');return;}
+      const file=new File([blob],'runconquer_badge.png',{type:'image/png'});
+      const text=name+' – Abzeichen bei Runners Conquer';
+      if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+        try{await navigator.share({files:[file],title:name,text});}
+        catch(e){if(e.name!=='AbortError')downloadCanvas(cv);}
+      }else downloadCanvas(cv);
+    },'image/png');
+  }catch(e){toast('Bild konnte nicht erstellt werden');}
+  finally{btns.forEach(b=>b.style.visibility='');}
 }
 
 /* MAP */
@@ -10069,6 +10158,11 @@ function updateProfile(){
     const oldBadges=sinceEl.parentNode.querySelector('.pv-extra-badges');if(oldBadges)oldBadges.remove();
     const badgeDiv=document.createElement('div');badgeDiv.className='pv-extra-badges';badgeDiv.style.cssText='text-align:center;margin-top:6px;display:flex;flex-wrap:wrap;justify-content:center;gap:5px';
     badgeDiv.innerHTML='';
+    /* Ans Profil geheftetes Abzeichen (über die Abzeichen-Detailansicht gewählt) */
+    if(pinnedBadge){
+      const _pb=RC_NAMED.concat(RC_MASTER).find(x=>x.badge===pinnedBadge);
+      if(_pb)badgeDiv.innerHTML+=`<span class="team-badge" title="${esc(_pb.name)}" onclick="rcZoomBadge('${_pb.badge}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;background:rgba(var(--primary-rgb),.15);color:var(--primary);border:1px solid rgba(var(--primary-rgb),.4)"><span style="width:18px;height:18px;display:inline-block;flex-shrink:0">${getBadgeTileSvg(_pb.badge,true,18)}</span>${esc(_pb.name)}</span>`;
+    }
     // Gewählter Titel (aus verdienten Titeln, siehe Einstellungen -> Beschreibung).
     const _st=selectedTitle||equippedTitle();if(_st)badgeDiv.innerHTML+=`<span class="team-badge" style="background:rgba(var(--primary-rgb),.15);color:var(--primary);border:1px solid rgba(var(--primary-rgb),.4)">🎖️ ${esc(_st)}</span>`;
     // Fraktion nach Rang gefärbt: 1. Gold, 2. Silber, 3. Bronze, 4. neutral weiß.
