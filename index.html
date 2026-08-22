@@ -2370,7 +2370,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v232';
+const APP_VERSION='v233';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2519,7 +2519,7 @@ async function syncProfile(){
        Event-Prämien). Ein Trigger-Guard auf profiles blockt direkte Client-Writes. */
     const{error:e1}=await sb.from('profiles').upsert({
       id:sbUserId,user_id:userId,player_name:playerName,user_avatar:userAvatar,user_color:userColor,
-      user_avatar_img:(userAvatarImg&&userAvatarImg.length<200000)?userAvatarImg:null,
+      user_avatar_img:(userAvatarImg&&userAvatarImg.length<AVATAR_CLOUD_MAX)?userAvatarImg:null,
       total_km:totalKm,total_conquered:totalConquered,streak_days:streakDays,
       total_defended:totalDefended,total_discovered:totalDiscovered,total_raids:totalRaids,
       updated_at:new Date().toISOString(),
@@ -3089,7 +3089,20 @@ function applyTheme(name){
 }
 function saveProfile(){
   const theme=getActiveTheme();
-  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,streakUnlocks,equipped,streakClaimed,userBio,profilePublic,showRuns,showTerritories,pushEnabled,lastNameChangeDate,WEEKLY_GOAL,DAILY_GOAL_KM,MONTHLY_GOAL,factionWins,factionWinTeams,badgeDates,pinnedBadges,selectedTitle,userBirthday}));
+  const prof={playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,streakUnlocks,equipped,streakClaimed,userBio,profilePublic,showRuns,showTerritories,pushEnabled,lastNameChangeDate,WEEKLY_GOAL,DAILY_GOAL_KM,MONTHLY_GOAL,factionWins,factionWinTeams,badgeDates,pinnedBadges,selectedTitle,userBirthday};
+  try{
+    localStorage.setItem('rc_profile_'+userId,JSON.stringify(prof));
+  }catch(err){
+    /* Speicher voll — praktisch immer ein zu großes Profilbild. Ohne Bild
+       erneut versuchen, damit Name, Farbe und Einstellungen nicht verloren
+       gehen, und offen sagen, was passiert ist. Früher warf setItem hier
+       ungefangen und der Rest der Funktion lief nie. */
+    let saved=false;
+    try{prof.userAvatarImg=null;localStorage.setItem('rc_profile_'+userId,JSON.stringify(prof));saved=true;}catch(e2){}
+    userAvatarImg=null;
+    try{toast(saved?'⚠️ Profilbild zu groß für den Speicher – Profil ohne Bild gespeichert'
+                   :'⚠️ Speicher voll – Profil konnte nicht gespeichert werden');}catch(e3){}
+  }
   $('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;
   const hi=$('hdrHi');if(hi)hi.textContent='Hallo, '+(playerName||'Läufer');
   // Update theme-color meta for Android status bar
@@ -3369,6 +3382,67 @@ window.editBio=editBio;
 function closeAllModals(){['profileModal','postRunModal','renameModal','settingsModal','adminModal','inboxModal'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});if(typeof destroyPostRouteMap==='function')destroyPostRouteMap();}
 
 /* ── AVATAR HTML HELPER ── */
+/* ── PROFILBILD ──────────────────────────────────────────────────────────────
+   Ein Handyfoto hat leicht 2 MB; als Data-URL werden daraus ~2,7 MB Text. Das
+   sprengte die localStorage-Quote — setItem warf, saveProfile() fing das nicht
+   ab und brach mittendrin ab: kein Bild, kein "gespeichert", keine Cloud-
+   Synchronisierung. Zusätzlich verwarf die Cloud-Synchronisierung jedes Bild
+   über 200 KB stillschweigend, das Bild wäre also selbst dann nie beim Server
+   angekommen. Darum wird jedes Bild vor dem Speichern auf 256 px verkleinert
+   und als JPEG neu kodiert — typisch 20–40 KB. Angezeigt wird der Avatar mit
+   höchstens 120 px, 256 px sind also reichlich. */
+const AVATAR_PX=256, AVATAR_MAX_BYTES=2e6, AVATAR_CLOUD_MAX=200000;
+function shrinkAvatarDataUrl(src){
+  return new Promise((resolve,reject)=>{
+    if(!src)return reject(new Error('decode'));
+    const img=new Image();
+    img.onload=()=>{
+      try{
+        const s=Math.min(AVATAR_PX/img.width,AVATAR_PX/img.height,1);
+        const w=Math.max(1,Math.round(img.width*s)),h=Math.max(1,Math.round(img.height*s));
+        const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+        const cx=cv.getContext('2d');
+        cx.fillStyle='#ffffff';cx.fillRect(0,0,w,h);  // JPEG kennt keine Transparenz
+        cx.drawImage(img,0,0,w,h);
+        const out=cv.toDataURL('image/jpeg',.85);
+        /* Ein kleines Original nicht künstlich aufblähen. */
+        resolve(out&&out.length<src.length?out:src);
+      }catch(e){reject(new Error('decode'));}
+    };
+    img.onerror=()=>reject(new Error('decode'));
+    img.src=src;
+  });
+}
+function readAvatarFile(file){
+  return new Promise((resolve,reject)=>{
+    if(!file)return reject(new Error('no_file'));
+    if(!/^image\//.test(file.type||''))return reject(new Error('not_image'));
+    if(file.size>AVATAR_MAX_BYTES)return reject(new Error('too_big'));
+    const fr=new FileReader();
+    fr.onload=e=>shrinkAvatarDataUrl(String(e.target.result||'')).then(resolve,reject);
+    fr.onerror=()=>reject(new Error('read'));
+    fr.readAsDataURL(file);
+  });
+}
+function avatarFileError(e){
+  switch(String(e&&e.message||'')){
+    case 'not_image': return 'Das ist keine Bilddatei';
+    case 'too_big':   return 'Bild zu groß (max. 2 MB)';
+    case 'read':      return 'Bild konnte nicht gelesen werden';
+    default:          return 'Bild konnte nicht verarbeitet werden';
+  }
+}
+/* Selbstheilung: ein früher gespeichertes, zu großes Bild einmalig verkleinern,
+   damit es endlich in die Cloud kommt statt weiter verworfen zu werden. */
+function shrinkStoredAvatar(){
+  if(!userAvatarImg||userAvatarImg.length<=AVATAR_CLOUD_MAX)return;
+  shrinkAvatarDataUrl(userAvatarImg).then(small=>{
+    if(!small||small.length>=userAvatarImg.length)return;
+    userAvatarImg=small;
+    try{saveProfile();}catch(e){}
+  },()=>{});
+}
+
 function avatarHTML(size){
   if(userAvatarImg)return`<img src="${userAvatarImg}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;display:block">`;
   return`<span style="font-size:${Math.round(size*.65)}px;line-height:${size}px;display:block;text-align:center">${userAvatar||'🏃'}</span>`;
@@ -9272,10 +9346,12 @@ function renderSettingsTab(tab){
   </div>
 </div>`;
     document.getElementById('avatarFileInput')?.addEventListener('change',function(){
-      const file=this.files[0];if(!file||file.size>2e6)return toast('Bild zu groß (max. 2 MB)');
-      const reader=new FileReader();
-      reader.onload=e=>{userAvatarImg=e.target.result;$('setAvatarPreview').innerHTML=avatarHTML(54);$('hdrAvatar').innerHTML=avatarHTML(22);};
-      reader.readAsDataURL(file);
+      const file=this.files[0];this.value=''; // gleiche Datei erneut wählbar
+      readAvatarFile(file).then(src=>{
+        userAvatarImg=src;
+        $('setAvatarPreview').innerHTML=avatarHTML(54);$('hdrAvatar').innerHTML=avatarHTML(22);
+        toast('✅ Bild übernommen – zum Sichern auf „Speichern" tippen');
+      },e=>{if(e&&e.message!=='no_file')toast('⚠️ '+avatarFileError(e));});
     });
     $('saveSetProfil').addEventListener('click',()=>{
       const newName=$('setName').value.trim();
@@ -10356,6 +10432,7 @@ async function launchAppFromSession(user){
   const meta=user.user_metadata||{};
   playerName=meta.playerName||'';
   loadProfile();
+  try{shrinkStoredAvatar();}catch(e){} // altes, zu großes Profilbild einmalig verkleinern
   loadNotifs(); // persistierte Benachrichtigungen + Glocken-Badge herstellen (vor dem Gebiets-Diff)
   if(!playerName)playerName=meta.playerName||user.email?.split('@')[0]||'Läufer';
   saveProfile();
@@ -11135,10 +11212,10 @@ function renderOnboarding(){
   </div>
 </div>`;
   document.getElementById('obAvatarFileInput')?.addEventListener('change',function(){
-    const file=this.files[0];if(!file||file.size>2e6)return;
-    const reader=new FileReader();
-    reader.onload=e=>{userAvatarImg=e.target.result;$('obAvatarPreview').innerHTML=avatarHTML(54);};
-    reader.readAsDataURL(file);
+    const file=this.files[0];this.value='';
+    readAvatarFile(file).then(src=>{
+      userAvatarImg=src;$('obAvatarPreview').innerHTML=avatarHTML(54);
+    },e=>{if(e&&e.message!=='no_file')toast('⚠️ '+avatarFileError(e));});
   });
 }
 function renderEditAvatars(){
@@ -11151,10 +11228,12 @@ function renderEditAvatars(){
   </div>
 </div>`;
   document.getElementById('editAvatarFileInput')?.addEventListener('change',function(){
-    const file=this.files[0];if(!file||file.size>2e6)return toast('Bild zu groß (max. 2 MB)');
-    const reader=new FileReader();
-    reader.onload=e=>{userAvatarImg=e.target.result;$('editAvatarPreview').innerHTML=avatarHTML(54);$('hdrAvatar').innerHTML=avatarHTML(22);};
-    reader.readAsDataURL(file);
+    const file=this.files[0];this.value='';
+    readAvatarFile(file).then(src=>{
+      userAvatarImg=src;
+      $('editAvatarPreview').innerHTML=avatarHTML(54);$('hdrAvatar').innerHTML=avatarHTML(22);
+      toast('✅ Bild übernommen');
+    },e=>{if(e&&e.message!=='no_file')toast('⚠️ '+avatarFileError(e));});
   });
 }
 function toggleTheme(){const i=(THEME_CLASSES.indexOf(getActiveTheme())+1)%THEME_CLASSES.length;applyTheme(THEME_CLASSES[i]);saveProfile();}
