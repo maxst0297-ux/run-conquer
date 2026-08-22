@@ -2370,7 +2370,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v231';
+const APP_VERSION='v232';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -8718,6 +8718,33 @@ function updateCommunity(){
   } else { $('nearTerrList').innerHTML='<div class="muted" style="padding:8px">Standort aktivieren, um Gebiete in der Nähe zu sehen</div>'; }
 }
 function _d2label(m){return m<1000?Math.round(m)+' m':(m/1000).toFixed(1)+' km';}
+/* Panel-Filter „Eigene Gebiete": einblenden, ohne die Ansicht umzuwerfen.
+   Vorher wurde per fitBounds auf ALLE eigenen Gebiete gezoomt — wer sein Revier
+   über mehrere Orte verteilt hat, landete dadurch in der Vogelperspektive und
+   verlor die Gegend aus dem Blick, in der er gerade war.
+   Jetzt bleibt die Ansicht unangetastet, solange etwas Eigenes im Bild ist.
+   Ist gar nichts Eigenes zu sehen, wird nur zum nächstgelegenen eigenen Gebiet
+   geschwenkt — der Zoom bleibt dabei, wie er ist.
+   Rückgabe: true, wenn geschwenkt wurde. */
+function focusOwnTerritories(){
+  if(!mapL)return false;
+  const pts=[];
+  (h3Territories||[]).forEach(t=>{
+    if(t.owner!==userId)return;
+    (t.cells||[]).forEach(c=>{try{const ll=h3.cellToLatLng(c);pts.push([ll[0],ll[1]]);}catch(e){}});
+  });
+  if(!pts.length)return false;
+  let view=null;try{view=mapL.getBounds();}catch(e){}
+  if(view&&view.isValid()&&pts.some(p=>{try{return view.contains(p);}catch(e){return false;}}))return false;
+  const c=mapL.getCenter();
+  let best=null,bd=Infinity;
+  pts.forEach(p=>{const dy=p[0]-c.lat,dx=p[1]-c.lng,d=dy*dy+dx*dx;if(d<bd){bd=d;best=p;}});
+  if(!best)return false;
+  try{mapL.panTo(best,{animate:true});}catch(e){try{mapL.setView(best,mapL.getZoom());}catch(_){}}
+  return true;
+}
+window.focusOwnTerritories=focusOwnTerritories;
+
 window.flyTo=function(id){
   const t=(h3Territories||[]).find(x=>x.id===id)||territories.find(x=>x.id===id);
   if(!t)return;
@@ -11550,10 +11577,8 @@ window.initApp=function(){
     renderH3Territories();
     if(window._showOwnOnly){
       const mine=h3Territories.filter(t=>t.owner===userId);
-      const pts=[];
-      mine.forEach(t=>(t.cells||[]).forEach(c=>{try{const ll=h3.cellToLatLng(c);pts.push([ll[0],ll[1]]);}catch(e){}}));
-      if(pts.length&&mapL)mapL.fitBounds(pts,{padding:[40,40]});
-      toast('📍 Nur eigene Gebiete · '+mine.length);
+      const moved=focusOwnTerritories();
+      toast('📍 Nur eigene Gebiete · '+mine.length+(moved?' · zum nächstgelegenen geschwenkt':''));
     }else{toast('Alle Gebiete sichtbar');}
   });
   $('panelFraktBtn')?.addEventListener('click',function(){
