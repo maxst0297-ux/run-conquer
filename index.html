@@ -2237,7 +2237,8 @@ let selectedTitle=''; // im Profil angezeigter Titel (aus verdienten Titeln wäh
    Rendern nachgetragen — für vor dieser Version verdiente Abzeichen fehlt es,
    dann steht nur "Freigeschaltet" ohne Datum. */
 let badgeDates={};
-let pinnedBadge='';   // ans Profil geheftetes Abzeichen ('' = keines)
+const PINNED_MAX=2;
+let pinnedBadges=[];  // bis zu zwei ans Profil geheftete Abzeichen
 let userBirthday='';  // 'MM-TT' für Geburtstags-Gebietsschutz
 let shieldUntil=0;    // lokaler Anzeige-Timestamp des aktiven Gebiets-Schutzes
 /* Gebiets-Schutz gewähren (24h Angriffs-Immunität). Serverseitig via rc_grant_shield;
@@ -2369,7 +2370,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v228';
+const APP_VERSION='v229';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3088,7 +3089,7 @@ function applyTheme(name){
 }
 function saveProfile(){
   const theme=getActiveTheme();
-  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,streakUnlocks,equipped,streakClaimed,userBio,profilePublic,showRuns,showTerritories,pushEnabled,lastNameChangeDate,WEEKLY_GOAL,DAILY_GOAL_KM,MONTHLY_GOAL,factionWins,factionWinTeams,badgeDates,pinnedBadge,selectedTitle,userBirthday}));
+  localStorage.setItem('rc_profile_'+userId,JSON.stringify({playerName,userColor,userAvatar,userAvatarImg,userId,theme,userTeam,userClub,lastFraktionChangeDate,streakUnlocks,equipped,streakClaimed,userBio,profilePublic,showRuns,showTerritories,pushEnabled,lastNameChangeDate,WEEKLY_GOAL,DAILY_GOAL_KM,MONTHLY_GOAL,factionWins,factionWinTeams,badgeDates,pinnedBadges,selectedTitle,userBirthday}));
   $('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;
   const hi=$('hdrHi');if(hi)hi.textContent='Hallo, '+(playerName||'Läufer');
   // Update theme-color meta for Android status bar
@@ -3097,7 +3098,7 @@ function saveProfile(){
   syncProfileDebounced();
 }
 function loadProfile(){
-  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';streakUnlocks=p.streakUnlocks||[];equipped=p.equipped||{};streakClaimed=p.streakClaimed||[];userBio=p.userBio||'';factionWins=p.factionWins||[];factionWinTeams=p.factionWinTeams||{};badgeDates=p.badgeDates||{};pinnedBadge=p.pinnedBadge||'';selectedTitle=p.selectedTitle||'';userBirthday=p.userBirthday||'';profilePublic=p.profilePublic!==false;showRuns=p.showRuns!==false;showTerritories=p.showTerritories!==false;pushEnabled=!!p.pushEnabled;lastNameChangeDate=p.lastNameChangeDate||'';if(p.WEEKLY_GOAL>0)WEEKLY_GOAL=p.WEEKLY_GOAL;if(p.DAILY_GOAL_KM>0)DAILY_GOAL_KM=p.DAILY_GOAL_KM;if(p.MONTHLY_GOAL>0)MONTHLY_GOAL=p.MONTHLY_GOAL;const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
+  try{const p=JSON.parse(localStorage.getItem('rc_profile_'+userId));if(p){userColor=p.userColor;userAvatar=p.userAvatar;userAvatarImg=p.userAvatarImg||null;userTeam=p.userTeam||null;userClub=p.userClub||null;lastFraktionChangeDate=p.lastFraktionChangeDate||'';streakUnlocks=p.streakUnlocks||[];equipped=p.equipped||{};streakClaimed=p.streakClaimed||[];userBio=p.userBio||'';factionWins=p.factionWins||[];factionWinTeams=p.factionWinTeams||{};badgeDates=p.badgeDates||{};pinnedBadges=Array.isArray(p.pinnedBadges)?p.pinnedBadges.slice(0,PINNED_MAX):(p.pinnedBadge?[p.pinnedBadge]:[]);selectedTitle=p.selectedTitle||'';userBirthday=p.userBirthday||'';profilePublic=p.profilePublic!==false;showRuns=p.showRuns!==false;showTerritories=p.showTerritories!==false;pushEnabled=!!p.pushEnabled;lastNameChangeDate=p.lastNameChangeDate||'';if(p.WEEKLY_GOAL>0)WEEKLY_GOAL=p.WEEKLY_GOAL;if(p.DAILY_GOAL_KM>0)DAILY_GOAL_KM=p.DAILY_GOAL_KM;if(p.MONTHLY_GOAL>0)MONTHLY_GOAL=p.MONTHLY_GOAL;const th=p.theme;if(th&&THEME_CLASSES.includes(th))applyTheme(th);else if(th==='light')applyTheme('theme-stone');$('hdrAvatar').innerHTML=avatarHTML(22);$('hdrName').textContent=playerName;return true;}}catch(e){}
   return false;
 }
 /* ── STREAK-BELOHNUNGEN (Inventar) ──────────────────────────────────────────
@@ -5543,7 +5544,8 @@ function showBadgeZoom(badge,name,req,earned){
   const flavor=RC_BADGE_FLAVOR[badge]||'';
   const ts=badgeDates[badge];
   const dateTxt=(earned&&ts)?(' am '+new Date(ts).toLocaleDateString('de-DE')):'';
-  const pinned=(pinnedBadge===badge);
+  const pinned=(pinnedBadges||[]).includes(badge);
+  const pinnedVoll=!pinned&&(pinnedBadges||[]).length>=PINNED_MAX;
   const box=(ic,title,body)=>`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px 14px;text-align:left;margin-top:14px">
       <div style="display:flex;align-items:center;gap:8px;font-size:.78rem;font-weight:700;color:var(--text)">${ic}<span>${title}</span></div>
       <div style="font-size:.76rem;color:var(--muted);margin-top:5px;line-height:1.45">${body}</div></div>`;
@@ -5556,7 +5558,8 @@ function showBadgeZoom(badge,name,req,earned){
     <div style="margin-top:12px;border-radius:12px;padding:11px;font-size:.78rem;font-weight:700;background:${earned?'rgba(16,185,129,.12)':'var(--bg2)'};border:1px solid ${earned?'rgba(16,185,129,.35)':'var(--border)'};color:${earned?'#10b981':'var(--muted)'}">
       ${earned?('✓ Freigeschaltet'+esc(dateTxt)):'🔒 Noch nicht freigeschaltet'}
     </div>
-    ${earned?`<button class="btn btn-p" id="badgePinBtn" style="width:100%;margin-top:12px">${pinned?'<i class="fas fa-thumbtack fa-rotate-90"></i> Vom Profil lösen':'<i class="fas fa-thumbtack"></i> Ans Profil heften'}</button>`:''}
+    ${earned?`<button class="btn btn-p" id="badgePinBtn" style="width:100%;margin-top:12px${pinnedVoll?';opacity:.5':''}">${pinned?'<i class="fas fa-thumbtack fa-rotate-90"></i> Vom Profil lösen':'<i class="fas fa-thumbtack"></i> Ans Profil heften'}</button>
+    ${pinnedVoll?`<div style="font-size:.68rem;color:var(--muted);margin-top:6px;line-height:1.4">Es passen ${PINNED_MAX} Abzeichen ins Profil. Löse zuerst eines der beiden angehefteten.</div>`:''}`:''}
     <button class="btn" id="badgeShareBtn" style="width:100%;margin-top:8px;background:transparent;border:1px solid var(--primary);color:var(--primary)"><i class="fas fa-share-alt"></i> Badge teilen</button>
   </div>`;
   ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
@@ -5564,9 +5567,18 @@ function showBadgeZoom(badge,name,req,earned){
   document.getElementById('badgeZoomClose').onclick=()=>ov.remove();
   const pinBtn=document.getElementById('badgePinBtn');
   if(pinBtn)pinBtn.onclick=()=>{
-    pinnedBadge=pinned?'':badge;
+    if(pinned){
+      pinnedBadges=(pinnedBadges||[]).filter(x=>x!==badge);
+    }else{
+      if((pinnedBadges||[]).length>=PINNED_MAX){
+        toast('Es passen nur '+PINNED_MAX+' Abzeichen ins Profil – löse zuerst eines.');
+        return;
+      }
+      pinnedBadges=(pinnedBadges||[]).concat(badge).slice(0,PINNED_MAX);
+    }
     try{saveProfile();}catch(e){}
     try{updateProfile&&updateProfile();}catch(e){}
+    try{renderPinnedBadges();}catch(e){}
     toast(pinned?'Abzeichen vom Profil gelöst':'📌 Abzeichen ans Profil geheftet');
     ov.remove();
   };
@@ -7967,6 +7979,14 @@ function importGarminActivity(distM,durSecs,dateMs,path,extId){
   history.push(rec);if(history.length>500)history.shift();
   if(extId){try{const k='rc_garmin_ids_'+userId;const s=new Set(JSON.parse(localStorage.getItem(k)||'[]'));s.add(extId);localStorage.setItem(k,JSON.stringify([...s].slice(-500)));}catch(e){}}
   totalKm+=distM/1000;awardXp(kmXP,'garmin');
+  /* Wie beim manuellen Import/GPX: Erfolge, Quests und Rekorde nachziehen —
+     sonst zaehlen ueber Garmin importierte Laeufe zwar in der Historie, aber
+     nicht fuer die Stufen-Erfolge. */
+  try{updateAch();}catch(e){}
+  try{updateQuests(rec);}catch(e){}
+  try{updateDailyChallenges(rec);}catch(e){}
+  try{updateWeeklyChallenges(rec);}catch(e){}
+  try{trackPersonalRecords(rec,kmXP,0);}catch(e){}
   checkStarterQuests();save();
   if(path&&path.length>=2&&mapL){
     if(importedLayer)mapL.removeLayer(importedLayer);
@@ -10313,6 +10333,30 @@ async function updateProfileRank(){
     if(fe&&c){fe.innerHTML='<b style="color:var(--text)">'+(c.followers??0)+'</b> Follower &nbsp;·&nbsp; <b style="color:var(--text)">'+(c.following??0)+'</b> folgt <span style="color:var(--primary);font-weight:700">›</span>';fe.style.display='';}
   }catch(e){}
 }
+/* Angeheftete Abzeichen: als Bild seitlich neben dem Namen, ohne Beschriftung.
+   Der Behaelter sitzt im Banner rechts vom Namen und bleibt leer, wenn nichts
+   angeheftet ist. */
+function renderPinnedBadges(){
+  const nameEl=document.getElementById('pvName');
+  if(!nameEl)return;
+  let row=document.getElementById('pvPinnedRow');
+  if(!row){
+    row=document.createElement('span');
+    row.id='pvPinnedRow';
+    row.style.cssText='display:inline-flex;align-items:center;gap:6px;margin-left:10px;vertical-align:middle';
+    nameEl.insertAdjacentElement('afterend',row);
+    /* Name und Abzeichen in eine Zeile setzen, ohne das bestehende Layout
+       (zentriertes Banner) zu stoeren. */
+    nameEl.style.display='inline-block';
+    nameEl.style.verticalAlign='middle';
+  }
+  const list=(pinnedBadges||[]).slice(0,PINNED_MAX);
+  row.innerHTML=list.map(bid=>{
+    const def=RC_NAMED.concat(RC_MASTER).find(x=>x.badge===bid);
+    if(!def)return '';
+    return `<span title="${esc(def.name)}" onclick="rcZoomBadge('${bid}')" style="width:38px;height:38px;display:inline-block;cursor:pointer;flex-shrink:0">${getBadgeTileSvg(bid,true,38)}</span>`;
+  }).join('');
+}
 function updateProfile(){
   if(!starterQuestFlags.profileOpened){starterQuestFlags.profileOpened=true;checkStarterQuests();save();}
   syncStreakUnlocks();
@@ -10345,11 +10389,7 @@ function updateProfile(){
     const oldBadges=sinceEl.parentNode.querySelector('.pv-extra-badges');if(oldBadges)oldBadges.remove();
     const badgeDiv=document.createElement('div');badgeDiv.className='pv-extra-badges';badgeDiv.style.cssText='text-align:center;margin-top:6px;display:flex;flex-wrap:wrap;justify-content:center;gap:5px';
     badgeDiv.innerHTML='';
-    /* Ans Profil geheftetes Abzeichen (über die Abzeichen-Detailansicht gewählt) */
-    if(pinnedBadge){
-      const _pb=RC_NAMED.concat(RC_MASTER).find(x=>x.badge===pinnedBadge);
-      if(_pb)badgeDiv.innerHTML+=`<span class="team-badge" title="${esc(_pb.name)}" onclick="rcZoomBadge('${_pb.badge}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;background:rgba(var(--primary-rgb),.15);color:var(--primary);border:1px solid rgba(var(--primary-rgb),.4)"><span style="width:18px;height:18px;display:inline-block;flex-shrink:0">${getBadgeTileSvg(_pb.badge,true,18)}</span>${esc(_pb.name)}</span>`;
-    }
+    renderPinnedBadges();
     // Gewählter Titel (aus verdienten Titeln, siehe Einstellungen -> Beschreibung).
     const _st=selectedTitle||equippedTitle();if(_st)badgeDiv.innerHTML+=`<span class="team-badge" style="background:rgba(var(--primary-rgb),.15);color:var(--primary);border:1px solid rgba(var(--primary-rgb),.4)">🎖️ ${esc(_st)}</span>`;
     // Fraktion nach Rang gefärbt: 1. Gold, 2. Silber, 3. Bronze, 4. neutral weiß.
