@@ -2326,6 +2326,18 @@ const SB_URL='https://mlkpryhacihbqnmtgkcg.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1sa3ByeWhhY2loYnFubXRna2NnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzMTcwMzMsImV4cCI6MjA5NTg5MzAzM30.YEVBlg686Ssj0p8ACz6eur3snBzay_exEedZ3gzqh7g';
 const sb=window.supabase?.createClient(SB_URL,SB_KEY);
 let sbUserId=null,isAdmin=false;
+/* Anmeldedaten der laufenden Sitzung (nur lokal, nie an andere Nutzer). */
+const RC_PSEUDO_DOMAIN='@rc.runconquer.app';
+let sbUserEmail='',sbUserProviders=[],sbUserCreated='';
+function isPseudoEmail(e){return String(e||'').toLowerCase().endsWith(RC_PSEUDO_DOMAIN);}
+function rememberSessionUser(user){
+  if(!user)return;
+  sbUserEmail=user.email||'';
+  sbUserCreated=user.created_at||'';
+  const app=user.app_metadata||{};
+  sbUserProviders=Array.isArray(app.providers)&&app.providers.length?app.providers.slice()
+                 :(app.provider?[app.provider]:[]);
+}
 let followedUsers=[],followIncoming=[],followOutgoing=[],activeDmThread=null;
 let archivedConvs=[],archivedSupportIds=new Set(),readSupportIds=new Set();
 /* Lese-Zeitstempel pro Konversation (uid -> ms). Persistent, damit gelesene
@@ -2344,6 +2356,12 @@ sb?.auth.onAuthStateChange((event)=>{
     const m=document.getElementById('pwRecoveryModal');
     if(m)m.style.display='flex';
   }
+  /* Sitzung serverseitig beendet (z.B. widerrufen oder Token abgelaufen): bisher
+     fiel das lautlos aus und alle Abfragen liefen ins Leere. */
+  if(event==='SIGNED_OUT'){
+    try{toast('Deine Anmeldung ist abgelaufen – bitte neu anmelden.');}catch(e){}
+    setTimeout(()=>{try{location.reload();}catch(e){}},1500);
+  }
 });
 
 /* ═══ FEHLER-LOGGING (serverseitig) ═══
@@ -2351,7 +2369,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v226';
+const APP_VERSION='v227';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2438,6 +2456,7 @@ async function initSupabase(){
     if(session){
       sbUserId=session.user.id;
       if(session.user.email==='maxst0297@gmail.com'){isAdmin=true;}
+      rememberSessionUser(session.user);
       return session;
     }
     return null;
@@ -9252,6 +9271,118 @@ function renderSettingsTab(tab){
       ov.appendChild(close);
       document.body.appendChild(ov);
     });
+  } else if(tab==='konto'){
+    /* Anmeldedaten der eigenen Sitzung. Bewusst rein lokal: nichts davon geht an
+       andere Nutzer (das öffentliche Profil enthält keine E-Mail). */
+    const pseudo=isPseudoEmail(sbUserEmail);
+    const hasPw=!sbUserProviders.length||sbUserProviders.includes('email');
+    const provLabel={email:'E-Mail & Passwort',google:'Google',facebook:'Facebook',apple:'Apple'};
+    const provTxt=sbUserProviders.length
+      ? sbUserProviders.map(x=>provLabel[x]||x).join(', ')
+      : 'E-Mail & Passwort';
+    const seit=sbUserCreated?new Date(sbUserCreated).toLocaleDateString('de-DE'):'–';
+    const zeile=(label,wert,extra)=>`<div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+        <div style="font-size:.66rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);width:104px;flex-shrink:0;padding-top:2px">${label}</div>
+        <div style="flex:1;min-width:0;font-size:.86rem;word-break:break-word">${wert}${extra?`<div style="font-size:.68rem;color:var(--muted);margin-top:3px;line-height:1.45">${extra}</div>`:''}</div>
+      </div>`;
+    const mailWert=pseudo
+      ? `<span style="color:var(--red)">Keine E-Mail hinterlegt</span>`
+      : esc(sbUserEmail||'–');
+    const mailExtra=pseudo
+      ? 'Dein Konto wurde nur mit einem Namen angelegt. Ohne E-Mail können wir dir kein neues Passwort schicken, wenn du es vergisst.'
+      : '';
+    body.innerHTML=`<div style="display:flex;flex-direction:column;gap:4px">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:4px 14px 8px">
+        ${zeile('E-Mail',mailWert,mailExtra)}
+        ${zeile('Name',esc(playerName||'–'),'Ändern unter „Profilbild &amp; Name"')}
+        ${zeile('Anmeldung',esc(provTxt),'')}
+        ${zeile('Dabei seit',esc(seit),'')}
+      </div>
+      ${pseudo?`
+      <div style="margin-top:14px">
+        <div class="set-hd">E-Mail nachtragen</div>
+        <div style="font-size:.72rem;color:var(--muted);line-height:1.5;margin-bottom:10px">
+          Trag eine echte Adresse ein, damit du dein Passwort zurücksetzen kannst. Du bekommst eine Bestätigungs-Mail; erst nach dem Klick darin ist sie aktiv.
+        </div>
+        <div class="field"><label>Neue E-Mail-Adresse</label><input type="email" id="acctNewMail" class="modal-input" autocomplete="email" placeholder="name@beispiel.de"></div>
+        <div id="acctMailMsg" style="display:none;font-size:.76rem;margin-bottom:10px"></div>
+        <button class="btn btn-p" id="acctMailBtn" style="width:100%">E-Mail hinterlegen</button>
+      </div>`:''}
+      <div style="margin-top:18px">
+        <div class="set-hd">${hasPw?'Passwort ändern':'Passwort festlegen'}</div>
+        ${hasPw?'':`<div style="font-size:.72rem;color:var(--muted);line-height:1.5;margin-bottom:10px">
+          Du meldest dich über ${esc(provTxt)} an und hast noch kein eigenes Passwort. Legst du eines fest, kannst du dich zusätzlich mit ${esc(sbUserEmail||'deiner E-Mail')} und Passwort anmelden.
+        </div>`}
+        ${hasPw?`<div class="field"><label>Aktuelles Passwort</label><input type="password" id="acctPwOld" class="modal-input" autocomplete="current-password"></div>`:''}
+        <div class="field"><label>Neues Passwort</label><input type="password" id="acctPwNew" class="modal-input" autocomplete="new-password"></div>
+        <div class="field"><label>Neues Passwort wiederholen</label><input type="password" id="acctPwNew2" class="modal-input" autocomplete="new-password"></div>
+        <div id="acctPwMsg" style="display:none;font-size:.76rem;margin-bottom:10px"></div>
+        <button class="btn btn-p" id="acctPwBtn" style="width:100%">${hasPw?'Passwort ändern':'Passwort festlegen'}</button>
+      </div>
+    </div>`;
+    const say=(el,msg,ok)=>{const e=document.getElementById(el);if(!e)return;e.style.display='block';e.style.color=ok?'var(--green)':'var(--red)';e.textContent=msg;};
+    /* Server-Fehler auf verständliches Deutsch bringen — die Rohtexte von Supabase
+       sind englisch und für Nutzer nicht hilfreich. */
+    const authFehler=(e,fallback)=>{
+      const c=String(e&&(e.code||e.error_code)||'').toLowerCase();
+      const m=String(e&&e.message||'').toLowerCase();
+      const st=e&&e.status;
+      if(st===429||c.includes('rate_limit')||m.includes('rate limit'))
+        return 'Zu viele Versuche. Bitte in ein paar Minuten noch einmal probieren.';
+      if(c==='same_password'||m.includes('should be different'))
+        return 'Das neue Passwort ist dasselbe wie das bisherige.';
+      if(c==='weak_password'||m.includes('password should be')||m.includes('weak'))
+        return 'Das Passwort ist zu schwach. Nimm eine längere Kombination.';
+      if(c.includes('session')||m.includes('session missing')||m.includes('not authenticated'))
+        return 'Deine Anmeldung ist abgelaufen. Bitte neu anmelden.';
+      if(m.includes('failed to fetch')||m.includes('network'))
+        return 'Keine Verbindung. Prüfe dein Netz und versuch es erneut.';
+      return fallback;
+    };
+    document.getElementById('acctPwBtn')?.addEventListener('click',async()=>{
+      const oldEl=document.getElementById('acctPwOld');
+      const oldPw=oldEl?(oldEl.value||''):'';
+      const nw=document.getElementById('acctPwNew').value||'';
+      const nw2=document.getElementById('acctPwNew2').value||'';
+      const label=hasPw?'Passwort ändern':'Passwort festlegen';
+      if(hasPw&&!oldPw){say('acctPwMsg','Bitte dein aktuelles Passwort eingeben.');return;}
+      if(nw.length<8){say('acctPwMsg','Das neue Passwort braucht mindestens 8 Zeichen.');return;}
+      if(nw!==nw2){say('acctPwMsg','Die beiden neuen Passwörter stimmen nicht überein.');return;}
+      if(hasPw&&nw===oldPw){say('acctPwMsg','Das neue Passwort ist dasselbe wie das alte.');return;}
+      if(!sb){say('acctPwMsg','Keine Verbindung zum Server.');return;}
+      const btn=document.getElementById('acctPwBtn');btn.disabled=true;btn.textContent='Wird gespeichert…';
+      try{
+        if(hasPw){
+          /* Altes Passwort bestätigen. Scheitert das, bleibt die bestehende
+             Sitzung unangetastet — signInWithPassword speichert nur bei Erfolg. */
+          const{error:e1}=await sb.auth.signInWithPassword({email:sbUserEmail,password:oldPw});
+          if(e1){say('acctPwMsg',authFehler(e1,'Das aktuelle Passwort stimmt nicht.'));return;}
+        }
+        const{error:e2}=await sb.auth.updateUser({password:nw});
+        if(e2){say('acctPwMsg',authFehler(e2,'Ändern fehlgeschlagen. Bitte später erneut versuchen.'));return;}
+        if(oldEl)oldEl.value='';
+        document.getElementById('acctPwNew').value='';
+        document.getElementById('acctPwNew2').value='';
+        say('acctPwMsg',hasPw?'Passwort geändert. Beim nächsten Anmelden gilt das neue.'
+                             :'Passwort festgelegt. Du kannst dich jetzt auch damit anmelden.',true);
+        toast('✅ '+(hasPw?'Passwort geändert':'Passwort festgelegt'));
+      }catch(e){
+        say('acctPwMsg',authFehler(e,'Ändern fehlgeschlagen. Bitte später erneut versuchen.'));
+      }finally{btn.disabled=false;btn.textContent=label;}
+    });
+    document.getElementById('acctMailBtn')?.addEventListener('click',async()=>{
+      const mail=(document.getElementById('acctNewMail').value||'').trim().toLowerCase();
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)||isPseudoEmail(mail)){say('acctMailMsg','Bitte eine gültige E-Mail-Adresse eingeben.');return;}
+      if(!sb){say('acctMailMsg','Keine Verbindung zum Server.');return;}
+      const btn=document.getElementById('acctMailBtn');btn.disabled=true;btn.textContent='Wird gesendet…';
+      try{
+        const{error}=await sb.auth.updateUser({email:mail},{emailRedirectTo:AUTH_REDIRECT});
+        if(error)throw error;
+        say('acctMailMsg','Bestätigungs-Mail an '+mail+' geschickt. Erst nach dem Klick darin ist die Adresse aktiv.',true);
+      }catch(e){
+        say('acctMailMsg',(e&&e.message)?('Fehlgeschlagen: '+e.message):'Konnte nicht gespeichert werden.');
+      }finally{btn.disabled=false;btn.textContent='E-Mail hinterlegen';}
+    });
   } else if(tab==='datenschutz'){
     const gpsGranted=localStorage.getItem('rc_gps_consent')==='1';
     body.innerHTML=`<div style="display:flex;flex-direction:column;gap:10px">
@@ -9931,6 +10062,7 @@ async function launchAppFromSession(user){
   sbUserId=user.id;
   userId=user.id;
   if(user.email==='maxst0297@gmail.com'){isAdmin=true;}
+  rememberSessionUser(user);
   const meta=user.user_metadata||{};
   playerName=meta.playerName||'';
   loadProfile();
@@ -10412,6 +10544,7 @@ function renderSettingsHome(){
     ${H('Mein Profil')}
     <div class="set-group">
       ${settingsRow('📷','Profilbild &amp; Name','Foto und Anzeigename ändern','profil')}
+      ${settingsRow('🔑','Anmeldedaten','E-Mail, Anmeldeart &amp; Passwort','konto')}
       ${settingsRow('🎨','Profil-Farbe &amp; Theme','Akzentfarbe & Erscheinungsbild','theme')}
       ${settingsRow('✏️','Beschreibung (Bio)',userBio?esc(userBio):'Schreibe etwas über dich','bio')}
       ${settingsRow('🏳️','Fraktion','Deine Community & Farbe','fraktion')}
