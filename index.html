@@ -2370,7 +2370,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v233';
+const APP_VERSION='v234';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2541,6 +2541,52 @@ async function syncProfile(){
     return true;
   }catch(e){window._lastSyncErr=(e&&e.message)||String(e);logError('profile_sync',e);return false;}
 }
+/* ═══ GESAMTWERTE ABGLEICHEN ═══
+   totalKm/totalConquered sind eigene Zähler und NICHT aus history abgeleitet:
+   history ist auf 500 Läufe begrenzt, die Zähler dürfen also legitim GRÖSSER
+   sein als die Summe der gespeicherten Läufe — kleiner aber nie.
+
+   Genau das passierte trotzdem: loadFromCloud() vereinigt die Historie beider
+   Seiten (damit kein Lauf verloren geht), übernimmt die Zähler aber nur von
+   einer Seite. Läufe des jeweils anderen Geräts landeten so in der Liste, ohne
+   je in den Gesamtkilometern aufzutauchen — im Profil standen zu niedrige Werte.
+
+   Diese Korrektur hebt nur an, nie ab. Ein zu hoher Zähler wird bewusst nicht
+   gekürzt, weil er durch die 500-Lauf-Grenze echt sein kann. */
+function reconcileTotals(){
+  let km=0,conq=0;
+  (history||[]).forEach(r=>{
+    if(!r)return;
+    km+=(r.distance||0)/1000;
+    if(typeof r.conq==='number'?r.conq>0:!!r.conquered)conq++;
+  });
+  let changed=false;
+  if(km-totalKm>0.005){totalKm=km;changed=true;}
+  if(conq>totalConquered){totalConquered=conq;changed=true;}
+  return changed;
+}
+window.reconcileTotals=reconcileTotals;
+
+/* Punkte verwaltet der SERVER (siehe syncProfile: points wird bewusst nicht
+   hochgesendet — conquer, rc_award_xp und rc_claim_event schreiben sie dort).
+   Zurückgelesen wurden sie bisher nie, der lokale Zähler kannte Läufe anderer
+   Geräte also gar nicht. Übernommen wird nur ein HÖHERER Serverstand: ein
+   niedrigerer wäre ein Rückschritt für lokal vergebene, noch nicht
+   hochgeschriebene XP. Gleiches Prinzip für total_km. */
+async function adoptServerTotals(){
+  if(!sb||!sbUserId)return false;
+  try{
+    const{data,error}=await sb.from('profiles').select('points,total_km').eq('id',sbUserId).single();
+    if(error||!data)return false;
+    let changed=false;
+    const sp=Number(data.points);
+    if(isFinite(sp)&&sp>points){points=sp;changed=true;}
+    const sk=Number(data.total_km);
+    if(isFinite(sk)&&sk-totalKm>0.005){totalKm=sk;changed=true;}
+    return changed;
+  }catch(e){return false;}
+}
+
 async function loadFromCloud(){
   if(!sb||!playerName||!sbUserId)return false;
   try{
@@ -2602,6 +2648,11 @@ async function loadFromCloud(){
       if(changed&&typeof saveProfile==='function')saveProfile(); // Vereinigung persistieren -> Re-Sync lädt sie hoch
     }catch(e){}
     history=mergedHist; // gemergte History gewinnt (load() hätte sie überschrieben)
+    /* Erst NACH dem History-Merge: die Zähler stammen nur von einer Seite und
+       kennen die dazugemergten Läufe der anderen sonst nicht. */
+    try{reconcileTotals();}catch(e){}
+    try{await adoptServerTotals();}catch(e){}
+    try{reconcileTotals();}catch(e){}   // falls der Serverstand seinerseits zu niedrig war
     save();
     return cloudIsNewer;
   }catch(e){logError('cloud_load',e);}
@@ -10443,7 +10494,7 @@ async function launchAppFromSession(user){
   if(!mapL){
     initMap();
     setTimeout(async()=>{
-      load();updateUI();mapL?.invalidateSize();showInboxBtn();setTimeout(checkDailyReward,600);setTimeout(checkFirstLoginOnboarding,1800);
+      load();try{reconcileTotals();}catch(e){}updateUI();mapL?.invalidateSize();showInboxBtn();setTimeout(checkDailyReward,600);setTimeout(checkFirstLoginOnboarding,1800);
       if(window._openStravaOnInit){window._openStravaOnInit=false;setTimeout(()=>{openImportModal();$('impTabStrava')?.click();},400);}
       if(window._openGarminOnInit){window._openGarminOnInit=false;setTimeout(()=>{openImportModal();switchImpTab('impTabGarmin');},400);}
       syncGarminActivities().then(r=>{if(r&&r.imported>0){toast('⌚ '+r.imported+' Garmin-Lauf'+(r.imported>1?'läufe':'')+' synchronisiert');updateUI();}}).catch(()=>{});
