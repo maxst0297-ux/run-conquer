@@ -2214,7 +2214,7 @@ let heatPersonalOnly=false;
 let registeredAt=Date.now();
 let starterQuestsDone=[],starterQuestFlags={profileOpened:false};
 let seasonChecked=false;
-let importedLayer=null,impCurrentPath=null,bgLockTs=0;
+let importedLayer=null,_impRouteTimer=null,_impRouteOff=null,impCurrentPath=null,bgLockTs=0;
 let silentHeartbeat=null,bgTipShown=false;
 let stravaToken=localStorage.getItem('rc_strava_token')||null;
 let stravaClientId=localStorage.getItem('rc_strava_cid')||'';
@@ -2370,7 +2370,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v230';
+const APP_VERSION='v231';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -7885,6 +7885,38 @@ function openImportModal(){
   ['impPanGpx','impPanStrava','impPanGarmin'].forEach(id=>{const el=$(id);if(el)el.style.display='none';});
   $('importModal').style.display='flex';
 }
+/* ── Hervorhebung der importierten Strecke ──
+   Nach einem Import wird die Strecke kurz auf der Karte markiert, damit man
+   sieht, wo sie liegt. Das ist eine Hervorhebung, keine Ebene: sie verschwindet,
+   sobald man die Karte anfasst oder den Reiter wechselt. Das dauerhafte Ergebnis
+   des Imports sind die eroberten Gebiete – die zeichnet loadH3Territories().
+   Ohne das Aufräumen blieb die Linie bis zum nächsten Import liegen. */
+function clearImportedRoute(){
+  try{clearTimeout(_impRouteTimer);}catch(e){}
+  _impRouteTimer=null;
+  if(_impRouteOff){try{_impRouteOff();}catch(e){}_impRouteOff=null;}
+  if(importedLayer&&mapL){try{mapL.removeLayer(importedLayer);}catch(e){}}
+  importedLayer=null;
+}
+window.clearImportedRoute=clearImportedRoute;
+function showImportedRoute(path,color){
+  if(!mapL||!path||path.length<2)return;
+  clearImportedRoute();
+  importedLayer=L.polyline(path,{color:color||'#10b981',weight:3,dashArray:'6 4',opacity:.85}).addTo(mapL);
+  try{mapL.fitBounds(importedLayer.getBounds(),{padding:[40,40]});}catch(e){}
+  /* Erst nach dem fitBounds lauschen – sonst löscht dessen eigene Bewegung die
+     Linie sofort wieder. */
+  const armed=importedLayer;
+  setTimeout(()=>{
+    if(importedLayer!==armed)return;             // inzwischen ersetzt/entfernt
+    const off=()=>{if(importedLayer===armed)clearImportedRoute();};
+    ['click','dragstart','zoomstart'].forEach(ev=>mapL.on(ev,off));
+    _impRouteOff=()=>['click','dragstart','zoomstart'].forEach(ev=>mapL.off(ev,off));
+  },900);
+  /* Rückfallebene: liegen bleiben darf sie auf keinen Fall. */
+  _impRouteTimer=setTimeout(()=>{if(importedLayer===armed)clearImportedRoute();},180000);
+}
+
 async function importActivity(distM,durSecs,dateMs,path,source,avgHR){
   /* Duplikat-Schutz für ALLE Importe (mit/ohne Track): eine an diesem Tag
      bereits importierte Aktivität gleicher Distanz/Dauer wird komplett
@@ -7944,10 +7976,8 @@ async function importActivity(distM,durSecs,dateMs,path,source,avgHR){
   save();
   processSyncQueue(true);
   if(fullPath&&mapL){
-    if(importedLayer)mapL.removeLayer(importedLayer);
-    importedLayer=L.polyline(fullPath,{color:'#10b981',weight:3,dashArray:'6 4',opacity:.85}).addTo(mapL);
-    try{mapL.fitBounds(importedLayer.getBounds(),{padding:[40,40]});}catch(e){}
-    setView('map');
+    setView('map');                 // erst wechseln, dann hervorheben
+    showImportedRoute(fullPath,'#10b981');
   }
   updateUI();
   if(fullPath){
@@ -8150,11 +8180,7 @@ function importGarminActivity(distM,durSecs,dateMs,path,extId){
   try{updateWeeklyChallenges(rec);}catch(e){}
   try{trackPersonalRecords(rec,kmXP,0);}catch(e){}
   checkStarterQuests();save();
-  if(path&&path.length>=2&&mapL){
-    if(importedLayer)mapL.removeLayer(importedLayer);
-    importedLayer=L.polyline(path,{color:'#00D4FF',weight:3,dashArray:'6 4',opacity:.85}).addTo(mapL);
-    try{mapL.fitBounds(importedLayer.getBounds(),{padding:[40,40]});}catch(e){}
-  }
+  if(path&&path.length>=2&&mapL)showImportedRoute(path,'#00D4FF');
 }
 function renderGarminPanel(){
   const pan=$('impPanGarmin');if(!pan)return;
@@ -10891,6 +10917,7 @@ function setView(view){
   /* Kartenoptionen (Gebiete/Wahrzeichen/Arenen …) gehören nur zur Karte:
      Pfeil ausblenden und ein offenes Panel beim Verlassen schließen. */
   const _mpArrow=$('mapPanelArrow'),_mpPanel=$('mapPanel');
+  if(!onMap)clearImportedRoute(); // Import-Hervorhebung gehört nur zur Karte
   if(_mpArrow)_mpArrow.style.display=onMap?'':'none';
   if(_mpPanel&&!onMap){
     _mpPanel.classList.remove('open');
