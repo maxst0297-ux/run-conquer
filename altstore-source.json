@@ -7,13 +7,13 @@
       "bundleIdentifier": "com.runconquer.app",
       "developerName": "RunConquer",
       "subtitle": "Lauf & Erobere deine Stadt",
-      "version": "1.0.625",
+      "version": "1.0.628",
       "versionDate": "2026-08-22",
       "downloadURL": "https://github.com/maxst0297-ux/run-conquer/releases/latest/download/RunConquer.ipa",
       "localizedDescription": "Laufe, erobere Gebiete und werde zum Imperator deiner Stadt. Hintergrund-GPS läuft auch bei gesperrtem Bildschirm.",
       "iconURL": "https://run-conquer.vercel.app/icons/icon-512.png",
       "tintColor": "E6FF55",
-      "size": 21174050
+      "size": 21174561
     }
   ],
   "news": []
