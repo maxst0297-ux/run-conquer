@@ -2370,7 +2370,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v229';
+const APP_VERSION='v230';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -3434,11 +3434,12 @@ window.markNotifRead=function(id){
   updateNotifBadge();renderNotifPanel();saveNotifs();
   if(n&&n.action)runNotifAction(n.action);
 };
-/* Antippbare Benachrichtigungen: aktuell nur der Wochenrückblick. */
+/* Antippbare Benachrichtigungen: Wochen-/Saisonrückblick und Sprung zum Gebiet. */
 function runNotifAction(a){
   if(!a||!a.type)return;
   document.getElementById('notifPanel')?.classList.remove('open');
   if(a.type==='weekreview')showWeekReview(a.arg);
+  else if(a.type==='seasonreview')showSeasonReview(a.arg);
   else if(a.type==='flyto'&&typeof window.flyTo==='function')window.flyTo(a.arg);
 }
 
@@ -3465,10 +3466,11 @@ async function claimHoldIncome(){
   }catch(e){return 0;}
 }
 
-/* ═══ WOCHENRÜCKBLICK ═══
-   Kalenderwoche (Mo–So). Nach Wochenende einmalig eine antippbare
-   Benachrichtigung; der Rückblick selbst wird bei jedem Öffnen frisch aus
-   history gerechnet, damit nichts doppelt gespeichert wird. */
+/* ═══ RÜCKBLICKE ═══
+   Wochenrückblick (Kalenderwoche Mo–So) und Saisonrückblick (Kalendermonat).
+   Beide werden bei jedem Öffnen frisch aus history + Verlust-Protokoll gerechnet,
+   damit nichts doppelt gespeichert wird. Ist der Zeitraum vorbei, gibt es einmalig
+   eine antippbare Benachrichtigung. */
 function _weekStart(d){
   const x=new Date(d); x.setHours(0,0,0,0);
   const wd=(x.getDay()+6)%7;      // Mo=0 … So=6
@@ -3479,104 +3481,257 @@ function _weekKey(d){
   const s=_weekStart(d);
   return s.getFullYear()+'-'+String(s.getMonth()+1).padStart(2,'0')+'-'+String(s.getDate()).padStart(2,'0');
 }
-function _weekStatsFor(key){
-  const start=new Date(key+'T00:00:00');
-  if(isNaN(start))return null;
-  const end=new Date(start); end.setDate(end.getDate()+7);
-  const a=start.getTime(), b=end.getTime();
+function _monthKey(d){const x=new Date(d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0');}
+
+/* ── Verlust-Protokoll ──
+   „Gebiete verloren" steht in keinem Lauf: der Verlust passiert, während man
+   NICHT läuft. checkTerritoryChanges() erkennt ihn beim App-Start per Snapshot-
+   Vergleich — hier wird er mit Zeitstempel festgehalten. f = Beginn des
+   Beobachtungsfensters. Reicht f vor den Rückblick-Zeitraum zurück, kann ein Teil
+   der Verluste älter sein; das wird im Rückblick offen als „~" ausgewiesen,
+   statt eine Genauigkeit vorzutäuschen, die die Daten nicht hergeben. */
+function _lossLogKey(){return 'rc_terrloss_'+(userId||'anon');}
+function loadLossLog(){try{const a=JSON.parse(localStorage.getItem(_lossLogKey())||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}}
+function logTerritoryLoss(n,sinceTs){
+  if(!(n>0))return;
+  try{
+    const now=Date.now(),log=loadLossLog();
+    log.push({t:now,f:(sinceTs||now),n:Math.round(n)});
+    const cut=now-400*864e5;
+    localStorage.setItem(_lossLogKey(),JSON.stringify(log.filter(e=>e&&e.t>cut).slice(-300)));
+  }catch(e){}
+}
+function _lossesIn(a,b){
+  let n=0,partial=false;
+  loadLossLog().forEach(e=>{
+    if(!e||!(e.t>=a&&e.t<b))return;
+    n+=(e.n||0);
+    if((e.f||e.t)<a)partial=true;   // Beobachtungsfenster begann vor dem Zeitraum
+  });
+  return{n,partial};
+}
+
+/* ── Längste Serie ──
+   Aufeinanderfolgende Kalendertage mit mindestens einem Lauf. Gezählt wird die
+   VOLLE Serie, sobald sie den Zeitraum berührt — sonst würde eine Serie, die über
+   den Sonntag hinausläuft, künstlich am Wochenende abgeschnitten. */
+function _dayKey(ts){const d=new Date(ts);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function _dayShift(key,delta){const d=new Date(key+'T12:00:00');d.setDate(d.getDate()+delta);return _dayKey(d.getTime());}
+function _longestStreakIn(a,b){
+  const all=new Set(),win=new Set();
+  (history||[]).forEach(r=>{
+    if(!r||!r.date)return;
+    const k=_dayKey(r.date); all.add(k);
+    if(r.date>=a&&r.date<b)win.add(k);
+  });
+  let best=0;
+  win.forEach(k=>{
+    let len=1,c=_dayShift(k,-1);
+    while(all.has(c)){len++;c=_dayShift(c,-1);}
+    c=_dayShift(k,1);
+    while(all.has(c)){len++;c=_dayShift(c,1);}
+    if(len>best)best=len;
+  });
+  return best;
+}
+/* Momentaufnahme des eigenen Reviers (kein Zeitraumwert – im Rückblick als
+   „Stand jetzt" gekennzeichnet). */
+function _ownedNow(){
+  const mine=((typeof h3Territories!=='undefined'&&h3Territories)||[]).filter(t=>t.owner===userId);
+  return{terr:mine.length,cells:mine.reduce((s,t)=>s+((t.cells&&t.cells.length)||0),0)};
+}
+
+/* Kennzahlen eines beliebigen Zeitraums [a,b). */
+function _rangeStats(kind,key,start,end){
+  const a=start.getTime(),b=end.getTime();
   const runs=(history||[]).filter(r=>r&&r.date>=a&&r.date<b);
-  const s={key,start,end,runs:runs.length,km:0,secs:0,zones:0,xp:0,elev:0,bestPace:null,longest:0,days:new Set()};
+  const s={kind,key,start,end,runs:runs.length,km:0,secs:0,zones:0,xp:0,elev:0,bestPace:null,longest:0,conq:0,days:new Set()};
   runs.forEach(r=>{
     s.km+=(r.distance||0)/1000;
     s.secs+=(r.duration||0);
     s.zones+=Array.isArray(r.cells)?r.cells.length:0;
     s.xp+=(r.pts||0);
     s.elev+=(r.elevation||0);
+    /* conq: echte Zahl eroberter Gebiete je Lauf. Ältere Läufe kennen nur das
+       Ja/Nein-Flag und zählen darum als 1. */
+    s.conq+=(typeof r.conq==='number'?r.conq:(r.conquered?1:0));
     if((r.distance||0)>s.longest)s.longest=r.distance||0;
     if(r.distance>=400&&r.duration>0){
       const p=r.duration/60/(r.distance/1000);
       if(s.bestPace===null||p<s.bestPace)s.bestPace=p;
     }
-    s.days.add(new Date(r.date).toDateString());
+    s.days.add(_dayKey(r.date));
   });
   s.activeDays=s.days.size;
+  const L=_lossesIn(a,b); s.lost=L.n; s.lostPartial=L.partial;
+  s.streak=_longestStreakIn(a,b);
+  const own=_ownedNow(); s.ownedTerr=own.terr; s.ownedCells=own.cells;
   return s;
+}
+function _weekStatsFor(key){
+  const start=new Date(key+'T00:00:00');
+  if(isNaN(start))return null;
+  const end=new Date(start); end.setDate(end.getDate()+7);
+  return _rangeStats('week',key,start,end);
+}
+function _seasonStatsFor(mk){
+  const m=/^(\d{4})-(\d{2})$/.exec(String(mk||''));
+  if(!m)return null;
+  const y=+m[1],mo=+m[2]-1;
+  if(mo<0||mo>11)return null;
+  return _rangeStats('season',mk,new Date(y,mo,1),new Date(y,mo+1,1));
+}
+/* Vorheriger gleichartiger Zeitraum – Grundlage der ▲/▼-Vergleiche. */
+function _prevStatsFor(s){
+  if(!s)return null;
+  const p=new Date(s.start);
+  if(s.kind==='season'){p.setDate(1);p.setMonth(p.getMonth()-1);return _seasonStatsFor(_monthKey(p));}
+  p.setDate(p.getDate()-7);return _weekStatsFor(_weekKey(p));
 }
 function _fmtWeekRange(s){
   const e=new Date(s.end); e.setDate(e.getDate()-1);
   const f=d=>d.getDate()+'.'+(d.getMonth()+1)+'.';
   return f(s.start)+'–'+f(e)+e.getFullYear();
 }
-/* Beim Start prüfen: ist eine Woche vorbei, in der gelaufen wurde? */
-function checkWeekReview(){
+function _fmtRange(s){
+  if(s.kind==='season')return (MONTH_NAMES_DE[s.start.getMonth()]||'')+' '+s.start.getFullYear();
+  return _fmtWeekRange(s);
+}
+function _fmtPace(p){
+  if(p===null||!isFinite(p))return '–';
+  let m=Math.floor(p),sec=Math.round((p-m)*60);
+  if(sec===60){m++;sec=0;}
+  return m+':'+String(sec).padStart(2,'0');
+}
+
+/* ── Einmalige Benachrichtigung, sobald ein Zeitraum abgeschlossen ist ──
+   Es werden auch ältere abgeschlossene Zeiträume geprüft: wer die App zwei Wochen
+   (bzw. zwei Monate) nicht öffnet, bekommt trotzdem seinen Rückblick — und zwar
+   den jüngsten mit Aktivität. */
+function _reviewDoneKey(kind){return 'rc_'+kind+'review_'+(userId||'anon');}
+function _reviewDone(kind){try{const a=JSON.parse(localStorage.getItem(_reviewDoneKey(kind))||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}}
+function _markReviewDone(kind,key){
   try{
-    const nowKey=_weekKey(new Date());
-    const prev=new Date(); prev.setDate(prev.getDate()-7);
-    const prevKey=_weekKey(prev);
-    if(prevKey===nowKey)return;
-    const doneKey='rc_weekreview_'+(userId||'anon');
-    let done=[];
-    try{done=JSON.parse(localStorage.getItem(doneKey)||'[]')||[];}catch(e){done=[];}
-    if(done.includes(prevKey))return;
-    const s=_weekStatsFor(prevKey);
-    if(!s||!s.runs)return;               // ohne Läufe kein Rückblick
-    done.push(prevKey);
-    while(done.length>12)done.shift();
-    localStorage.setItem(doneKey,JSON.stringify(done));
-    addNotif('📅','Dein Wochenrückblick ist da: '+s.runs+(s.runs===1?' Lauf':' Läufe')+' · '+_nf(s.km,1)+' km',
-             {type:'weekreview',arg:prevKey});
+    const done=_reviewDone(kind); done.push(key);
+    while(done.length>14)done.shift();
+    localStorage.setItem(_reviewDoneKey(kind),JSON.stringify(done));
   }catch(e){}
 }
-window.showWeekReview=function(key){
-  const s=_weekStatsFor(key||_weekKey(new Date(Date.now()-7*864e5)));
+function checkWeekReview(){
+  try{
+    const nowKey=_weekKey(new Date()),done=_reviewDone('week');
+    for(let i=1;i<=4;i++){
+      const d=new Date(); d.setDate(d.getDate()-7*i);
+      const key=_weekKey(d);
+      if(key===nowKey)continue;                 // laufende Woche nie auswerten
+      if(done.includes(key))return;             // jüngerer Zeitraum erledigt -> fertig
+      const s=_weekStatsFor(key);
+      if(!s||(!s.runs&&!s.lost))continue;       // ohne Aktivität kein Rückblick
+      _markReviewDone('week',key);
+      addNotif('📅','Dein Wochenrückblick ist da: '+s.runs+(s.runs===1?' Lauf':' Läufe')+' · '+_nf(s.km,1)+' km',
+               {type:'weekreview',arg:key});
+      return;
+    }
+  }catch(e){}
+}
+function checkSeasonReview(){
+  try{
+    const nowMk=_monthKey(new Date()),done=_reviewDone('season');
+    for(let i=1;i<=3;i++){
+      const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()-i);
+      const mk=_monthKey(d);
+      if(mk>=nowMk)continue;
+      if(done.includes(mk))return;
+      const s=_seasonStatsFor(mk);
+      if(!s||(!s.runs&&!s.lost))continue;
+      _markReviewDone('season',mk);
+      addNotif('🏆','Saison '+_fmtRange(s)+' abgeschlossen – dein Rückblick ist da',
+               {type:'seasonreview',arg:mk});
+      return;
+    }
+  }catch(e){}
+}
+
+/* ── Gemeinsame Darstellung für beide Rückblicke ──
+   Oben die sechs Revier-Kennzahlen, darunter die Lauf-Bilanz mit Vergleich zum
+   vorherigen Zeitraum. */
+window.showReview=function(s){
   if(!s){toast('Kein Rückblick verfügbar');return;}
-  const pv=new Date(s.start); pv.setDate(pv.getDate()-7);
-  const prev=_weekStatsFor(_weekKey(pv));
+  const season=s.kind==='season';
+  const prev=_prevStatsFor(s);
+  const cmp=prev&&(prev.runs||prev.lost);
   const delta=(cur,old,unit,dp)=>{
-    if(!prev||!prev.runs)return '';
-    const d=cur-old;
+    if(!cmp)return '';
+    const d=cur-(old||0);
     if(Math.abs(d)<(dp?0.05:0.5))return '<span style="color:var(--muted)">±0</span>';
     const up=d>0;
     return `<span style="color:${up?'var(--green)':'var(--muted)'}">${up?'▲':'▼'} ${_nf(Math.abs(d),dp||0)}${unit}</span>`;
+  };
+  /* Weniger verlorene Gebiete ist das GUTE Ergebnis – Farblogik daher umgekehrt. */
+  const deltaLost=()=>{
+    if(!cmp)return '';
+    const d=s.lost-(prev.lost||0);
+    if(d===0)return '<span style="color:var(--muted)">±0</span>';
+    const worse=d>0;
+    return `<span style="color:${worse?'var(--muted)':'var(--green)'}">${worse?'▲':'▼'} ${Math.abs(d)}</span>`;
   };
   document.getElementById('weekReviewOv')?.remove();
   const ov=document.createElement('div');ov.id='weekReviewOv';
   ov.style.cssText='position:fixed;inset:0;z-index:9700;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center';
   ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
   const tile=(v,l,d)=>`<div class="stat-card"><div class="sv">${v}</div><div class="sl">${l}</div>${d?`<div style="font-size:.58rem;margin-top:3px">${d}</div>`:''}</div>`;
-  const pace=s.bestPace!==null?(Math.floor(s.bestPace)+':'+String(Math.round((s.bestPace%1)*60)).padStart(2,'0')):'–';
+  const sub=t=>`<span style="color:var(--muted)">${t}</span>`;
+  const hint='<span style="color:var(--muted)">Stand jetzt</span>';
+  const note=[];
+  if(cmp)note.push(s.km>prev.km
+    ? (season?'💪 Stärkere Saison als die davor — weiter so.':'💪 Stärker als die Woche davor — weiter so.')
+    : (s.km>0?(season?'Diese Saison etwas ruhiger. Auch Erholung gehört dazu.':'Diese Woche etwas ruhiger. Auch Erholung gehört dazu.'):''));
+  else note.push(season?'Deine erste ausgewertete Saison — ab jetzt siehst du hier den Vergleich.':'Deine erste ausgewertete Woche — ab jetzt siehst du hier den Vergleich.');
+  note.push(`🏰 Dein Revier: ${s.ownedTerr.toLocaleString('de-DE')} ${s.ownedTerr===1?'Gebiet':'Gebiete'} mit ${s.ownedCells.toLocaleString('de-DE')} ${s.ownedCells===1?'Feld':'Feldern'}.`);
+  if(s.lostPartial)note.push('~ Verluste werden erkannt, sobald du die App öffnest. Ein Teil davon kann etwas älter sein als dieser Zeitraum.');
   ov.innerHTML=`<div style="width:100%;max-width:480px;max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--card);border-radius:24px 24px 0 0;padding:0 0 max(env(safe-area-inset-bottom),16px)">
     <div style="position:sticky;top:0;background:var(--card);z-index:2;display:flex;align-items:center;gap:12px;padding:18px 18px 12px;border-bottom:1px solid var(--border)">
-      <div style="font-size:1.7rem">📅</div>
+      <div style="font-size:1.7rem">${season?'🏆':'📅'}</div>
       <div style="flex:1;min-width:0">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.35rem;letter-spacing:.5px">WOCHENRÜCKBLICK</div>
-        <div style="font-size:.64rem;color:var(--muted);margin-top:2px">${esc(_fmtWeekRange(s))}</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.35rem;letter-spacing:.5px">${season?'SAISONRÜCKBLICK':'WOCHENRÜCKBLICK'}</div>
+        <div style="font-size:.64rem;color:var(--muted);margin-top:2px">${esc(_fmtRange(s))}</div>
       </div>
       <button onclick="document.getElementById('weekReviewOv')?.remove()" style="flex-shrink:0;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:11px;padding:6px 12px;font-size:.95rem;cursor:pointer">✕</button>
     </div>
     <div style="padding:14px 18px">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div style="font-size:.62rem;letter-spacing:1px;color:var(--muted);font-weight:700;margin-bottom:7px">REVIER</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+        ${tile(s.conq.toLocaleString('de-DE'),'Gebiete erobert',delta(s.conq,prev?prev.conq:0,''))}
+        ${tile((s.lostPartial?'~':'')+s.lost.toLocaleString('de-DE'),'Gebiete verloren',deltaLost())}
+        ${tile(fmtDist(s.longest),'Längster Lauf',cmp?delta(s.longest/1000,(prev.longest||0)/1000,' km',2):'')}
+        ${tile(s.streak,'Längste Serie',sub('Tage in Folge'))}
+        ${tile(_fmtPace(s.bestPace),'Schnellste Pace',sub('min/km'))}
+        ${tile(s.ownedTerr.toLocaleString('de-DE'),'Eigene Gebiete',hint)}
+      </div>
+      <div style="font-size:.62rem;letter-spacing:1px;color:var(--muted);font-weight:700;margin-bottom:7px">BILANZ</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
         ${tile(_nf(s.km,1),'Kilometer',delta(s.km,prev?prev.km:0,' km',1))}
         ${tile(fmtTime(s.secs),'Laufzeit','')}
         ${tile(s.runs,'Läufe',delta(s.runs,prev?prev.runs:0,''))}
         ${tile(s.zones.toLocaleString('de-DE'),'Zonen',delta(s.zones,prev?prev.zones:0,''))}
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
-        ${tile(pace,'Beste Pace /km','')}
         ${tile('+'+s.xp.toLocaleString('de-DE'),'XP',delta(s.xp,prev?prev.xp:0,''))}
-        ${tile(fmtDist(s.longest),'Längster Lauf','')}
-        ${tile(s.activeDays+'/7','Aktive Tage','')}
+        ${tile(s.activeDays+(season?'':'/7'),'Aktive Tage','')}
       </div>
       <div style="font-size:.72rem;color:var(--muted);line-height:1.5;background:var(--bg2);border-radius:12px;padding:12px">
-        ${prev&&prev.runs
-          ? (s.km>prev.km
-              ? '💪 Stärker als die Woche davor — weiter so.'
-              : (s.km>0?'Diese Woche etwas ruhiger. Auch Erholung gehört dazu.':''))
-          : 'Deine erste ausgewertete Woche — ab jetzt siehst du hier den Vergleich.'}
+        ${note.filter(Boolean).join('<br>')}
       </div>
     </div>
   </div>`;
   document.body.appendChild(ov);
+};
+window.showWeekReview=function(key){
+  showReview(_weekStatsFor(key||_weekKey(new Date(Date.now()-7*864e5))));
+};
+window.showSeasonReview=function(mk){
+  if(!mk){const p=new Date();p.setDate(1);p.setMonth(p.getMonth()-1);mk=_monthKey(p);}
+  showReview(_seasonStatsFor(mk));
 };
 
 /* ── DAILY CHALLENGES ── */
@@ -4129,6 +4284,7 @@ function checkSeasonRollover(){
   if(seasonChecked)return;seasonChecked=true;
   try{settleSeasonWins();}catch(e){} // Saison-Orden abrechnen + fälschlich vergebene (laufender Monat) entfernen
   try{checkWeekReview();}catch(e){}  // Wochenrückblick, sobald eine Woche vorbei ist
+  try{checkSeasonReview();}catch(e){} // Saisonrückblick, sobald ein Monat vorbei ist
   try{claimHoldIncome();}catch(e){}  // Ertrag der gehaltenen Gebiete abholen, async
   try{settleSeasonWinsServer();}catch(e){} // serverseitige (autoritative) Abrechnung, async
   try{checkBirthdayShield();}catch(e){} // Geburtstags-Gebietsschutz
@@ -4145,7 +4301,8 @@ function checkSeasonRollover(){
         if(seasons.length>7)seasons.pop();
         localStorage.setItem('rc_seasons_'+userId,JSON.stringify(seasons));
         setTimeout(()=>toast('🏆 Saison '+mn+' abgeschlossen!'),2000);
-        addNotif('🏆','Saison abgeschlossen! '+snap.points+' Punkte · '+snap.title);
+        /* Die Benachrichtigung kommt aus checkSeasonReview() – dort ist sie
+           antippbar und öffnet den Saisonrückblick. */
       } else if(!last){
         seasons.push(snap);
         localStorage.setItem('rc_seasons_'+userId,JSON.stringify(seasons));
@@ -5953,6 +6110,7 @@ function checkTerritoryChanges(){
     const expected=snap.terr[id]-H3_DECAY_PER_DAY*days; // reiner Verfall
     if(cur[id]<expected-5)defended++; // stärker gefallen als Verfall -> Angriff überstanden
   }
+  logTerritoryLoss(lost,snap.ts); // für Wochen-/Saisonrückblick festhalten
   saveTerritorySnapshot(); // neuen Stand merken
   const minsAgo=(Date.now()-(snap.ts||Date.now()))/60000;
   if(minsAgo<3)return;                  // sehr schnelle Reloads nicht stören
@@ -6799,7 +6957,11 @@ async function finalizeRun(elapsed){
   // Grobe H3-Zellen (Res 10) des Laufs — grobkörnig (Wohnort-schonend) und daher
   // via public_runs öffentlich teilbar (im Gegensatz zur exakten Route).
   const _runCells=(window.h3&&window.h3.latLngToCell&&Array.isArray(path)&&path.length)?[...new Set(path.map(p=>{try{return window.h3.latLngToCell(p[0],p[1],10);}catch(e){return null;}}).filter(Boolean))].slice(0,800):null;
-  const rec={id:(crypto.randomUUID?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2))),synced:false,date:Date.now(),distance:dist,area,pts:res.pts,path:path.filter((_,i)=>i%3===0),cells:_runCells,conquered:res.conquered,defended:res.defended,duration:elapsed,gap,kcal,avgHR:heartRate,splits:[...kmSplits],elevation:elevGain};
+  /* Anzahl der in diesem Lauf eroberten/abgetrennten/beanspruchten Gebiete.
+     Nur wenn die Eroberung tatsächlich gewertet wurde – sonst könnte eine ältere
+     _runEvents-Bilanz aus einem Fehlerpfad durchschlagen. */
+  const _conqN=res.conquered?Math.max(1,(_runEvents||[]).filter(e=>e&&(e.type==='conquered'||e.type==='cut'||e.type==='neutral_claim')).length):0;
+  const rec={id:(crypto.randomUUID?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2))),synced:false,date:Date.now(),distance:dist,area,pts:res.pts,path:path.filter((_,i)=>i%3===0),cells:_runCells,conquered:res.conquered,conq:_conqN,defended:res.defended,duration:elapsed,gap,kcal,avgHR:heartRate,splits:[...kmSplits],elevation:elevGain};
   history.push(rec);if(history.length>500)history.shift();
   totalKm+=dist/1000;if(res.conquered)totalConquered++;if(res.defended)totalDefended++;
   totalElevation+=elevGain; // Höhenmeter für „Höhenstürmer"
