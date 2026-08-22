@@ -2369,7 +2369,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v227';
+const APP_VERSION='v228';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -2462,6 +2462,44 @@ async function initSupabase(){
     return null;
   }catch(e){console.warn('Supabase auth:',e);return null;}
 }
+/* ── Cloud-Schnappschuss: Größe begrenzen ──────────────────────────────────
+   Der Schnappschuss enthält den kompletten Spielstand. Mit jedem Lauf wächst er
+   (GPS-Strecke + Hexagon-Zellen), und ab einigen hundert Läufen lehnt der Server
+   den Request ab — dann scheitert die Sicherung KOMPLETT und es liegt gar nichts
+   mehr in der Cloud. Deshalb wird er auf ein Budget gekürzt:
+     1. Das Profilbild fliegt raus (liegt bereits in profiles.user_avatar_img).
+     2. Ältere Läufe verlieren zuerst die GPS-Strecke,
+     3. danach die Hexagon-Zellen.
+   Zahlen und Statistiken (Distanz, Zeit, Punkte, Splits) bleiben IMMER erhalten,
+   die neuesten Läufe behalten alles. */
+const CLOUD_SNAP_BUDGET=700*1024;
+function buildCloudSnapshot(game,profile){
+  const p=Object.assign({},profile||{});
+  delete p.userAvatarImg;
+  const pack=g=>JSON.stringify({v:2,game:g,profile:p});
+  let snap=pack(game);
+  const hist=(game&&Array.isArray(game.history))?game.history:null;
+  if(snap.length<=CLOUD_SNAP_BUDGET||!hist||!hist.length)return snap;
+  const variant=(pathKeep,cellKeep)=>{
+    const pFrom=Math.max(0,hist.length-pathKeep), cFrom=Math.max(0,hist.length-cellKeep);
+    return Object.assign({},game,{history:hist.map((r,i)=>{
+      if(i>=pFrom)return r;
+      const cut=Object.assign({},r,{path:null,pathTrimmed:true});
+      if(i<cFrom){cut.cells=null;cut.cellsTrimmed=true;}
+      return cut;
+    })});
+  };
+  for(const [pk,ck] of [[40,hist.length],[25,hist.length],[10,hist.length],
+                        [10,200],[5,100],[3,40],[0,20],[0,0]]){
+    snap=pack(variant(pk,ck));
+    if(snap.length<=CLOUD_SNAP_BUDGET){
+      if(pk<hist.length)logError('cloud_snapshot_trim',new Error('Schnappschuss gekuerzt'),
+        {laeufe:hist.length,strecken:pk,zellen:ck,bytes:snap.length});
+      return snap;
+    }
+  }
+  return snap; // letzte Stufe: mehr laesst sich nicht kuerzen, trotzdem versuchen
+}
 async function syncProfile(){
   if(!sb||!sbUserId||!playerName)return false;
   try{
@@ -2474,7 +2512,7 @@ async function syncProfile(){
        Supabase und übersteht Neuinstallation/Gerätewechsel. */
     const _g=(()=>{try{return JSON.parse(localStorage.getItem('rc_v4_'+userId)||'{}');}catch(e){return {};}})();
     const _p=(()=>{try{return JSON.parse(localStorage.getItem('rc_profile_'+userId)||'{}');}catch(e){return {};}})();
-    const gameSnap=JSON.stringify({v:2,game:_g,profile:_p});
+    const gameSnap=buildCloudSnapshot(_g,_p);
     /* points wird bewusst NICHT mehr mitgesendet: die Punkte verwaltet der Server
        (conquer schreibt Lauf-XP, rc_award_xp gedeckelte Belohnungen, rc_claim_event
        Event-Prämien). Ein Trigger-Guard auf profiles blockt direkte Client-Writes. */
@@ -2500,7 +2538,7 @@ async function syncProfile(){
     },{onConflict:'id'});
     if(e2)throw e2;
     return true;
-  }catch(e){logError('profile_sync',e);return false;}
+  }catch(e){window._lastSyncErr=(e&&e.message)||String(e);logError('profile_sync',e);return false;}
 }
 async function loadFromCloud(){
   if(!sb||!playerName||!sbUserId)return false;
@@ -2519,7 +2557,19 @@ async function loadFromCloud(){
     const cloudHist=(cg&&cg.history)||[];
     let mergedHist=history;
     if(cloudHist.length){
-      const m=new Map([...history,...cloudHist].map(r=>[r.id??r.date,r]));
+      /* Bei doppelten Läufen den REICHEREN Datensatz behalten. Der Cloud-Stand
+         ist bewusst gekürzt (siehe buildCloudSnapshot) — ohne diese Regel würde
+         er lokal noch vorhandene Strecken und Zellen überschreiben. */
+      const m=new Map();
+      const put=r=>{
+        const k=r.id??r.date, prev=m.get(k);
+        if(!prev){m.set(k,r);return;}
+        const merged=Object.assign({},prev,r);
+        if(!r.path&&prev.path){merged.path=prev.path;delete merged.pathTrimmed;}
+        if(!r.cells&&prev.cells){merged.cells=prev.cells;delete merged.cellsTrimmed;}
+        m.set(k,merged);
+      };
+      history.forEach(put);cloudHist.forEach(put);
       mergedHist=[...m.values()].sort((a,b)=>(a.date||0)-(b.date||0)).slice(-500);
     }
     // Append-only-Inventar (freigeschaltete + ABGEHOLTE Belohnungen) und die
@@ -2626,7 +2676,7 @@ async function syncRun(rec){
     },{onConflict:'id'});
     if(error)throw error;
     return true;
-  }catch(e){logError('run_sync',e);return false;}
+  }catch(e){window._lastSyncErr=(e&&e.message)||String(e);logError('run_sync',e);return false;}
 }
 /* Sync-Queue: läuft fehlgeschlagene/abgebrochene Syncs (Netzwerkausfall,
    Tab geschlossen während syncRun/syncProfile) automatisch nach, statt sie
@@ -2644,7 +2694,12 @@ async function processSyncQueue(notify){
     }
     if(pending.length)save();
     const profOk=await syncProfile();
-    if(notify&&(!allOk||!profOk))toast('⚠️ Cloud-Sync ausstehend – Fortschritt bleibt lokal gespeichert, wird automatisch erneut versucht');
+    if(notify&&(!allOk||!profOk)){
+      /* Grund mitnennen: ohne ihn ist die Meldung nicht diagnostizierbar. */
+      const grund=String(window._lastSyncErr||'').slice(0,90);
+      toast('⚠️ Cloud-Sync ausstehend – Fortschritt bleibt lokal gespeichert'+(grund?' ('+grund+')':'')+', wird automatisch erneut versucht');
+      try{addNotif('☁️','Cloud-Sync fehlgeschlagen'+(grund?': '+grund:'')+' – wird automatisch erneut versucht');}catch(e){}
+    }
   }finally{window._syncingQueue=false;}
 }
 async function sendSupportMessage(){
