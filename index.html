@@ -2370,7 +2370,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v234';
+const APP_VERSION='v235';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -5931,10 +5931,28 @@ function initMap(){
   /* Wahrzeichen beim Verschieben nur neu laden, WENN sie eingeblendet sind. */
   mapL.on('moveend',()=>{if(!window._lmEnabled)return;clearTimeout(window._lmMoveTimer);window._lmMoveTimer=setTimeout(loadLandmarks,900);});
 }
+/* ── KARTENKACHELN ──────────────────────────────────────────────────────────
+   Carto verlangt für basemaps.cartocdn.com inzwischen einen API-Schlüssel.
+   Ohne ihn kommen die Kacheln zwar an, tragen aber quer über die Karte den
+   Hinweis „API KEY REQUIRED". Darum die OpenStreetMap-Standardkacheln: frei,
+   ohne Schlüssel, Namensnennung vorausgesetzt — die wird hier mitgeliefert.
+   An EINER Stelle definiert; Hauptkarte, Lauf-Rückblick, Streckenansicht und
+   Hexagon-Vorschau benutzen dieselbe Quelle. Wer den ruhigeren Carto-Look
+   zurückwill, hinterlegt hier einen (kostenlosen) Carto-Schlüssel — sonst ist
+   nichts weiter zu ändern. */
+const TILE_URL='https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const TILE_ATTR='© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>';
+function addBaseTiles(map,opts){
+  const layer=L.tileLayer(TILE_URL,Object.assign({maxZoom:19,attribution:TILE_ATTR},opts||{})).addTo(map);
+  /* Nur die Namensnennung zeigen, nicht zusätzlich das Leaflet-Logo. */
+  try{if(map.attributionControl)map.attributionControl.setPrefix('');}catch(e){}
+  return layer;
+}
+
 function isLightTheme(){const t=getActiveTheme();return t==='theme-stone'||t==='theme-petrol';}
 function setTiles(){
   mapL?.eachLayer(l=>{if(l instanceof L.TileLayer)mapL.removeLayer(l)});
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap © CARTO'}).addTo(mapL);
+  addBaseTiles(mapL);
 }
 function mkUserIcon(){const mc=(typeof equippedMarkerColor==='function'&&equippedMarkerColor())||userColor;return L.divIcon({html:`<div style="background:${mc};width:16px;height:16px;border-radius:50%;border:2px solid white;box-shadow:0 0 12px ${mc}"></div>`,iconSize:[16,16],className:''})}
 
@@ -7382,9 +7400,9 @@ function buildPostRouteMap(cells,ll){
   if(!el||typeof L==='undefined')return;
   destroyPostRouteMap();
   try{
-    _postMap=L.map(el,{zoomControl:false,attributionControl:false,dragging:false,
+    _postMap=L.map(el,{zoomControl:false,dragging:false,
       scrollWheelZoom:false,doubleClickZoom:false,boxZoom:false,keyboard:false,touchZoom:false,tap:false});
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{}).addTo(_postMap);
+    addBaseTiles(_postMap);
     const col=_safeColor(userColor);
     const grp=L.featureGroup();
     (cells||[]).forEach(c=>{try{
@@ -7422,9 +7440,9 @@ window.showRouteOnMap=function(rec){
   const ll=rec.path.map(p=>[p[0],p[1]]).filter(p=>isFinite(p[0])&&isFinite(p[1]));
   try{
     /* Zoom-Tasten nach unten rechts: oben links lagen sie unter der Statusleiste. */
-    rm=L.map('routeMapDiv',{zoomControl:false,attributionControl:false});
+    rm=L.map('routeMapDiv',{zoomControl:false});
     L.control.zoom({position:'bottomright'}).addTo(rm);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{}).addTo(rm);
+    addBaseTiles(rm);
     const col=_safeColor(userColor);
     const grp=L.featureGroup();
     /* Die eroberten Hexagone (H3, Res 10) unter die Strecke legen … */
@@ -7644,8 +7662,8 @@ window.showHexPopup=function(cells,title,color){
   ov.addEventListener('click',e=>{if(e.target===ov)close();});
   document.getElementById('hexPopupClose').onclick=close;
   try{
-    hm=L.map('hexPopupMap',{zoomControl:true,attributionControl:false});
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{}).addTo(hm);
+    hm=L.map('hexPopupMap',{zoomControl:true});
+    addBaseTiles(hm);
     const grp=L.featureGroup();
     cells.forEach(c=>{try{const b=window.h3.cellToBoundary(c,false);if(b&&b.length)L.polygon(b,{color:col,weight:1.5,opacity:.95,fillColor:col,fillOpacity:.4,lineJoin:'round'}).addTo(grp);}catch(e){}});
     grp.addTo(hm);
@@ -7705,7 +7723,10 @@ window.showRunHexOnMap=function(cells,title,color){
   document.getElementById('routeMapClose').onclick=()=>{try{rm&&rm.remove();}catch(e){}ov.remove();};
   const col=color||userColor||'#e8ff47';
   try{
-    rm=L.map('routeMapDiv',{zoomControl:true,attributionControl:false});
+    /* Aktuell von keiner Stelle aufgerufen (showRouteOnMap hat das abgelöst),
+       bekommt aber dieselbe Kachelquelle — sonst wäre es eine schwarze Karte. */
+    rm=L.map('routeMapDiv',{zoomControl:true});
+    addBaseTiles(rm);
     const allLL=[];
     cells.forEach(c=>{try{const b=window.h3.cellToBoundary(c,false);if(b&&b.length){L.polygon(b,{color:col,weight:1.5,opacity:.9,fillColor:col,fillOpacity:.35,lineJoin:'round'}).addTo(rm);b.forEach(v=>allLL.push([v[0],v[1]]));}}catch(e){}});
     if(!allLL.length){toast('Karte konnte nicht geladen werden');return;}
