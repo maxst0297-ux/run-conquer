@@ -825,6 +825,28 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
 .leaflet-popup-content-wrapper{background:var(--card,#1C2336);box-shadow:0 4px 24px rgba(0,0,0,.35)}
 .leaflet-popup-tip{background:var(--card,#1C2336)}
 .leaflet-popup-close-button{color:var(--text,#f0f0f8)!important}
+/* ═══ KARTEN-LOOK ═══
+   Die freien OpenStreetMap-Kacheln sind bunt und unruhig — die farbigen
+   Gebiets-Hexagone gingen darauf unter. Gedämpft wird deshalb NUR die
+   Kachel-Ebene: Hexagone, Strecken und Marker liegen in eigenen Leaflet-Ebenen
+   (.leaflet-overlay-pane / .leaflet-marker-pane) und bleiben unberührt.
+   Helle Themes: entsättigt und leicht aufgehellt — ruhiger Papier-Look.
+   Dunkle Themes: entsättigt und abgedunkelt, damit die Karte neben der dunklen
+   Oberfläche nicht leuchtet.
+   Bewusst NICHT invertiert: bei OSM sind die Straßen heller als das Umland, eine
+   Invertierung dreht das um — Straßen würden dunkler als ihre Umgebung und die
+   Karte unlesbar. Eine echte Dunkelkarte (Straßen hell auf dunklem Grund) gibt
+   es nur vom Kachelanbieter, und die kostenfreien verlangen dafür einen
+   API-Schlüssel. */
+.leaflet-tile-pane{filter:saturate(.5) brightness(1.06) contrast(.9)}
+body.theme-citrus .leaflet-tile-pane,
+body.theme-pine .leaflet-tile-pane{filter:saturate(.38) brightness(.74) contrast(1.02)}
+/* Bedienelemente der Karte an das Theme angleichen statt Leaflet-Weiß */
+.leaflet-bar{border:1px solid var(--border)!important;box-shadow:0 2px 10px rgba(0,0,0,.25)!important}
+.leaflet-control-zoom a{background:var(--card)!important;color:var(--text)!important;border-bottom-color:var(--border)!important}
+.leaflet-control-zoom a:hover{background:var(--bg2)!important}
+.leaflet-control-attribution{background:var(--card)!important;color:var(--muted)!important;font-size:9px!important;padding:1px 6px!important}
+.leaflet-control-attribution a{color:var(--muted)!important}
 
 /* ═══ LOCATE BUTTON ═══ */
 #locateBtn{position:fixed;bottom:calc(var(--nav-total) + 82px);right:14px;background:var(--card);border:1px solid var(--border);color:var(--primary);width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;cursor:pointer;z-index:600;box-shadow:0 2px 12px rgba(0,0,0,.3);-webkit-user-select:none;user-select:none;transition:transform .15s}
@@ -2370,7 +2392,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v235';
+const APP_VERSION='v236';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -5939,7 +5961,9 @@ function initMap(){
    An EINER Stelle definiert; Hauptkarte, Lauf-Rückblick, Streckenansicht und
    Hexagon-Vorschau benutzen dieselbe Quelle. Wer den ruhigeren Carto-Look
    zurückwill, hinterlegt hier einen (kostenlosen) Carto-Schlüssel — sonst ist
-   nichts weiter zu ändern. */
+   nichts weiter zu ändern.
+   Das Aussehen der Karte macht das CSS (.leaflet-tile-pane, siehe KARTEN-LOOK),
+   nicht diese URL: so bleibt der Anbieter austauschbar. */
 const TILE_URL='https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const TILE_ATTR='© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>';
 function addBaseTiles(map,opts){
@@ -5951,8 +5975,13 @@ function addBaseTiles(map,opts){
 
 function isLightTheme(){const t=getActiveTheme();return t==='theme-stone'||t==='theme-petrol';}
 function setTiles(){
-  mapL?.eachLayer(l=>{if(l instanceof L.TileLayer)mapL.removeLayer(l)});
-  addBaseTiles(mapL);
+  if(!mapL)return;
+  /* Die Theme-Anpassung läuft über CSS (.leaflet-tile-pane) — die Kachel-Ebene
+     muss beim Theme-Wechsel also nicht neu aufgebaut werden. Vorher wurde sie
+     jedes Mal verworfen und neu geladen, was sichtbar flackerte. */
+  let has=false;
+  mapL.eachLayer(l=>{if(l instanceof L.TileLayer)has=true;});
+  if(!has)addBaseTiles(mapL);
 }
 function mkUserIcon(){const mc=(typeof equippedMarkerColor==='function'&&equippedMarkerColor())||userColor;return L.divIcon({html:`<div style="background:${mc};width:16px;height:16px;border-radius:50%;border:2px solid white;box-shadow:0 0 12px ${mc}"></div>`,iconSize:[16,16],className:''})}
 
