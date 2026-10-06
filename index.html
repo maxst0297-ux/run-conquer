@@ -830,19 +830,23 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
    Gebiets-Hexagone gingen darauf unter. Gedämpft wird deshalb NUR die
    Kachel-Ebene: Hexagone, Strecken und Marker liegen in eigenen Leaflet-Ebenen
    (.leaflet-overlay-pane / .leaflet-marker-pane) und bleiben unberührt.
-   Die reduzierte Grundkarte (data-map="esri-gray") ist bereits grau und braucht
-   nur bei dunklem Theme eine Abdunklung. Die bunte OpenStreetMap-Rückfallebene
-   (data-map="osm") wird dagegen kräftig entsättigt.
+   Das data-map-Merkmal steht am Container JEDER Karte, nicht am body: die
+   Hauptkarte kann auf Vektor laufen, während die kleinen Karten in den Dialogen
+   weiter Raster zeigen — jede bekommt so ihre passende Behandlung.
+   Die volle OpenStreetMap-Darstellung ist bunt und wird entsättigt. Die
+   Vektorkarte („positron") zeigt ohnehin nur das Nötige und bleibt bei hellem
+   Theme unangetastet.
    Bewusst NICHT invertiert: bei OSM sind die Straßen heller als das Umland, eine
    Invertierung dreht das um — Straßen würden dunkler als ihre Umgebung und die
-   Karte unlesbar. Eine echte Dunkelkarte (Straßen hell auf dunklem Grund) gibt
-   es nur vom Kachelanbieter, und die kostenfreien verlangen dafür einen
-   API-Schlüssel. */
-body[data-map="osm"] .leaflet-tile-pane{filter:saturate(.5) brightness(1.06) contrast(.9)}
-body[data-map="osm"].theme-citrus .leaflet-tile-pane,
-body[data-map="osm"].theme-pine .leaflet-tile-pane{filter:saturate(.38) brightness(.74) contrast(1.02)}
-body[data-map="esri-gray"].theme-citrus .leaflet-tile-pane,
-body[data-map="esri-gray"].theme-pine .leaflet-tile-pane{filter:brightness(.72) contrast(1.05)}
+   Karte unlesbar. */
+[data-map="osm"] .leaflet-tile-pane,
+[data-map="osm-de"] .leaflet-tile-pane{filter:saturate(.5) brightness(1.06) contrast(.9)}
+body.theme-citrus [data-map="osm"] .leaflet-tile-pane,
+body.theme-pine [data-map="osm"] .leaflet-tile-pane,
+body.theme-citrus [data-map="osm-de"] .leaflet-tile-pane,
+body.theme-pine [data-map="osm-de"] .leaflet-tile-pane{filter:saturate(.38) brightness(.74) contrast(1.02)}
+body.theme-citrus [data-map="vector"] .leaflet-tile-pane,
+body.theme-pine [data-map="vector"] .leaflet-tile-pane{filter:brightness(.8) contrast(1.03)}
 /* Bedienelemente der Karte an das Theme angleichen statt Leaflet-Weiß */
 .leaflet-bar{border:1px solid var(--border)!important;box-shadow:0 2px 10px rgba(0,0,0,.25)!important}
 .leaflet-control-zoom a{background:var(--card)!important;color:var(--text)!important;border-bottom-color:var(--border)!important}
@@ -2394,7 +2398,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v237';
+const APP_VERSION='v238';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -5920,6 +5924,9 @@ function initMap(){
   mapL=L.map('map',{zoomControl:false}).setView([48.1351,11.5820],14);
   L.control.zoom({position:'bottomright'}).addTo(mapL);
   setTiles();
+  /* Rasterkarte steht sofort; die schärfere Vektorkarte wird im Hintergrund
+     nachgeladen und nur bei Erfolg eingewechselt. */
+  try{ensureVectorBase();}catch(e){}
   terrLayer=L.layerGroup().addTo(mapL);
   h3Layer=L.layerGroup().addTo(mapL);
   landmarkLayer=L.layerGroup().addTo(mapL);window._lmEnabled=false; // Wahrzeichen standardmäßig AUS (nur Gebiete an; über Karten-Reiter zuschaltbar)
@@ -5972,34 +5979,46 @@ function initMap(){
    noch UNTER den Hexagonen (beide sind Kachel-Ebenen).
    Welche Quelle aktiv ist, steht als data-map am body — das CSS dämpft nur die
    bunte Rückfallebene (siehe KARTEN-LOOK). */
+/* Rasterkacheln sind an die Zoomstufe gebunden, die der Dienst liefert. Wird
+   darüber hinaus gezoomt, rechnet Leaflet hoch und das Bild wird pixelig — genau
+   deshalb fliegt die vorherige Graukarte (Ende bei Stufe 16) hier raus.
+   OpenStreetMap liefert bis Stufe 19 und bleibt damit beim Hineinzoomen scharf. */
 const MAP_SOURCES=[
-  {id:'esri-gray',
-   base:'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-   labels:'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
-   /* Der Dienst endet bei Stufe 16; darüber rechnet Leaflet hoch. Auf einer
-      flächigen Graukarte fällt das kaum auf — anders als bei detailreichen
-      Kacheln. */
-   maxNativeZoom:16,
-   attr:'Kartengrundlage: Esri · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'},
   {id:'osm',
    base:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
    maxNativeZoom:19,
+   attr:'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'},
+  /* Gleiche Daten, eigener Server – greift nur, wenn der Hauptserver ausfällt. */
+  {id:'osm-de',
+   base:'https://tile.openstreetmap.de/{z}/{x}/{y}.png',
+   maxNativeZoom:18,
    attr:'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'},
 ];
 let _mapSrcIdx=0;
 const _baseMaps=new Set();          // alle offenen Karten samt ihrer Kachel-Ebenen
 function currentMapSource(){return MAP_SOURCES[Math.min(_mapSrcIdx,MAP_SOURCES.length-1)];}
+/* Welche Darstellung eine Karte gerade zeigt, steht an IHREM Container (nicht am
+   body): die Hauptkarte kann auf Vektor laufen, während die kleinen Karten in
+   den Dialogen weiter Raster zeigen. Das CSS greift darüber. */
+function _markMap(map,id){try{if(map&&map._container)map._container.dataset.map=id;}catch(e){}}
+
 function addBaseTiles(map,opts){
+  /* Hauptkarte bekommt die Vektorkarte, sobald sie bereit ist — alle anderen
+     bleiben bei Raster (siehe ensureVectorBase). */
+  if(_vecState==='ready'&&map===mapL){
+    const gl=addVectorBase(map);
+    if(gl)return gl;
+  }
   const src=currentMapSource();
   const common=Object.assign({maxZoom:19,maxNativeZoom:src.maxNativeZoom||19,attribution:src.attr},opts||{});
   const layers=[L.tileLayer(src.base,common).addTo(map)];
   if(src.labels)layers.push(L.tileLayer(src.labels,Object.assign({},common,{attribution:''})).addTo(map));
   /* Nur die Namensnennung zeigen, nicht zusätzlich das Leaflet-Logo. */
   try{if(map.attributionControl)map.attributionControl.setPrefix('');}catch(e){}
-  try{document.body.dataset.map=src.id;}catch(e){}
-  const entry={map,layers,src:src.id};
+  _markMap(map,src.id);
+  const entry={map,layers,src:src.id,kind:'raster'};
   _baseMaps.add(entry);
-  /* Geschlossene Modal-Karten nicht festhalten – sonst würde ein späterer
+  /* Geschlossene Dialog-Karten nicht festhalten – sonst würde ein späterer
      Quellenwechsel auf eine längst entfernte Karte zugreifen. */
   try{map.once('unload',()=>_baseMaps.delete(entry));}catch(e){}
   /* Einzelne fehlende Kacheln gibt es immer (Meer, Kartenrand). Erst mehrere
@@ -6008,13 +6027,17 @@ function addBaseTiles(map,opts){
   layers[0].on('tileerror',()=>{if(++errs>=4)demoteMapSource(entry.src);});
   return layers[0];
 }
-/* Auf die nächste Quelle wechseln und ALLE offenen Karten mitnehmen. */
+/* Auf die nächste Quelle wechseln und ALLE offenen Rasterkarten mitnehmen. */
 function demoteMapSource(failedId){
   if(currentMapSource().id!==failedId)return;        // schon umgeschaltet
   if(_mapSrcIdx>=MAP_SOURCES.length-1)return;        // letzte Quelle – nichts übrig
   _mapSrcIdx++;
-  const open=[..._baseMaps];
-  _baseMaps.clear();
+  rebuildBaseMaps(e=>e.kind==='raster');
+}
+/* Kachelebenen der betroffenen Karten verwerfen und neu aufbauen. */
+function rebuildBaseMaps(filter){
+  const open=[..._baseMaps].filter(e=>!filter||filter(e));
+  open.forEach(e=>_baseMaps.delete(e));
   open.forEach(e=>{
     e.layers.forEach(l=>{try{e.map.removeLayer(l);}catch(_){}});
     if(!e.map._container)return;      // inzwischen geschlossen
@@ -6022,14 +6045,96 @@ function demoteMapSource(failedId){
   });
 }
 
+/* ── VEKTORKARTE (nachgeladene Aufwertung) ─────────────────────────────────
+   Rasterkacheln sind fertige Bilder und werden beim Hineinzoomen über die
+   gelieferte Stufe hinaus unscharf. Vektorkacheln werden im Gerät gezeichnet
+   und bleiben auf jeder Zoomstufe und auf Retina-Displays scharf; der Stil
+   „positron" zeigt dabei nur das Nötige, sodass die Gebiets-Hexagone oben
+   drauf die Hauptsache bleiben. Datengrundlage ist ebenfalls OpenStreetMap.
+
+   Bewusst NACHGELADEN und nur bei Erfolg eingesetzt: die Karte zeigt von der
+   ersten Sekunde an Rasterkacheln. Fehlt WebGL, ist eine der Bibliotheken nicht
+   erreichbar oder scheitert der Stil, bleibt es schlicht dabei — die Karte wird
+   nie schlechter als die Rasterkarte. */
+const VEC_STYLE='https://tiles.openfreemap.org/styles/positron';
+const VEC_CSS='https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css';
+const VEC_LIBS=[
+  'https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js',
+  'https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1/leaflet-maplibre-gl.js'
+];
+const VEC_TIMEOUT=12000;
+let _vecState='idle';               // idle | loading | ready | off
+function _webglOk(){
+  try{
+    const c=document.createElement('canvas');
+    return !!(window.WebGLRenderingContext&&(c.getContext('webgl')||c.getContext('experimental-webgl')));
+  }catch(e){return false;}
+}
+function _loadScriptOnce(src){
+  return new Promise((res,rej)=>{
+    if(document.querySelector('script[data-vec="'+src+'"]'))return res();
+    const el=document.createElement('script');
+    el.src=src;el.async=true;el.setAttribute('data-vec',src);
+    el.onload=()=>res();
+    el.onerror=()=>rej(new Error('script '+src));
+    document.head.appendChild(el);
+  });
+}
+function _withTimeout(p,ms){
+  return new Promise((res,rej)=>{
+    const t=setTimeout(()=>rej(new Error('timeout')),ms);
+    p.then(v=>{clearTimeout(t);res(v);},e=>{clearTimeout(t);rej(e);});
+  });
+}
+function vectorOff(){
+  if(_vecState==='off')return;
+  _vecState='off';
+  rebuildBaseMaps(e=>e.kind==='vector');   // zurück auf Raster
+}
+async function ensureVectorBase(){
+  if(_vecState!=='idle')return _vecState==='ready';
+  if(!_webglOk()){_vecState='off';return false;}
+  _vecState='loading';
+  try{
+    const css=document.createElement('link');
+    css.rel='stylesheet';css.href=VEC_CSS;document.head.appendChild(css);
+    for(const u of VEC_LIBS)await _withTimeout(_loadScriptOnce(u),VEC_TIMEOUT);
+    if(!window.maplibregl||!L.maplibreGL){_vecState='off';return false;}
+    _vecState='ready';
+    rebuildBaseMaps(e=>e.map===mapL);      // Hauptkarte aufwerten
+    return true;
+  }catch(e){_vecState='off';return false;}
+}
+/* Legt die Vektorebene an. Gibt null zurück, wenn etwas fehlschlägt — der
+   Aufrufer baut dann die Rasterkarte. */
+function addVectorBase(map){
+  let gl;
+  try{
+    gl=L.maplibreGL({style:VEC_STYLE,attribution:currentMapSource().attr}).addTo(map);
+  }catch(e){vectorOff();return null;}
+  try{if(map.attributionControl)map.attributionControl.setPrefix('');}catch(e){}
+  _markMap(map,'vector');
+  const entry={map,layers:[gl],src:'vector',kind:'vector'};
+  _baseMaps.add(entry);
+  try{map.once('unload',()=>_baseMaps.delete(entry));}catch(e){}
+  /* Stil nicht ladbar / WebGL-Kontext verloren -> zurück auf Raster. */
+  try{
+    const mm=gl.getMaplibreMap&&gl.getMaplibreMap();
+    if(mm&&mm.on)mm.on('error',()=>vectorOff());
+  }catch(e){}
+  return gl;
+}
+
 function isLightTheme(){const t=getActiveTheme();return t==='theme-stone'||t==='theme-petrol';}
 function setTiles(){
   if(!mapL)return;
-  /* Die Theme-Anpassung läuft über CSS (.leaflet-tile-pane) — die Kachel-Ebene
-     muss beim Theme-Wechsel also nicht neu aufgebaut werden. Vorher wurde sie
-     jedes Mal verworfen und neu geladen, was sichtbar flackerte. */
+  /* Die Theme-Anpassung läuft über CSS — die Kartenebene muss beim
+     Theme-Wechsel also nicht neu aufgebaut werden. Vorher wurde sie jedes Mal
+     verworfen und neu geladen, was sichtbar flackerte.
+     Geprüft wird über die Registrierung statt über instanceof L.TileLayer: die
+     Vektorebene ist keine Kachel-Ebene und würde sonst doppelt belegt. */
   let has=false;
-  mapL.eachLayer(l=>{if(l instanceof L.TileLayer)has=true;});
+  _baseMaps.forEach(e=>{if(e.map===mapL)has=true;});
   if(!has)addBaseTiles(mapL);
 }
 function mkUserIcon(){const mc=(typeof equippedMarkerColor==='function'&&equippedMarkerColor())||userColor;return L.divIcon({html:`<div style="background:${mc};width:16px;height:16px;border-radius:50%;border:2px solid white;box-shadow:0 0 12px ${mc}"></div>`,iconSize:[16,16],className:''})}
