@@ -830,17 +830,19 @@ body.theme-petrol .pv-banner{background:linear-gradient(160deg,#1a2e40 0%,#11223
    Gebiets-Hexagone gingen darauf unter. Gedämpft wird deshalb NUR die
    Kachel-Ebene: Hexagone, Strecken und Marker liegen in eigenen Leaflet-Ebenen
    (.leaflet-overlay-pane / .leaflet-marker-pane) und bleiben unberührt.
-   Helle Themes: entsättigt und leicht aufgehellt — ruhiger Papier-Look.
-   Dunkle Themes: entsättigt und abgedunkelt, damit die Karte neben der dunklen
-   Oberfläche nicht leuchtet.
+   Die reduzierte Grundkarte (data-map="esri-gray") ist bereits grau und braucht
+   nur bei dunklem Theme eine Abdunklung. Die bunte OpenStreetMap-Rückfallebene
+   (data-map="osm") wird dagegen kräftig entsättigt.
    Bewusst NICHT invertiert: bei OSM sind die Straßen heller als das Umland, eine
    Invertierung dreht das um — Straßen würden dunkler als ihre Umgebung und die
    Karte unlesbar. Eine echte Dunkelkarte (Straßen hell auf dunklem Grund) gibt
    es nur vom Kachelanbieter, und die kostenfreien verlangen dafür einen
    API-Schlüssel. */
-.leaflet-tile-pane{filter:saturate(.5) brightness(1.06) contrast(.9)}
-body.theme-citrus .leaflet-tile-pane,
-body.theme-pine .leaflet-tile-pane{filter:saturate(.38) brightness(.74) contrast(1.02)}
+body[data-map="osm"] .leaflet-tile-pane{filter:saturate(.5) brightness(1.06) contrast(.9)}
+body[data-map="osm"].theme-citrus .leaflet-tile-pane,
+body[data-map="osm"].theme-pine .leaflet-tile-pane{filter:saturate(.38) brightness(.74) contrast(1.02)}
+body[data-map="esri-gray"].theme-citrus .leaflet-tile-pane,
+body[data-map="esri-gray"].theme-pine .leaflet-tile-pane{filter:brightness(.72) contrast(1.05)}
 /* Bedienelemente der Karte an das Theme angleichen statt Leaflet-Weiß */
 .leaflet-bar{border:1px solid var(--border)!important;box-shadow:0 2px 10px rgba(0,0,0,.25)!important}
 .leaflet-control-zoom a{background:var(--card)!important;color:var(--text)!important;border-bottom-color:var(--border)!important}
@@ -2392,7 +2394,7 @@ sb?.auth.onAuthStateChange((event)=>{
    Nutzers, sondern (sofern Supabase erreichbar) in der app_logs-Tabelle, damit
    der Betreiber sieht, wo echte Nutzer hängenbleiben. Der Logger darf NIE selbst
    crashen und flutet die DB nicht (Dedupe pro Session + Budget-Cap). */
-const APP_VERSION='v236';
+const APP_VERSION='v237';
 let _logBudget=25;                 // max. neue Log-Zeilen pro Session
 const _loggedKeys=new Set();       // Dedupe: gleicher Kontext+Message nur 1×
 function logError(context,err,detail){
@@ -5954,23 +5956,70 @@ function initMap(){
   mapL.on('moveend',()=>{if(!window._lmEnabled)return;clearTimeout(window._lmMoveTimer);window._lmMoveTimer=setTimeout(loadLandmarks,900);});
 }
 /* ── KARTENKACHELN ──────────────────────────────────────────────────────────
-   Carto verlangt für basemaps.cartocdn.com inzwischen einen API-Schlüssel.
-   Ohne ihn kommen die Kacheln zwar an, tragen aber quer über die Karte den
-   Hinweis „API KEY REQUIRED". Darum die OpenStreetMap-Standardkacheln: frei,
-   ohne Schlüssel, Namensnennung vorausgesetzt — die wird hier mitgeliefert.
-   An EINER Stelle definiert; Hauptkarte, Lauf-Rückblick, Streckenansicht und
-   Hexagon-Vorschau benutzen dieselbe Quelle. Wer den ruhigeren Carto-Look
-   zurückwill, hinterlegt hier einen (kostenlosen) Carto-Schlüssel — sonst ist
-   nichts weiter zu ändern.
-   Das Aussehen der Karte macht das CSS (.leaflet-tile-pane, siehe KARTEN-LOOK),
-   nicht diese URL: so bleibt der Anbieter austauschbar. */
-const TILE_URL='https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-const TILE_ATTR='© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>';
+   Die Karte ist hier Hintergrund, nicht Inhalt: oben drauf liegen die
+   Gebiets-Hexagone (Leaflet-Overlay-Ebene, immer über den Kacheln). Darum eine
+   bewusst reduzierte Grundkarte — Wasser, Flächen, Straßennetz, zurückhaltende
+   Beschriftung — statt der vollen, bunten OpenStreetMap-Darstellung.
+
+   MAP_SOURCES ist eine Rangfolge. Scheitert die bevorzugte Quelle (Anbieter
+   weg oder plötzlich schlüsselpflichtig → 403/404 → tileerror), wird im
+   laufenden Betrieb auf die nächste umgeschaltet; OpenStreetMap steht am Ende
+   als bekannt funktionierende Rückfallebene. Bewusst nichts gespeichert: beim
+   nächsten Start wird wieder die bevorzugte Quelle versucht, eine vorübergehende
+   Störung heilt sich also von selbst.
+
+   base/labels getrennt: so liegt die Beschriftung über den Flächen, aber immer
+   noch UNTER den Hexagonen (beide sind Kachel-Ebenen).
+   Welche Quelle aktiv ist, steht als data-map am body — das CSS dämpft nur die
+   bunte Rückfallebene (siehe KARTEN-LOOK). */
+const MAP_SOURCES=[
+  {id:'esri-gray',
+   base:'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+   labels:'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+   /* Der Dienst endet bei Stufe 16; darüber rechnet Leaflet hoch. Auf einer
+      flächigen Graukarte fällt das kaum auf — anders als bei detailreichen
+      Kacheln. */
+   maxNativeZoom:16,
+   attr:'Kartengrundlage: Esri · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'},
+  {id:'osm',
+   base:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+   maxNativeZoom:19,
+   attr:'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'},
+];
+let _mapSrcIdx=0;
+const _baseMaps=new Set();          // alle offenen Karten samt ihrer Kachel-Ebenen
+function currentMapSource(){return MAP_SOURCES[Math.min(_mapSrcIdx,MAP_SOURCES.length-1)];}
 function addBaseTiles(map,opts){
-  const layer=L.tileLayer(TILE_URL,Object.assign({maxZoom:19,attribution:TILE_ATTR},opts||{})).addTo(map);
+  const src=currentMapSource();
+  const common=Object.assign({maxZoom:19,maxNativeZoom:src.maxNativeZoom||19,attribution:src.attr},opts||{});
+  const layers=[L.tileLayer(src.base,common).addTo(map)];
+  if(src.labels)layers.push(L.tileLayer(src.labels,Object.assign({},common,{attribution:''})).addTo(map));
   /* Nur die Namensnennung zeigen, nicht zusätzlich das Leaflet-Logo. */
   try{if(map.attributionControl)map.attributionControl.setPrefix('');}catch(e){}
-  return layer;
+  try{document.body.dataset.map=src.id;}catch(e){}
+  const entry={map,layers,src:src.id};
+  _baseMaps.add(entry);
+  /* Geschlossene Modal-Karten nicht festhalten – sonst würde ein späterer
+     Quellenwechsel auf eine längst entfernte Karte zugreifen. */
+  try{map.once('unload',()=>_baseMaps.delete(entry));}catch(e){}
+  /* Einzelne fehlende Kacheln gibt es immer (Meer, Kartenrand). Erst mehrere
+     Fehler kurz hintereinander gelten als Ausfall der Quelle. */
+  let errs=0;
+  layers[0].on('tileerror',()=>{if(++errs>=4)demoteMapSource(entry.src);});
+  return layers[0];
+}
+/* Auf die nächste Quelle wechseln und ALLE offenen Karten mitnehmen. */
+function demoteMapSource(failedId){
+  if(currentMapSource().id!==failedId)return;        // schon umgeschaltet
+  if(_mapSrcIdx>=MAP_SOURCES.length-1)return;        // letzte Quelle – nichts übrig
+  _mapSrcIdx++;
+  const open=[..._baseMaps];
+  _baseMaps.clear();
+  open.forEach(e=>{
+    e.layers.forEach(l=>{try{e.map.removeLayer(l);}catch(_){}});
+    if(!e.map._container)return;      // inzwischen geschlossen
+    try{addBaseTiles(e.map);}catch(_){}
+  });
 }
 
 function isLightTheme(){const t=getActiveTheme();return t==='theme-stone'||t==='theme-petrol';}
